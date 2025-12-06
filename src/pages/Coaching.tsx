@@ -4,7 +4,6 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Upload, Video, CheckCircle, Target, Zap, BarChart3, Play, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import PoseVisualization from "@/components/PoseVisualization";
 
 const Coaching = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -165,12 +164,20 @@ const Coaching = () => {
                 </div>
               </div>
 
-              {/* Pose Visualization */}
+              {/* Pose Visualization - Embedded */}
               <div>
                 <h2 className="font-display text-xl font-semibold text-foreground mb-4">
                   Pose Detection
                 </h2>
-                <PoseVisualization isAnalyzing={isAnalyzing} showResults={analysisComplete} />
+                <div className="rounded-2xl overflow-hidden border border-border h-[400px]">
+                  <iframe
+                    src="https://deepsiteai.com/s/b82ff1b3-5d6b-4456-ac17-664237305e6d?source=share"
+                    className="w-full h-full border-0"
+                    title="Pose Analysis Visualization"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
               </div>
             </div>
 

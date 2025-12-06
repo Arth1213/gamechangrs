@@ -1,0 +1,4 @@
+project_id = "snlutvotzeijzqdwlank"
+
+[functions.analyze-cricket]
+verify_jwt = false

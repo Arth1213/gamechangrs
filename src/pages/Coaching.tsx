@@ -72,7 +72,7 @@ const Coaching = () => {
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             {/* Two Column Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            <div className="max-w-2xl mx-auto mb-12">
               {/* Upload Area */}
               <div>
                 <h2 className="font-display text-xl font-semibold text-foreground mb-4">
@@ -162,21 +162,6 @@ const Coaching = () => {
                 </div>
               </div>
 
-              {/* Pose Visualization - Embedded */}
-              <div>
-                <h2 className="font-display text-xl font-semibold text-foreground mb-4">
-                  Pose Detection
-                </h2>
-                <div className="rounded-2xl overflow-hidden border border-border h-[400px]">
-                  <iframe
-                    src="https://deepsiteai.com/s/b82ff1b3-5d6b-4456-ac17-664237305e6d?source=share"
-                    className="w-full h-full border-0"
-                    title="Pose Analysis Visualization"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
-              </div>
             </div>
 
             {/* Analysis Results */}

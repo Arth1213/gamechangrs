@@ -4,6 +4,7 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Upload, Video, CheckCircle, Target, Zap, BarChart3, Play, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import PoseVisualization from "@/components/PoseVisualization";
 
 const Coaching = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -72,82 +73,105 @@ const Coaching = () => {
       {/* Upload Section */}
       <section className="py-20">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            {/* Upload Area */}
-            <div className="mb-12">
-              <div
-                className={`relative border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 ${
-                  selectedFile
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50 hover:bg-card"
-                }`}
-              >
-                {!selectedFile ? (
-                  <>
-                    <input
-                      type="file"
-                      accept="video/*"
-                      onChange={handleFileSelect}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                      <Upload className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-                      Upload Your Video
-                    </h3>
-                    <p className="text-muted-foreground mb-4">
-                      Drag and drop or click to select a video file
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Supports MP4, MOV, AVI (max 500MB)
-                    </p>
-                  </>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <Video className="w-6 h-6 text-primary" />
+          <div className="max-w-6xl mx-auto">
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+              {/* Upload Area */}
+              <div>
+                <h2 className="font-display text-xl font-semibold text-foreground mb-4">
+                  Video Analysis
+                </h2>
+                <div
+                  className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 ${
+                    selectedFile
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50 hover:bg-card"
+                  }`}
+                >
+                  {!selectedFile ? (
+                    <>
+                      <input
+                        type="file"
+                        accept="video/*"
+                        onChange={handleFileSelect}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                        <Upload className="w-7 h-7 text-primary" />
                       </div>
-                      <div className="text-left">
-                        <p className="font-medium text-foreground">{selectedFile.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
-                        </p>
+                      <h3 className="font-display text-lg font-semibold text-foreground mb-2">
+                        Upload Your Video
+                      </h3>
+                      <p className="text-muted-foreground text-sm mb-3">
+                        Drag and drop or click to select
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        MP4, MOV, AVI (max 500MB)
+                      </p>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Video className="w-6 h-6 text-primary" />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-medium text-foreground">{selectedFile.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                          </p>
+                        </div>
                       </div>
+                      <button
+                        onClick={clearFile}
+                        className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
                     </div>
-                    <button
-                      onClick={clearFile}
-                      className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                  )}
+                </div>
+
+                {selectedFile && !analysisComplete && (
+                  <div className="mt-4 text-center">
+                    <Button
+                      variant="hero"
+                      size="lg"
+                      onClick={handleAnalyze}
+                      disabled={isAnalyzing}
+                      className="w-full"
                     >
-                      <X className="w-5 h-5" />
-                    </button>
+                      {isAnalyzing ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-5 h-5" />
+                          Analyze Video
+                        </>
+                      )}
+                    </Button>
                   </div>
                 )}
+
+                {/* Pro Tips */}
+                <div className="mt-6 p-4 rounded-xl bg-accent/10 border border-accent/20">
+                  <p className="text-sm font-medium text-accent mb-1">💡 Pro Tip</p>
+                  <p className="text-xs text-muted-foreground">
+                    For batting analysis, film from side-on. For bowling, capture your full run-up and delivery stride.
+                  </p>
+                </div>
               </div>
 
-              {selectedFile && !analysisComplete && (
-                <div className="mt-6 text-center">
-                  <Button
-                    variant="hero"
-                    size="xl"
-                    onClick={handleAnalyze}
-                    disabled={isAnalyzing}
-                  >
-                    {isAnalyzing ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-5 h-5" />
-                        Analyze Video
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
+              {/* Pose Visualization */}
+              <div>
+                <h2 className="font-display text-xl font-semibold text-foreground mb-4">
+                  Pose Detection
+                </h2>
+                <PoseVisualization isAnalyzing={isAnalyzing} showResults={analysisComplete} />
+              </div>
             </div>
 
             {/* Analysis Results */}

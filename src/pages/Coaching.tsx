@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navbar } from "@/components/Navbar";
+
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Upload, Video, CheckCircle, Target, Zap, BarChart3, Play, X } from "lucide-react";
@@ -49,10 +49,8 @@ const Coaching = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
-      
       {/* Hero */}
-      <section className="pt-32 pb-20 bg-gradient-hero">
+      <section className="pt-12 pb-20 bg-gradient-hero">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">

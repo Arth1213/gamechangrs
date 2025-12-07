@@ -38,8 +38,8 @@ const Contact = () => {
   };
 
   const socials = [
-    { icon: Twitter, href: "https://twitter.com/gamechangrs", label: "Twitter" },
-    { icon: Instagram, href: "https://instagram.com/gamechangrs", label: "Instagram" },
+    { icon: Twitter, href: "https://x.com/game-changrs", label: "Twitter" },
+    { icon: Instagram, href: "https://instagram.com/game_chngrs", label: "Instagram" },
     { icon: Youtube, href: "https://youtube.com/gamechangrs", label: "YouTube" },
     { icon: Linkedin, href: "https://linkedin.com/company/gamechangrs", label: "LinkedIn" },
   ];
@@ -171,7 +171,7 @@ const Contact = () => {
                 </h2>
                 <div className="space-y-6">
                   {[
-                    { icon: Mail, label: "Email", value: "info@game-changrs.com", href: "mailto:info@game-changrs.com" },
+                    { icon: Mail, label: "Email", value: "arth@game-changrs.com", href: "mailto:arth@game-changrs.com" },
                     { icon: Phone, label: "Phone", value: "(650) 485-1886", href: "tel:+16504851886" },
                     { icon: MapPin, label: "Location", value: "San Ramon, CA, USA", href: null },
                     { icon: Clock, label: "Hours", value: "Mon-Fri: 9AM - 6PM PST", href: null },

@@ -55,11 +55,11 @@ export const Footer = () => {
             <h4 className="font-display font-semibold text-foreground mb-4">Connect With Us</h4>
             <div className="flex gap-3">
               {[
-                { icon: Twitter, href: "https://twitter.com" },
-                { icon: Instagram, href: "https://instagram.com" },
+                { icon: Twitter, href: "https://x.com/game-changrs" },
+                { icon: Instagram, href: "https://instagram.com/game_chngrs" },
                 { icon: Youtube, href: "https://youtube.com" },
                 { icon: Linkedin, href: "https://linkedin.com" },
-                { icon: Mail, href: "mailto:hello@gamechangrs.com" },
+                { icon: Mail, href: "mailto:arth@game-changrs.com" },
               ].map(({ icon: Icon, href }) => (
                 <a
                   key={href}

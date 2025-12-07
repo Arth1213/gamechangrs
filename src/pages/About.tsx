@@ -1,6 +1,6 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { Target, Heart, Zap, Users, Award, Globe } from "lucide-react";
+import { Target, Heart, Zap, Users, Award, Globe, Linkedin, ExternalLink } from "lucide-react";
 
 const About = () => {
   const team = [
@@ -9,6 +9,8 @@ const About = () => {
       role: "Founder & CEO",
       bio: "Visionary leader with a passion for democratizing sports excellence through technology.",
       initials: "AA",
+      linkedin: "https://www.linkedin.com/in/helloarth/",
+      cricclubs: "https://www.nccacricket.org/NCCA/viewPlayer.do?playerId=2262444&clubId=1191",
     },
     {
       name: "To Be Hired",
@@ -172,7 +174,33 @@ const About = () => {
                   {member.name}
                 </h3>
                 <p className="text-primary text-sm mb-3">{member.role}</p>
-                <p className="text-muted-foreground text-sm">{member.bio}</p>
+                <p className="text-muted-foreground text-sm mb-3">{member.bio}</p>
+                {(member.linkedin || member.cricclubs) && (
+                  <div className="flex justify-center gap-2 mt-3">
+                    {member.linkedin && (
+                      <a
+                        href={member.linkedin}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
+                        aria-label="LinkedIn"
+                      >
+                        <Linkedin className="w-4 h-4" />
+                      </a>
+                    )}
+                    {member.cricclubs && (
+                      <a
+                        href={member.cricclubs}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
+                        aria-label="CricClubs Profile"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>

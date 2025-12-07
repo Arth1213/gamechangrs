@@ -4,6 +4,7 @@ import { Target, Heart, Zap, Users, Award, Globe, Linkedin, ExternalLink } from 
 
 const About = () => {
   const team = [
+    // First row - Current team
     {
       name: "Arth Arun",
       role: "Founder & CEO",
@@ -11,12 +12,6 @@ const About = () => {
       initials: "AA",
       linkedin: "https://www.linkedin.com/in/helloarth/",
       cricclubs: "https://www.nccacricket.org/NCCA/viewPlayer.do?playerId=2262444&clubId=1191",
-    },
-    {
-      name: "To Be Hired",
-      role: "Head of AI",
-      bio: "We're looking for an ML engineer specializing in computer vision and sports analytics.",
-      initials: "AI",
     },
     {
       name: "Coach Dasarath Sanke",
@@ -29,6 +24,19 @@ const About = () => {
       role: "Director of Coaching",
       bio: "Experienced coach dedicated to nurturing talent and building strong fundamentals in young athletes.",
       initials: "EM",
+    },
+    // Second row - Open positions
+    {
+      name: "To Be Hired",
+      role: "COO",
+      bio: "We're seeking an operations leader to scale our platform and community initiatives.",
+      initials: "CO",
+    },
+    {
+      name: "To Be Hired",
+      role: "CIO/Head of AI",
+      bio: "We're looking for an ML engineer specializing in computer vision and sports analytics.",
+      initials: "AI",
     },
     {
       name: "To Be Hired",

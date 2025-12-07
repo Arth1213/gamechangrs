@@ -20,7 +20,7 @@ const Marketplace = () => {
       originalPrice: 75,
       condition: "Good",
       location: "Austin, TX",
-      image: "🏏",
+      image: "https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=400&h=400&fit=crop",
       category: "Cricket",
       seller: "Coach Mike",
     },
@@ -31,7 +31,7 @@ const Marketplace = () => {
       originalPrice: 120,
       condition: "Excellent",
       location: "Houston, TX",
-      image: "🎾",
+      image: "https://images.unsplash.com/photo-1617083934555-ac7b4d0c8be9?w=400&h=400&fit=crop",
       category: "Tennis",
       seller: "Sarah T.",
     },
@@ -42,7 +42,7 @@ const Marketplace = () => {
       originalPrice: 60,
       condition: "Good",
       location: "Dallas, TX",
-      image: "🦵",
+      image: "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=400&h=400&fit=crop",
       category: "Cricket",
       seller: "Thunder Hawks",
     },
@@ -53,7 +53,7 @@ const Marketplace = () => {
       originalPrice: 85,
       condition: "Like New",
       location: "San Antonio, TX",
-      image: "👟",
+      image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop",
       category: "Tennis",
       seller: "Tennis Academy",
     },
@@ -64,7 +64,7 @@ const Marketplace = () => {
       originalPrice: 45,
       condition: "Good",
       location: "Austin, TX",
-      image: "⛑️",
+      image: "https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=400&h=400&fit=crop",
       category: "Cricket",
       seller: "Rising Stars",
     },
@@ -75,7 +75,7 @@ const Marketplace = () => {
       originalPrice: 40,
       condition: "Good",
       location: "Plano, TX",
-      image: "🧺",
+      image: "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=400&h=400&fit=crop",
       category: "Tennis",
       seller: "Coach Lisa",
     },
@@ -191,8 +191,12 @@ const Marketplace = () => {
                 className="rounded-2xl bg-gradient-card border border-border overflow-hidden hover:border-primary/30 transition-all duration-300 group"
               >
                 {/* Image */}
-                <div className="aspect-square bg-secondary/50 flex items-center justify-center text-8xl group-hover:scale-105 transition-transform duration-300">
-                  {product.image}
+                <div className="aspect-square bg-secondary/50 overflow-hidden">
+                  <img 
+                    src={product.image} 
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
                 </div>
 
                 {/* Content */}

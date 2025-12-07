@@ -25,6 +25,12 @@ const About = () => {
       initials: "DS",
     },
     {
+      name: "Coach Esmail Mitchla",
+      role: "Director of Coaching",
+      bio: "Experienced coach dedicated to nurturing talent and building strong fundamentals in young athletes.",
+      initials: "EM",
+    },
+    {
       name: "To Be Hired",
       role: "Community Lead",
       bio: "We're seeking someone passionate about making sports accessible to underserved communities.",

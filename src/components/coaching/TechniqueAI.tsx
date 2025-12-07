@@ -236,91 +236,185 @@ export function TechniqueAI() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (results.poseLandmarks && poseOverlayVisible) {
-      // Draw connections
-      const connections = [
-        [11, 13], [13, 15], // Left arm
-        [12, 14], [14, 16], // Right arm
+    if (results.poseLandmarks) {
+      const landmarks = results.poseLandmarks;
+      
+      // Full MediaPipe Pose connections (33 landmarks)
+      const POSE_CONNECTIONS = [
+        // Face
+        [0, 1], [1, 2], [2, 3], [3, 7], // Left eye
+        [0, 4], [4, 5], [5, 6], [6, 8], // Right eye
+        [9, 10], // Mouth
+        // Torso
         [11, 12], // Shoulders
-        [11, 23], [12, 24], // Torso
+        [11, 23], [12, 24], // Shoulder to hip
         [23, 24], // Hips
-        [23, 25], [25, 27], // Left leg
-        [24, 26], [26, 28], // Right leg
+        // Left arm
+        [11, 13], [13, 15], [15, 17], [15, 19], [15, 21], [17, 19],
+        // Right arm
+        [12, 14], [14, 16], [16, 18], [16, 20], [16, 22], [18, 20],
+        // Left leg
+        [23, 25], [25, 27], [27, 29], [27, 31], [29, 31],
+        // Right leg
+        [24, 26], [26, 28], [28, 30], [28, 32], [30, 32],
       ];
 
-      ctx.strokeStyle = 'rgba(16, 185, 129, 0.6)';
-      ctx.lineWidth = 3;
-
-      connections.forEach(([start, end]) => {
-        const startPoint = results.poseLandmarks[start];
-        const endPoint = results.poseLandmarks[end];
-        if (startPoint && endPoint) {
+      // Draw all connections with visibility-based opacity
+      POSE_CONNECTIONS.forEach(([start, end]) => {
+        const startPoint = landmarks[start];
+        const endPoint = landmarks[end];
+        if (startPoint && endPoint && startPoint.visibility > 0.5 && endPoint.visibility > 0.5) {
+          const opacity = Math.min(startPoint.visibility, endPoint.visibility);
           ctx.beginPath();
           ctx.moveTo(startPoint.x * canvas.width, startPoint.y * canvas.height);
           ctx.lineTo(endPoint.x * canvas.width, endPoint.y * canvas.height);
+          ctx.strokeStyle = `rgba(16, 185, 129, ${opacity * 0.8})`;
+          ctx.lineWidth = 3;
           ctx.stroke();
         }
       });
 
-      // Draw landmarks
-      results.poseLandmarks.forEach((landmark, index) => {
+      // Draw all 33 landmarks with color coding
+      landmarks.forEach((landmark, index) => {
+        if (landmark.visibility < 0.3) return;
+        
         const x = landmark.x * canvas.width;
         const y = landmark.y * canvas.height;
+        const size = 6;
 
-        ctx.beginPath();
-        ctx.arc(x, y, 6, 0, Math.PI * 2);
-        ctx.fillStyle = index < 11 ? '#10B981' : '#3B82F6';
-        ctx.fill();
-        ctx.shadowColor = ctx.fillStyle;
+        // Color coding: face (purple), arms (green), torso (blue), legs (orange)
+        let color = '#10B981';
+        if (index <= 10) color = '#A855F7'; // Face - purple
+        else if (index <= 22) color = '#10B981'; // Arms & shoulders - green
+        else if (index <= 24) color = '#3B82F6'; // Hips - blue
+        else color = '#F59E0B'; // Legs - orange
+
+        // Draw glow effect
+        ctx.shadowColor = color;
         ctx.shadowBlur = 10;
+        
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fillStyle = color;
         ctx.fill();
+        
+        // Draw white border
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        
         ctx.shadowBlur = 0;
       });
 
-      // Calculate angles
-      const landmarks = results.poseLandmarks;
+      // Draw angle indicators on key joints
+      const drawAngleArc = (
+        joint: number, 
+        start: number, 
+        end: number, 
+        label: string, 
+        color: string
+      ) => {
+        const p1 = landmarks[start];
+        const p2 = landmarks[joint];
+        const p3 = landmarks[end];
+        
+        if (p1.visibility < 0.5 || p2.visibility < 0.5 || p3.visibility < 0.5) return;
+        
+        const angle = calculateAngle(
+          { x: p1.x, y: p1.y },
+          { x: p2.x, y: p2.y },
+          { x: p3.x, y: p3.y }
+        );
+        
+        const cx = p2.x * canvas.width;
+        const cy = p2.y * canvas.height;
+        const radius = 25;
+        
+        const angle1 = Math.atan2(p1.y - p2.y, p1.x - p2.x);
+        const angle2 = Math.atan2(p3.y - p2.y, p3.x - p2.x);
+        
+        // Draw arc
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, angle1, angle2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Draw angle text with background
+        const textX = cx + Math.cos((angle1 + angle2) / 2) * (radius + 15);
+        const textY = cy + Math.sin((angle1 + angle2) / 2) * (radius + 15);
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(textX - 20, textY - 10, 40, 20);
+        
+        ctx.fillStyle = color;
+        ctx.font = 'bold 12px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${Math.round(angle)}°`, textX, textY);
+        
+        return angle;
+      };
+
+      // Calculate and display key angles
+      const leftElbowAngle = drawAngleArc(13, 11, 15, 'L Elbow', '#10B981');
+      const rightElbowAngle = drawAngleArc(14, 12, 16, 'R Elbow', '#10B981');
+      const leftKneeAngle = drawAngleArc(25, 23, 27, 'L Knee', '#F59E0B');
+      const rightKneeAngle = drawAngleArc(26, 24, 28, 'R Knee', '#F59E0B');
+      const leftShoulderAngle = drawAngleArc(11, 23, 13, 'L Shoulder', '#3B82F6');
+      const rightShoulderAngle = drawAngleArc(12, 24, 14, 'R Shoulder', '#3B82F6');
+
+      // Calculate aggregate angles for analysis
+      const elbowAngle = leftElbowAngle || rightElbowAngle || 145;
+      const kneeAngle = leftKneeAngle || rightKneeAngle || 165;
       
-      // Elbow angle (shoulder-elbow-wrist)
-      const elbowAngle = calculateAngle(
-        { x: landmarks[11].x, y: landmarks[11].y },
-        { x: landmarks[13].x, y: landmarks[13].y },
-        { x: landmarks[15].x, y: landmarks[15].y }
-      );
-
-      // Knee angle (hip-knee-ankle)
-      const kneeAngle = calculateAngle(
-        { x: landmarks[23].x, y: landmarks[23].y },
-        { x: landmarks[25].x, y: landmarks[25].y },
-        { x: landmarks[27].x, y: landmarks[27].y }
-      );
-
-      // Shoulder angle
-      const shoulderAngle = Math.abs(
+      // Shoulder tilt (angle between shoulders relative to horizontal)
+      const shoulderTilt = Math.abs(
         Math.atan2(landmarks[12].y - landmarks[11].y, landmarks[12].x - landmarks[11].x) * (180 / Math.PI)
       );
 
-      // Head angle (nose relative to shoulders)
-      const headAngle = Math.abs(
-        Math.atan2(landmarks[0].y - (landmarks[11].y + landmarks[12].y) / 2, 
-                   landmarks[0].x - (landmarks[11].x + landmarks[12].x) / 2) * (180 / Math.PI) - 90
+      // Head stability (nose position relative to shoulder midpoint)
+      const shoulderMidX = (landmarks[11].x + landmarks[12].x) / 2;
+      const shoulderMidY = (landmarks[11].y + landmarks[12].y) / 2;
+      const headDeviation = Math.sqrt(
+        Math.pow(landmarks[0].x - shoulderMidX, 2) + 
+        Math.pow(landmarks[0].y - shoulderMidY, 2)
+      ) * 100;
+
+      // Hip-shoulder separation (for bowling analysis)
+      const hipMidX = (landmarks[23].x + landmarks[24].x) / 2;
+      const hipMidY = (landmarks[23].y + landmarks[24].y) / 2;
+      const hipShoulderAngle = Math.abs(
+        Math.atan2(shoulderMidY - hipMidY, shoulderMidX - hipMidX) * (180 / Math.PI) - 90
       );
 
+      // Store angles for averaging
       analysisAnglesRef.current.elbow.push(elbowAngle);
       analysisAnglesRef.current.knee.push(kneeAngle);
-      analysisAnglesRef.current.shoulder.push(shoulderAngle);
-      analysisAnglesRef.current.head.push(headAngle);
+      analysisAnglesRef.current.shoulder.push(shoulderTilt);
+      analysisAnglesRef.current.head.push(headDeviation);
+
+      // Draw landmark count indicator
+      const visibleCount = landmarks.filter(l => l.visibility > 0.5).length;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(10, 10, 120, 30);
+      ctx.fillStyle = '#10B981';
+      ctx.font = 'bold 14px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${visibleCount}/33 Points`, 20, 25);
 
       setAnalysisData(prev => ({
         ...prev,
         angles: {
           elbow: Math.round(elbowAngle),
           knee: Math.round(kneeAngle),
-          shoulder: Math.round(shoulderAngle),
-          head: Math.round(headAngle)
+          shoulder: Math.round(shoulderTilt),
+          head: Math.round(headDeviation)
         }
       }));
     }
-  }, [poseOverlayVisible]);
+  }, []);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -408,22 +502,161 @@ export function TechniqueAI() {
 
   const generateResults = () => {
     const angles = analysisAnglesRef.current;
+    const isBatting = analysisData.currentMode === 'batting';
     
+    // Calculate averages
     const avgElbow = angles.elbow.length > 0 ? angles.elbow.reduce((a, b) => a + b, 0) / angles.elbow.length : 145;
     const avgKnee = angles.knee.length > 0 ? angles.knee.reduce((a, b) => a + b, 0) / angles.knee.length : 165;
     const avgShoulder = angles.shoulder.length > 0 ? angles.shoulder.reduce((a, b) => a + b, 0) / angles.shoulder.length : 12;
     const avgHead = angles.head.length > 0 ? angles.head.reduce((a, b) => a + b, 0) / angles.head.length : 3;
 
-    // Calculate scores based on optimal ranges
-    const elbowScore = avgElbow >= 140 && avgElbow <= 160 ? 90 : avgElbow >= 130 && avgElbow <= 170 ? 75 : 60;
-    const kneeScore = avgKnee >= 160 && avgKnee <= 175 ? 90 : avgKnee >= 150 && avgKnee <= 180 ? 75 : 60;
-    const shoulderScore = avgShoulder < 5 ? 95 : avgShoulder < 10 ? 80 : avgShoulder < 15 ? 65 : 50;
-    const headScore = avgHead < 5 ? 95 : avgHead < 10 ? 80 : 65;
+    // Calculate min/max for consistency analysis
+    const elbowMin = angles.elbow.length > 0 ? Math.min(...angles.elbow) : 140;
+    const elbowMax = angles.elbow.length > 0 ? Math.max(...angles.elbow) : 150;
+    const kneeMin = angles.knee.length > 0 ? Math.min(...angles.knee) : 160;
+    const kneeMax = angles.knee.length > 0 ? Math.max(...angles.knee) : 170;
+    const elbowVariation = elbowMax - elbowMin;
+    const kneeVariation = kneeMax - kneeMin;
 
-    const overallScore = Math.round((elbowScore + kneeScore + shoulderScore + headScore) / 4);
+    // Optimal ranges for batting vs bowling
+    const optimalRanges = isBatting ? {
+      elbow: { min: 140, max: 160, label: 'Front Elbow' },
+      knee: { min: 160, max: 175, label: 'Front Knee Flexion' },
+      shoulder: { max: 5, label: 'Shoulder Level' },
+      head: { max: 5, label: 'Head Stability' }
+    } : {
+      elbow: { min: 170, max: 180, label: 'Arm Extension' },
+      knee: { min: 110, max: 130, label: 'Front Knee' },
+      shoulder: { max: 10, label: 'Hip-Shoulder Separation' },
+      head: { max: 8, label: 'Head Position' }
+    };
 
-    const isBatting = analysisData.currentMode === 'batting';
-    
+    // Calculate individual scores
+    const elbowScore = avgElbow >= optimalRanges.elbow.min && avgElbow <= optimalRanges.elbow.max 
+      ? 95 : Math.abs(avgElbow - (optimalRanges.elbow.min + optimalRanges.elbow.max) / 2) < 15 ? 75 : 55;
+    const kneeScore = avgKnee >= optimalRanges.knee.min && avgKnee <= optimalRanges.knee.max 
+      ? 95 : Math.abs(avgKnee - (optimalRanges.knee.min + optimalRanges.knee.max) / 2) < 15 ? 75 : 55;
+    const shoulderScore = avgShoulder <= optimalRanges.shoulder.max ? 95 : avgShoulder <= 15 ? 70 : 50;
+    const headScore = avgHead <= optimalRanges.head.max ? 95 : avgHead <= 10 ? 75 : 55;
+    const consistencyScore = elbowVariation < 20 && kneeVariation < 20 ? 90 : 65;
+
+    const overallScore = Math.round((elbowScore + kneeScore + shoulderScore + headScore + consistencyScore) / 5);
+
+    // Generate dynamic feedback based on actual measurements
+    const dynamicFeedback: FeedbackItem[] = [];
+
+    // Head stability feedback
+    if (avgHead <= optimalRanges.head.max) {
+      dynamicFeedback.push({
+        type: 'positive',
+        title: 'Excellent Head Position',
+        description: `Head deviation of only ${Math.round(avgHead)}° - outstanding stability for tracking the ball.`,
+        drill: null
+      });
+    } else if (avgHead <= 10) {
+      dynamicFeedback.push({
+        type: 'warning',
+        title: 'Head Movement Detected',
+        description: `Head deviation of ${Math.round(avgHead)}° exceeds optimal range. Minor adjustments needed for consistency.`,
+        drill: 'Practice with a mirror to keep eyes level throughout the action'
+      });
+    } else {
+      dynamicFeedback.push({
+        type: 'critical',
+        title: 'Excessive Head Movement',
+        description: `Head deviation of ${Math.round(avgHead)}° significantly impacts ball tracking and shot accuracy.`,
+        drill: 'Focus on keeping head still - practice with slow-motion shadow drills'
+      });
+    }
+
+    // Elbow/Arm feedback
+    if (elbowScore >= 90) {
+      dynamicFeedback.push({
+        type: 'positive',
+        title: isBatting ? 'Optimal Elbow Position' : 'Full Arm Extension',
+        description: `${optimalRanges.elbow.label} at ${Math.round(avgElbow)}° is within the ideal range (${optimalRanges.elbow.min}-${optimalRanges.elbow.max}°).`,
+        drill: null
+      });
+    } else {
+      const isLow = avgElbow < optimalRanges.elbow.min;
+      dynamicFeedback.push({
+        type: elbowScore >= 70 ? 'warning' : 'critical',
+        title: isBatting ? `Elbow ${isLow ? 'Under' : 'Over'}-Extended` : `Arm ${isLow ? 'Bent' : 'Hyper-Extended'}`,
+        description: `Measured ${Math.round(avgElbow)}° vs optimal ${optimalRanges.elbow.min}-${optimalRanges.elbow.max}°. ${isLow ? 'Extend more for power' : 'Reduce extension to prevent injury'}.`,
+        drill: isBatting ? 'Practice high elbow drills with resistance bands' : 'Focus on smooth arm rotation through delivery'
+      });
+    }
+
+    // Knee feedback
+    if (kneeScore >= 90) {
+      dynamicFeedback.push({
+        type: 'positive',
+        title: isBatting ? 'Good Knee Flexion' : 'Strong Front Knee Brace',
+        description: `${optimalRanges.knee.label} at ${Math.round(avgKnee)}° provides excellent power transfer.`,
+        drill: null
+      });
+    } else {
+      dynamicFeedback.push({
+        type: kneeScore >= 70 ? 'warning' : 'critical',
+        title: `${optimalRanges.knee.label} Issue`,
+        description: `Knee angle of ${Math.round(avgKnee)}° is outside optimal range (${optimalRanges.knee.min}-${optimalRanges.knee.max}°). Affects weight transfer.`,
+        drill: isBatting ? 'Practice lunges and knee stability exercises' : 'Focus on bracing front leg at delivery stride'
+      });
+    }
+
+    // Shoulder/Balance feedback
+    if (shoulderScore >= 90) {
+      dynamicFeedback.push({
+        type: 'positive',
+        title: 'Excellent Balance',
+        description: `${optimalRanges.shoulder.label} at ${Math.round(avgShoulder)}° shows great body control.`,
+        drill: null
+      });
+    } else {
+      dynamicFeedback.push({
+        type: shoulderScore >= 70 ? 'warning' : 'critical',
+        title: 'Balance Improvement Needed',
+        description: `${optimalRanges.shoulder.label} tilt of ${Math.round(avgShoulder)}° affects shot consistency and power.`,
+        drill: 'Work on core stability and single-leg balance exercises'
+      });
+    }
+
+    // Generate dynamic drills based on weakest areas
+    const dynamicDrills: DrillItem[] = [];
+    const scores = [
+      { area: 'elbow', score: elbowScore },
+      { area: 'knee', score: kneeScore },
+      { area: 'shoulder', score: shoulderScore },
+      { area: 'head', score: headScore }
+    ].sort((a, b) => a.score - b.score);
+
+    // Add drills for weakest areas
+    scores.slice(0, 3).forEach((item, index) => {
+      const colors: DrillItem['color'][] = ['green', 'blue', 'purple'];
+      const icons: DrillItem['icon'][] = ['dumbbell', 'scale', 'activity'];
+      
+      const drillMap: Record<string, { title: string; desc: string }> = {
+        elbow: isBatting 
+          ? { title: 'Elbow Extension Drill', desc: '3 sets × 15 resistance band pulls' }
+          : { title: 'Arm Speed Training', desc: '20 medicine ball throws daily' },
+        knee: isBatting
+          ? { title: 'Knee Flexion Lunges', desc: '3 sets × 12 weighted lunges' }
+          : { title: 'Front Foot Bracing', desc: '4 sets × 10 single-leg squats' },
+        shoulder: { title: 'Core Stability Work', desc: '3 sets × 30 second planks' },
+        head: { title: 'Head Stability Practice', desc: '5 minutes of slow-motion shadow work' }
+      };
+
+      dynamicDrills.push({
+        icon: icons[index],
+        title: drillMap[item.area].title,
+        description: drillMap[item.area].desc,
+        color: colors[index]
+      });
+    });
+
+    // Frame count for report
+    const framesAnalyzed = angles.elbow.length;
+
     setAnalysisData(prev => ({
       ...prev,
       angles: {
@@ -436,12 +669,14 @@ export function TechniqueAI() {
         overall: overallScore,
         technique: Math.round((elbowScore + kneeScore) / 2),
         balance: shoulderScore,
-        timing: Math.round((elbowScore + headScore) / 2),
-        followThrough: kneeScore
+        timing: consistencyScore,
+        followThrough: Math.round((kneeScore + headScore) / 2)
       },
-      feedback: isBatting ? BATTING_FEEDBACK : BOWLING_FEEDBACK,
-      drills: isBatting ? BATTING_DRILLS : BOWLING_DRILLS
+      feedback: dynamicFeedback,
+      drills: dynamicDrills
     }));
+
+    toast.success(`Analysis complete! Processed ${framesAnalyzed} frames.`);
   };
 
   const switchMode = (mode: AnalysisMode) => {

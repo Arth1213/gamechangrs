@@ -171,10 +171,10 @@ const Contact = () => {
                 </h2>
                 <div className="space-y-6">
                   {[
-                    { icon: Mail, label: "Email", value: "hello@gamechangrs.com", href: "mailto:hello@gamechangrs.com" },
-                    { icon: Phone, label: "Phone", value: "+1 (512) 555-0123", href: "tel:+15125550123" },
-                    { icon: MapPin, label: "Location", value: "Austin, Texas, USA", href: null },
-                    { icon: Clock, label: "Hours", value: "Mon-Fri: 9AM - 6PM CST", href: null },
+                    { icon: Mail, label: "Email", value: "info@game-changrs.com", href: "mailto:info@game-changrs.com" },
+                    { icon: Phone, label: "Phone", value: "(650) 485-1886", href: "tel:+16504851886" },
+                    { icon: MapPin, label: "Location", value: "San Ramon, CA, USA", href: null },
+                    { icon: Clock, label: "Hours", value: "Mon-Fri: 9AM - 6PM PST", href: null },
                   ].map((item) => (
                     <div key={item.label} className="flex items-start gap-4">
                       <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">

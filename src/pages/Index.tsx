@@ -4,7 +4,7 @@ import { HeroSection } from "@/components/HeroSection";
 import { StatsSection } from "@/components/StatsSection";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Target, TrendingUp, Users, Shield, Sparkles, ChevronRight } from "lucide-react";
+import { ArrowRight, Target, TrendingUp, Users, Shield, Sparkles, ChevronRight, Zap, BarChart3, ShoppingBag, Brain } from "lucide-react";
 
 const Index = () => {
   return (
@@ -12,6 +12,98 @@ const Index = () => {
       <Navbar />
       <HeroSection />
       <StatsSection />
+
+      {/* Products Section */}
+      <section className="py-20 lg:py-32 bg-gradient-card border-y border-border">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
+              Our <span className="text-gradient-primary">Platform</span>
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Everything you need to analyze, improve, and excel in your cricket journey.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            {/* AI Coaching */}
+            <Link to="/coaching" className="group">
+              <div className="h-full p-8 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-glow">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
+                  <Zap className="w-7 h-7 text-primary" />
+                </div>
+                <h3 className="font-display font-bold text-2xl text-foreground mb-3">
+                  AI Coaching
+                </h3>
+                <p className="text-muted-foreground mb-4 leading-relaxed">
+                  Upload your cricket videos and receive instant, professional-grade technique analysis with pose detection and personalized coaching feedback.
+                </p>
+                <div className="flex items-center text-primary font-medium">
+                  Start Analyzing
+                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+
+            {/* TechniqueAI */}
+            <Link to="/techniqueai" className="group">
+              <div className="h-full p-8 rounded-2xl bg-card border border-border hover:border-accent/50 transition-all duration-300 hover:shadow-[0_0_40px_hsl(var(--accent)/0.3)]">
+                <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mb-6 group-hover:bg-accent/20 transition-colors">
+                  <Brain className="w-7 h-7 text-accent" />
+                </div>
+                <h3 className="font-display font-bold text-2xl text-foreground mb-3">
+                  TechniqueAI
+                </h3>
+                <p className="text-muted-foreground mb-4 leading-relaxed">
+                  Advanced pose detection with real-time biomechanical analysis. See exactly how your body moves and get instant feedback on angles and positions.
+                </p>
+                <div className="flex items-center text-accent font-medium">
+                  Try TechniqueAI
+                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+
+            {/* Smart Analytics */}
+            <Link to="/analytics" className="group">
+              <div className="h-full p-8 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-glow">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
+                  <BarChart3 className="w-7 h-7 text-primary" />
+                </div>
+                <h3 className="font-display font-bold text-2xl text-foreground mb-3">
+                  Smart Analytics
+                </h3>
+                <p className="text-muted-foreground mb-4 leading-relaxed">
+                  Track your progress over time with detailed performance metrics, trend analysis, and data-driven improvement recommendations.
+                </p>
+                <div className="flex items-center text-primary font-medium">
+                  View Analytics
+                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+
+            {/* Gear Exchange */}
+            <Link to="/marketplace" className="group">
+              <div className="h-full p-8 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-glow">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
+                  <ShoppingBag className="w-7 h-7 text-primary" />
+                </div>
+                <h3 className="font-display font-bold text-2xl text-foreground mb-3">
+                  Gear Exchange
+                </h3>
+                <p className="text-muted-foreground mb-4 leading-relaxed">
+                  Buy, sell, and trade quality cricket gear. Every purchase supports our mission to provide equipment to underprivileged young athletes.
+                </p>
+                <div className="flex items-center text-primary font-medium">
+                  Browse Gear
+                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
 
       {/* Features Section */}
       <section className="py-20 lg:py-32">

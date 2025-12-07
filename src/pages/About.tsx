@@ -5,28 +5,28 @@ import { Target, Heart, Zap, Users, Award, Globe } from "lucide-react";
 const About = () => {
   const team = [
     {
-      name: "Alex Johnson",
+      name: "Arth Arun",
       role: "Founder & CEO",
-      bio: "Former professional cricketer with a passion for youth development.",
-      initials: "AJ",
+      bio: "Visionary leader with a passion for democratizing sports excellence through technology.",
+      initials: "AA",
     },
     {
-      name: "Sarah Chen",
+      name: "To Be Hired",
       role: "Head of AI",
-      bio: "ML engineer specializing in computer vision and sports analytics.",
-      initials: "SC",
+      bio: "We're looking for an ML engineer specializing in computer vision and sports analytics.",
+      initials: "AI",
     },
     {
-      name: "Michael Kumar",
+      name: "Coach Dasarath Sanke",
       role: "Director of Coaching",
-      bio: "Certified coach with 15+ years experience in youth sports programs.",
-      initials: "MK",
+      bio: "Certified coach with extensive experience in youth sports programs and athlete development.",
+      initials: "DS",
     },
     {
-      name: "Emily Rodriguez",
+      name: "To Be Hired",
       role: "Community Lead",
-      bio: "Passionate about making sports accessible to underserved communities.",
-      initials: "ER",
+      bio: "We're seeking someone passionate about making sports accessible to underserved communities.",
+      initials: "CL",
     },
   ];
 
@@ -188,13 +188,13 @@ const About = () => {
             </h2>
             <div className="space-y-6 text-muted-foreground leading-relaxed">
               <p>
-                GameChangrs started in a small community center in Texas, where our founder Alex Johnson was coaching youth cricket. He noticed that talented kids from underprivileged backgrounds were being left behind – not because of lack of skill, but because they couldn't afford quality equipment or access to advanced coaching.
+                GameChangrs started with a simple observation by our founder Arth Arun: talented kids from underprivileged backgrounds were being left behind – not because of lack of skill, but because they couldn't afford quality equipment or access to advanced coaching.
               </p>
               <p>
-                At the same time, Alex saw how professional teams were using data and video analysis to gain competitive advantages. He wondered: what if we could bring those same tools to youth sports, making them affordable and accessible to everyone?
+                Arth saw how professional teams were using data and video analysis to gain competitive advantages. He wondered: what if we could bring those same tools to youth sports, making them affordable and accessible to everyone?
               </p>
               <p>
-                That question led to the creation of GameChangrs in 2022. Today, we're proud to serve thousands of young athletes across the country, providing AI-powered coaching analysis, real-time performance analytics, and a marketplace that helps quality sports gear find new homes with kids who need it most.
+                That question led to the creation of GameChangrs in 2024. Today, we're proud to serve thousands of young athletes across the country, providing AI-powered coaching analysis, real-time performance analytics, and a marketplace that helps quality sports gear find new homes with kids who need it most.
               </p>
               <p>
                 But we're just getting started. Our vision is a world where every young athlete, regardless of their zip code or family income, has the tools and support they need to reach their full potential.

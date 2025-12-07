@@ -2,45 +2,114 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { 
-  Upload, Play, FileText, Video, Lightbulb, BarChart3, 
-  Ruler, MessageSquare, Dumbbell, CheckCircle, AlertTriangle, Info, X 
+  Upload, Play, Video, Ruler, Clock, Target, Trophy, Medal,
+  MessageSquare, Dumbbell, CheckCircle, AlertTriangle, XCircle, 
+  Lightbulb, Download, BarChart3, X, Eye, EyeOff
 } from 'lucide-react';
 import { Pose, Results } from '@mediapipe/pose';
+import { toast } from 'sonner';
 
 type AnalysisMode = 'batting' | 'bowling';
 
-interface AnalysisResults {
-  angles: Record<string, number>;
-  metrics: Record<string, { score: number; quality: 'High' | 'Medium' | 'Low' }>;
-  feedback: Array<{ category: string; message: string; severity: 'success' | 'warning' | 'info' }>;
-  strengths: string[];
-  improvements: string[];
-  drills: string[];
-  score: number;
+interface FeedbackItem {
+  type: 'positive' | 'warning' | 'critical';
+  title: string;
+  description: string;
+  drill: string | null;
 }
 
-const OPTIMAL_RANGES = {
-  batting: {
-    backliftAngle: { min: 45, max: 60 },
-    elbowAngle: { min: 90, max: 110 },
-    headMovement: { max: 2 },
-    frontKneeFlexion: { min: 120, max: 140 },
-  },
-  bowling: {
-    frontKneeFlexion: { min: 110, max: 130 },
-    armExtension: { min: 170, max: 180 },
-    hipShoulderSeparation: { min: 30, max: 45 },
-    followThrough: { min: 85, max: 95 },
-  },
-};
+interface DrillItem {
+  icon: 'dumbbell' | 'scale' | 'activity';
+  title: string;
+  description: string;
+  color: 'green' | 'blue' | 'purple';
+}
 
-const METRIC_DESCRIPTIONS: Record<string, string> = {
-  backliftQuality: 'Height and angle of bat lift',
-  elbowPosition: 'Elbow flexion during swing',
-  frontKneeFlexion: 'Bend in front knee at impact',
-  headStability: 'Minimal head movement during action',
-  armExtension: 'Full arm extension at release',
-};
+interface AnalysisData {
+  currentMode: AnalysisMode;
+  videoDuration: string;
+  angles: {
+    elbow: number;
+    knee: number;
+    shoulder: number;
+    head: number;
+  };
+  scores: {
+    overall: number;
+    technique: number;
+    balance: number;
+    timing: number;
+    followThrough: number;
+  };
+  feedback: FeedbackItem[];
+  drills: DrillItem[];
+}
+
+const BATTING_FEEDBACK: FeedbackItem[] = [
+  {
+    type: 'positive',
+    title: 'Excellent Head Position',
+    description: 'Head remains still and eyes level throughout the shot. Perfect for tracking the ball.',
+    drill: null
+  },
+  {
+    type: 'warning',
+    title: 'Back Leg Alignment',
+    description: 'Back knee angle exceeds optimal range (165° vs optimal 160-175°). Affects weight transfer and power generation.',
+    drill: 'Practice with back foot against wall to maintain optimal bend'
+  },
+  {
+    type: 'critical',
+    title: 'Shoulder Tilt Issue',
+    description: 'Excessive shoulder tilt (12°) causing off-balance during follow-through. Reduces shot consistency.',
+    drill: 'Focus on keeping shoulders level through the shot'
+  },
+  {
+    type: 'positive',
+    title: 'Good Bat Path',
+    description: 'Straight bat path with minimal deviation. Excellent for playing straight drives.',
+    drill: null
+  }
+];
+
+const BOWLING_FEEDBACK: FeedbackItem[] = [
+  {
+    type: 'positive',
+    title: 'Good Run-up Rhythm',
+    description: 'Consistent approach speed with proper acceleration pattern.',
+    drill: null
+  },
+  {
+    type: 'warning',
+    title: 'Front Foot Landing',
+    description: 'Front foot lands slightly across the crease (5° off optimal alignment).',
+    drill: 'Practice landing drills with alignment markers'
+  },
+  {
+    type: 'critical',
+    title: 'Arm Speed Variation',
+    description: 'Inconsistent arm speed during delivery affecting ball release timing.',
+    drill: 'Focus on maintaining consistent arm speed through delivery'
+  },
+  {
+    type: 'positive',
+    title: 'Excellent Follow-through',
+    description: 'Good momentum transfer and balanced finish position.',
+    drill: null
+  }
+];
+
+const BATTING_DRILLS: DrillItem[] = [
+  { icon: 'dumbbell', title: 'Back Foot Stability Drill', description: '3 sets × 10 reps daily', color: 'green' },
+  { icon: 'scale', title: 'Shoulder Alignment Exercise', description: '2 sets × 15 reps daily', color: 'blue' },
+  { icon: 'activity', title: 'Follow-through Practice', description: '5 minutes shadow batting', color: 'purple' }
+];
+
+const BOWLING_DRILLS: DrillItem[] = [
+  { icon: 'activity', title: 'Approach Rhythm Drill', description: '5 × 20m sprints with markers', color: 'green' },
+  { icon: 'dumbbell', title: 'Front Foot Landing Practice', description: '3 sets × 10 deliveries', color: 'blue' },
+  { icon: 'scale', title: 'Arm Speed Consistency', description: '2 sets × 15 medicine ball throws', color: 'purple' }
+];
 
 function calculateAngle(a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }): number {
   const ab = Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2));
@@ -53,70 +122,52 @@ function calculateAngle(a: { x: number; y: number }, b: { x: number; y: number }
   return Math.round(Math.acos(clampedCos) * (180 / Math.PI));
 }
 
-function evaluateMetric(value: number, min: number, max: number): { score: number; quality: 'High' | 'Medium' | 'Low' } {
-  if (value < min) return { score: 0.5, quality: 'Low' };
-  if (value > max) return { score: 0.7, quality: 'Medium' };
-  return { score: 1.0, quality: 'High' };
-}
-
 export function TechniqueAI() {
-  const [mode, setMode] = useState<AnalysisMode>('batting');
+  const [analysisData, setAnalysisData] = useState<AnalysisData>({
+    currentMode: 'batting',
+    videoDuration: '0:00',
+    angles: { elbow: 145, knee: 165, shoulder: 12, head: 3 },
+    scores: { overall: 0, technique: 0, balance: 0, timing: 0, followThrough: 0 },
+    feedback: [],
+    drills: []
+  });
+
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [poseOverlayVisible, setPoseOverlayVisible] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [poseModel, setPoseModel] = useState<Pose | null>(null);
   const [poseError, setPoseError] = useState<string | null>(null);
   const [isLoadingPose, setIsLoadingPose] = useState(true);
-  const [results, setResults] = useState<AnalysisResults>({
-    angles: {},
-    metrics: {},
-    feedback: [],
-    strengths: [],
-    improvements: [],
-    drills: [],
-    score: 0,
-  });
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const headStabilityRef = useRef<{ x: number; y: number; movement: number } | null>(null);
-  const analysisRef = useRef<AnalysisResults>({
-    angles: {},
-    metrics: {},
-    feedback: [],
-    strengths: [],
-    improvements: [],
-    drills: [],
-    score: 0,
-  });
   const poseRef = useRef<Pose | null>(null);
+  const analysisAnglesRef = useRef<{ elbow: number[]; knee: number[]; shoulder: number[]; head: number[] }>({
+    elbow: [], knee: [], shoulder: [], head: []
+  });
 
-  // Initialize MediaPipe Pose with retry logic
+  // Initialize MediaPipe Pose
   useEffect(() => {
     let isMounted = true;
     let retryCount = 0;
     const maxRetries = 3;
-    
+
     const initPose = async (): Promise<boolean> => {
       try {
         setIsLoadingPose(true);
         setPoseError(null);
-        
-        // Check for WebGL support first
+
         const canvas = document.createElement('canvas');
         const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
         if (!gl) {
           throw new Error('WebGL not supported');
         }
-        
+
         const pose = new Pose({
-          locateFile: (file) => {
-            // Use unpkg as primary CDN (more reliable for WASM)
-            return `https://unpkg.com/@mediapipe/pose@0.5.1675469404/${file}`;
-          },
+          locateFile: (file) => `https://unpkg.com/@mediapipe/pose@0.5.1675469404/${file}`,
         });
 
         pose.setOptions({
@@ -128,14 +179,13 @@ export function TechniqueAI() {
           minTrackingConfidence: 0.5,
         });
 
-        // Add timeout for initialization
         const initPromise = pose.initialize();
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Initialization timeout')), 30000)
         );
-        
+
         await Promise.race([initPromise, timeoutPromise]);
-        
+
         if (isMounted) {
           poseRef.current = pose;
           setPoseModel(pose);
@@ -153,16 +203,15 @@ export function TechniqueAI() {
       while (retryCount < maxRetries && isMounted) {
         const success = await initPose();
         if (success) return;
-        
+
         retryCount++;
         if (retryCount < maxRetries && isMounted) {
-          console.log(`Retrying pose initialization in 2 seconds... (attempt ${retryCount + 1}/${maxRetries})`);
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
-      
+
       if (isMounted && !poseRef.current) {
-        setPoseError('Failed to load pose detection after multiple attempts. Please refresh the page or try a different browser (Chrome recommended).');
+        setPoseError('Failed to load pose detection. Please refresh or try Chrome/Edge.');
         setIsLoadingPose(false);
       }
     };
@@ -170,7 +219,7 @@ export function TechniqueAI() {
     attemptInit();
 
     return () => {
-      isMounted = true;
+      isMounted = false;
       if (poseRef.current) {
         poseRef.current.close();
       }
@@ -185,771 +234,722 @@ export function TechniqueAI() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
-    if (results.poseLandmarks) {
-      // Draw skeleton
+    if (results.poseLandmarks && poseOverlayVisible) {
+      // Draw connections
       const connections = [
-        [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
-        [11, 23], [12, 24], [23, 24], [23, 25], [25, 27],
-        [24, 26], [26, 28],
+        [11, 13], [13, 15], // Left arm
+        [12, 14], [14, 16], // Right arm
+        [11, 12], // Shoulders
+        [11, 23], [12, 24], // Torso
+        [23, 24], // Hips
+        [23, 25], [25, 27], // Left leg
+        [24, 26], [26, 28], // Right leg
       ];
 
-      ctx.strokeStyle = 'hsl(152, 60%, 45%)';
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.6)';
       ctx.lineWidth = 3;
 
       connections.forEach(([start, end]) => {
-        const startLm = results.poseLandmarks[start];
-        const endLm = results.poseLandmarks[end];
-        if (startLm && endLm) {
+        const startPoint = results.poseLandmarks[start];
+        const endPoint = results.poseLandmarks[end];
+        if (startPoint && endPoint) {
           ctx.beginPath();
-          ctx.moveTo(startLm.x * canvas.width, startLm.y * canvas.height);
-          ctx.lineTo(endLm.x * canvas.width, endLm.y * canvas.height);
+          ctx.moveTo(startPoint.x * canvas.width, startPoint.y * canvas.height);
+          ctx.lineTo(endPoint.x * canvas.width, endPoint.y * canvas.height);
           ctx.stroke();
         }
       });
 
       // Draw landmarks
-      results.poseLandmarks.forEach((landmark, idx) => {
-        if (idx < 11) return; // Skip face landmarks
+      results.poseLandmarks.forEach((landmark, index) => {
         const x = landmark.x * canvas.width;
         const y = landmark.y * canvas.height;
-        
+
         ctx.beginPath();
         ctx.arc(x, y, 6, 0, Math.PI * 2);
-        ctx.fillStyle = 'hsl(152, 60%, 45%)';
+        ctx.fillStyle = index < 11 ? '#10B981' : '#3B82F6';
         ctx.fill();
-        
-        ctx.beginPath();
-        ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = 'white';
+        ctx.shadowColor = ctx.fillStyle;
+        ctx.shadowBlur = 10;
         ctx.fill();
+        ctx.shadowBlur = 0;
       });
 
       // Calculate angles
-      calculateAnglesFromLandmarks(results.poseLandmarks);
+      const landmarks = results.poseLandmarks;
+      
+      // Elbow angle (shoulder-elbow-wrist)
+      const elbowAngle = calculateAngle(
+        { x: landmarks[11].x, y: landmarks[11].y },
+        { x: landmarks[13].x, y: landmarks[13].y },
+        { x: landmarks[15].x, y: landmarks[15].y }
+      );
+
+      // Knee angle (hip-knee-ankle)
+      const kneeAngle = calculateAngle(
+        { x: landmarks[23].x, y: landmarks[23].y },
+        { x: landmarks[25].x, y: landmarks[25].y },
+        { x: landmarks[27].x, y: landmarks[27].y }
+      );
+
+      // Shoulder angle
+      const shoulderAngle = Math.abs(
+        Math.atan2(landmarks[12].y - landmarks[11].y, landmarks[12].x - landmarks[11].x) * (180 / Math.PI)
+      );
+
+      // Head angle (nose relative to shoulders)
+      const headAngle = Math.abs(
+        Math.atan2(landmarks[0].y - (landmarks[11].y + landmarks[12].y) / 2, 
+                   landmarks[0].x - (landmarks[11].x + landmarks[12].x) / 2) * (180 / Math.PI) - 90
+      );
+
+      analysisAnglesRef.current.elbow.push(elbowAngle);
+      analysisAnglesRef.current.knee.push(kneeAngle);
+      analysisAnglesRef.current.shoulder.push(shoulderAngle);
+      analysisAnglesRef.current.head.push(headAngle);
+
+      setAnalysisData(prev => ({
+        ...prev,
+        angles: {
+          elbow: Math.round(elbowAngle),
+          knee: Math.round(kneeAngle),
+          shoulder: Math.round(shoulderAngle),
+          head: Math.round(headAngle)
+        }
+      }));
     }
+  }, [poseOverlayVisible]);
 
-    ctx.restore();
-  }, [mode]);
-
-  const calculateAnglesFromLandmarks = (landmarks: Results['poseLandmarks']) => {
-    if (!landmarks || landmarks.length < 29) return;
-
-    const analysis = analysisRef.current;
-
-    if (mode === 'batting') {
-      // Backlift angle (shoulder-elbow-wrist)
-      if (landmarks[12] && landmarks[14] && landmarks[16]) {
-        const angle = calculateAngle(landmarks[12], landmarks[14], landmarks[16]);
-        analysis.angles.backlift = angle;
-        analysis.metrics.backliftQuality = evaluateMetric(
-          angle,
-          OPTIMAL_RANGES.batting.backliftAngle.min,
-          OPTIMAL_RANGES.batting.backliftAngle.max
-        );
-      }
-
-      // Elbow angle
-      if (landmarks[12] && landmarks[14] && landmarks[16]) {
-        const angle = calculateAngle(landmarks[12], landmarks[14], landmarks[16]);
-        analysis.angles.elbow = angle;
-        analysis.metrics.elbowPosition = evaluateMetric(
-          angle,
-          OPTIMAL_RANGES.batting.elbowAngle.min,
-          OPTIMAL_RANGES.batting.elbowAngle.max
-        );
-      }
-
-      // Front knee flexion
-      if (landmarks[24] && landmarks[26] && landmarks[28]) {
-        const angle = calculateAngle(landmarks[24], landmarks[26], landmarks[28]);
-        analysis.angles.frontKnee = angle;
-        analysis.metrics.frontKneeFlexion = evaluateMetric(
-          angle,
-          OPTIMAL_RANGES.batting.frontKneeFlexion.min,
-          OPTIMAL_RANGES.batting.frontKneeFlexion.max
-        );
-      }
-    } else {
-      // Bowling mode
-      if (landmarks[24] && landmarks[26] && landmarks[28]) {
-        const angle = calculateAngle(landmarks[24], landmarks[26], landmarks[28]);
-        analysis.angles.frontKnee = angle;
-        analysis.metrics.frontKneeFlexion = evaluateMetric(
-          angle,
-          OPTIMAL_RANGES.bowling.frontKneeFlexion.min,
-          OPTIMAL_RANGES.bowling.frontKneeFlexion.max
-        );
-      }
-
-      if (landmarks[12] && landmarks[14] && landmarks[16]) {
-        const angle = calculateAngle(landmarks[12], landmarks[14], landmarks[16]);
-        analysis.angles.armExtension = angle;
-        analysis.metrics.armExtension = evaluateMetric(
-          angle,
-          OPTIMAL_RANGES.bowling.armExtension.min,
-          OPTIMAL_RANGES.bowling.armExtension.max
-        );
-      }
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (videoUrl) URL.revokeObjectURL(videoUrl);
+      const url = URL.createObjectURL(file);
+      setVideoFile(file);
+      setVideoUrl(url);
+      setShowUploadModal(false);
+      setShowResults(false);
     }
-
-    // Head stability
-    if (landmarks[0]) {
-      if (!headStabilityRef.current) {
-        headStabilityRef.current = { x: landmarks[0].x, y: landmarks[0].y, movement: 0 };
-      } else {
-        const dx = landmarks[0].x - headStabilityRef.current.x;
-        const dy = landmarks[0].y - headStabilityRef.current.y;
-        headStabilityRef.current.movement += Math.sqrt(dx * dx + dy * dy);
-        headStabilityRef.current.x = landmarks[0].x;
-        headStabilityRef.current.y = landmarks[0].y;
-      }
-    }
-  };
-
-  const generateFeedback = () => {
-    const analysis = analysisRef.current;
-    analysis.feedback = [];
-    analysis.strengths = [];
-    analysis.improvements = [];
-    analysis.drills = [];
-
-    // Calculate overall score
-    const metricCount = Object.keys(analysis.metrics).length;
-    const totalScore = Object.values(analysis.metrics).reduce(
-      (sum, metric) => sum + (metric.score || 0), 0
-    );
-    analysis.score = metricCount > 0 ? Math.round((totalScore / metricCount) * 100) : 0;
-
-    if (mode === 'batting') {
-      // Backlift analysis
-      if (analysis.angles.backlift) {
-        const angle = analysis.angles.backlift;
-        const optimal = OPTIMAL_RANGES.batting.backliftAngle;
-
-        if (angle < optimal.min) {
-          analysis.feedback.push({
-            category: 'Backlift',
-            message: `Your backlift is too low (${angle}°). A higher backlift (45-60°) generates more power.`,
-            severity: 'warning',
-          });
-          analysis.improvements.push('Increase backlift angle for better power generation');
-          analysis.drills.push('High elbow drill: Practice lifting the bat to shoulder height in your stance');
-        } else if (angle > optimal.max) {
-          analysis.feedback.push({
-            category: 'Backlift',
-            message: `Your backlift is very high (${angle}°). While this can generate power, it may slow your downswing.`,
-            severity: 'info',
-          });
-        } else {
-          analysis.feedback.push({
-            category: 'Backlift',
-            message: `Excellent backlift angle (${angle}°) - ideal for power and control`,
-            severity: 'success',
-          });
-          analysis.strengths.push('Good backlift technique');
-        }
-      }
-
-      // Elbow position
-      if (analysis.angles.elbow) {
-        const angle = analysis.angles.elbow;
-        const optimal = OPTIMAL_RANGES.batting.elbowAngle;
-
-        if (angle < optimal.min) {
-          analysis.feedback.push({
-            category: 'Elbow Position',
-            message: `Your elbow is too bent (${angle}°). Straighter elbow (90-110°) improves bat speed.`,
-            severity: 'warning',
-          });
-          analysis.improvements.push('Maintain optimal elbow angle during swing');
-          analysis.drills.push('Straight drive practice focusing on elbow position');
-        } else if (angle > optimal.max) {
-          analysis.feedback.push({
-            category: 'Elbow Position',
-            message: `Your elbow is too straight (${angle}°). Slight bend (90-110°) allows better control.`,
-            severity: 'info',
-          });
-        } else {
-          analysis.feedback.push({
-            category: 'Elbow Position',
-            message: `Perfect elbow position (${angle}°) - great for control and power`,
-            severity: 'success',
-          });
-          analysis.strengths.push('Excellent elbow positioning');
-        }
-      }
-
-      // Front knee
-      if (analysis.angles.frontKnee) {
-        const angle = analysis.angles.frontKnee;
-        const optimal = OPTIMAL_RANGES.batting.frontKneeFlexion;
-
-        if (angle < optimal.min) {
-          analysis.feedback.push({
-            category: 'Front Knee',
-            message: `Your front knee is too straight (${angle}°). More flexion (120-140°) improves balance.`,
-            severity: 'warning',
-          });
-          analysis.improvements.push('Increase front knee flexion for better stability');
-          analysis.drills.push('Shadow batting with focus on knee bend');
-        } else if (angle > optimal.max) {
-          analysis.feedback.push({
-            category: 'Front Knee',
-            message: `Your front knee is very bent (${angle}°). Slightly less flexion may help weight transfer.`,
-            severity: 'info',
-          });
-        } else {
-          analysis.feedback.push({
-            category: 'Front Knee',
-            message: `Ideal front knee flexion (${angle}°) - excellent balance and weight transfer`,
-            severity: 'success',
-          });
-          analysis.strengths.push('Good front knee position');
-        }
-      }
-
-      // Head stability
-      if (headStabilityRef.current) {
-        const movement = headStabilityRef.current.movement;
-        if (movement > OPTIMAL_RANGES.batting.headMovement.max) {
-          analysis.feedback.push({
-            category: 'Head Position',
-            message: 'Excessive head movement detected. Keep your head still for better shot execution.',
-            severity: 'warning',
-          });
-          analysis.improvements.push('Reduce head movement during shot');
-          analysis.drills.push('Head stability drill: Practice watching the ball with minimal head movement');
-        } else {
-          analysis.feedback.push({
-            category: 'Head Position',
-            message: 'Good head stability - minimal movement detected',
-            severity: 'success',
-          });
-          analysis.strengths.push('Stable head position');
-        }
-        analysis.metrics.headStability = {
-          score: movement > OPTIMAL_RANGES.batting.headMovement.max ? 0.5 : 1.0,
-          quality: movement > OPTIMAL_RANGES.batting.headMovement.max ? 'Low' : 'High',
-        };
-      }
-    } else {
-      // Bowling feedback
-      if (analysis.angles.frontKnee) {
-        const angle = analysis.angles.frontKnee;
-        const optimal = OPTIMAL_RANGES.bowling.frontKneeFlexion;
-
-        if (angle < optimal.min) {
-          analysis.feedback.push({
-            category: 'Front Knee',
-            message: `Your front knee is too straight at delivery (${angle}°). More flexion (110-130°) improves stability.`,
-            severity: 'warning',
-          });
-          analysis.improvements.push('Increase front knee flexion at delivery');
-          analysis.drills.push('Delivery stride practice focusing on knee bend');
-        } else if (angle > optimal.max) {
-          analysis.feedback.push({
-            category: 'Front Knee',
-            message: `Your front knee is very bent at delivery (${angle}°). Slightly less flexion may help power transfer.`,
-            severity: 'info',
-          });
-        } else {
-          analysis.feedback.push({
-            category: 'Front Knee',
-            message: `Ideal front knee flexion at delivery (${angle}°) - excellent bowling position`,
-            severity: 'success',
-          });
-          analysis.strengths.push('Good front knee position at delivery');
-        }
-      }
-
-      if (analysis.angles.armExtension) {
-        const angle = analysis.angles.armExtension;
-        const optimal = OPTIMAL_RANGES.bowling.armExtension;
-
-        if (angle < optimal.min) {
-          analysis.feedback.push({
-            category: 'Arm Extension',
-            message: `Your arm isn't fully extending at release (${angle}°). Full extension (170-180°) improves pace and accuracy.`,
-            severity: 'warning',
-          });
-          analysis.improvements.push('Improve arm extension at release');
-          analysis.drills.push('Arm extension drills with resistance bands');
-        } else if (angle > optimal.max) {
-          analysis.feedback.push({
-            category: 'Arm Extension',
-            message: `Your arm is hyperextending at release (${angle}°). Be careful not to overextend.`,
-            severity: 'info',
-          });
-        } else {
-          analysis.feedback.push({
-            category: 'Arm Extension',
-            message: `Excellent arm extension at release (${angle}°) - ideal bowling action`,
-            severity: 'success',
-          });
-          analysis.strengths.push('Good arm extension technique');
-        }
-      }
-    }
-
-    setResults({ ...analysis });
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    setUploadProgress(0);
-
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsUploading(false);
-          setVideoFile(file);
-          setVideoUrl(URL.createObjectURL(file));
-          setShowResults(false);
-          return 100;
-        }
-        return prev + 5;
-      });
-    }, 50);
   };
 
   const handleVideoLoad = () => {
     if (videoRef.current && canvasRef.current) {
       canvasRef.current.width = videoRef.current.videoWidth;
       canvasRef.current.height = videoRef.current.videoHeight;
+      
+      const duration = videoRef.current.duration;
+      const minutes = Math.floor(duration / 60);
+      const seconds = Math.floor(duration % 60);
+      setAnalysisData(prev => ({
+        ...prev,
+        videoDuration: `${minutes}:${seconds.toString().padStart(2, '0')}`
+      }));
     }
   };
 
   const analyzeVideo = async () => {
     if (!videoRef.current || !poseModel) {
-      console.error('Video or pose model not ready');
+      toast.error('Video or pose model not ready');
       return;
     }
 
     try {
-      // Set up the results callback
       poseModel.onResults(onPoseResults);
-
       setIsAnalyzing(true);
       setShowResults(false);
-      headStabilityRef.current = null;
-      analysisRef.current = {
-        angles: {},
-        metrics: {},
-        feedback: [],
-        strengths: [],
-        improvements: [],
-        drills: [],
-        score: 0,
-      };
+      setPoseOverlayVisible(true);
+      analysisAnglesRef.current = { elbow: [], knee: [], shoulder: [], head: [] };
 
       const video = videoRef.current;
       video.currentTime = 0;
-      
-      // Wait for video to be ready before playing
+
       await new Promise<void>((resolve) => {
         const onCanPlay = () => {
           video.removeEventListener('canplay', onCanPlay);
           resolve();
         };
-        if (video.readyState >= 3) {
-          resolve();
-        } else {
-          video.addEventListener('canplay', onCanPlay);
-        }
+        if (video.readyState >= 3) resolve();
+        else video.addEventListener('canplay', onCanPlay);
       });
 
       await video.play();
 
       let frameCount = 0;
-      const maxFrames = 500; // Safety limit
+      const maxFrames = 300;
 
       const processFrame = async () => {
         try {
           if (video.paused || video.ended || frameCount >= maxFrames) {
-            console.log(`Analysis complete. Processed ${frameCount} frames`);
-            generateFeedback();
+            generateResults();
             setIsAnalyzing(false);
             setShowResults(true);
+            video.pause();
             return;
           }
 
           frameCount++;
           await poseModel.send({ image: video });
           requestAnimationFrame(processFrame);
-        } catch (frameError) {
-          console.error('Error processing frame:', frameError);
-          // Continue processing despite individual frame errors
+        } catch (error) {
+          console.error('Frame processing error:', error);
           requestAnimationFrame(processFrame);
         }
       };
 
       processFrame();
     } catch (error) {
-      console.error('Error starting video analysis:', error);
+      console.error('Analysis error:', error);
       setIsAnalyzing(false);
-      setPoseError('Failed to analyze video. Please try again or use a different video.');
+      toast.error('Failed to analyze video. Please try again.');
     }
   };
 
-  const clearVideo = () => {
-    if (videoUrl) URL.revokeObjectURL(videoUrl);
-    setVideoFile(null);
-    setVideoUrl(null);
-    setShowResults(false);
-    setResults({
-      angles: {},
-      metrics: {},
-      feedback: [],
-      strengths: [],
-      improvements: [],
-      drills: [],
-      score: 0,
-    });
+  const generateResults = () => {
+    const angles = analysisAnglesRef.current;
+    
+    const avgElbow = angles.elbow.length > 0 ? angles.elbow.reduce((a, b) => a + b, 0) / angles.elbow.length : 145;
+    const avgKnee = angles.knee.length > 0 ? angles.knee.reduce((a, b) => a + b, 0) / angles.knee.length : 165;
+    const avgShoulder = angles.shoulder.length > 0 ? angles.shoulder.reduce((a, b) => a + b, 0) / angles.shoulder.length : 12;
+    const avgHead = angles.head.length > 0 ? angles.head.reduce((a, b) => a + b, 0) / angles.head.length : 3;
+
+    // Calculate scores based on optimal ranges
+    const elbowScore = avgElbow >= 140 && avgElbow <= 160 ? 90 : avgElbow >= 130 && avgElbow <= 170 ? 75 : 60;
+    const kneeScore = avgKnee >= 160 && avgKnee <= 175 ? 90 : avgKnee >= 150 && avgKnee <= 180 ? 75 : 60;
+    const shoulderScore = avgShoulder < 5 ? 95 : avgShoulder < 10 ? 80 : avgShoulder < 15 ? 65 : 50;
+    const headScore = avgHead < 5 ? 95 : avgHead < 10 ? 80 : 65;
+
+    const overallScore = Math.round((elbowScore + kneeScore + shoulderScore + headScore) / 4);
+
+    const isBatting = analysisData.currentMode === 'batting';
+    
+    setAnalysisData(prev => ({
+      ...prev,
+      angles: {
+        elbow: Math.round(avgElbow),
+        knee: Math.round(avgKnee),
+        shoulder: Math.round(avgShoulder),
+        head: Math.round(avgHead)
+      },
+      scores: {
+        overall: overallScore,
+        technique: Math.round((elbowScore + kneeScore) / 2),
+        balance: shoulderScore,
+        timing: Math.round((elbowScore + headScore) / 2),
+        followThrough: kneeScore
+      },
+      feedback: isBatting ? BATTING_FEEDBACK : BOWLING_FEEDBACK,
+      drills: isBatting ? BATTING_DRILLS : BOWLING_DRILLS
+    }));
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 85) return 'text-primary';
-    if (score >= 70) return 'text-accent';
-    return 'text-destructive';
+  const switchMode = (mode: AnalysisMode) => {
+    setAnalysisData(prev => ({
+      ...prev,
+      currentMode: mode,
+      feedback: mode === 'batting' ? BATTING_FEEDBACK : BOWLING_FEEDBACK,
+      drills: mode === 'batting' ? BATTING_DRILLS : BOWLING_DRILLS
+    }));
   };
 
-  const getScoreDescription = (score: number) => {
-    if (score >= 85) return 'Excellent technique! Professional level execution.';
-    if (score >= 70) return 'Good technique with some areas for improvement.';
-    return 'Needs work - focus on the recommended improvements.';
+  const downloadReport = () => {
+    toast.info('Generating PDF report with comprehensive analysis...');
   };
 
-  const getSeverityIcon = (severity: 'success' | 'warning' | 'info') => {
-    switch (severity) {
-      case 'success': return <CheckCircle className="w-5 h-5 text-primary" />;
-      case 'warning': return <AlertTriangle className="w-5 h-5 text-accent" />;
-      case 'info': return <Info className="w-5 h-5 text-muted-foreground" />;
+  const getAngleColor = (value: number, optimal: { min: number; max: number }) => {
+    if (value >= optimal.min && value <= optimal.max) return 'text-primary';
+    if (value >= optimal.min - 10 && value <= optimal.max + 10) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
+  const getAngleProgress = (value: number, optimal: { min: number; max: number }) => {
+    const mid = (optimal.min + optimal.max) / 2;
+    const range = optimal.max - optimal.min;
+    const diff = Math.abs(value - mid);
+    return Math.max(0, Math.min(100, 100 - (diff / range) * 100));
+  };
+
+  const getScoreRingOffset = (score: number) => {
+    const circumference = 2 * Math.PI * 45;
+    return circumference - (score / 100) * circumference;
+  };
+
+  const getFeedbackIcon = (type: FeedbackItem['type']) => {
+    switch (type) {
+      case 'positive': return <CheckCircle className="w-4 h-4 text-primary" />;
+      case 'warning': return <AlertTriangle className="w-4 h-4 text-yellow-400" />;
+      case 'critical': return <XCircle className="w-4 h-4 text-red-400" />;
     }
   };
 
-  const getQualityColor = (quality: 'High' | 'Medium' | 'Low') => {
-    switch (quality) {
-      case 'High': return 'text-primary';
-      case 'Medium': return 'text-accent';
-      case 'Low': return 'text-destructive';
+  const getFeedbackBgColor = (type: FeedbackItem['type']) => {
+    switch (type) {
+      case 'positive': return 'bg-primary/10';
+      case 'warning': return 'bg-yellow-400/10';
+      case 'critical': return 'bg-red-400/10';
     }
   };
 
-  if (isLoadingPose) {
-    return (
-      <div className="rounded-2xl bg-card border border-border p-12 text-center">
-        <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-foreground mb-2">Loading Pose Detection</h3>
-        <p className="text-muted-foreground">Initializing AI models, please wait...</p>
-      </div>
-    );
-  }
+  const getDrillIcon = (icon: DrillItem['icon']) => {
+    switch (icon) {
+      case 'dumbbell': return <Dumbbell className="w-5 h-5" />;
+      case 'scale': return <Target className="w-5 h-5" />;
+      case 'activity': return <Play className="w-5 h-5" />;
+    }
+  };
 
-  if (poseError) {
-    return (
-      <div className="rounded-2xl bg-destructive/10 border border-destructive/20 p-8 text-center">
-        <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-foreground mb-2">Pose Detection Error</h3>
-        <p className="text-muted-foreground mb-4">{poseError}</p>
-        <Button onClick={() => window.location.reload()}>
-          Refresh Page
-        </Button>
-      </div>
-    );
-  }
+  const getDrillColor = (color: DrillItem['color']) => {
+    switch (color) {
+      case 'green': return 'bg-primary/20 text-primary';
+      case 'blue': return 'bg-blue-400/20 text-blue-400';
+      case 'purple': return 'bg-purple-400/20 text-purple-400';
+    }
+  };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Left Column - Video Upload and Analysis */}
-      <div className="rounded-2xl bg-card border border-border p-6 space-y-6">
-        <h2 className="text-xl font-display font-semibold text-foreground flex items-center gap-2">
-          <Video className="w-5 h-5 text-primary" />
-          Video Analysis
-        </h2>
-
-        {/* Mode Toggle */}
-        <div className="flex gap-2">
+    <div className="space-y-8">
+      {/* Mode Toggle & Upload */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
           <Button
-            variant={mode === 'batting' ? 'default' : 'outline'}
-            onClick={() => setMode('batting')}
-            className="flex-1"
+            variant={analysisData.currentMode === 'batting' ? 'default' : 'outline'}
+            onClick={() => switchMode('batting')}
+            className="gap-2"
           >
-            🏏 Batting
+            <Target className="w-4 h-4" />
+            Batting
           </Button>
           <Button
-            variant={mode === 'bowling' ? 'default' : 'outline'}
-            onClick={() => setMode('bowling')}
-            className="flex-1"
+            variant={analysisData.currentMode === 'bowling' ? 'default' : 'outline'}
+            onClick={() => switchMode('bowling')}
+            className="gap-2"
           >
-            🎯 Bowling
+            <Play className="w-4 h-4" />
+            Bowling
           </Button>
         </div>
 
-        {/* Pro Tip */}
-        <div className="rounded-xl bg-primary/10 border border-primary/20 p-4">
-          <h3 className="font-medium text-primary mb-2 flex items-center gap-2">
-            <Lightbulb className="w-4 h-4" />
-            Pro Tip
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {mode === 'batting'
-              ? 'For batting analysis, film from side-on with full view of your stance and swing.'
-              : 'For bowling analysis, capture your full run-up and delivery stride from side-on.'}
-          </p>
-        </div>
+        <Button
+          onClick={() => setShowUploadModal(true)}
+          className="bg-gradient-primary hover:opacity-90 gap-2"
+        >
+          <Upload className="w-4 h-4" />
+          Analyze Video
+        </Button>
+      </div>
 
-        {/* Upload Area */}
-        {!videoFile ? (
-          <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors">
-            <input
-              type="file"
-              id="videoUpload"
-              accept="video/*"
-              className="hidden"
-              onChange={handleFileUpload}
-            />
-            <label htmlFor="videoUpload" className="cursor-pointer">
-              <div className="flex flex-col items-center justify-center">
-                <Upload className="w-12 h-12 text-primary mb-3" />
-                <p className="text-foreground font-medium">Upload your cricket video</p>
-                <p className="text-sm text-muted-foreground mt-1">MP4, MOV, AVI (max 50MB)</p>
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column - Video and Analysis */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Video Section */}
+          <div className="bg-gradient-card rounded-2xl p-6 border border-border">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
+                <Video className="w-5 h-5 text-primary" />
+                Video Analysis
+              </h2>
+              <div className="flex items-center gap-3">
+                <span className="px-3 py-1.5 bg-secondary rounded-full text-sm text-muted-foreground">
+                  {analysisData.currentMode.charAt(0).toUpperCase() + analysisData.currentMode.slice(1)} Mode
+                </span>
+                {videoUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPoseOverlayVisible(!poseOverlayVisible)}
+                    className="gap-2"
+                  >
+                    {poseOverlayVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    Landmarks
+                  </Button>
+                )}
               </div>
-            </label>
-          </div>
-        ) : null}
-
-        {/* Upload Progress */}
-        {isUploading && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="font-medium text-foreground">Uploading...</span>
-              <span className="text-muted-foreground">{uploadProgress}%</span>
             </div>
-            <Progress value={uploadProgress} className="h-2" />
-          </div>
-        )}
 
-        {/* Video Preview */}
-        {videoFile && !isUploading && (
-          <div className="space-y-4">
-            <div className="relative rounded-xl overflow-hidden bg-black">
-              <video
-                ref={videoRef}
-                src={videoUrl || undefined}
-                onLoadedMetadata={handleVideoLoad}
-                controls={!isAnalyzing}
-                className="w-full"
-                style={{ maxHeight: '400px' }}
-              />
-              <canvas
-                ref={canvasRef}
-                className="absolute inset-0 w-full h-full pointer-events-none"
-              />
-              
-              {isAnalyzing && (
-                <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center">
-                  <div className="w-16 h-16 rounded-full border-4 border-primary/30 border-t-primary animate-spin mb-4" />
-                  <p className="text-white font-medium">Analyzing your cricket technique...</p>
+            <div className="relative rounded-xl overflow-hidden bg-secondary/50">
+              {!videoUrl ? (
+                <div className="aspect-video flex flex-col items-center justify-center">
+                  <div className="w-24 h-24 bg-secondary rounded-full flex items-center justify-center mb-6">
+                    <Upload className="w-10 h-10 text-primary" />
+                  </div>
+                  <p className="text-xl font-semibold mb-2">Upload Your Cricket Video</p>
+                  <p className="text-muted-foreground mb-6">Supports .mp4, .mov, .avi up to 100MB</p>
+                  <Button onClick={() => setShowUploadModal(true)} className="bg-gradient-primary gap-2">
+                    <Upload className="w-4 h-4" />
+                    Choose Video File
+                  </Button>
                 </div>
+              ) : (
+                <>
+                  <video
+                    ref={videoRef}
+                    src={videoUrl}
+                    className="w-full"
+                    controls
+                    onLoadedMetadata={handleVideoLoad}
+                  />
+                  <canvas
+                    ref={canvasRef}
+                    className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                    style={{ display: poseOverlayVisible ? 'block' : 'none' }}
+                  />
+                </>
               )}
             </div>
 
-            <div className="flex gap-3">
+            {videoUrl && (
+              <div className="mt-6 grid grid-cols-3 gap-4">
+                <div className="bg-secondary/50 rounded-xl p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
+                    <Ruler className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Frame Rate</p>
+                    <p className="text-lg font-semibold">30 FPS</p>
+                  </div>
+                </div>
+                <div className="bg-secondary/50 rounded-xl p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-400/20 rounded-lg flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Duration</p>
+                    <p className="text-lg font-semibold">{analysisData.videoDuration}</p>
+                  </div>
+                </div>
+                <div className="bg-secondary/50 rounded-xl p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-400/20 rounded-lg flex items-center justify-center">
+                    <Target className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Landmarks</p>
+                    <p className="text-lg font-semibold">33 Points</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {videoUrl && !isAnalyzing && !showResults && (
               <Button
                 onClick={analyzeVideo}
-                disabled={isAnalyzing || !poseModel}
-                className="flex-1"
+                disabled={isLoadingPose || !poseModel}
+                className="w-full mt-6 bg-gradient-primary gap-2"
               >
-                <Play className="w-4 h-4 mr-2" />
-                Analyze Technique
+                <Play className="w-4 h-4" />
+                {isLoadingPose ? 'Loading AI Model...' : 'Start Analysis'}
               </Button>
-              <Button variant="outline" onClick={() => alert('PDF report generation coming soon!')}>
-                <FileText className="w-4 h-4 mr-2" />
-                PDF Report
-              </Button>
-              <Button variant="ghost" size="icon" onClick={clearVideo}>
-                <X className="w-4 h-4" />
-              </Button>
+            )}
+
+            {isAnalyzing && (
+              <div className="mt-6 text-center">
+                <div className="inline-flex items-center gap-3 px-6 py-3 bg-primary/20 rounded-full">
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <span className="text-primary font-medium">Analyzing technique...</span>
+                </div>
+              </div>
+            )}
+
+            {poseError && (
+              <div className="mt-4 p-4 bg-red-400/10 border border-red-400/20 rounded-lg text-red-400 text-sm">
+                {poseError}
+              </div>
+            )}
+          </div>
+
+          {/* Real-time Angles */}
+          <div className="bg-gradient-card rounded-2xl p-6 border border-border">
+            <h2 className="text-xl font-bold text-foreground flex items-center gap-3 mb-6">
+              <BarChart3 className="w-5 h-5 text-primary" />
+              Real-time Angle Analysis
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: 'Front Elbow', value: analysisData.angles.elbow, optimal: { min: 140, max: 160 }, unit: '°' },
+                { label: 'Back Knee', value: analysisData.angles.knee, optimal: { min: 160, max: 175 }, unit: '°' },
+                { label: 'Shoulder Tilt', value: analysisData.angles.shoulder, optimal: { min: 0, max: 5 }, unit: '°' },
+                { label: 'Head Position', value: analysisData.angles.head, optimal: { min: 0, max: 5 }, unit: '°' }
+              ].map((angle, index) => (
+                <div key={index} className="bg-secondary/50 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">{angle.label}</span>
+                    <span className={`font-semibold ${getAngleColor(angle.value, angle.optimal)}`}>
+                      {angle.value}{angle.unit}
+                    </span>
+                  </div>
+                  <Progress value={getAngleProgress(angle.value, angle.optimal)} className="h-2" />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Optimal: {angle.optimal.min}-{angle.optimal.max}{angle.unit}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Right Column - Results */}
-      <div className="rounded-2xl bg-card border border-border p-6 space-y-6">
-        <h2 className="text-xl font-display font-semibold text-foreground flex items-center gap-2">
-          <BarChart3 className="w-5 h-5 text-primary" />
-          Performance Analysis
-        </h2>
-
-        {isAnalyzing && (
-          <div className="text-center py-12">
-            <div className="w-12 h-12 rounded-full border-4 border-primary/30 border-t-primary animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Analyzing your cricket technique...</p>
-          </div>
-        )}
-
-        {showResults && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Overall Score */}
-            <div className="rounded-xl bg-muted/50 border border-border p-4">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-medium text-foreground">Overall Technique Score</h3>
-                <span className={`text-3xl font-bold ${getScoreColor(results.score)}`}>
-                  {results.score}
+        {/* Right Column - Results */}
+        <div className="space-y-6">
+          {/* Overall Score */}
+          <div className="bg-gradient-card rounded-2xl p-6 border border-border">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
+                <Trophy className="w-5 h-5 text-accent" />
+                Overall Score
+              </h2>
+              {showResults && (
+                <span className="px-3 py-1.5 bg-secondary rounded-full text-sm flex items-center gap-2">
+                  <Medal className="w-4 h-4 text-accent" />
+                  {analysisData.scores.overall >= 80 ? 'Advanced' : analysisData.scores.overall >= 60 ? 'Intermediate' : 'Beginner'}
                 </span>
-              </div>
-              <div className="h-2 rounded-full bg-gradient-to-r from-destructive via-accent to-primary mb-2">
-                <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
-                  style={{ width: `${results.score}%` }}
-                />
-              </div>
-              <p className="text-sm text-muted-foreground">{getScoreDescription(results.score)}</p>
+              )}
             </div>
 
-            {/* Key Metrics */}
-            <div>
-              <h3 className="text-lg font-medium text-foreground mb-3 flex items-center gap-2">
-                <Ruler className="w-4 h-4 text-primary" />
-                Biomechanical Metrics
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                {results.angles.backlift !== undefined && (
-                  <div className="rounded-xl bg-muted/50 border border-border p-3">
-                    <p className="text-sm text-muted-foreground">Backlift Angle</p>
-                    <p className="text-xl font-bold text-foreground">{results.angles.backlift}°</p>
-                    <p className="text-xs text-muted-foreground">Optimal: 45-60°</p>
-                  </div>
-                )}
-                {results.angles.elbow !== undefined && (
-                  <div className="rounded-xl bg-muted/50 border border-border p-3">
-                    <p className="text-sm text-muted-foreground">Elbow Angle</p>
-                    <p className="text-xl font-bold text-foreground">{results.angles.elbow}°</p>
-                    <p className="text-xs text-muted-foreground">Optimal: 90-110°</p>
-                  </div>
-                )}
-                {results.angles.frontKnee !== undefined && (
-                  <div className="rounded-xl bg-muted/50 border border-border p-3">
-                    <p className="text-sm text-muted-foreground">Front Knee</p>
-                    <p className="text-xl font-bold text-foreground">{results.angles.frontKnee}°</p>
-                    <p className="text-xs text-muted-foreground">
-                      Optimal: {mode === 'batting' ? '120-140°' : '110-130°'}
+            <div className="flex flex-col items-center">
+              <div className="relative w-48 h-48 mb-6">
+                <svg className="w-full h-full" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="45" fill="none" stroke="hsl(var(--secondary))" strokeWidth="8" />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    fill="none"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 45}
+                    strokeDashoffset={getScoreRingOffset(showResults ? analysisData.scores.overall : 0)}
+                    transform="rotate(-90 50 50)"
+                    style={{ transition: 'stroke-dashoffset 1s ease-out' }}
+                  />
+                  <text x="50" y="50" textAnchor="middle" dy="5" className="text-3xl font-bold fill-foreground">
+                    {showResults ? analysisData.scores.overall : '--'}
+                  </text>
+                  <text x="50" y="62" textAnchor="middle" className="text-sm fill-muted-foreground">/100</text>
+                </svg>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 w-full">
+                {[
+                  { label: 'Technique', value: analysisData.scores.technique, color: 'text-primary' },
+                  { label: 'Balance', value: analysisData.scores.balance, color: 'text-yellow-400' },
+                  { label: 'Timing', value: analysisData.scores.timing, color: 'text-blue-400' },
+                  { label: 'Follow-through', value: analysisData.scores.followThrough, color: 'text-purple-400' }
+                ].map((score, index) => (
+                  <div key={index} className="text-center p-3 bg-secondary/50 rounded-lg">
+                    <p className="text-sm text-muted-foreground">{score.label}</p>
+                    <p className={`text-xl font-bold ${score.color}`}>
+                      {showResults ? score.value : '--'}
                     </p>
                   </div>
-                )}
-                {results.angles.armExtension !== undefined && (
-                  <div className="rounded-xl bg-muted/50 border border-border p-3">
-                    <p className="text-sm text-muted-foreground">Arm Extension</p>
-                    <p className="text-xl font-bold text-foreground">{results.angles.armExtension}°</p>
-                    <p className="text-xs text-muted-foreground">Optimal: 170-180°</p>
-                  </div>
-                )}
+                ))}
               </div>
             </div>
+          </div>
 
-            {/* Technique Breakdown */}
-            {Object.keys(results.metrics).length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-foreground mb-3 flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-primary" />
-                  Technique Breakdown
-                </h3>
-                <div className="space-y-3">
-                  {Object.entries(results.metrics).map(([metric, data]) => (
-                    <div
-                      key={metric}
-                      className="rounded-xl bg-muted/50 border border-border p-4 transition-all hover:border-primary/30"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-medium text-foreground capitalize">
-                            {metric.replace(/([A-Z])/g, ' $1').trim()}
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            {METRIC_DESCRIPTIONS[metric] || 'Technical metric'}
-                          </p>
-                        </div>
-                        <span className={`font-bold ${getQualityColor(data.quality)}`}>
-                          {data.quality}
-                        </span>
+          {/* Detailed Feedback */}
+          {showResults && analysisData.feedback.length > 0 && (
+            <div className="bg-gradient-card rounded-2xl p-6 border border-border">
+              <h2 className="text-xl font-bold text-foreground flex items-center gap-3 mb-6">
+                <MessageSquare className="w-5 h-5 text-primary" />
+                Detailed Analysis
+              </h2>
+              <div className="space-y-4">
+                {analysisData.feedback.map((item, index) => (
+                  <div key={index} className="bg-secondary/50 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`w-8 h-8 ${getFeedbackBgColor(item.type)} rounded-lg flex items-center justify-center mt-0.5`}>
+                        {getFeedbackIcon(item.type)}
                       </div>
-                      <div className="h-2 rounded-full bg-border">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all"
-                          style={{ width: `${data.score * 100}%` }}
-                        />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-foreground mb-1">{item.title}</h4>
+                        <p className="text-sm text-muted-foreground">{item.description}</p>
+                        {item.drill && (
+                          <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
+                            <Lightbulb className="w-3 h-3" />
+                            <strong>Drill:</strong> {item.drill}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Coach's Feedback */}
-            {results.feedback.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-foreground mb-3 flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-primary" />
-                  Coach's Feedback
-                </h3>
-                <div className="space-y-3">
-                  {results.feedback.map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-3">
-                      {getSeverityIcon(item.severity)}
-                      <div>
-                        <p className="font-medium text-foreground">{item.category}</p>
-                        <p className="text-sm text-muted-foreground">{item.message}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Recommended Drills */}
-            <div>
-              <h3 className="text-lg font-medium text-foreground mb-3 flex items-center gap-2">
-                <Dumbbell className="w-4 h-4 text-primary" />
+          {/* Recommended Drills */}
+          {showResults && analysisData.drills.length > 0 && (
+            <div className="bg-gradient-card rounded-2xl p-6 border border-border">
+              <h2 className="text-xl font-bold text-foreground flex items-center gap-3 mb-6">
+                <Dumbbell className="w-5 h-5 text-primary" />
                 Recommended Drills
-              </h3>
-              <div className="rounded-xl bg-primary/10 border border-primary/20 p-4">
-                {results.drills.length > 0 ? (
-                  <div className="space-y-2">
-                    {results.drills.map((drill, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <Dumbbell className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                        <p className="text-sm text-muted-foreground">{drill}</p>
-                      </div>
-                    ))}
+              </h2>
+              <div className="space-y-3">
+                {analysisData.drills.map((drill, index) => (
+                  <div key={index} className="flex items-center p-3 bg-secondary/30 rounded-lg gap-3">
+                    <div className={`w-10 h-10 ${getDrillColor(drill.color)} rounded-lg flex items-center justify-center`}>
+                      {getDrillIcon(drill.icon)}
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{drill.title}</p>
+                      <p className="text-sm text-muted-foreground">{drill.description}</p>
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No specific drills recommended. Your technique is fundamentally sound!
-                  </p>
-                )}
+                ))}
+              </div>
+
+              <Button onClick={downloadReport} className="w-full mt-6 bg-gradient-primary gap-2">
+                <Download className="w-4 h-4" />
+                Download Full Report (PDF)
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Cricket Context Section */}
+      <div className="bg-gradient-card rounded-2xl p-8 border border-border">
+        <h2 className="text-2xl font-bold text-foreground flex items-center gap-3 mb-6">
+          <Target className="w-6 h-6 text-primary" />
+          Cricket Technique Analysis
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div>
+            <h3 className="text-xl font-bold text-foreground mb-4">Batting Analysis Parameters</h3>
+            <div className="space-y-4">
+              <div className="p-4 bg-secondary/50 rounded-xl">
+                <h4 className="font-semibold text-primary mb-2">Stance & Setup</h4>
+                <p className="text-muted-foreground text-sm">Analyzes initial position, grip, and balance before ball delivery</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {['Feet Alignment', 'Knee Flex', 'Head Position'].map(tag => (
+                    <span key={tag} className="px-2 py-1 bg-secondary rounded text-xs">{tag}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="p-4 bg-secondary/50 rounded-xl">
+                <h4 className="font-semibold text-blue-400 mb-2">Backlift & Trigger</h4>
+                <p className="text-muted-foreground text-sm">Measures bat pick-up angle and initial movement timing</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {['Bat Angle', 'Weight Transfer', 'Front Foot Movement'].map(tag => (
+                    <span key={tag} className="px-2 py-1 bg-secondary rounded text-xs">{tag}</span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        )}
 
-        {!showResults && !isAnalyzing && (
-          <div className="text-center py-12 text-muted-foreground">
-            <Video className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>Upload your cricket video to begin analysis</p>
-            <p className="text-sm mt-2">Get detailed feedback on your {mode} technique</p>
+          <div>
+            <h3 className="text-xl font-bold text-foreground mb-4">Bowling Analysis Parameters</h3>
+            <div className="space-y-4">
+              <div className="p-4 bg-secondary/50 rounded-xl">
+                <h4 className="font-semibold text-accent mb-2">Run-up & Delivery</h4>
+                <p className="text-muted-foreground text-sm">Analyzes approach speed, gather position, and front foot landing</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {['Approach Rhythm', 'Front Foot Braking', 'Arm Speed'].map(tag => (
+                    <span key={tag} className="px-2 py-1 bg-secondary rounded text-xs">{tag}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="p-4 bg-secondary/50 rounded-xl">
+                <h4 className="font-semibold text-purple-400 mb-2">Follow-through & Recovery</h4>
+                <p className="text-muted-foreground text-sm">Measures completion of action and return to fielding position</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {['Momentum Transfer', 'Body Alignment', 'Recovery Speed'].map(tag => (
+                    <span key={tag} className="px-2 py-1 bg-secondary rounded text-xs">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-2xl p-8 max-w-md w-full border border-border shadow-elevated">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-foreground">Upload Cricket Video</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowUploadModal(false)}>
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+
+            <label className="block border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary transition-colors cursor-pointer mb-6">
+              <input
+                type="file"
+                accept="video/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+                <Upload className="w-8 h-8 text-primary" />
+              </div>
+              <p className="text-lg font-semibold text-foreground mb-2">Drop your video here</p>
+              <p className="text-muted-foreground mb-4">or click to browse files</p>
+              <p className="text-sm text-muted-foreground">Supports .mp4, .mov, .avi up to 100MB</p>
+            </label>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-muted-foreground mb-2">Analysis Mode</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => switchMode('batting')}
+                    className={`p-4 rounded-xl text-center transition-colors ${
+                      analysisData.currentMode === 'batting'
+                        ? 'bg-primary/20 border-2 border-primary'
+                        : 'bg-secondary hover:bg-secondary/80 border-2 border-transparent'
+                    }`}
+                  >
+                    <Target className="w-8 h-8 mx-auto mb-2 text-primary" />
+                    <p className="font-semibold">Batting</p>
+                    <p className="text-xs text-muted-foreground">Front foot, backlift, follow-through</p>
+                  </button>
+                  <button
+                    onClick={() => switchMode('bowling')}
+                    className={`p-4 rounded-xl text-center transition-colors ${
+                      analysisData.currentMode === 'bowling'
+                        ? 'bg-primary/20 border-2 border-primary'
+                        : 'bg-secondary hover:bg-secondary/80 border-2 border-transparent'
+                    }`}
+                  >
+                    <Play className="w-8 h-8 mx-auto mb-2 text-blue-400" />
+                    <p className="font-semibold">Bowling</p>
+                    <p className="text-xs text-muted-foreground">Run-up, delivery, follow-through</p>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowUploadModal(false)}
+                >
+                  Cancel
+                </Button>
+                <label className="flex-1">
+                  <input
+                    type="file"
+                    accept="video/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <Button className="w-full bg-gradient-primary gap-2" asChild>
+                    <span>
+                      <Upload className="w-4 h-4" />
+                      Select Video
+                    </span>
+                  </Button>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

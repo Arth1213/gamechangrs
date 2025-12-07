@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { ArrowRight, Play, BarChart3, Video, ShoppingBag } from "lucide-react";
+import { ArrowRight, Play, BarChart3, Video, ShoppingBag, Brain } from "lucide-react";
 
 export const HeroSection = () => {
   return (
@@ -50,34 +50,44 @@ export const HeroSection = () => {
           </div>
 
           {/* Feature Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-slide-up" style={{ animationDelay: "0.3s" }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-slide-up" style={{ animationDelay: "0.3s" }}>
             {[
               {
                 icon: Video,
                 title: "AI Coaching",
                 description: "Upload videos and receive instant technique analysis",
                 link: "/coaching",
+                color: "primary",
+              },
+              {
+                icon: Brain,
+                title: "TechniqueAI",
+                description: "Real-time pose detection with biomechanical insights",
+                link: "/techniqueai",
+                color: "accent",
               },
               {
                 icon: BarChart3,
                 title: "Smart Analytics",
                 description: "Real-time insights from youth league data",
                 link: "/analytics",
+                color: "primary",
               },
               {
                 icon: ShoppingBag,
                 title: "Gear Exchange",
                 description: "Quality equipment for underprivileged athletes",
                 link: "/marketplace",
+                color: "primary",
               },
-            ].map((feature, index) => (
+            ].map((feature) => (
               <Link
                 key={feature.title}
                 to={feature.link}
-                className="group p-6 rounded-2xl bg-gradient-card border border-border hover:border-primary/30 transition-all duration-300 hover:shadow-glow"
+                className={`group p-6 rounded-2xl bg-gradient-card border border-border hover:border-${feature.color}/30 transition-all duration-300 hover:shadow-glow`}
               >
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <feature.icon className="w-6 h-6 text-primary" />
+                <div className={`w-12 h-12 rounded-xl bg-${feature.color}/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                  <feature.icon className={`w-6 h-6 text-${feature.color}`} />
                 </div>
                 <h3 className="font-display font-semibold text-lg text-foreground mb-2">
                   {feature.title}

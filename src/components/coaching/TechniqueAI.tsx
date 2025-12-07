@@ -94,17 +94,29 @@ export function TechniqueAI() {
   });
   const poseRef = useRef<Pose | null>(null);
 
-  // Initialize MediaPipe Pose
+  // Initialize MediaPipe Pose with retry logic
   useEffect(() => {
     let isMounted = true;
+    let retryCount = 0;
+    const maxRetries = 3;
     
-    const initPose = async () => {
+    const initPose = async (): Promise<boolean> => {
       try {
         setIsLoadingPose(true);
         setPoseError(null);
         
+        // Check for WebGL support first
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (!gl) {
+          throw new Error('WebGL not supported');
+        }
+        
         const pose = new Pose({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+          locateFile: (file) => {
+            // Use unpkg as primary CDN (more reliable for WASM)
+            return `https://unpkg.com/@mediapipe/pose@0.5.1675469404/${file}`;
+          },
         });
 
         pose.setOptions({
@@ -116,7 +128,13 @@ export function TechniqueAI() {
           minTrackingConfidence: 0.5,
         });
 
-        await pose.initialize();
+        // Add timeout for initialization
+        const initPromise = pose.initialize();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Initialization timeout')), 30000)
+        );
+        
+        await Promise.race([initPromise, timeoutPromise]);
         
         if (isMounted) {
           poseRef.current = pose;
@@ -124,19 +142,35 @@ export function TechniqueAI() {
           setIsLoadingPose(false);
           console.log('MediaPipe Pose initialized successfully');
         }
+        return true;
       } catch (error) {
-        console.error('Failed to initialize MediaPipe Pose:', error);
-        if (isMounted) {
-          setPoseError('Failed to load pose detection. This may be due to browser compatibility. Please try Chrome or Edge.');
-          setIsLoadingPose(false);
-        }
+        console.error(`Failed to initialize MediaPipe Pose (attempt ${retryCount + 1}):`, error);
+        return false;
       }
     };
 
-    initPose();
+    const attemptInit = async () => {
+      while (retryCount < maxRetries && isMounted) {
+        const success = await initPose();
+        if (success) return;
+        
+        retryCount++;
+        if (retryCount < maxRetries && isMounted) {
+          console.log(`Retrying pose initialization in 2 seconds... (attempt ${retryCount + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+      
+      if (isMounted && !poseRef.current) {
+        setPoseError('Failed to load pose detection after multiple attempts. Please refresh the page or try a different browser (Chrome recommended).');
+        setIsLoadingPose(false);
+      }
+    };
+
+    attemptInit();
 
     return () => {
-      isMounted = false;
+      isMounted = true;
       if (poseRef.current) {
         poseRef.current.close();
       }

@@ -4,7 +4,7 @@ import { Progress } from '@/components/ui/progress';
 import { 
   Upload, Play, Video, Ruler, Clock, Target, Trophy, Medal,
   MessageSquare, Dumbbell, CheckCircle, AlertTriangle, XCircle, 
-  Lightbulb, Download, BarChart3, X, Eye, EyeOff
+  Lightbulb, Download, BarChart3, X, Eye, EyeOff, RefreshCw
 } from 'lucide-react';
 import { Pose, Results } from '@mediapipe/pose';
 import { toast } from 'sonner';
@@ -150,69 +150,76 @@ export function TechniqueAI() {
   });
 
   // Initialize MediaPipe Pose
+  const initializePose = useCallback(async () => {
+    try {
+      setIsLoadingPose(true);
+      setPoseError(null);
+
+      // Check WebGL support
+      const testCanvas = document.createElement('canvas');
+      const gl = testCanvas.getContext('webgl2') || testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+      if (!gl) {
+        throw new Error('WebGL not supported in this browser');
+      }
+
+      // Close existing pose model if any
+      if (poseRef.current) {
+        poseRef.current.close();
+        poseRef.current = null;
+      }
+
+      const pose = new Pose({
+        locateFile: (file) => {
+          // Use jsdelivr CDN which is more reliable
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`;
+        },
+      });
+
+      pose.setOptions({
+        modelComplexity: 1,
+        smoothLandmarks: true,
+        enableSegmentation: false,
+        smoothSegmentation: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+
+      // Initialize with timeout
+      const initPromise = pose.initialize();
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Initialization timeout - please try again')), 45000)
+      );
+
+      await Promise.race([initPromise, timeoutPromise]);
+
+      poseRef.current = pose;
+      setPoseModel(pose);
+      setIsLoadingPose(false);
+      console.log('MediaPipe Pose initialized successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to initialize MediaPipe Pose:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setPoseError(`Failed to load pose detection: ${errorMessage}. Click "Retry" or refresh the page.`);
+      setIsLoadingPose(false);
+      return false;
+    }
+  }, []);
+
+  // Auto-initialize on mount
   useEffect(() => {
     let isMounted = true;
     let retryCount = 0;
-    const maxRetries = 3;
-
-    const initPose = async (): Promise<boolean> => {
-      try {
-        setIsLoadingPose(true);
-        setPoseError(null);
-
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-        if (!gl) {
-          throw new Error('WebGL not supported');
-        }
-
-        const pose = new Pose({
-          locateFile: (file) => `https://unpkg.com/@mediapipe/pose@0.5.1675469404/${file}`,
-        });
-
-        pose.setOptions({
-          modelComplexity: 1,
-          smoothLandmarks: true,
-          enableSegmentation: false,
-          smoothSegmentation: true,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        });
-
-        const initPromise = pose.initialize();
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Initialization timeout')), 30000)
-        );
-
-        await Promise.race([initPromise, timeoutPromise]);
-
-        if (isMounted) {
-          poseRef.current = pose;
-          setPoseModel(pose);
-          setIsLoadingPose(false);
-          console.log('MediaPipe Pose initialized successfully');
-        }
-        return true;
-      } catch (error) {
-        console.error(`Failed to initialize MediaPipe Pose (attempt ${retryCount + 1}):`, error);
-        return false;
-      }
-    };
+    const maxRetries = 2;
 
     const attemptInit = async () => {
       while (retryCount < maxRetries && isMounted) {
-        const success = await initPose();
+        const success = await initializePose();
         if (success) return;
-
         retryCount++;
         if (retryCount < maxRetries && isMounted) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 3000));
         }
-      }
-
-      if (isMounted && !poseRef.current) {
-        setPoseError('Failed to load pose detection. Please refresh or try Chrome/Edge.');
-        setIsLoadingPose(false);
       }
     };
 
@@ -224,7 +231,12 @@ export function TechniqueAI() {
         poseRef.current.close();
       }
     };
-  }, []);
+  }, [initializePose]);
+
+  // Manual retry handler
+  const handleRetryPose = () => {
+    initializePose();
+  };
 
   const onPoseResults = useCallback((results: Results) => {
     const canvas = canvasRef.current;
@@ -887,8 +899,19 @@ export function TechniqueAI() {
             )}
 
             {poseError && (
-              <div className="mt-4 p-4 bg-red-400/10 border border-red-400/20 rounded-lg text-red-400 text-sm">
-                {poseError}
+              <div className="mt-4 p-4 bg-red-400/10 border border-red-400/20 rounded-lg">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-red-400 text-sm">{poseError}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetryPose}
+                    disabled={isLoadingPose}
+                    className="shrink-0 border-red-400/50 text-red-400 hover:bg-red-400/10"
+                  >
+                    {isLoadingPose ? 'Loading...' : 'Retry'}
+                  </Button>
+                </div>
               </div>
             )}
           </div>

@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { usePoseDetection, PoseFrame } from '@/hooks/usePoseDetection';
 import { PoseOverlay } from './PoseOverlay';
 import { AnalysisResults } from './AnalysisResults';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VideoAnalyzerProps {
   mode: 'batting' | 'bowling';
@@ -100,12 +101,19 @@ export function VideoAnalyzer({ mode }: VideoAnalyzerProps) {
       
       setAnalysisStage('ai');
       
-      // Step 2: Send pose data to AI for analysis
+      // Step 2: Get authenticated user's session token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error('You must be logged in to analyze videos');
+      }
+
+      // Step 3: Send pose data to AI for analysis with user's auth token
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-cricket`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           mode,

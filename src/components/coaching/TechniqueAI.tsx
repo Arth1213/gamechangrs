@@ -6,9 +6,10 @@ import {
   MessageSquare, Dumbbell, CheckCircle, AlertTriangle, XCircle, 
   Lightbulb, Download, BarChart3, X, Eye, EyeOff, RefreshCw
 } from 'lucide-react';
+import * as mediapipePose from '@mediapipe/pose';
 import { toast } from 'sonner';
 
-// MediaPipe types - will be loaded dynamically
+// MediaPipe types
 type PoseResults = {
   poseLandmarks?: Array<{ x: number; y: number; z: number; visibility: number }>;
 };
@@ -176,17 +177,8 @@ export function TechniqueAI() {
         poseRef.current = null;
       }
 
-      // Dynamic import of MediaPipe Pose
-      const mediapipePose = await import('@mediapipe/pose');
-      
-      // Access the Pose constructor - handle different export formats
-      const PoseConstructor = mediapipePose.Pose || (mediapipePose as any).default?.Pose;
-      
-      if (!PoseConstructor) {
-        throw new Error('MediaPipe Pose constructor not found');
-      }
-
-      const pose = new PoseConstructor({
+      // Use the Pose constructor from the namespace import
+      const pose = new mediapipePose.Pose({
         locateFile: (file: string) => {
           return `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`;
         },

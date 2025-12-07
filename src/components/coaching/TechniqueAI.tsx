@@ -6,10 +6,15 @@ import {
   MessageSquare, Dumbbell, CheckCircle, AlertTriangle, XCircle, 
   Lightbulb, Download, BarChart3, X, Eye, EyeOff, RefreshCw
 } from 'lucide-react';
-import * as mediapipePose from '@mediapipe/pose';
 import { toast } from 'sonner';
 
-// MediaPipe types
+// MediaPipe types - loaded via script tag from CDN
+declare global {
+  interface Window {
+    Pose: any;
+  }
+}
+
 type PoseResults = {
   poseLandmarks?: Array<{ x: number; y: number; z: number; visibility: number }>;
 };
@@ -154,7 +159,42 @@ export function TechniqueAI() {
     elbow: [], knee: [], shoulder: [], head: []
   });
 
-  // Initialize MediaPipe Pose with dynamic import
+  // Load MediaPipe script from CDN
+  const loadMediaPipeScript = useCallback((): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      // Check if already loaded
+      if (window.Pose) {
+        resolve();
+        return;
+      }
+
+      // Check if script is already in DOM
+      const existingScript = document.querySelector('script[src*="@mediapipe/pose"]');
+      if (existingScript) {
+        existingScript.addEventListener('load', () => resolve());
+        existingScript.addEventListener('error', () => reject(new Error('Failed to load MediaPipe script')));
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js';
+      script.crossOrigin = 'anonymous';
+      script.onload = () => {
+        // Wait a bit for the global to be available
+        setTimeout(() => {
+          if (window.Pose) {
+            resolve();
+          } else {
+            reject(new Error('MediaPipe Pose not available after script load'));
+          }
+        }, 100);
+      };
+      script.onerror = () => reject(new Error('Failed to load MediaPipe script'));
+      document.head.appendChild(script);
+    });
+  }, []);
+
+  // Initialize MediaPipe Pose
   const initializePose = useCallback(async () => {
     try {
       setIsLoadingPose(true);
@@ -177,8 +217,11 @@ export function TechniqueAI() {
         poseRef.current = null;
       }
 
-      // Use the Pose constructor from the namespace import
-      const pose = new mediapipePose.Pose({
+      // Load MediaPipe via script tag (works with Vite)
+      await loadMediaPipeScript();
+
+      // Create Pose instance using global constructor
+      const pose = new window.Pose({
         locateFile: (file: string) => {
           return `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`;
         },
@@ -213,7 +256,7 @@ export function TechniqueAI() {
       setIsLoadingPose(false);
       return false;
     }
-  }, []);
+  }, [loadMediaPipeScript]);
 
   // Auto-initialize on mount
   useEffect(() => {

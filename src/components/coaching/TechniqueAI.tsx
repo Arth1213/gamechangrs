@@ -6,8 +6,12 @@ import {
   MessageSquare, Dumbbell, CheckCircle, AlertTriangle, XCircle, 
   Lightbulb, Download, BarChart3, X, Eye, EyeOff, RefreshCw
 } from 'lucide-react';
-import { Pose, Results } from '@mediapipe/pose';
 import { toast } from 'sonner';
+
+// MediaPipe types - will be loaded dynamically
+type PoseResults = {
+  poseLandmarks?: Array<{ x: number; y: number; z: number; visibility: number }>;
+};
 
 type AnalysisMode = 'batting' | 'bowling';
 
@@ -138,18 +142,18 @@ export function TechniqueAI() {
   const [showResults, setShowResults] = useState(false);
   const [poseOverlayVisible, setPoseOverlayVisible] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [poseModel, setPoseModel] = useState<Pose | null>(null);
+  const [poseModel, setPoseModel] = useState<any>(null);
   const [poseError, setPoseError] = useState<string | null>(null);
   const [isLoadingPose, setIsLoadingPose] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const poseRef = useRef<Pose | null>(null);
+  const poseRef = useRef<any>(null);
   const analysisAnglesRef = useRef<{ elbow: number[]; knee: number[]; shoulder: number[]; head: number[] }>({
     elbow: [], knee: [], shoulder: [], head: []
   });
 
-  // Initialize MediaPipe Pose
+  // Initialize MediaPipe Pose with dynamic import
   const initializePose = useCallback(async () => {
     try {
       setIsLoadingPose(true);
@@ -164,13 +168,26 @@ export function TechniqueAI() {
 
       // Close existing pose model if any
       if (poseRef.current) {
-        poseRef.current.close();
+        try {
+          poseRef.current.close();
+        } catch (e) {
+          console.warn('Error closing previous pose model:', e);
+        }
         poseRef.current = null;
       }
 
-      const pose = new Pose({
-        locateFile: (file) => {
-          // Use jsdelivr CDN which is more reliable
+      // Dynamic import of MediaPipe Pose
+      const mediapipePose = await import('@mediapipe/pose');
+      
+      // Access the Pose constructor - handle different export formats
+      const PoseConstructor = mediapipePose.Pose || (mediapipePose as any).default?.Pose;
+      
+      if (!PoseConstructor) {
+        throw new Error('MediaPipe Pose constructor not found');
+      }
+
+      const pose = new PoseConstructor({
+        locateFile: (file: string) => {
           return `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`;
         },
       });
@@ -227,8 +244,15 @@ export function TechniqueAI() {
 
     return () => {
       isMounted = false;
+      // Safely close pose model - check if it exists and hasn't been deleted
       if (poseRef.current) {
-        poseRef.current.close();
+        try {
+          poseRef.current.close();
+        } catch (e) {
+          // Ignore errors if already deleted
+          console.warn('Pose cleanup error (safe to ignore):', e);
+        }
+        poseRef.current = null;
       }
     };
   }, [initializePose]);
@@ -238,7 +262,7 @@ export function TechniqueAI() {
     initializePose();
   };
 
-  const onPoseResults = useCallback((results: Results) => {
+  const onPoseResults = useCallback((results: PoseResults) => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
     if (!canvas || !video) return;

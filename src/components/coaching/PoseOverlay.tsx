@@ -30,9 +30,12 @@ export function PoseOverlay({ joints, width, height, highlightedJoints = [] }: P
 
       if (startJoint && endJoint) {
         const isHighlighted = highlightedJoints.includes(start) || highlightedJoints.includes(end);
+        const visibility = Math.min(startJoint.visibility, endJoint.visibility);
+        const opacity = Math.max(0.3, visibility * 0.9);
+        
         ctx.strokeStyle = isHighlighted 
-          ? 'rgba(239, 68, 68, 0.9)' 
-          : 'rgba(34, 197, 94, 0.8)';
+          ? `rgba(239, 68, 68, ${opacity})` 
+          : `rgba(34, 197, 94, ${opacity})`;
 
         ctx.beginPath();
         ctx.moveTo(startJoint.x * width, startJoint.y * height);
@@ -43,25 +46,29 @@ export function PoseOverlay({ joints, width, height, highlightedJoints = [] }: P
 
     // Draw joints
     joints.forEach(joint => {
+      // Skip low-confidence joints
+      if (joint.visibility < 0.3) return;
+      
       const x = joint.x * width;
       const y = joint.y * height;
       const isHighlighted = highlightedJoints.includes(joint.name);
       const radius = isHighlighted ? 8 : 6;
+      const opacity = Math.max(0.5, joint.visibility);
 
       // Outer glow
       ctx.beginPath();
       ctx.arc(x, y, radius + 4, 0, Math.PI * 2);
       ctx.fillStyle = isHighlighted 
-        ? 'rgba(239, 68, 68, 0.3)' 
-        : 'rgba(34, 197, 94, 0.3)';
+        ? `rgba(239, 68, 68, ${opacity * 0.3})` 
+        : `rgba(34, 197, 94, ${opacity * 0.3})`;
       ctx.fill();
 
       // Main circle
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fillStyle = isHighlighted 
-        ? 'rgba(239, 68, 68, 1)' 
-        : 'rgba(34, 197, 94, 1)';
+        ? `rgba(239, 68, 68, ${opacity})` 
+        : `rgba(34, 197, 94, ${opacity})`;
       ctx.fill();
 
       // Inner highlight

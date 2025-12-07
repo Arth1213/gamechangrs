@@ -91,26 +91,44 @@ export function TechniqueAI() {
     score: 0,
   });
 
+  const [poseError, setPoseError] = useState<string | null>(null);
+
   // Initialize MediaPipe Pose
   useEffect(() => {
-    const pose = new Pose({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
-    });
+    let pose: Pose | null = null;
+    
+    const initPose = async () => {
+      try {
+        pose = new Pose({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+        });
 
-    pose.setOptions({
-      modelComplexity: 1,
-      smoothLandmarks: true,
-      enableSegmentation: false,
-      smoothSegmentation: true,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    });
+        pose.setOptions({
+          modelComplexity: 1,
+          smoothLandmarks: true,
+          enableSegmentation: false,
+          smoothSegmentation: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
 
-    pose.onResults(onPoseResults);
-    pose.initialize().then(() => setPoseModel(pose));
+        pose.onResults(onPoseResults);
+        await pose.initialize();
+        setPoseModel(pose);
+        setPoseError(null);
+        console.log('MediaPipe Pose initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize MediaPipe Pose:', error);
+        setPoseError('Failed to load pose detection. Please refresh the page.');
+      }
+    };
+
+    initPose();
 
     return () => {
-      pose.close();
+      if (pose) {
+        pose.close();
+      }
     };
   }, []);
 
@@ -543,6 +561,19 @@ export function TechniqueAI() {
       case 'Low': return 'text-destructive';
     }
   };
+
+  if (poseError) {
+    return (
+      <div className="rounded-2xl bg-destructive/10 border border-destructive/20 p-8 text-center">
+        <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-foreground mb-2">Pose Detection Error</h3>
+        <p className="text-muted-foreground mb-4">{poseError}</p>
+        <Button onClick={() => window.location.reload()}>
+          Refresh Page
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

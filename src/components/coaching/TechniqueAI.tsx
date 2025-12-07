@@ -68,6 +68,8 @@ export function TechniqueAI() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [poseModel, setPoseModel] = useState<Pose | null>(null);
+  const [poseError, setPoseError] = useState<string | null>(null);
+  const [isLoadingPose, setIsLoadingPose] = useState(true);
   const [results, setResults] = useState<AnalysisResults>({
     angles: {},
     metrics: {},
@@ -90,16 +92,18 @@ export function TechniqueAI() {
     drills: [],
     score: 0,
   });
-
-  const [poseError, setPoseError] = useState<string | null>(null);
+  const poseRef = useRef<Pose | null>(null);
 
   // Initialize MediaPipe Pose
   useEffect(() => {
-    let pose: Pose | null = null;
+    let isMounted = true;
     
     const initPose = async () => {
       try {
-        pose = new Pose({
+        setIsLoadingPose(true);
+        setPoseError(null);
+        
+        const pose = new Pose({
           locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
         });
 
@@ -112,22 +116,29 @@ export function TechniqueAI() {
           minTrackingConfidence: 0.5,
         });
 
-        pose.onResults(onPoseResults);
         await pose.initialize();
-        setPoseModel(pose);
-        setPoseError(null);
-        console.log('MediaPipe Pose initialized successfully');
+        
+        if (isMounted) {
+          poseRef.current = pose;
+          setPoseModel(pose);
+          setIsLoadingPose(false);
+          console.log('MediaPipe Pose initialized successfully');
+        }
       } catch (error) {
         console.error('Failed to initialize MediaPipe Pose:', error);
-        setPoseError('Failed to load pose detection. Please refresh the page.');
+        if (isMounted) {
+          setPoseError('Failed to load pose detection. This may be due to browser compatibility. Please try Chrome or Edge.');
+          setIsLoadingPose(false);
+        }
       }
     };
 
     initPose();
 
     return () => {
-      if (pose) {
-        pose.close();
+      isMounted = false;
+      if (poseRef.current) {
+        poseRef.current.close();
       }
     };
   }, []);
@@ -486,6 +497,9 @@ export function TechniqueAI() {
   const analyzeVideo = async () => {
     if (!videoRef.current || !poseModel) return;
 
+    // Set up the results callback
+    poseModel.onResults(onPoseResults);
+
     setIsAnalyzing(true);
     setShowResults(false);
     headStabilityRef.current = null;
@@ -561,6 +575,16 @@ export function TechniqueAI() {
       case 'Low': return 'text-destructive';
     }
   };
+
+  if (isLoadingPose) {
+    return (
+      <div className="rounded-2xl bg-card border border-border p-12 text-center">
+        <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-foreground mb-2">Loading Pose Detection</h3>
+        <p className="text-muted-foreground">Initializing AI models, please wait...</p>
+      </div>
+    );
+  }
 
   if (poseError) {
     return (

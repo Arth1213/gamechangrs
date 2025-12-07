@@ -495,41 +495,75 @@ export function TechniqueAI() {
   };
 
   const analyzeVideo = async () => {
-    if (!videoRef.current || !poseModel) return;
+    if (!videoRef.current || !poseModel) {
+      console.error('Video or pose model not ready');
+      return;
+    }
 
-    // Set up the results callback
-    poseModel.onResults(onPoseResults);
+    try {
+      // Set up the results callback
+      poseModel.onResults(onPoseResults);
 
-    setIsAnalyzing(true);
-    setShowResults(false);
-    headStabilityRef.current = null;
-    analysisRef.current = {
-      angles: {},
-      metrics: {},
-      feedback: [],
-      strengths: [],
-      improvements: [],
-      drills: [],
-      score: 0,
-    };
+      setIsAnalyzing(true);
+      setShowResults(false);
+      headStabilityRef.current = null;
+      analysisRef.current = {
+        angles: {},
+        metrics: {},
+        feedback: [],
+        strengths: [],
+        improvements: [],
+        drills: [],
+        score: 0,
+      };
 
-    const video = videoRef.current;
-    video.currentTime = 0;
-    video.play();
+      const video = videoRef.current;
+      video.currentTime = 0;
+      
+      // Wait for video to be ready before playing
+      await new Promise<void>((resolve) => {
+        const onCanPlay = () => {
+          video.removeEventListener('canplay', onCanPlay);
+          resolve();
+        };
+        if (video.readyState >= 3) {
+          resolve();
+        } else {
+          video.addEventListener('canplay', onCanPlay);
+        }
+      });
 
-    const processFrame = async () => {
-      if (video.paused || video.ended) {
-        generateFeedback();
-        setIsAnalyzing(false);
-        setShowResults(true);
-        return;
-      }
+      await video.play();
 
-      await poseModel.send({ image: video });
-      requestAnimationFrame(processFrame);
-    };
+      let frameCount = 0;
+      const maxFrames = 500; // Safety limit
 
-    processFrame();
+      const processFrame = async () => {
+        try {
+          if (video.paused || video.ended || frameCount >= maxFrames) {
+            console.log(`Analysis complete. Processed ${frameCount} frames`);
+            generateFeedback();
+            setIsAnalyzing(false);
+            setShowResults(true);
+            return;
+          }
+
+          frameCount++;
+          await poseModel.send({ image: video });
+          requestAnimationFrame(processFrame);
+        } catch (frameError) {
+          console.error('Error processing frame:', frameError);
+          // Continue processing despite individual frame errors
+          requestAnimationFrame(processFrame);
+        }
+      };
+
+      processFrame();
+    } catch (error) {
+      console.error('Error starting video analysis:', error);
+      setIsAnalyzing(false);
+      setPoseError('Failed to analyze video. Please try again or use a different video.');
+    }
   };
 
   const clearVideo = () => {

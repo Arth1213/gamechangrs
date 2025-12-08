@@ -32,11 +32,7 @@ const App = () => (
                 <Coaching />
               </ProtectedRoute>
             } />
-            <Route path="/techniqueai" element={
-              <ProtectedRoute>
-                <TechniqueAI />
-              </ProtectedRoute>
-            } />
+            <Route path="/techniqueai" element={<TechniqueAI />} />
             <Route path="/analytics" element={
               <ProtectedRoute>
                 <Analytics />

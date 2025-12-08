@@ -5,10 +5,12 @@ import { Progress } from '@/components/ui/progress';
 import { 
   Upload, Play, Video, Ruler, Clock, Target, Trophy, Medal,
   MessageSquare, Dumbbell, CheckCircle, AlertTriangle, XCircle, 
-  Lightbulb, Download, BarChart3, X, Eye, EyeOff, RefreshCw, LogIn
+  Lightbulb, Download, BarChart3, X, Eye, EyeOff, RefreshCw, LogIn,
+  History, Trash2, TrendingUp, Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -16,8 +18,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { format } from 'date-fns';
 
 const DEMO_VIDEO_URL = '/demo-video.mp4';
+
+interface AnalysisHistoryItem {
+  id: string;
+  created_at: string;
+  mode: 'batting' | 'bowling';
+  overall_score: number;
+  scores: {
+    technique: number;
+    balance: number;
+    timing: number;
+    followThrough: number;
+  };
+  angles: {
+    elbow: number;
+    knee: number;
+    shoulder: number;
+    head: number;
+  };
+}
 
 // MediaPipe types - loaded via script tag from CDN
 declare global {
@@ -150,6 +172,10 @@ export function TechniqueAI() {
   const isDemo = searchParams.get('demo') === 'true';
   const demoLoadedRef = useRef(false);
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistoryItem[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [analysisData, setAnalysisData] = useState<AnalysisData>({
     currentMode: 'batting',
@@ -786,6 +812,84 @@ export function TechniqueAI() {
     }));
   };
 
+  // Fetch analysis history
+  const fetchAnalysisHistory = useCallback(async () => {
+    if (!user) return;
+    
+    setIsLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('analysis_results')
+        .select('id, created_at, mode, overall_score, scores, angles')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      setAnalysisHistory((data || []) as AnalysisHistoryItem[]);
+    } catch (error) {
+      console.error('Error fetching history:', error);
+      toast.error('Failed to load analysis history');
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [user]);
+
+  // Save analysis results
+  const saveAnalysis = async () => {
+    if (!user) {
+      setShowSignInPrompt(true);
+      return;
+    }
+
+    if (analysisData.scores.overall === 0) {
+      toast.error('Please complete an analysis first');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('analysis_results')
+        .insert([{
+          user_id: user.id,
+          mode: analysisData.currentMode,
+          video_duration: analysisData.videoDuration,
+          angles: JSON.parse(JSON.stringify(analysisData.angles)),
+          scores: JSON.parse(JSON.stringify(analysisData.scores)),
+          feedback: JSON.parse(JSON.stringify(analysisData.feedback)),
+          drills: JSON.parse(JSON.stringify(analysisData.drills)),
+          overall_score: analysisData.scores.overall
+        }]);
+
+      if (error) throw error;
+      toast.success('Analysis saved successfully!');
+      fetchAnalysisHistory();
+    } catch (error) {
+      console.error('Error saving analysis:', error);
+      toast.error('Failed to save analysis');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Delete analysis from history
+  const deleteAnalysis = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('analysis_results')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success('Analysis deleted');
+      setAnalysisHistory(prev => prev.filter(item => item.id !== id));
+    } catch (error) {
+      console.error('Error deleting analysis:', error);
+      toast.error('Failed to delete analysis');
+    }
+  };
+
   const downloadReport = () => {
     if (!user) {
       setShowSignInPrompt(true);
@@ -797,6 +901,15 @@ export function TechniqueAI() {
   const handleSignInRedirect = () => {
     setShowSignInPrompt(false);
     navigate('/auth');
+  };
+
+  const handleShowHistory = () => {
+    if (!user) {
+      setShowSignInPrompt(true);
+      return;
+    }
+    fetchAnalysisHistory();
+    setShowHistory(true);
   };
 
   const getAngleColor = (value: number, optimal: { min: number; max: number }) => {
@@ -872,13 +985,23 @@ export function TechniqueAI() {
           </Button>
         </div>
 
-        <Button
-          onClick={() => setShowUploadModal(true)}
-          className="bg-gradient-primary hover:opacity-90 gap-2"
-        >
-          <Upload className="w-4 h-4" />
-          Analyze Video
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={handleShowHistory}
+            className="gap-2"
+          >
+            <History className="w-4 h-4" />
+            History
+          </Button>
+          <Button
+            onClick={() => setShowUploadModal(true)}
+            className="bg-gradient-primary hover:opacity-90 gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            Analyze Video
+          </Button>
+        </div>
       </div>
 
       {/* Main Grid */}
@@ -1152,10 +1275,24 @@ export function TechniqueAI() {
                 ))}
               </div>
 
-              <Button onClick={downloadReport} className="w-full mt-6 bg-gradient-primary gap-2">
-                <Download className="w-4 h-4" />
-                Download Full Report (PDF)
-              </Button>
+              <div className="flex gap-3 mt-6">
+                <Button 
+                  onClick={saveAnalysis} 
+                  disabled={isSaving || analysisData.scores.overall === 0}
+                  className="flex-1 bg-gradient-primary gap-2"
+                >
+                  {isSaving ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  {isSaving ? 'Saving...' : 'Save Analysis'}
+                </Button>
+                <Button onClick={downloadReport} variant="outline" className="flex-1 gap-2">
+                  <Download className="w-4 h-4" />
+                  Download PDF
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -1329,6 +1466,101 @@ export function TechniqueAI() {
               Continue Without Saving
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Analysis History Modal */}
+      <Dialog open={showHistory} onOpenChange={setShowHistory}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-primary" />
+              Your Analysis History
+            </DialogTitle>
+            <DialogDescription>
+              Compare your progress over time and track your improvement.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : analysisHistory.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No analysis results saved yet.</p>
+              <p className="text-sm">Complete an analysis and save it to see your history here.</p>
+            </div>
+          ) : (
+            <div className="space-y-4 mt-4">
+              {analysisHistory.map((item, index) => {
+                const prevItem = analysisHistory[index + 1];
+                const improvement = prevItem ? item.overall_score - prevItem.overall_score : 0;
+                
+                return (
+                  <div 
+                    key={item.id}
+                    className="p-4 rounded-xl bg-gradient-card border border-border hover:border-primary/30 transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium capitalize">
+                            {item.mode}
+                          </span>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {format(new Date(item.created_at), 'MMM d, yyyy h:mm a')}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-4">
+                          <div className="text-2xl font-bold text-foreground">
+                            {item.overall_score}%
+                          </div>
+                          {improvement !== 0 && (
+                            <div className={`flex items-center gap-1 text-sm ${improvement > 0 ? 'text-primary' : 'text-red-400'}`}>
+                              <TrendingUp className={`w-4 h-4 ${improvement < 0 ? 'rotate-180' : ''}`} />
+                              {improvement > 0 ? '+' : ''}{improvement}%
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="grid grid-cols-4 gap-2 mt-3 text-xs">
+                          <div className="text-center p-2 rounded-lg bg-secondary/50">
+                            <div className="text-muted-foreground">Technique</div>
+                            <div className="font-semibold text-foreground">{item.scores?.technique || 0}%</div>
+                          </div>
+                          <div className="text-center p-2 rounded-lg bg-secondary/50">
+                            <div className="text-muted-foreground">Balance</div>
+                            <div className="font-semibold text-foreground">{item.scores?.balance || 0}%</div>
+                          </div>
+                          <div className="text-center p-2 rounded-lg bg-secondary/50">
+                            <div className="text-muted-foreground">Timing</div>
+                            <div className="font-semibold text-foreground">{item.scores?.timing || 0}%</div>
+                          </div>
+                          <div className="text-center p-2 rounded-lg bg-secondary/50">
+                            <div className="text-muted-foreground">Follow-through</div>
+                            <div className="font-semibold text-foreground">{item.scores?.followThrough || 0}%</div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteAnalysis(item.id)}
+                        className="text-muted-foreground hover:text-red-400"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

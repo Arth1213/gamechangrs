@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { 
@@ -7,6 +8,8 @@ import {
   Lightbulb, Download, BarChart3, X, Eye, EyeOff, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const DEMO_VIDEO_URL = '/demo-video.mp4';
 
 // MediaPipe types - loaded via script tag from CDN
 declare global {
@@ -133,6 +136,10 @@ function calculateAngle(a: { x: number; y: number }, b: { x: number; y: number }
 }
 
 export function TechniqueAI() {
+  const [searchParams] = useSearchParams();
+  const isDemo = searchParams.get('demo') === 'true';
+  const demoLoadedRef = useRef(false);
+
   const [analysisData, setAnalysisData] = useState<AnalysisData>({
     currentMode: 'batting',
     videoDuration: '0:00',
@@ -291,6 +298,15 @@ export function TechniqueAI() {
       }
     };
   }, [initializePose]);
+
+  // Auto-load demo video when coming from Watch Demo button
+  useEffect(() => {
+    if (isDemo && poseModel && !demoLoadedRef.current) {
+      demoLoadedRef.current = true;
+      setVideoUrl(DEMO_VIDEO_URL);
+      toast.success('Demo video loaded! Click "Analyze Technique" to start analysis.');
+    }
+  }, [isDemo, poseModel]);
 
   // Manual retry handler
   const handleRetryPose = () => {

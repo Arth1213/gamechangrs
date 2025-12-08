@@ -43,10 +43,12 @@ export const HeroSection = () => {
                 <ArrowRight className="w-5 h-5" />
               </Button>
             </Link>
-            <Button variant="glass" size="xl">
-              <Play className="w-5 h-5" />
-              Watch Demo
-            </Button>
+            <Link to="/techniqueai?demo=true">
+              <Button variant="glass" size="xl">
+                <Play className="w-5 h-5" />
+                Watch Demo
+              </Button>
+            </Link>
           </div>
 
           {/* Feature Cards */}

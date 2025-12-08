@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      analysis_results: {
+        Row: {
+          angles: Json
+          created_at: string
+          drills: Json | null
+          feedback: Json | null
+          id: string
+          mode: string
+          overall_score: number
+          scores: Json
+          user_id: string
+          video_duration: string | null
+        }
+        Insert: {
+          angles: Json
+          created_at?: string
+          drills?: Json | null
+          feedback?: Json | null
+          id?: string
+          mode: string
+          overall_score: number
+          scores: Json
+          user_id: string
+          video_duration?: string | null
+        }
+        Update: {
+          angles?: Json
+          created_at?: string
+          drills?: Json | null
+          feedback?: Json | null
+          id?: string
+          mode?: string
+          overall_score?: number
+          scores?: Json
+          user_id?: string
+          video_duration?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

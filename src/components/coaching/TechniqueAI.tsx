@@ -1,13 +1,21 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { 
   Upload, Play, Video, Ruler, Clock, Target, Trophy, Medal,
   MessageSquare, Dumbbell, CheckCircle, AlertTriangle, XCircle, 
-  Lightbulb, Download, BarChart3, X, Eye, EyeOff, RefreshCw
+  Lightbulb, Download, BarChart3, X, Eye, EyeOff, RefreshCw, LogIn
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const DEMO_VIDEO_URL = '/demo-video.mp4';
 
@@ -137,8 +145,11 @@ function calculateAngle(a: { x: number; y: number }, b: { x: number; y: number }
 
 export function TechniqueAI() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const isDemo = searchParams.get('demo') === 'true';
   const demoLoadedRef = useRef(false);
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
 
   const [analysisData, setAnalysisData] = useState<AnalysisData>({
     currentMode: 'batting',
@@ -776,7 +787,16 @@ export function TechniqueAI() {
   };
 
   const downloadReport = () => {
+    if (!user) {
+      setShowSignInPrompt(true);
+      return;
+    }
     toast.info('Generating PDF report with comprehensive analysis...');
+  };
+
+  const handleSignInRedirect = () => {
+    setShowSignInPrompt(false);
+    navigate('/auth');
   };
 
   const getAngleColor = (value: number, optimal: { min: number; max: number }) => {
@@ -1283,6 +1303,34 @@ export function TechniqueAI() {
           </div>
         </div>
       )}
+
+      {/* Sign In Prompt Modal */}
+      <Dialog open={showSignInPrompt} onOpenChange={setShowSignInPrompt}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LogIn className="w-5 h-5 text-primary" />
+              Sign In Required
+            </DialogTitle>
+            <DialogDescription>
+              Create a free account to save and download your analysis reports. Your results will be stored securely for future reference.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 mt-4">
+            <Button onClick={handleSignInRedirect} className="w-full gap-2">
+              <LogIn className="w-4 h-4" />
+              Sign In / Create Account
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowSignInPrompt(false)}
+              className="w-full"
+            >
+              Continue Without Saving
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { CreateListingDialog } from "@/components/marketplace/CreateListingDialog";
+import { ContactSellerDialog } from "@/components/marketplace/ContactSellerDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +33,6 @@ interface Listing {
   image_url: string | null;
   category: string;
   listing_type: string;
-  contact_email: string;
   user_id: string;
   is_active: boolean;
 }
@@ -44,15 +44,17 @@ const Marketplace = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [delistingId, setDelistingId] = useState<string | null>(null);
+  const [contactListing, setContactListing] = useState<Listing | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
   const fetchListings = async () => {
     setIsLoading(true);
     try {
+      // Only select fields that should be publicly visible - exclude contact_email
       const { data, error } = await supabase
         .from("marketplace_listings")
-        .select("*")
+        .select("id, title, description, price, original_price, condition, location, image_url, category, listing_type, user_id, is_active")
         .eq("is_active", true)
         .order("created_at", { ascending: false });
 
@@ -77,14 +79,7 @@ const Marketplace = () => {
   });
 
   const handleContact = (listing: Listing) => {
-    const subject = encodeURIComponent(`Interested in: ${listing.title}`);
-    const body = encodeURIComponent(`Hi,\n\nI'm interested in your listing "${listing.title}" on the Gear Marketplace.\n\nPlease let me know if it's still available.\n\nThanks!`);
-    window.open(`mailto:${listing.contact_email}?subject=${subject}&body=${body}`, "_blank");
-    
-    toast({
-      title: "Opening Email",
-      description: `Compose an email to the seller at ${listing.contact_email}`,
-    });
+    setContactListing(listing);
   };
 
   const handleDelist = async () => {
@@ -364,6 +359,16 @@ const Marketplace = () => {
         onOpenChange={setCreateDialogOpen}
         onSuccess={fetchListings}
       />
+
+      {/* Contact Seller Dialog */}
+      {contactListing && (
+        <ContactSellerDialog
+          open={!!contactListing}
+          onOpenChange={(open) => !open && setContactListing(null)}
+          listingId={contactListing.id}
+          listingTitle={contactListing.title}
+        />
+      )}
 
       {/* Delist Confirmation Dialog */}
       <AlertDialog open={!!delistingId} onOpenChange={() => setDelistingId(null)}>

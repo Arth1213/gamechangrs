@@ -176,7 +176,7 @@ const Marketplace = () => {
             <div className="flex items-center gap-3">
               <Tag className="w-8 h-8 text-primary" />
               <div>
-                <p className="font-display font-bold text-2xl text-foreground">₹50L+</p>
+                <p className="font-display font-bold text-2xl text-foreground">$500K+</p>
                 <p className="text-muted-foreground text-sm">Saved by Families</p>
               </div>
             </div>
@@ -300,11 +300,11 @@ const Marketplace = () => {
                         ) : (
                           <div className="flex items-baseline gap-2">
                             <span className="font-display text-2xl font-bold text-foreground">
-                              ₹{listing.price?.toLocaleString()}
+                              ${listing.price?.toLocaleString()}
                             </span>
                             {listing.original_price && listing.original_price > (listing.price || 0) && (
                               <span className="text-muted-foreground line-through text-sm">
-                                ₹{listing.original_price.toLocaleString()}
+                                ${listing.original_price.toLocaleString()}
                               </span>
                             )}
                           </div>

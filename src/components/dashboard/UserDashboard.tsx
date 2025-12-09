@@ -139,7 +139,7 @@ export const UserDashboard = () => {
                 {analyses.map((analysis) => (
                   <Link
                     key={analysis.id}
-                    to={`/analytics`}
+                    to={`/analysis/${analysis.id}`}
                     className="flex items-center justify-between p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors group"
                   >
                     <div className="flex items-center gap-4">

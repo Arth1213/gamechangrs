@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Coaching from "./pages/Coaching";
 import TechniqueAI from "./pages/TechniqueAI";
 import Analytics from "./pages/Analytics";
+import AnalysisDetail from "./pages/AnalysisDetail";
 import Marketplace from "./pages/Marketplace";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
@@ -36,6 +37,11 @@ const App = () => (
             <Route path="/analytics" element={
               <ProtectedRoute>
                 <Analytics />
+              </ProtectedRoute>
+            } />
+            <Route path="/analysis/:id" element={
+              <ProtectedRoute>
+                <AnalysisDetail />
               </ProtectedRoute>
             } />
             <Route path="/marketplace" element={

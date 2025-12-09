@@ -57,7 +57,6 @@ export type Database = {
         Row: {
           category: string
           condition: string
-          contact_email: string
           created_at: string
           description: string | null
           id: string
@@ -74,7 +73,6 @@ export type Database = {
         Insert: {
           category?: string
           condition?: string
-          contact_email?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -91,7 +89,6 @@ export type Database = {
         Update: {
           category?: string
           condition?: string
-          contact_email?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -142,6 +139,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      seller_contacts: {
+        Row: {
+          contact_email: string
+          created_at: string
+          id: string
+          listing_id: string
+        }
+        Insert: {
+          contact_email: string
+          created_at?: string
+          id?: string
+          listing_id: string
+        }
+        Update: {
+          contact_email?: string
+          created_at?: string
+          id?: string
+          listing_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_contacts_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: true
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

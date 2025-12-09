@@ -55,10 +55,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch the listing with seller's contact email (using service role to bypass RLS field restrictions)
+    // Fetch the listing details
     const { data: listing, error: listingError } = await supabase
       .from("marketplace_listings")
-      .select("id, title, contact_email, is_active")
+      .select("id, title, is_active")
       .eq("id", listingId)
       .maybeSingle();
 
@@ -86,13 +86,37 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Fetch the seller's contact email from the secure table
+    const { data: sellerContact, error: contactError } = await supabase
+      .from("seller_contacts")
+      .select("contact_email")
+      .eq("listing_id", listingId)
+      .maybeSingle();
+
+    if (contactError || !sellerContact) {
+      console.error("Error fetching seller contact:", contactError);
+      return new Response(
+        JSON.stringify({ error: "Could not retrieve seller contact information" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!listing.is_active) {
+      console.error("Listing is no longer active");
+      return new Response(
+        JSON.stringify({ error: "This listing is no longer available" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // In a production environment, you would integrate with an email service here
     // For now, we'll log the contact attempt and return success
     // The seller's email is never exposed to the frontend
     console.log("Contact request processed successfully");
-    console.log(`Seller email (not exposed to client): ${listing.contact_email}`);
+    console.log(`Seller email (not exposed to client): ${sellerContact.contact_email}`);
     console.log(`Buyer: ${buyerName} <${buyerEmail}>`);
     console.log(`Listing: ${listing.title}`);
+    console.log(`Message preview: ${message.substring(0, 100)}...`);
     console.log(`Message preview: ${message.substring(0, 100)}...`);
 
     // TODO: Integrate with email service (SendGrid, Resend, etc.) to send actual emails

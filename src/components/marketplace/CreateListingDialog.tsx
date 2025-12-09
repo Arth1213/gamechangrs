@@ -110,21 +110,35 @@ export function CreateListingDialog({ open, onOpenChange, onSuccess }: CreateLis
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from("marketplace_listings").insert({
-        user_id: user.id,
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        condition: formData.condition,
-        listing_type: formData.listingType,
-        price: formData.listingType === "sale" ? parseFloat(formData.price) : null,
-        contact_email: formData.contactEmail,
-        location: formData.location || null,
-        image_url: imageBase64 || null,
-        is_active: true,
-      });
+      // First, create the listing
+      const { data: listing, error: listingError } = await supabase
+        .from("marketplace_listings")
+        .insert({
+          user_id: user.id,
+          title: formData.title,
+          description: formData.description,
+          category: formData.category,
+          condition: formData.condition,
+          listing_type: formData.listingType,
+          price: formData.listingType === "sale" ? parseFloat(formData.price) : null,
+          location: formData.location || null,
+          image_url: imageBase64 || null,
+          is_active: true,
+        })
+        .select("id")
+        .single();
 
-      if (error) throw error;
+      if (listingError) throw listingError;
+
+      // Then, store the contact email in the secure seller_contacts table
+      const { error: contactError } = await supabase
+        .from("seller_contacts")
+        .insert({
+          listing_id: listing.id,
+          contact_email: formData.contactEmail,
+        });
+
+      if (contactError) throw contactError;
 
       toast({ title: "Listing created successfully!" });
       onSuccess();
@@ -330,7 +344,7 @@ export function CreateListingDialog({ open, onOpenChange, onSuccess }: CreateLis
               required
             />
             <p className="text-xs text-muted-foreground">
-              Buyers will contact you directly via this email
+              Your email is stored securely and never shown publicly. Buyers will contact you through our secure form.
             </p>
           </div>
 

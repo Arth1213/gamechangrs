@@ -554,10 +554,18 @@ export function TechniqueAI() {
     }
   };
 
+  const [videoAspectRatio, setVideoAspectRatio] = useState<number>(16/9);
+
   const handleVideoLoad = () => {
     if (videoRef.current && canvasRef.current) {
-      canvasRef.current.width = videoRef.current.videoWidth;
-      canvasRef.current.height = videoRef.current.videoHeight;
+      const videoWidth = videoRef.current.videoWidth;
+      const videoHeight = videoRef.current.videoHeight;
+      
+      canvasRef.current.width = videoWidth;
+      canvasRef.current.height = videoHeight;
+      
+      // Store aspect ratio for proper overlay alignment
+      setVideoAspectRatio(videoWidth / videoHeight);
       
       const duration = videoRef.current.duration;
       const minutes = Math.floor(duration / 60);
@@ -1058,20 +1066,35 @@ export function TechniqueAI() {
                   </Button>
                 </div>
               ) : (
-                <>
-                  <video
-                    ref={videoRef}
-                    src={videoUrl}
-                    className="w-full max-h-[400px] object-contain"
-                    controls
-                    onLoadedMetadata={handleVideoLoad}
-                  />
-                  <canvas
-                    ref={canvasRef}
-                    className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                    style={{ display: poseOverlayVisible ? 'block' : 'none' }}
-                  />
-                </>
+                <div 
+                  className="relative w-full flex items-center justify-center"
+                  style={{ maxHeight: '400px' }}
+                >
+                  <div 
+                    className="relative"
+                    style={{ 
+                      aspectRatio: videoAspectRatio,
+                      maxHeight: '400px',
+                      maxWidth: '100%'
+                    }}
+                  >
+                    <video
+                      ref={videoRef}
+                      src={videoUrl}
+                      className="w-full h-full object-contain"
+                      controls
+                      onLoadedMetadata={handleVideoLoad}
+                    />
+                    <canvas
+                      ref={canvasRef}
+                      className="absolute inset-0 w-full h-full pointer-events-none"
+                      style={{ 
+                        display: poseOverlayVisible ? 'block' : 'none',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  </div>
+                </div>
               )}
             </div>
 

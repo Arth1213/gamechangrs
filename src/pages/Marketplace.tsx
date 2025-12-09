@@ -34,7 +34,7 @@ interface Listing {
   image_url: string | null;
   category: string;
   listing_type: string;
-  user_id: string;
+  is_owner: boolean | null;
   is_active: boolean;
 }
 
@@ -53,10 +53,10 @@ const Marketplace = () => {
   const fetchListings = async () => {
     setIsLoading(true);
     try {
-      // Only select fields that should be publicly visible - exclude contact_email
+      // Use secure view that provides is_owner flag instead of exposing user_id
       const { data, error } = await supabase
-        .from("marketplace_listings")
-        .select("id, title, description, price, original_price, condition, location, image_url, category, listing_type, user_id, is_active")
+        .from("public_marketplace_listings")
+        .select("id, title, description, price, original_price, condition, location, image_url, category, listing_type, is_owner, is_active")
         .eq("is_active", true)
         .order("created_at", { ascending: false });
 
@@ -259,7 +259,7 @@ const Marketplace = () => {
                       {listing.listing_type === "donation" ? "Free - Donation" : "For Sale"}
                     </div>
                     {/* Owner badge */}
-                    {user?.id === listing.user_id && (
+                    {listing.is_owner && (
                       <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-background/90 text-xs font-medium text-foreground flex items-center gap-1">
                         <CheckCircle className="w-3 h-3" />
                         Your Listing
@@ -311,7 +311,7 @@ const Marketplace = () => {
                         )}
                       </div>
                       
-                      {user?.id === listing.user_id ? (
+                      {listing.is_owner ? (
                         <Button 
                           variant="outline" 
                           size="sm"

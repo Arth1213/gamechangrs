@@ -166,57 +166,7 @@ export type Database = {
       }
     }
     Views: {
-      marketplace_listings_public: {
-        Row: {
-          category: string | null
-          condition: string | null
-          created_at: string | null
-          description: string | null
-          id: string | null
-          image_url: string | null
-          is_active: boolean | null
-          listing_type: string | null
-          location: string | null
-          original_price: number | null
-          price: number | null
-          title: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          category?: string | null
-          condition?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string | null
-          image_url?: string | null
-          is_active?: boolean | null
-          listing_type?: string | null
-          location?: string | null
-          original_price?: number | null
-          price?: number | null
-          title?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          category?: string | null
-          condition?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string | null
-          image_url?: string | null
-          is_active?: boolean | null
-          listing_type?: string | null
-          location?: string | null
-          original_price?: number | null
-          price?: number | null
-          title?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       has_role: {

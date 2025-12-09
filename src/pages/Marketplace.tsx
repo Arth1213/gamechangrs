@@ -1,95 +1,112 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { 
   ShoppingBag, Heart, Search, Filter, ChevronDown, 
-  Plus, Tag, MapPin, Package
+  Plus, Tag, MapPin, Package, Mail, AlertTriangle, CheckCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { CreateListingDialog } from "@/components/marketplace/CreateListingDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+interface Listing {
+  id: string;
+  title: string;
+  description: string | null;
+  price: number | null;
+  original_price: number | null;
+  condition: string;
+  location: string | null;
+  image_url: string | null;
+  category: string;
+  listing_type: string;
+  contact_email: string;
+  user_id: string;
+  is_active: boolean;
+}
 
 const Marketplace = () => {
   const [category, setCategory] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [delistingId, setDelistingId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const products = [
-    {
-      id: 1,
-      name: "Cricket Bat - Junior Size",
-      price: 25,
-      originalPrice: 75,
-      condition: "Good",
-      location: "Austin, TX",
-      image: "https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=400&h=400&fit=crop",
-      category: "Cricket",
-      seller: "Coach Mike",
-    },
-    {
-      id: 2,
-      name: "Tennis Racket - Wilson",
-      price: 35,
-      originalPrice: 120,
-      condition: "Excellent",
-      location: "Houston, TX",
-      image: "https://images.unsplash.com/photo-1617083934555-ac7b4d0c8be9?w=400&h=400&fit=crop",
-      category: "Tennis",
-      seller: "Sarah T.",
-    },
-    {
-      id: 3,
-      name: "Cricket Pads - Youth",
-      price: 20,
-      originalPrice: 60,
-      condition: "Good",
-      location: "Dallas, TX",
-      image: "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=400&h=400&fit=crop",
-      category: "Cricket",
-      seller: "Thunder Hawks",
-    },
-    {
-      id: 4,
-      name: "Tennis Shoes - Size 6",
-      price: 30,
-      originalPrice: 85,
-      condition: "Like New",
-      location: "San Antonio, TX",
-      image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop",
-      category: "Tennis",
-      seller: "Tennis Academy",
-    },
-    {
-      id: 5,
-      name: "Cricket Helmet - Junior",
-      price: 15,
-      originalPrice: 45,
-      condition: "Good",
-      location: "Austin, TX",
-      image: "https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=400&h=400&fit=crop",
-      category: "Cricket",
-      seller: "Rising Stars",
-    },
-    {
-      id: 6,
-      name: "Tennis Ball Hopper",
-      price: 18,
-      originalPrice: 40,
-      condition: "Good",
-      location: "Plano, TX",
-      image: "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=400&h=400&fit=crop",
-      category: "Tennis",
-      seller: "Coach Lisa",
-    },
-  ];
+  const fetchListings = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("marketplace_listings")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
 
-  const filteredProducts = category === "All" 
-    ? products 
-    : products.filter(p => p.category === category);
+      if (error) throw error;
+      setListings(data || []);
+    } catch (error) {
+      console.error("Error fetching listings:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const handleContact = (seller: string) => {
+  useEffect(() => {
+    fetchListings();
+  }, []);
+
+  const filteredListings = listings.filter(listing => {
+    const matchesCategory = category === "All" || listing.category === category;
+    const matchesSearch = listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (listing.description?.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesCategory && matchesSearch;
+  });
+
+  const handleContact = (listing: Listing) => {
+    const subject = encodeURIComponent(`Interested in: ${listing.title}`);
+    const body = encodeURIComponent(`Hi,\n\nI'm interested in your listing "${listing.title}" on the Gear Marketplace.\n\nPlease let me know if it's still available.\n\nThanks!`);
+    window.open(`mailto:${listing.contact_email}?subject=${subject}&body=${body}`, "_blank");
+    
     toast({
-      title: "Contact Sent",
-      description: `Your interest has been sent to ${seller}. They'll reach out soon!`,
+      title: "Opening Email",
+      description: `Compose an email to the seller at ${listing.contact_email}`,
     });
+  };
+
+  const handleDelist = async () => {
+    if (!delistingId) return;
+
+    try {
+      const { error } = await supabase
+        .from("marketplace_listings")
+        .update({ is_active: false })
+        .eq("id", delistingId)
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+
+      toast({ title: "Listing removed", description: "Your item has been delisted from the marketplace." });
+      fetchListings();
+    } catch (error) {
+      console.error("Error delisting:", error);
+      toast({ title: "Failed to delist item", variant: "destructive" });
+    } finally {
+      setDelistingId(null);
+    }
   };
 
   return (
@@ -107,10 +124,25 @@ const Marketplace = () => {
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
               Gear <span className="text-gradient-accent">Marketplace</span>
             </h1>
-            <p className="text-lg text-muted-foreground mb-8">
+            <p className="text-lg text-muted-foreground mb-4">
               Quality sports equipment at affordable prices. Every purchase helps provide gear to underprivileged young athletes.
             </p>
-            <Button variant="accent" size="xl">
+            
+            {/* Important Notice */}
+            <div className="bg-secondary/50 border border-border rounded-xl p-4 mb-8 text-left">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-foreground mb-1">Connection Platform Only</p>
+                  <p className="text-muted-foreground">
+                    This marketplace connects buyers and sellers directly. We do not process payments or handle transactions. 
+                    Buyers and sellers communicate via email and arrange their own transactions safely.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Button variant="accent" size="xl" onClick={() => setCreateDialogOpen(true)}>
               <Plus className="w-5 h-5" />
               Donate or Sell Gear
             </Button>
@@ -126,7 +158,7 @@ const Marketplace = () => {
               <Package className="w-8 h-8 text-primary" />
               <div>
                 <p className="font-display font-bold text-2xl text-foreground">5,000+</p>
-                <p className="text-muted-foreground text-sm">Items Donated</p>
+                <p className="text-muted-foreground text-sm">Items Listed</p>
               </div>
             </div>
             <div className="hidden md:block w-px h-12 bg-border" />
@@ -141,7 +173,7 @@ const Marketplace = () => {
             <div className="flex items-center gap-3">
               <Tag className="w-8 h-8 text-primary" />
               <div>
-                <p className="font-display font-bold text-2xl text-foreground">$50K+</p>
+                <p className="font-display font-bold text-2xl text-foreground">₹50L+</p>
                 <p className="text-muted-foreground text-sm">Saved by Families</p>
               </div>
             </div>
@@ -157,6 +189,8 @@ const Marketplace = () => {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search for gear..."
                 className="w-full h-12 pl-12 pr-4 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
@@ -169,13 +203,12 @@ const Marketplace = () => {
               >
                 <option>All</option>
                 <option>Cricket</option>
+                <option>Football</option>
+                <option>Basketball</option>
                 <option>Tennis</option>
+                <option>Running</option>
+                <option>Other</option>
               </select>
-              <button className="h-12 px-6 rounded-xl bg-secondary border border-border text-foreground flex items-center gap-2 hover:bg-secondary/80 transition-colors">
-                <Filter className="w-5 h-5" />
-                More Filters
-                <ChevronDown className="w-4 h-4" />
-              </button>
             </div>
           </div>
         </div>
@@ -184,66 +217,121 @@ const Marketplace = () => {
       {/* Products Grid */}
       <section className="py-12">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProducts.map((product) => (
-              <div
-                key={product.id}
-                className="rounded-2xl bg-gradient-card border border-border overflow-hidden hover:border-primary/30 transition-all duration-300 group"
-              >
-                {/* Image */}
-                <div className="aspect-square bg-secondary/50 overflow-hidden">
-                  <img 
-                    src={product.image} 
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
+          {isLoading ? (
+            <div className="text-center py-12 text-muted-foreground">Loading listings...</div>
+          ) : filteredListings.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">No listings found.</p>
+              <Button variant="outline" onClick={() => setCreateDialogOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Be the first to list!
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredListings.map((listing) => (
+                <div
+                  key={listing.id}
+                  className="rounded-2xl bg-gradient-card border border-border overflow-hidden hover:border-primary/30 transition-all duration-300 group"
+                >
+                  {/* Image */}
+                  <div className="aspect-square bg-secondary/50 overflow-hidden relative">
+                    {listing.image_url ? (
+                      <img 
+                        src={listing.image_url} 
+                        alt={listing.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package className="w-16 h-16 text-muted-foreground/30" />
+                      </div>
+                    )}
+                    {/* Listing type badge */}
+                    <div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-medium ${
+                      listing.listing_type === "donation" 
+                        ? "bg-green-500/90 text-white" 
+                        : "bg-primary/90 text-primary-foreground"
+                    }`}>
+                      {listing.listing_type === "donation" ? "Free - Donation" : "For Sale"}
+                    </div>
+                    {/* Owner badge */}
+                    {user?.id === listing.user_id && (
+                      <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-background/90 text-xs font-medium text-foreground flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        Your Listing
+                      </div>
+                    )}
+                  </div>
 
-                {/* Content */}
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
+                  {/* Content */}
+                  <div className="p-6">
+                    <div className="mb-3">
                       <h3 className="font-display font-semibold text-foreground mb-1">
-                        {product.name}
+                        {listing.title}
                       </h3>
-                      <p className="text-sm text-muted-foreground">by {product.seller}</p>
+                      {listing.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">{listing.description}</p>
+                      )}
                     </div>
-                    <button className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-                      <Heart className="w-5 h-5" />
-                    </button>
-                  </div>
 
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
-                      {product.condition}
-                    </span>
-                    <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                      <MapPin className="w-3 h-3" />
-                      {product.location}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-display text-2xl font-bold text-foreground">
-                        ${product.price}
+                    <div className="flex items-center gap-3 mb-4 flex-wrap">
+                      <span className="px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
+                        {listing.condition}
                       </span>
-                      <span className="text-muted-foreground line-through text-sm">
-                        ${product.originalPrice}
+                      <span className="px-2 py-1 rounded-lg bg-secondary text-muted-foreground text-xs">
+                        {listing.category}
                       </span>
+                      {listing.location && (
+                        <span className="flex items-center gap-1 text-muted-foreground text-xs">
+                          <MapPin className="w-3 h-3" />
+                          {listing.location}
+                        </span>
+                      )}
                     </div>
-                    <Button 
-                      variant="hero" 
-                      size="sm"
-                      onClick={() => handleContact(product.seller)}
-                    >
-                      Contact
-                    </Button>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        {listing.listing_type === "donation" ? (
+                          <span className="font-display text-xl font-bold text-green-500">FREE</span>
+                        ) : (
+                          <div className="flex items-baseline gap-2">
+                            <span className="font-display text-2xl font-bold text-foreground">
+                              ₹{listing.price?.toLocaleString()}
+                            </span>
+                            {listing.original_price && listing.original_price > (listing.price || 0) && (
+                              <span className="text-muted-foreground line-through text-sm">
+                                ₹{listing.original_price.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {user?.id === listing.user_id ? (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setDelistingId(listing.id)}
+                        >
+                          Mark as Sold
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="hero" 
+                          size="sm"
+                          onClick={() => handleContact(listing)}
+                        >
+                          <Mail className="w-4 h-4 mr-1" />
+                          Contact
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -254,24 +342,46 @@ const Marketplace = () => {
             <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
               Have Gear to Share?
             </h2>
-            <p className="text-muted-foreground mb-8">
+            <p className="text-muted-foreground mb-4">
               Your old equipment could be the start of someone's sports journey. Donate or sell at affordable prices to help underprivileged young athletes pursue their dreams.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="hero" size="xl">
-                <Heart className="w-5 h-5" />
-                Donate Gear
-              </Button>
-              <Button variant="outline" size="xl">
-                <ShoppingBag className="w-5 h-5" />
-                List for Sale
-              </Button>
-            </div>
+            <p className="text-sm text-muted-foreground mb-8">
+              Simply upload a photo and our AI will auto-fill the details for you!
+            </p>
+            <Button variant="hero" size="xl" onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="w-5 h-5" />
+              List Your Gear
+            </Button>
           </div>
         </div>
       </section>
 
       <Footer />
+
+      {/* Create Listing Dialog */}
+      <CreateListingDialog 
+        open={createDialogOpen} 
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={fetchListings}
+      />
+
+      {/* Delist Confirmation Dialog */}
+      <AlertDialog open={!!delistingId} onOpenChange={() => setDelistingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark as Sold / Remove Listing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove your listing from the marketplace. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelist}>
+              Remove Listing
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

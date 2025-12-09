@@ -2,3 +2,6 @@ project_id = "snlutvotzeijzqdwlank"
 
 [functions.analyze-cricket]
 verify_jwt = true
+
+[functions.analyze-gear-image]
+verify_jwt = false

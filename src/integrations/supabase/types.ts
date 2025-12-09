@@ -167,6 +167,13 @@ export type Database = {
             referencedRelation: "marketplace_listings"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "seller_contacts_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: true
+            referencedRelation: "public_marketplace_listings"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_roles: {
@@ -192,7 +199,57 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_marketplace_listings: {
+        Row: {
+          category: string | null
+          condition: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          image_url: string | null
+          is_active: boolean | null
+          is_owner: boolean | null
+          listing_type: string | null
+          location: string | null
+          original_price: number | null
+          price: number | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          condition?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_active?: boolean | null
+          is_owner?: never
+          listing_type?: string | null
+          location?: string | null
+          original_price?: number | null
+          price?: number | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          condition?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_active?: boolean | null
+          is_owner?: never
+          listing_type?: string | null
+          location?: string | null
+          original_price?: number | null
+          price?: number | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {

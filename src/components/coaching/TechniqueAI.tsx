@@ -570,7 +570,8 @@ export function TechniqueAI() {
   };
 
   const analyzeVideo = async () => {
-    if (!requireAuth("analyze videos")) return;
+    // Only require auth for user-uploaded videos, not demo videos
+    if (!isDemo && !requireAuth("analyze videos")) return;
     
     if (!videoRef.current || !poseModel) {
       toast.error('Video or pose model not ready');
@@ -999,7 +1000,10 @@ export function TechniqueAI() {
             History
           </Button>
           <Button
-            onClick={() => setShowUploadModal(true)}
+            onClick={() => {
+              if (!requireAuth("upload videos for analysis")) return;
+              setShowUploadModal(true);
+            }}
             className="bg-gradient-primary hover:opacity-90 gap-2"
           >
             <Upload className="w-4 h-4" />
@@ -1045,7 +1049,10 @@ export function TechniqueAI() {
                   </div>
                   <p className="text-xl font-semibold mb-2">Upload Your Cricket Video</p>
                   <p className="text-muted-foreground mb-6">Supports .mp4, .mov, .avi up to 100MB</p>
-                  <Button onClick={() => setShowUploadModal(true)} className="bg-gradient-primary gap-2">
+                  <Button onClick={() => {
+                    if (!requireAuth("upload videos for analysis")) return;
+                    setShowUploadModal(true);
+                  }} className="bg-gradient-primary gap-2">
                     <Upload className="w-4 h-4" />
                     Choose Video File
                   </Button>
@@ -1055,7 +1062,7 @@ export function TechniqueAI() {
                   <video
                     ref={videoRef}
                     src={videoUrl}
-                    className="w-full"
+                    className="w-full max-h-[400px] object-contain"
                     controls
                     onLoadedMetadata={handleVideoLoad}
                   />

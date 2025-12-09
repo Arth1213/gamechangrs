@@ -556,16 +556,36 @@ export function TechniqueAI() {
 
   const [videoAspectRatio, setVideoAspectRatio] = useState<number>(16/9);
 
+  const syncCanvasSize = () => {
+    if (videoRef.current && canvasRef.current) {
+      // Get the video's actual rendered dimensions
+      const video = videoRef.current;
+      const rect = video.getBoundingClientRect();
+      
+      // Set canvas to match the video's rendered size
+      canvasRef.current.width = video.videoWidth;
+      canvasRef.current.height = video.videoHeight;
+      
+      // Apply the same visual size as the video
+      canvasRef.current.style.width = `${rect.width}px`;
+      canvasRef.current.style.height = `${rect.height}px`;
+    }
+  };
+
   const handleVideoLoad = () => {
     if (videoRef.current && canvasRef.current) {
       const videoWidth = videoRef.current.videoWidth;
       const videoHeight = videoRef.current.videoHeight;
       
+      // Set canvas internal resolution to match video
       canvasRef.current.width = videoWidth;
       canvasRef.current.height = videoHeight;
       
-      // Store aspect ratio for proper overlay alignment
+      // Store aspect ratio
       setVideoAspectRatio(videoWidth / videoHeight);
+      
+      // Sync canvas visual size after a brief delay to ensure video is laid out
+      setTimeout(syncCanvasSize, 100);
       
       const duration = videoRef.current.duration;
       const minutes = Math.floor(duration / 60);
@@ -576,6 +596,18 @@ export function TechniqueAI() {
       }));
     }
   };
+
+  // Sync canvas size when window resizes
+  useEffect(() => {
+    const handleResize = () => {
+      if (videoUrl) {
+        syncCanvasSize();
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [videoUrl]);
 
   const analyzeVideo = async () => {
     // Only require auth for user-uploaded videos, not demo videos
@@ -1066,34 +1098,27 @@ export function TechniqueAI() {
                   </Button>
                 </div>
               ) : (
-                <div 
-                  className="relative w-full flex items-center justify-center"
-                  style={{ maxHeight: '400px' }}
-                >
-                  <div 
-                    className="relative"
+                <div className="relative w-full flex items-center justify-center bg-black/20 rounded-lg overflow-hidden" style={{ maxHeight: '400px' }}>
+                  <video
+                    ref={videoRef}
+                    src={videoUrl}
+                    className="max-w-full max-h-[400px]"
+                    controls
+                    onLoadedMetadata={handleVideoLoad}
+                    style={{ display: 'block' }}
+                  />
+                  <canvas
+                    ref={canvasRef}
+                    className="absolute pointer-events-none"
                     style={{ 
-                      aspectRatio: videoAspectRatio,
-                      maxHeight: '400px',
-                      maxWidth: '100%'
+                      display: poseOverlayVisible ? 'block' : 'none',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      maxWidth: '100%',
+                      maxHeight: '400px'
                     }}
-                  >
-                    <video
-                      ref={videoRef}
-                      src={videoUrl}
-                      className="w-full h-full object-contain"
-                      controls
-                      onLoadedMetadata={handleVideoLoad}
-                    />
-                    <canvas
-                      ref={canvasRef}
-                      className="absolute inset-0 w-full h-full pointer-events-none"
-                      style={{ 
-                        display: poseOverlayVisible ? 'block' : 'none',
-                        objectFit: 'contain'
-                      }}
-                    />
-                  </div>
+                  />
                 </div>
               )}
             </div>

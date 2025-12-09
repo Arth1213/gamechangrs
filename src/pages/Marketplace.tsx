@@ -9,6 +9,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { CreateListingDialog } from "@/components/marketplace/CreateListingDialog";
 import { ContactSellerDialog } from "@/components/marketplace/ContactSellerDialog";
 import {
@@ -47,6 +48,7 @@ const Marketplace = () => {
   const [contactListing, setContactListing] = useState<Listing | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { requireAuth } = useRequireAuth();
 
   const fetchListings = async () => {
     setIsLoading(true);
@@ -79,7 +81,13 @@ const Marketplace = () => {
   });
 
   const handleContact = (listing: Listing) => {
+    if (!requireAuth("contact sellers")) return;
     setContactListing(listing);
+  };
+
+  const handleCreateListing = () => {
+    if (!requireAuth("create a listing")) return;
+    setCreateDialogOpen(true);
   };
 
   const handleDelist = async () => {
@@ -137,7 +145,7 @@ const Marketplace = () => {
               </div>
             </div>
 
-            <Button variant="accent" size="xl" onClick={() => setCreateDialogOpen(true)}>
+            <Button variant="accent" size="xl" onClick={handleCreateListing}>
               <Plus className="w-5 h-5" />
               Donate or Sell Gear
             </Button>
@@ -217,7 +225,7 @@ const Marketplace = () => {
           ) : filteredListings.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">No listings found.</p>
-              <Button variant="outline" onClick={() => setCreateDialogOpen(true)}>
+              <Button variant="outline" onClick={handleCreateListing}>
                 <Plus className="w-4 h-4 mr-2" />
                 Be the first to list!
               </Button>
@@ -343,7 +351,7 @@ const Marketplace = () => {
             <p className="text-sm text-muted-foreground mb-8">
               Simply upload a photo and our AI will auto-fill the details for you!
             </p>
-            <Button variant="hero" size="xl" onClick={() => setCreateDialogOpen(true)}>
+            <Button variant="hero" size="xl" onClick={handleCreateListing}>
               <Plus className="w-5 h-5" />
               List Your Gear
             </Button>

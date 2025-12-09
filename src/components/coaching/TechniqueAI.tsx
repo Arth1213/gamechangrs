@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -169,6 +170,7 @@ export function TechniqueAI() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { requireAuth } = useRequireAuth();
   const isDemo = searchParams.get('demo') === 'true';
   const demoLoadedRef = useRef(false);
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
@@ -568,6 +570,8 @@ export function TechniqueAI() {
   };
 
   const analyzeVideo = async () => {
+    if (!requireAuth("analyze videos")) return;
+    
     if (!videoRef.current || !poseModel) {
       toast.error('Video or pose model not ready');
       return;

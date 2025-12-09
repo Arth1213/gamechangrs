@@ -28,27 +28,15 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/coaching" element={
-              <ProtectedRoute>
-                <Coaching />
-              </ProtectedRoute>
-            } />
+            <Route path="/coaching" element={<Coaching />} />
             <Route path="/techniqueai" element={<TechniqueAI />} />
-            <Route path="/analytics" element={
-              <ProtectedRoute>
-                <Analytics />
-              </ProtectedRoute>
-            } />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/analysis/:id" element={
               <ProtectedRoute>
                 <AnalysisDetail />
               </ProtectedRoute>
             } />
-            <Route path="/marketplace" element={
-              <ProtectedRoute>
-                <Marketplace />
-              </ProtectedRoute>
-            } />
+            <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="*" element={<NotFound />} />

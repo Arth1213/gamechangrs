@@ -6,10 +6,12 @@ import {
   BarChart3, TrendingUp, Users, Target, Search, Filter,
   ChevronDown, ArrowUpRight, ArrowDownRight
 } from "lucide-react";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 const Analytics = () => {
   const [selectedTeam, setSelectedTeam] = useState("All Teams");
   const [selectedPlayer, setSelectedPlayer] = useState("");
+  const { requireAuth } = useRequireAuth();
 
   const mockTeams = [
     { name: "Thunder Hawks", wins: 12, losses: 3, avg: 245 },
@@ -156,7 +158,7 @@ const Analytics = () => {
                         <td className="px-6 py-4 text-center text-destructive font-semibold">{team.losses}</td>
                         <td className="px-6 py-4 text-center text-muted-foreground">{team.avg}</td>
                         <td className="px-6 py-4 text-right">
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => requireAuth("view team details")}>
                             View Details
                           </Button>
                         </td>
@@ -245,7 +247,7 @@ const Analytics = () => {
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
             Connect your CricClubs account for real-time team and player analytics customized for your coaching needs.
           </p>
-          <Button variant="hero" size="xl">
+          <Button variant="hero" size="xl" onClick={() => requireAuth("connect your CricClubs account")}>
             Connect CricClubs Account
           </Button>
         </div>

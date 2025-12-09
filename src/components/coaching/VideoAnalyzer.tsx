@@ -7,6 +7,7 @@ import { usePoseDetection, PoseFrame } from '@/hooks/usePoseDetection';
 import { PoseOverlay } from './PoseOverlay';
 import { AnalysisResults } from './AnalysisResults';
 import { supabase } from '@/integrations/supabase/client';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 interface VideoAnalyzerProps {
   mode: 'batting' | 'bowling';
@@ -50,6 +51,7 @@ export function VideoAnalyzer({ mode }: VideoAnalyzerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { requireAuth } = useRequireAuth();
   const { isProcessing, progress, poseFrames, currentFrame, processVideo, reset } = usePoseDetection();
 
   useEffect(() => {
@@ -91,6 +93,7 @@ export function VideoAnalyzer({ mode }: VideoAnalyzerProps) {
 
   const handleAnalyze = async () => {
     if (!selectedFile) return;
+    if (!requireAuth("analyze videos")) return;
 
     setIsAnalyzing(true);
     setAnalysisStage('pose');

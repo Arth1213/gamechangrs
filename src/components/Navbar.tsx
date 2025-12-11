@@ -18,9 +18,6 @@ const navLinks = [
   { name: "Analytics", path: "/analytics" },
   { name: "Gear Marketplace", path: "/marketplace" },
   { name: "Coaching Marketplace", path: "/coaching-marketplace" },
-  { name: "About", path: "/about" },
-  { name: "FAQ", path: "/faq" },
-  { name: "Contact", path: "/contact" },
 ];
 
 export const Navbar = () => {

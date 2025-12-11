@@ -398,6 +398,7 @@ const PlayerDashboard = () => {
                 sessions={sessions}
                 userType="player"
                 coaches={matchedCoaches}
+                timezone={player?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
                 onCancelSession={cancelSession}
               />
             </TabsContent>

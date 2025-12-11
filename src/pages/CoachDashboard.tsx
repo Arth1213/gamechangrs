@@ -443,6 +443,7 @@ const CoachDashboard = () => {
                 sessions={sessions}
                 userType="coach"
                 players={matchedStudents}
+                timezone={coach?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
                 onConfirmSession={confirmSession}
                 onCancelSession={cancelSession}
               />

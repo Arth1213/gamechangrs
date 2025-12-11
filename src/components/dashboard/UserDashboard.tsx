@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { Coach, Player, Session } from "@/types/coaching";
+import { SessionCalendar } from "@/components/coaching/SessionCalendar";
 
 interface AnalysisResult {
   id: string;
@@ -37,6 +38,7 @@ export const UserDashboard = () => {
   const [coachProfile, setCoachProfile] = useState<Coach | null>(null);
   const [playerProfile, setPlayerProfile] = useState<Player | null>(null);
   const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
+  const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [matchedCoaches, setMatchedCoaches] = useState<Coach[]>([]);
   const [matchedPlayers, setMatchedPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,17 +80,35 @@ export const UserDashboard = () => {
 
       // Fetch sessions and connections if user has a profile
       if (coachRes.data) {
-        // Fetch upcoming sessions for coach
-        const { data: sessionsData } = await supabase
+        // Fetch all sessions for coach (for calendar)
+        const { data: allSessionsData } = await supabase
           .from("sessions")
           .select("*")
           .eq("coach_id", coachRes.data.id)
-          .gte("session_date_time_utc", new Date().toISOString())
-          .neq("status", "canceled")
-          .order("session_date_time_utc", { ascending: true })
-          .limit(3);
+          .order("session_date_time_utc", { ascending: true });
         
-        if (sessionsData) setUpcomingSessions(sessionsData as Session[]);
+        if (allSessionsData) {
+          setAllSessions(prev => [...prev, ...(allSessionsData as Session[])]);
+          
+          // Filter upcoming sessions
+          const upcoming = allSessionsData.filter(s => 
+            new Date(s.session_date_time_utc) > new Date() && s.status !== "canceled"
+          ).slice(0, 3);
+          setUpcomingSessions(upcoming as Session[]);
+          
+          // Fetch all players from sessions
+          const playerIds = [...new Set(allSessionsData.map(s => s.student_id))];
+          if (playerIds.length > 0) {
+            const { data: sessionPlayers } = await supabase
+              .from("players")
+              .select("*")
+              .in("id", playerIds);
+            if (sessionPlayers) setMatchedPlayers(prev => {
+              const existingIds = prev.map(p => p.id);
+              return [...prev, ...sessionPlayers.filter(p => !existingIds.includes(p.id)) as Player[]];
+            });
+          }
+        }
 
         // Fetch connected students
         const { data: connections } = await supabase
@@ -103,25 +123,45 @@ export const UserDashboard = () => {
             .from("players")
             .select("*")
             .in("id", studentIds)
-            .eq("is_active", true)
-            .limit(3);
+            .eq("is_active", true);
           
-          if (students) setMatchedPlayers(students as Player[]);
+          if (students) setMatchedPlayers(prev => {
+            const existingIds = prev.map(p => p.id);
+            return [...prev, ...students.filter(p => !existingIds.includes(p.id)) as Player[]];
+          });
         }
       }
 
       if (playerRes.data) {
-        // Fetch upcoming sessions for player
-        const { data: sessionsData } = await supabase
+        // Fetch all sessions for player (for calendar)
+        const { data: allSessionsData } = await supabase
           .from("sessions")
           .select("*")
           .eq("student_id", playerRes.data.id)
-          .gte("session_date_time_utc", new Date().toISOString())
-          .neq("status", "canceled")
-          .order("session_date_time_utc", { ascending: true })
-          .limit(3);
+          .order("session_date_time_utc", { ascending: true });
         
-        if (sessionsData) setUpcomingSessions(prev => [...prev, ...(sessionsData as Session[])]);
+        if (allSessionsData) {
+          setAllSessions(prev => [...prev, ...(allSessionsData as Session[])]);
+          
+          // Filter upcoming sessions
+          const upcoming = allSessionsData.filter(s => 
+            new Date(s.session_date_time_utc) > new Date() && s.status !== "canceled"
+          ).slice(0, 3);
+          setUpcomingSessions(prev => [...prev, ...(upcoming as Session[])]);
+          
+          // Fetch all coaches from sessions
+          const coachIds = [...new Set(allSessionsData.map(s => s.coach_id))];
+          if (coachIds.length > 0) {
+            const { data: sessionCoaches } = await supabase
+              .from("coaches")
+              .select("*")
+              .in("id", coachIds);
+            if (sessionCoaches) setMatchedCoaches(prev => {
+              const existingIds = prev.map(c => c.id);
+              return [...prev, ...sessionCoaches.filter(c => !existingIds.includes(c.id)) as Coach[]];
+            });
+          }
+        }
 
         // Fetch connected coaches
         const { data: connections } = await supabase
@@ -136,10 +176,12 @@ export const UserDashboard = () => {
             .from("coaches")
             .select("*")
             .in("id", coachIds)
-            .eq("is_active", true)
-            .limit(3);
+            .eq("is_active", true);
           
-          if (coaches) setMatchedCoaches(coaches as Coach[]);
+          if (coaches) setMatchedCoaches(prev => {
+            const existingIds = prev.map(c => c.id);
+            return [...prev, ...coaches.filter(c => !existingIds.includes(c.id)) as Coach[]];
+          });
         }
       }
 
@@ -394,132 +436,105 @@ export const UserDashboard = () => {
           )}
         </div>
 
-        {/* Upcoming Sessions & Matches Row */}
-        {(upcomingSessions.length > 0 || matchedCoaches.length > 0 || matchedPlayers.length > 0) && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
-            {/* Upcoming Sessions */}
-            {upcomingSessions.length > 0 && (
-              <div className="rounded-2xl bg-gradient-card border border-border p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-primary" />
-                    </div>
-                    <h3 className="font-display font-bold text-foreground">Upcoming Sessions</h3>
-                  </div>
-                  <Link 
-                    to={coachProfile ? "/coaching-marketplace/coach-dashboard" : "/coaching-marketplace/player-dashboard"} 
-                    className="text-sm text-primary hover:underline flex items-center gap-1"
-                  >
-                    View All <ArrowRight className="w-3 h-3" />
-                  </Link>
-                </div>
-                <div className="space-y-3">
-                  {upcomingSessions.map((session) => (
-                    <div key={session.id} className="flex items-center justify-between p-3 rounded-xl bg-secondary/30">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Clock className="w-4 h-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground text-sm">
-                            {format(new Date(session.session_date_time_utc), "MMM d, yyyy")}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(session.session_date_time_utc), "h:mm a")} • {session.duration_minutes} min
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant={session.status === 'confirmed' ? 'default' : 'secondary'} className="text-xs">
-                        {session.status}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+        {/* Calendar Section for Coach or Player */}
+        {(coachProfile || playerProfile) && allSessions.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+            {/* Session Calendar */}
+            <div className="lg:col-span-2">
+              <SessionCalendar
+                sessions={allSessions}
+                userType={coachProfile ? "coach" : "player"}
+                coaches={matchedCoaches}
+                players={matchedPlayers}
+                timezone={coachProfile?.timezone || playerProfile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
+                compact
+              />
+            </div>
 
-            {/* Matched Coaches (for players) */}
-            {matchedCoaches.length > 0 && (
-              <div className="rounded-2xl bg-gradient-card border border-border p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                      <GraduationCap className="w-5 h-5 text-accent" />
+            {/* Connections Sidebar */}
+            <div className="space-y-6">
+              {/* Matched Coaches (for players) */}
+              {matchedCoaches.length > 0 && (
+                <div className="rounded-2xl bg-gradient-card border border-border p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                        <GraduationCap className="w-5 h-5 text-accent" />
+                      </div>
+                      <h3 className="font-display font-bold text-foreground">Your Coaches</h3>
                     </div>
-                    <h3 className="font-display font-bold text-foreground">Your Coaches</h3>
-                  </div>
-                  <Link to="/coaching-marketplace/player-dashboard" className="text-sm text-accent hover:underline flex items-center gap-1">
-                    View All <ArrowRight className="w-3 h-3" />
-                  </Link>
-                </div>
-                <div className="space-y-3">
-                  {matchedCoaches.map((coach) => (
-                    <Link 
-                      key={coach.id} 
-                      to={`/coaching-marketplace/coach/${coach.id}`}
-                      className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">
-                          {coach.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground text-sm">{coach.name}</p>
-                          <p className="text-xs text-muted-foreground">{coach.coaching_level} • {coach.years_experience} yrs</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 text-sm">
-                        <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                        {coach.average_rating?.toFixed(1) || '0.0'}
-                      </div>
+                    <Link to="/coaching-marketplace/player-dashboard" className="text-sm text-accent hover:underline flex items-center gap-1">
+                      View All <ArrowRight className="w-3 h-3" />
                     </Link>
-                  ))}
+                  </div>
+                  <div className="space-y-3">
+                    {matchedCoaches.slice(0, 3).map((coach) => (
+                      <Link 
+                        key={coach.id} 
+                        to={`/coaching-marketplace/coach/${coach.id}`}
+                        className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">
+                            {coach.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground text-sm">{coach.name}</p>
+                            <p className="text-xs text-muted-foreground">{coach.coaching_level} • {coach.years_experience} yrs</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-sm">
+                          <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                          {coach.average_rating?.toFixed(1) || '0.0'}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Matched Players (for coaches) */}
-            {matchedPlayers.length > 0 && (
-              <div className="rounded-2xl bg-gradient-card border border-border p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-accent" />
-                    </div>
-                    <h3 className="font-display font-bold text-foreground">Your Students</h3>
-                  </div>
-                  <Link to="/coaching-marketplace/coach-dashboard" className="text-sm text-accent hover:underline flex items-center gap-1">
-                    View All <ArrowRight className="w-3 h-3" />
-                  </Link>
-                </div>
-                <div className="space-y-3">
-                  {matchedPlayers.map((player) => (
-                    <Link 
-                      key={player.id} 
-                      to={`/coaching-marketplace/player/${player.id}`}
-                      className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                          {player.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground text-sm">{player.name}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{player.experience_level} • {player.playing_role || 'Player'}</p>
-                        </div>
+              {/* Matched Players (for coaches) */}
+              {matchedPlayers.length > 0 && (
+                <div className="rounded-2xl bg-gradient-card border border-border p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                        <Users className="w-5 h-5 text-accent" />
                       </div>
-                      {player.location && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {player.location}
-                        </span>
-                      )}
+                      <h3 className="font-display font-bold text-foreground">Your Students</h3>
+                    </div>
+                    <Link to="/coaching-marketplace/coach-dashboard" className="text-sm text-accent hover:underline flex items-center gap-1">
+                      View All <ArrowRight className="w-3 h-3" />
                     </Link>
-                  ))}
+                  </div>
+                  <div className="space-y-3">
+                    {matchedPlayers.slice(0, 3).map((player) => (
+                      <Link 
+                        key={player.id} 
+                        to={`/coaching-marketplace/player/${player.id}`}
+                        className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            {player.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground text-sm">{player.name}</p>
+                            <p className="text-xs text-muted-foreground capitalize">{player.experience_level} • {player.playing_role || 'Player'}</p>
+                          </div>
+                        </div>
+                        {player.location && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {player.location}
+                          </span>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 

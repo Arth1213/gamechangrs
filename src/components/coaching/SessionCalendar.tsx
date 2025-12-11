@@ -3,18 +3,21 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, User, CheckCircle, XCircle, Calendar as CalendarIcon } from "lucide-react";
+import { Clock, User, CheckCircle, XCircle, Calendar as CalendarIcon, Globe } from "lucide-react";
 import { Session, Coach, Player } from "@/types/coaching";
 import { formatDate } from "@/lib/helpers";
 import { cn } from "@/lib/utils";
+import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 
 interface SessionCalendarProps {
   sessions: Session[];
   userType: "coach" | "player";
   coaches?: Coach[];
   players?: Player[];
+  timezone?: string;
   onConfirmSession?: (sessionId: string) => void;
   onCancelSession?: (sessionId: string) => void;
+  compact?: boolean;
 }
 
 export function SessionCalendar({
@@ -22,35 +25,67 @@ export function SessionCalendar({
   userType,
   coaches = [],
   players = [],
+  timezone = Intl.DateTimeFormat().resolvedOptions().timeZone,
   onConfirmSession,
   onCancelSession,
+  compact = false,
 }: SessionCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
-  // Group sessions by date
+  // Format time in user's timezone
+  const formatTimeInTimezone = (date: Date | string, format: string = "h:mm a") => {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    try {
+      return formatInTimeZone(dateObj, timezone, format);
+    } catch {
+      return dateObj.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    }
+  };
+
+  // Format date in user's timezone
+  const formatDateInTimezone = (date: Date | string, format: string = "MMM d, yyyy") => {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    try {
+      return formatInTimeZone(dateObj, timezone, format);
+    } catch {
+      return dateObj.toLocaleDateString();
+    }
+  };
+
+  // Get date string in user's timezone for grouping
+  const getDateKeyInTimezone = (dateStr: string) => {
+    try {
+      const zonedDate = toZonedTime(new Date(dateStr), timezone);
+      return formatInTimeZone(zonedDate, timezone, "yyyy-MM-dd");
+    } catch {
+      return new Date(dateStr).toISOString().split("T")[0];
+    }
+  };
+
+  // Group sessions by date in user's timezone
   const sessionsByDate = useMemo(() => {
     const grouped: Record<string, Session[]> = {};
     sessions.forEach((session) => {
-      const dateStr = new Date(session.session_date_time_utc).toISOString().split("T")[0];
-      if (!grouped[dateStr]) {
-        grouped[dateStr] = [];
+      const dateKey = getDateKeyInTimezone(session.session_date_time_utc);
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
       }
-      grouped[dateStr].push(session);
+      grouped[dateKey].push(session);
     });
     return grouped;
-  }, [sessions]);
+  }, [sessions, timezone]);
 
   // Get dates that have sessions
   const datesWithSessions = useMemo(() => {
     return Object.keys(sessionsByDate).map((dateStr) => new Date(dateStr));
   }, [sessionsByDate]);
 
-  // Get sessions for selected date
+  // Get sessions for selected date (in user's timezone)
   const selectedDateSessions = useMemo(() => {
     if (!selectedDate) return [];
-    const dateStr = selectedDate.toISOString().split("T")[0];
-    return sessionsByDate[dateStr] || [];
-  }, [selectedDate, sessionsByDate]);
+    const dateKey = formatInTimeZone(selectedDate, timezone, "yyyy-MM-dd");
+    return sessionsByDate[dateKey] || [];
+  }, [selectedDate, sessionsByDate, timezone]);
 
   // Filter upcoming sessions
   const upcomingSessions = useMemo(() => {
@@ -94,9 +129,8 @@ export function SessionCalendar({
   };
 
   const renderSession = (session: Session) => {
-    const sessionTime = new Date(session.session_date_time_utc);
     const isUpcoming =
-      sessionTime > new Date() &&
+      new Date(session.session_date_time_utc) > new Date() &&
       session.status !== "canceled" &&
       session.status !== "completed";
     const canAction = isUpcoming && (session.status === "pending" || session.status === "confirmed");
@@ -111,10 +145,7 @@ export function SessionCalendar({
             <div className="flex items-center gap-2 mb-2">
               <Clock className="w-4 h-4 text-primary shrink-0" />
               <span className="font-medium text-foreground">
-                {sessionTime.toLocaleTimeString([], {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
+                {formatTimeInTimezone(session.session_date_time_utc)}
               </span>
               <Badge variant="outline" className={cn("text-xs", getStatusColor(session.status || "pending"))}>
                 {session.status}
@@ -161,15 +192,103 @@ export function SessionCalendar({
     );
   };
 
+  // Compact version for home page
+  if (compact) {
+    return (
+      <Card className="bg-gradient-card border-border">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CalendarIcon className="w-5 h-5 text-primary" />
+              Your Calendar
+            </CardTitle>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Globe className="w-3 h-3" />
+              {timezone.split("/").pop()?.replace("_", " ")}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={setSelectedDate}
+            className="rounded-md border pointer-events-auto mb-4"
+            modifiers={{
+              hasSession: datesWithSessions,
+            }}
+            modifiersStyles={{
+              hasSession: {
+                fontWeight: "bold",
+                backgroundColor: "hsl(var(--primary) / 0.2)",
+                borderRadius: "50%",
+              },
+            }}
+          />
+
+          {selectedDate && selectedDateSessions.length > 0 && (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {selectedDateSessions
+                .sort(
+                  (a, b) =>
+                    new Date(a.session_date_time_utc).getTime() -
+                    new Date(b.session_date_time_utc).getTime()
+                )
+                .map((session) => (
+                  <div
+                    key={session.id}
+                    className="p-3 rounded-lg bg-secondary/30 border border-border"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3 h-3 text-primary" />
+                        <span className="text-sm font-medium">
+                          {formatTimeInTimezone(session.session_date_time_utc)}
+                        </span>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={cn("text-xs", getStatusColor(session.status || "pending"))}
+                      >
+                        {session.status}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {userType === "coach"
+                        ? `with ${getPlayerName(session.student_id)}`
+                        : `with ${getCoachName(session.coach_id)}`}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {selectedDate && selectedDateSessions.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-2">
+              No sessions on {formatDateInTimezone(selectedDate, "MMM d")}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Full version for dashboard
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Calendar */}
       <Card className="lg:col-span-2 bg-gradient-card border-border">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5 text-primary" />
-            Session Calendar
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-primary" />
+              Session Calendar
+            </CardTitle>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Globe className="w-3 h-3" />
+              {timezone.split("/").pop()?.replace("_", " ")}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <Calendar
@@ -193,7 +312,7 @@ export function SessionCalendar({
           {selectedDate && (
             <div className="mt-6">
               <h4 className="font-semibold text-foreground mb-3">
-                {formatDate(selectedDate, "long")}
+                {formatDateInTimezone(selectedDate, "EEEE, MMMM d, yyyy")}
               </h4>
               {selectedDateSessions.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
@@ -227,40 +346,36 @@ export function SessionCalendar({
             </p>
           ) : (
             <div className="space-y-3">
-              {upcomingSessions.map((session) => {
-                const sessionTime = new Date(session.session_date_time_utc);
-                return (
-                  <div
-                    key={session.id}
-                    className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/30 transition-colors cursor-pointer"
-                    onClick={() => setSelectedDate(sessionTime)}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge
-                        variant="outline"
-                        className={cn("text-xs", getStatusColor(session.status || "pending"))}
-                      >
-                        {session.status}
-                      </Badge>
-                    </div>
-                    <div className="text-sm font-medium text-foreground">
-                      {formatDate(sessionTime, "short")}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {sessionTime.toLocaleTimeString([], {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}{" "}
-                      • {session.duration_minutes} min
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {userType === "coach"
-                        ? `with ${getPlayerName(session.student_id)}`
-                        : `with ${getCoachName(session.coach_id)}`}
-                    </div>
+              {upcomingSessions.map((session) => (
+                <div
+                  key={session.id}
+                  className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/30 transition-colors cursor-pointer"
+                  onClick={() => {
+                    const zonedDate = toZonedTime(new Date(session.session_date_time_utc), timezone);
+                    setSelectedDate(zonedDate);
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge
+                      variant="outline"
+                      className={cn("text-xs", getStatusColor(session.status || "pending"))}
+                    >
+                      {session.status}
+                    </Badge>
                   </div>
-                );
-              })}
+                  <div className="text-sm font-medium text-foreground">
+                    {formatDateInTimezone(session.session_date_time_utc, "EEE, MMM d")}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatTimeInTimezone(session.session_date_time_utc)} • {session.duration_minutes} min
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {userType === "coach"
+                      ? `with ${getPlayerName(session.student_id)}`
+                      : `with ${getCoachName(session.coach_id)}`}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>

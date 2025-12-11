@@ -216,6 +216,13 @@ const CoachDashboard = () => {
 
   const cancelSession = async (sessionId: string) => {
     try {
+      // Get session details first
+      const { data: sessionData } = await supabase
+        .from("sessions")
+        .select("*, players!sessions_student_id_fkey(name, email)")
+        .eq("id", sessionId)
+        .single();
+
       const { error } = await supabase
         .from("sessions")
         .update({
@@ -226,9 +233,30 @@ const CoachDashboard = () => {
 
       if (error) throw error;
 
+      // Send notification
+      if (sessionData && coach) {
+        try {
+          await supabase.functions.invoke("send-session-notification", {
+            body: {
+              sessionId: sessionId,
+              coachEmail: coach.email,
+              coachName: coach.name,
+              playerEmail: sessionData.players?.email || "",
+              playerName: sessionData.players?.name || "Player",
+              sessionDateTime: sessionData.session_date_time_utc,
+              durationMinutes: sessionData.duration_minutes,
+              timezone: coach.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+              action: "canceled",
+            },
+          });
+        } catch (emailError) {
+          console.error("Error sending notification:", emailError);
+        }
+      }
+
       toast({
         title: "Session Canceled",
-        description: "The session has been canceled.",
+        description: "The session has been canceled and notification sent.",
       });
 
       fetchData();
@@ -244,6 +272,13 @@ const CoachDashboard = () => {
 
   const confirmSession = async (sessionId: string) => {
     try {
+      // Get session details first
+      const { data: sessionData } = await supabase
+        .from("sessions")
+        .select("*, players!sessions_student_id_fkey(name, email)")
+        .eq("id", sessionId)
+        .single();
+
       const { error } = await supabase
         .from("sessions")
         .update({
@@ -253,9 +288,30 @@ const CoachDashboard = () => {
 
       if (error) throw error;
 
+      // Send notification
+      if (sessionData && coach) {
+        try {
+          await supabase.functions.invoke("send-session-notification", {
+            body: {
+              sessionId: sessionId,
+              coachEmail: coach.email,
+              coachName: coach.name,
+              playerEmail: sessionData.players?.email || "",
+              playerName: sessionData.players?.name || "Player",
+              sessionDateTime: sessionData.session_date_time_utc,
+              durationMinutes: sessionData.duration_minutes,
+              timezone: coach.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+              action: "confirmed",
+            },
+          });
+        } catch (emailError) {
+          console.error("Error sending notification:", emailError);
+        }
+      }
+
       toast({
         title: "Session Confirmed",
-        description: "The session has been confirmed.",
+        description: "The session has been confirmed and notification sent.",
       });
 
       fetchData();

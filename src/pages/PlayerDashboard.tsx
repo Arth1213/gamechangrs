@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Calendar, Users, Star, Clock, MapPin, 
-  BookOpen, Plus, Eye, XCircle, Settings, Edit, Search
+  BookOpen, Plus, Eye, XCircle, Settings, Edit, Search, CalendarPlus
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +18,7 @@ import { SessionCalendar } from "@/components/coaching/SessionCalendar";
 import { PendingConnections } from "@/components/coaching/PendingConnections";
 import { ConnectionRequestDialog } from "@/components/coaching/ConnectionRequestDialog";
 import { BrowseFilters } from "@/components/coaching/BrowseFilters";
+import { BookSessionDialog } from "@/components/coaching/BookSessionDialog";
 import { formatDate } from "@/lib/helpers";
 import { sortCoachesByMatch, getMaxExperienceYears } from "@/lib/coaching-matching";
 
@@ -34,6 +35,7 @@ const PlayerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null);
   const [connectionDialogOpen, setConnectionDialogOpen] = useState(false);
+  const [bookSessionDialogOpen, setBookSessionDialogOpen] = useState(false);
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -333,45 +335,62 @@ const PlayerDashboard = () => {
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="p-6 rounded-2xl bg-gradient-card border border-border">
-              <div className="flex items-center gap-3 mb-2">
-                <Calendar className="w-5 h-5 text-primary" />
-                <span className="text-sm text-muted-foreground">Upcoming Sessions</span>
+          {/* Stats + Book Session Button */}
+          <div className="flex flex-col md:flex-row gap-4 mb-8">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="p-6 rounded-2xl bg-gradient-card border border-border">
+                <div className="flex items-center gap-3 mb-2">
+                  <Calendar className="w-5 h-5 text-primary" />
+                  <span className="text-sm text-muted-foreground">Upcoming Sessions</span>
+                </div>
+                <p className="font-display text-3xl font-bold text-foreground">
+                  {upcomingSessions.length}
+                </p>
               </div>
-              <p className="font-display text-3xl font-bold text-foreground">
-                {upcomingSessions.length}
-              </p>
-            </div>
-            <div className="p-6 rounded-2xl bg-gradient-card border border-border">
-              <div className="flex items-center gap-3 mb-2">
-                <Users className="w-5 h-5 text-primary" />
-                <span className="text-sm text-muted-foreground">Connected Coaches</span>
+              <div className="p-6 rounded-2xl bg-gradient-card border border-border">
+                <div className="flex items-center gap-3 mb-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  <span className="text-sm text-muted-foreground">Connected Coaches</span>
+                </div>
+                <p className="font-display text-3xl font-bold text-foreground">
+                  {connections.length}
+                </p>
               </div>
-              <p className="font-display text-3xl font-bold text-foreground">
-                {connections.length}
-              </p>
-            </div>
-            <div className="p-6 rounded-2xl bg-gradient-card border border-border">
-              <div className="flex items-center gap-3 mb-2">
-                <BookOpen className="w-5 h-5 text-primary" />
-                <span className="text-sm text-muted-foreground">Total Sessions</span>
+              <div className="p-6 rounded-2xl bg-gradient-card border border-border">
+                <div className="flex items-center gap-3 mb-2">
+                  <BookOpen className="w-5 h-5 text-primary" />
+                  <span className="text-sm text-muted-foreground">Total Sessions</span>
+                </div>
+                <p className="font-display text-3xl font-bold text-foreground">
+                  {sessions.length}
+                </p>
               </div>
-              <p className="font-display text-3xl font-bold text-foreground">
-                {sessions.length}
-              </p>
-            </div>
-            <div className="p-6 rounded-2xl bg-gradient-card border border-border">
-              <div className="flex items-center gap-3 mb-2">
-                <Clock className="w-5 h-5 text-primary" />
-                <span className="text-sm text-muted-foreground">Experience Level</span>
+              <div className="p-6 rounded-2xl bg-gradient-card border border-border">
+                <div className="flex items-center gap-3 mb-2">
+                  <Clock className="w-5 h-5 text-primary" />
+                  <span className="text-sm text-muted-foreground">Experience Level</span>
+                </div>
+                <p className="font-display text-3xl font-bold text-foreground capitalize">
+                  {player.experience_level}
+                </p>
               </div>
-              <p className="font-display text-3xl font-bold text-foreground capitalize">
-                {player.experience_level}
-              </p>
             </div>
           </div>
+
+          {/* Book Session Button - Prominent */}
+          {matchedCoaches.length > 0 && (
+            <div className="mb-8">
+              <Button
+                variant="hero"
+                size="lg"
+                onClick={() => setBookSessionDialogOpen(true)}
+                className="w-full md:w-auto"
+              >
+                <CalendarPlus className="w-5 h-5 mr-2" />
+                Book a Session with Your Coach
+              </Button>
+            </div>
+          )}
 
           {/* Tabs */}
           <Tabs defaultValue={defaultTab} className="space-y-6">
@@ -699,6 +718,18 @@ const PlayerDashboard = () => {
               targetName={selectedCoach.name}
               targetEmail={selectedCoach.email}
               onSuccess={fetchData}
+            />
+          )}
+
+          {/* Book Session Dialog */}
+          {player && (
+            <BookSessionDialog
+              open={bookSessionDialogOpen}
+              onOpenChange={setBookSessionDialogOpen}
+              playerId={player.id}
+              playerTimezone={player.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
+              connectedCoaches={matchedCoaches}
+              onSessionBooked={fetchData}
             />
           )}
         </div>

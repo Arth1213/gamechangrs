@@ -251,6 +251,31 @@ export const UserDashboard = () => {
                             </span>
                             <span>{coachProfile.years_experience} yrs</span>
                           </div>
+                          
+                          {/* Coach Stats: Matched Players & Sessions */}
+                          <div className="flex flex-wrap gap-3 text-xs mb-3">
+                            <div className="flex items-center gap-1 text-primary">
+                              <Users className="w-3 h-3" />
+                              <span>{matchedPlayers.length} student{matchedPlayers.length !== 1 ? 's' : ''}</span>
+                            </div>
+                            {upcomingSessions.filter(s => s.coach_id === coachProfile.id).length > 0 && (
+                              <div className="flex items-center gap-1 text-green-500">
+                                <Calendar className="w-3 h-3" />
+                                <span>{upcomingSessions.filter(s => s.coach_id === coachProfile.id).length} upcoming</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Next Session for Coach */}
+                          {upcomingSessions.filter(s => s.coach_id === coachProfile.id).length > 0 && (
+                            <div className="bg-primary/10 rounded-lg p-2 mb-3 text-xs">
+                              <p className="text-muted-foreground">Next session:</p>
+                              <p className="text-foreground font-medium">
+                                {format(new Date(upcomingSessions.filter(s => s.coach_id === coachProfile.id)[0].session_date_time_utc), "MMM d, h:mm a")}
+                              </p>
+                            </div>
+                          )}
+                          
                           <div className="flex gap-2">
                             <Button size="sm" variant="hero" asChild>
                               <Link to="/coaching-marketplace/coach-dashboard?tab=profile">
@@ -288,6 +313,31 @@ export const UserDashboard = () => {
                             )}
                             <span className="capitalize">{playerProfile.experience_level}</span>
                           </div>
+                          
+                          {/* Player Stats: Matched Coaches & Sessions */}
+                          <div className="flex flex-wrap gap-3 text-xs mb-3">
+                            <div className="flex items-center gap-1 text-accent">
+                              <GraduationCap className="w-3 h-3" />
+                              <span>{matchedCoaches.length} coach{matchedCoaches.length !== 1 ? 'es' : ''}</span>
+                            </div>
+                            {upcomingSessions.filter(s => s.student_id === playerProfile.id).length > 0 && (
+                              <div className="flex items-center gap-1 text-green-500">
+                                <Calendar className="w-3 h-3" />
+                                <span>{upcomingSessions.filter(s => s.student_id === playerProfile.id).length} upcoming</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Next Session for Player */}
+                          {upcomingSessions.filter(s => s.student_id === playerProfile.id).length > 0 && (
+                            <div className="bg-accent/10 rounded-lg p-2 mb-3 text-xs">
+                              <p className="text-muted-foreground">Next session:</p>
+                              <p className="text-foreground font-medium">
+                                {format(new Date(upcomingSessions.filter(s => s.student_id === playerProfile.id)[0].session_date_time_utc), "MMM d, h:mm a")}
+                              </p>
+                            </div>
+                          )}
+                          
                           <div className="flex gap-2">
                             <Button size="sm" variant="hero" asChild>
                               <Link to="/coaching-marketplace/player-dashboard?tab=profile">

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Calendar, Users, Star, Clock, MapPin, 
-  BookOpen, Plus, Eye, XCircle
+  BookOpen, Plus, Eye, XCircle, Settings
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -179,14 +179,56 @@ const PlayerDashboard = () => {
       
       <section className="pt-32 pb-16">
         <div className="container mx-auto px-4 max-w-6xl">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="font-display text-4xl font-bold text-foreground mb-2">
-              Player Dashboard
-            </h1>
-            <p className="text-muted-foreground">
-              Welcome back, {player.name}
-            </p>
+          {/* Profile Header */}
+          <div className="rounded-2xl bg-gradient-card border border-border p-6 mb-8">
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold">
+                {player.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="font-display text-3xl font-bold text-foreground">
+                    {player.name}
+                  </h1>
+                  <Badge variant="secondary">Player</Badge>
+                </div>
+                <div className="flex flex-wrap gap-4 text-muted-foreground mb-3">
+                  {player.location && (
+                    <span className="flex items-center gap-1 text-sm">
+                      <MapPin className="w-4 h-4" />
+                      {player.location}
+                    </span>
+                  )}
+                  {player.playing_role && (
+                    <span className="text-sm">{player.playing_role}</span>
+                  )}
+                  {player.age_group && (
+                    <span className="text-sm">{player.age_group}</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="capitalize">{player.experience_level} Level</Badge>
+                  <Badge variant="outline">{player.matches_played || 0} matches played</Badge>
+                  {player.preferred_mode && (
+                    <Badge variant="secondary" className="capitalize">{player.preferred_mode} training</Badge>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/coaching-marketplace/player/${player.id}`}>
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Profile
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/settings">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Settings
+                  </Link>
+                </Button>
+              </div>
+            </div>
           </div>
 
           {/* Stats */}

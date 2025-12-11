@@ -206,14 +206,62 @@ const CoachDashboard = () => {
       
       <section className="pt-32 pb-16">
         <div className="container mx-auto px-4 max-w-6xl">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="font-display text-4xl font-bold text-foreground mb-2">
-              Coach Dashboard
-            </h1>
-            <p className="text-muted-foreground">
-              Welcome back, {coach.name}
-            </p>
+          {/* Profile Header */}
+          <div className="rounded-2xl bg-gradient-card border border-border p-6 mb-8">
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold">
+                {coach.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="font-display text-3xl font-bold text-foreground">
+                    {coach.name}
+                  </h1>
+                  <Badge variant="default">Coach</Badge>
+                  {coach.is_verified && (
+                    <Badge variant="secondary" className="bg-green-500/20 text-green-400">
+                      Verified
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-4 text-muted-foreground mb-3">
+                  {coach.location && (
+                    <span className="flex items-center gap-1 text-sm">
+                      <MapPin className="w-4 h-4" />
+                      {coach.location}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1 text-sm">
+                    <Clock className="w-4 h-4" />
+                    {coach.years_experience} years experience
+                  </span>
+                  <span className="flex items-center gap-1 text-sm">
+                    <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
+                    {coach.average_rating?.toFixed(1) || '0.0'} ({coach.number_of_ratings || 0} reviews)
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline">{coach.coaching_level} Level</Badge>
+                  {coach.specialties?.slice(0, 3).map((s) => (
+                    <Badge key={s} variant="secondary">{s}</Badge>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/coaching-marketplace/coach/${coach.id}`}>
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Public Profile
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/settings">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Settings
+                  </Link>
+                </Button>
+              </div>
+            </div>
           </div>
 
           {/* Stats */}
@@ -242,16 +290,16 @@ const CoachDashboard = () => {
                 <span className="text-sm text-muted-foreground">Average Rating</span>
               </div>
               <p className="font-display text-3xl font-bold text-foreground">
-                {coach.average_rating.toFixed(1)}
+                {coach.average_rating?.toFixed(1) || '0.0'}
               </p>
             </div>
             <div className="p-6 rounded-2xl bg-gradient-card border border-border">
               <div className="flex items-center gap-3 mb-2">
                 <Clock className="w-5 h-5 text-primary" />
-                <span className="text-sm text-muted-foreground">Experience</span>
+                <span className="text-sm text-muted-foreground">Total Sessions</span>
               </div>
               <p className="font-display text-3xl font-bold text-foreground">
-                {coach.years_experience} years
+                {sessions.length}
               </p>
             </div>
           </div>

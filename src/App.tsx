@@ -25,6 +25,8 @@ import CoachDashboard from "./pages/CoachDashboard";
 import PlayerDashboard from "./pages/PlayerDashboard";
 import SessionBooking from "./pages/SessionBooking";
 import SessionRating from "./pages/SessionRating";
+import CoachProfile from "./pages/CoachProfile";
+import PlayerProfile from "./pages/PlayerProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,6 +60,12 @@ const App = () => (
             } />
             <Route path="/faq" element={<FAQ />} />
             <Route path="/coaching-marketplace" element={<CoachingMarketplace />} />
+            <Route path="/coaching-marketplace/coach/:coachId" element={<CoachProfile />} />
+            <Route path="/coaching-marketplace/player/:playerId" element={
+              <ProtectedRoute>
+                <PlayerProfile />
+              </ProtectedRoute>
+            } />
             <Route path="/coaching-marketplace/coach-signup" element={
               <ProtectedRoute>
                 <CoachSignup />

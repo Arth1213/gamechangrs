@@ -69,23 +69,35 @@ export function hasTimeConflict(
 
 /**
  * Check if a time slot is within coach availability
+ * Supports both specific_date and day_of_week based availability
  */
 export function isWithinAvailability(
   dateTime: Date,
   availability: CoachAvailability[],
   durationMinutes: number
 ): boolean {
+  const dateStr = dateTime.toISOString().split('T')[0];
   const dayOfWeek = getDayOfWeek(dateTime);
   const timeStr = dateTime.toISOString().split('T')[1].slice(0, 5); // HH:MM format
   
-  const dayAvailability = availability.filter(av => av.day_of_week === dayOfWeek);
+  // First check for specific date availability
+  let matchingAvailability = availability.filter(av => 
+    av.specific_date === dateStr
+  );
   
-  if (dayAvailability.length === 0) return false;
+  // Fall back to day-of-week availability if no specific date found
+  if (matchingAvailability.length === 0) {
+    matchingAvailability = availability.filter(av => 
+      !av.specific_date && av.day_of_week === dayOfWeek
+    );
+  }
+  
+  if (matchingAvailability.length === 0) return false;
   
   const slotStartMinutes = timeToMinutes(timeStr);
   const slotEndMinutes = slotStartMinutes + durationMinutes;
   
-  return dayAvailability.some(av => {
+  return matchingAvailability.some(av => {
     const availStart = timeToMinutes(av.start_time_utc);
     const availEnd = timeToMinutes(av.end_time_utc);
     
@@ -95,6 +107,7 @@ export function isWithinAvailability(
 
 /**
  * Generate available time slots for a date
+ * Supports both specific_date and day_of_week based availability
  */
 export function generateTimeSlots(
   date: Date,
@@ -112,15 +125,27 @@ export function generateTimeSlots(
     return slots;
   }
   
+  const dateStr = date.toISOString().split('T')[0];
   const dayOfWeek = getDayOfWeek(date);
-  const dayAvailability = availability.filter(av => av.day_of_week === dayOfWeek);
   
-  if (dayAvailability.length === 0) {
+  // First check for specific date availability
+  let matchingAvailability = availability.filter(av => 
+    av.specific_date === dateStr
+  );
+  
+  // Fall back to day-of-week availability if no specific date found
+  if (matchingAvailability.length === 0) {
+    matchingAvailability = availability.filter(av => 
+      !av.specific_date && av.day_of_week === dayOfWeek
+    );
+  }
+  
+  if (matchingAvailability.length === 0) {
     return slots;
   }
   
   // Generate slots for each availability block
-  dayAvailability.forEach(av => {
+  matchingAvailability.forEach(av => {
     const startMinutes = timeToMinutes(av.start_time_utc);
     const endMinutes = timeToMinutes(av.end_time_utc);
     

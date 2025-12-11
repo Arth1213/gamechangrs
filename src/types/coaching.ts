@@ -102,6 +102,7 @@ export interface CoachAvailability {
   day_of_week: number; // 0 = Sunday, 6 = Saturday
   start_time_utc: string; // TIME format
   end_time_utc: string; // TIME format
+  specific_date?: string | null; // DATE format - when set, uses this specific date instead of day_of_week
   created_at: string;
 }
 

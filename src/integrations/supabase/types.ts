@@ -92,6 +92,7 @@ export type Database = {
           day_of_week: number
           end_time_utc: string
           id: string
+          specific_date: string | null
           start_time_utc: string
         }
         Insert: {
@@ -100,6 +101,7 @@ export type Database = {
           day_of_week: number
           end_time_utc: string
           id?: string
+          specific_date?: string | null
           start_time_utc: string
         }
         Update: {
@@ -108,6 +110,7 @@ export type Database = {
           day_of_week?: number
           end_time_utc?: string
           id?: string
+          specific_date?: string | null
           start_time_utc?: string
         }
         Relationships: [

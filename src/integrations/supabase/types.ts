@@ -644,11 +644,21 @@ export type Database = {
       }
     }
     Functions: {
+      get_user_coach_id: { Args: { _user_id: string }; Returns: string }
+      get_user_player_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      user_owns_coach: {
+        Args: { _coach_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_owns_player: {
+        Args: { _player_id: string; _user_id: string }
         Returns: boolean
       }
     }

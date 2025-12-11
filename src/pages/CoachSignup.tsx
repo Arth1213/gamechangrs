@@ -147,12 +147,20 @@ const CoachSignup = () => {
         external_links: formData.external_links.filter(Boolean),
       };
 
-      if (isEditMode && existingProfileId) {
+      // Double-check for existing profile to handle race conditions
+      const { data: existingCoach } = await supabase
+        .from("coaches")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existingCoach || (isEditMode && existingProfileId)) {
         // Update existing profile
+        const profileIdToUpdate = existingCoach?.id || existingProfileId;
         const { error } = await supabase
           .from("coaches")
           .update(profileData)
-          .eq("id", existingProfileId);
+          .eq("id", profileIdToUpdate);
 
         if (error) throw error;
 

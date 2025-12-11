@@ -6,8 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Check, Plus, X, Save } from "lucide-react";
+import { Check, Plus, X, Save, Globe } from "lucide-react";
 import { Coach, CoachingCategory, CoachingLevel } from "@/types/coaching";
+import { TIMEZONES, getBrowserTimezone } from "@/lib/timezones";
 
 interface CoachProfileEditorProps {
   coach: Coach;
@@ -150,6 +151,26 @@ export const CoachProfileEditor = ({ coach, onSave }: CoachProfileEditorProps) =
               className="mt-2"
               placeholder="City, State"
             />
+          </div>
+          <div>
+            <Label htmlFor="timezone">
+              <span className="flex items-center gap-1">
+                <Globe className="w-4 h-4" />
+                Timezone
+              </span>
+            </Label>
+            <select
+              id="timezone"
+              value={formData.timezone || getBrowserTimezone()}
+              onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+              className="w-full h-10 px-4 rounded-xl bg-secondary border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary mt-2"
+            >
+              {TIMEZONES.map((tz) => (
+                <option key={tz.value} value={tz.value}>
+                  {tz.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <Label htmlFor="years_experience">Years of Experience</Label>

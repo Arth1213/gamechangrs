@@ -18,6 +18,7 @@ const PlayerSignup = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [checkingProfile, setCheckingProfile] = useState(true);
   const [categories, setCategories] = useState<CoachingCategory[]>([]);
   
   const [formData, setFormData] = useState<PlayerProfileForm>({
@@ -44,8 +45,32 @@ const PlayerSignup = () => {
   const [linkInput, setLinkInput] = useState("");
 
   useEffect(() => {
+    checkExistingProfile();
     fetchCategories();
-  }, []);
+  }, [user]);
+
+  const checkExistingProfile = async () => {
+    if (!user) {
+      setCheckingProfile(false);
+      return;
+    }
+    
+    const { data: existingPlayer } = await supabase
+      .from("players")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    
+    if (existingPlayer) {
+      toast({
+        title: "Profile Exists",
+        description: "You already have a player profile. Redirecting to dashboard.",
+      });
+      navigate("/coaching-marketplace/player-dashboard");
+      return;
+    }
+    setCheckingProfile(false);
+  };
 
   const fetchCategories = async () => {
     const { data } = await supabase
@@ -143,6 +168,14 @@ const PlayerSignup = () => {
   };
 
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+  if (checkingProfile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

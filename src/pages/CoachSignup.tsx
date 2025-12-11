@@ -49,7 +49,7 @@ const CoachSignup = () => {
       .from("coaching_categories")
       .select("*")
       .order("name");
-    if (data) setCategories(data);
+    if (data) setCategories(data as CoachingCategory[]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

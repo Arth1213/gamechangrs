@@ -40,10 +40,14 @@ const CoachingMarketplace = () => {
   
   // Player profile for matching
   const [playerProfile, setPlayerProfile] = useState<any>(null);
+  
+  // Check if user has coach/player profile
+  const [hasCoachProfile, setHasCoachProfile] = useState<boolean | null>(null);
+  const [hasPlayerProfile, setHasPlayerProfile] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     applyFilters();
@@ -58,7 +62,7 @@ const CoachingMarketplace = () => {
         .select("*")
         .order("name");
       
-      if (cats) setCategories(cats);
+      if (cats) setCategories(cats as CoachingCategory[]);
 
       // Fetch coaches
       const { data: coachesData } = await supabase
@@ -70,42 +74,54 @@ const CoachingMarketplace = () => {
       if (coachesData) {
         // Fetch categories for each coach
         const coachesWithDetails = await Promise.all(
-          coachesData.map(async (coach) => {
+          (coachesData as any[]).map(async (coach) => {
             const { data: coachCategories } = await supabase
               .from("coaching_categories")
               .select("*")
-              .in("id", coach.specialties);
+              .in("id", coach.specialties || []);
             
             return {
               ...coach,
               categories: coachCategories || [],
-            };
+            } as CoachWithDetails;
           })
         );
         
         setCoaches(coachesWithDetails);
       }
 
-      // If user is logged in, fetch their player profile for matching
+      // If user is logged in, check their profiles and fetch player profile for matching
       if (user) {
-        const { data: player } = await supabase
+        // Check for coach profile
+        const { data: coachProfile } = await supabase
+          .from("coaches")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        setHasCoachProfile(!!coachProfile);
+        
+        // Check for player profile
+        const { data: playerData } = await supabase
           .from("players")
           .select("*")
           .eq("user_id", user.id)
-          .eq("is_active", true)
-          .single();
+          .maybeSingle();
+        setHasPlayerProfile(!!playerData);
         
-        if (player) {
+        if (playerData && (playerData as any).is_active) {
           const { data: playerCategories } = await supabase
             .from("coaching_categories")
             .select("*")
-            .in("id", player.training_categories_needed);
+            .in("id", (playerData as any).training_categories_needed || []);
           
           setPlayerProfile({
-            ...player,
+            ...playerData,
             categories: playerCategories || [],
           });
         }
+      } else {
+        setHasCoachProfile(null);
+        setHasPlayerProfile(null);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -193,14 +209,34 @@ const CoachingMarketplace = () => {
             <p className="text-lg text-muted-foreground mb-4">
               Find the perfect coach to elevate your cricket game. Connect with experienced coaches who match your training needs.
             </p>
-            {!user && (
-              <div className="flex gap-4 justify-center">
-                <Button variant="hero" asChild>
-                  <Link to="/coaching-marketplace/player-signup">Join as Player</Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link to="/coaching-marketplace/coach-signup">Become a Coach</Link>
-                </Button>
+            {/* Show signup buttons for non-logged-in users OR logged-in users without profiles */}
+            {(!user || (user && (hasPlayerProfile === false || hasCoachProfile === false))) && (
+              <div className="flex gap-4 justify-center flex-wrap">
+                {(!user || hasPlayerProfile === false) && (
+                  <Button variant="hero" asChild>
+                    <Link to="/coaching-marketplace/player-signup">Join as Player</Link>
+                  </Button>
+                )}
+                {(!user || hasCoachProfile === false) && (
+                  <Button variant="outline" asChild>
+                    <Link to="/coaching-marketplace/coach-signup">Become a Coach</Link>
+                  </Button>
+                )}
+              </div>
+            )}
+            {/* Show dashboard links for users with profiles */}
+            {user && (hasCoachProfile || hasPlayerProfile) && (
+              <div className="flex gap-4 justify-center flex-wrap">
+                {hasCoachProfile && (
+                  <Button variant="hero" asChild>
+                    <Link to="/coaching-marketplace/coach-dashboard">Coach Dashboard</Link>
+                  </Button>
+                )}
+                {hasPlayerProfile && (
+                  <Button variant="outline" asChild>
+                    <Link to="/coaching-marketplace/player-dashboard">Player Dashboard</Link>
+                  </Button>
+                )}
               </div>
             )}
           </div>

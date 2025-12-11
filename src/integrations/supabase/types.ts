@@ -53,6 +53,214 @@ export type Database = {
         }
         Relationships: []
       }
+      blocked_dates: {
+        Row: {
+          blocked_date: string
+          coach_id: string
+          created_at: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          blocked_date: string
+          coach_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          blocked_date?: string
+          coach_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocked_dates_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_availability: {
+        Row: {
+          coach_id: string
+          created_at: string
+          day_of_week: number
+          end_time_utc: string
+          id: string
+          start_time_utc: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          day_of_week: number
+          end_time_utc: string
+          id?: string
+          start_time_utc: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          day_of_week?: number
+          end_time_utc?: string
+          id?: string
+          start_time_utc?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_availability_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coaches: {
+        Row: {
+          adjusted_rating: number | null
+          average_rating: number | null
+          bio: string | null
+          coaching_level: string | null
+          created_at: string
+          email: string
+          external_links: string[] | null
+          id: string
+          is_active: boolean | null
+          is_verified: boolean | null
+          location: string | null
+          name: string
+          notable_players_coached: string[] | null
+          number_of_ratings: number | null
+          phone: string | null
+          specialties: string[] | null
+          teams_coached: string[] | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+          years_experience: number | null
+        }
+        Insert: {
+          adjusted_rating?: number | null
+          average_rating?: number | null
+          bio?: string | null
+          coaching_level?: string | null
+          created_at?: string
+          email: string
+          external_links?: string[] | null
+          id?: string
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          location?: string | null
+          name: string
+          notable_players_coached?: string[] | null
+          number_of_ratings?: number | null
+          phone?: string | null
+          specialties?: string[] | null
+          teams_coached?: string[] | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+          years_experience?: number | null
+        }
+        Update: {
+          adjusted_rating?: number | null
+          average_rating?: number | null
+          bio?: string | null
+          coaching_level?: string | null
+          created_at?: string
+          email?: string
+          external_links?: string[] | null
+          id?: string
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          location?: string | null
+          name?: string
+          notable_players_coached?: string[] | null
+          number_of_ratings?: number | null
+          phone?: string | null
+          specialties?: string[] | null
+          teams_coached?: string[] | null
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+          years_experience?: number | null
+        }
+        Relationships: []
+      }
+      coaching_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      connections: {
+        Row: {
+          coach_id: string
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          student_id: string
+          verified: boolean | null
+          verified_at: string | null
+        }
+        Insert: {
+          coach_id: string
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          student_id: string
+          verified?: boolean | null
+          verified_at?: string | null
+        }
+        Update: {
+          coach_id?: string
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          student_id?: string
+          verified?: boolean | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connections_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connections_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_listings: {
         Row: {
           category: string
@@ -104,6 +312,84 @@ export type Database = {
         }
         Relationships: []
       }
+      players: {
+        Row: {
+          age_group: string | null
+          batting_average: number | null
+          batting_strike_rate: number | null
+          best_figures: string | null
+          bowling_economy: number | null
+          created_at: string
+          email: string
+          experience_level: string | null
+          external_links: string[] | null
+          id: string
+          is_active: boolean | null
+          location: string | null
+          matches_played: number | null
+          name: string
+          phone: string | null
+          playing_role: string | null
+          preferred_days: string[] | null
+          preferred_mode: string | null
+          preferred_time_range: string | null
+          timezone: string | null
+          training_categories_needed: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age_group?: string | null
+          batting_average?: number | null
+          batting_strike_rate?: number | null
+          best_figures?: string | null
+          bowling_economy?: number | null
+          created_at?: string
+          email: string
+          experience_level?: string | null
+          external_links?: string[] | null
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          matches_played?: number | null
+          name: string
+          phone?: string | null
+          playing_role?: string | null
+          preferred_days?: string[] | null
+          preferred_mode?: string | null
+          preferred_time_range?: string | null
+          timezone?: string | null
+          training_categories_needed?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age_group?: string | null
+          batting_average?: number | null
+          batting_strike_rate?: number | null
+          best_figures?: string | null
+          bowling_economy?: number | null
+          created_at?: string
+          email?: string
+          experience_level?: string | null
+          external_links?: string[] | null
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          matches_played?: number | null
+          name?: string
+          phone?: string | null
+          playing_role?: string | null
+          preferred_days?: string[] | null
+          preferred_mode?: string | null
+          preferred_time_range?: string | null
+          timezone?: string | null
+          training_categories_needed?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -140,6 +426,58 @@ export type Database = {
         }
         Relationships: []
       }
+      ratings: {
+        Row: {
+          coach_id: string
+          created_at: string
+          id: string
+          rating: number
+          review_text: string | null
+          session_id: string
+          student_id: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          id?: string
+          rating: number
+          review_text?: string | null
+          session_id: string
+          student_id: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          id?: string
+          rating?: number
+          review_text?: string | null
+          session_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratings_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seller_contacts: {
         Row: {
           contact_email: string
@@ -172,6 +510,60 @@ export type Database = {
             columns: ["listing_id"]
             isOneToOne: true
             referencedRelation: "public_marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          canceled_at: string | null
+          cancellation_reason: string | null
+          coach_id: string
+          created_at: string
+          duration_minutes: number | null
+          id: string
+          session_date_time_utc: string
+          status: string | null
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          cancellation_reason?: string | null
+          coach_id: string
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          session_date_time_utc: string
+          status?: string | null
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          canceled_at?: string | null
+          cancellation_reason?: string | null
+          coach_id?: string
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          session_date_time_utc?: string
+          status?: string | null
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "players"
             referencedColumns: ["id"]
           },
         ]

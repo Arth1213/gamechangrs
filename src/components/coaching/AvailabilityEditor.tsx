@@ -47,7 +47,7 @@ export function AvailabilityEditor({ coachId }: AvailabilityEditorProps) {
         .order("start_time_utc", { ascending: true });
 
       if (error) throw error;
-      setAvailability(data || []);
+      setAvailability((data || []) as CoachAvailability[]);
     } catch (error: any) {
       console.error("Error fetching availability:", error);
       toast({

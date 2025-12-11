@@ -7,6 +7,7 @@ import {
   Youtube, Linkedin, MessageSquare, Clock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -18,19 +19,43 @@ const Contact = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate form submission
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/contact-form`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send message');
+      }
+
       toast({
         title: "Message Sent!",
-        description: "We'll get back to you within 24 hours.",
+        description: result.message || "We'll get back to you within 24 hours.",
       });
       setFormData({ name: "", email: "", subject: "", message: "" });
-    }, 1500);
+    } catch (error) {
+      console.error('Contact form error:', error);
+      toast({
+        title: "Failed to send message",
+        description: error instanceof Error ? error.message : "Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -232,8 +257,8 @@ const Contact = () => {
                 <p className="text-muted-foreground text-sm mb-4">
                   Check our FAQ section for instant answers to common questions about our platform.
                 </p>
-                <Button variant="outline" size="sm">
-                  View FAQ
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/faq">View FAQ</a>
                 </Button>
               </div>
 

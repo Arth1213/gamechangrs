@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Zap, LogOut, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationBell } from "@/components/NotificationBell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,8 +16,10 @@ const navLinks = [
   { name: "AI Coaching", path: "/coaching" },
   { name: "TechniqueAI", path: "/techniqueai" },
   { name: "Analytics", path: "/analytics" },
-  { name: "Marketplace", path: "/marketplace" },
+  { name: "Gear Marketplace", path: "/marketplace" },
+  { name: "Coaching Marketplace", path: "/coaching-marketplace" },
   { name: "About", path: "/about" },
+  { name: "FAQ", path: "/faq" },
   { name: "Contact", path: "/contact" },
 ];
 
@@ -67,7 +70,9 @@ export const Navbar = () => {
             {loading ? (
               <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
             ) : user ? (
-              <DropdownMenu>
+              <>
+                <NotificationBell />
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="default" className="gap-2">
                     <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
@@ -87,12 +92,19 @@ export const Navbar = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link to="/settings" className="cursor-pointer">
+                      <User className="w-4 h-4 mr-2" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer">
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </>
             ) : (
               <>
                 <Button variant="ghost" size="default" asChild>

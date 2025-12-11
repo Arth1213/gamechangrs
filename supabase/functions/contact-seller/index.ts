@@ -119,14 +119,73 @@ Deno.serve(async (req) => {
     console.log(`Message preview: ${message.substring(0, 100)}...`);
     console.log(`Message preview: ${message.substring(0, 100)}...`);
 
-    // TODO: Integrate with email service (SendGrid, Resend, etc.) to send actual emails
-    // Example with Resend:
-    // await resend.emails.send({
-    //   from: 'GameChangrs Marketplace <noreply@gamechangrs.com>',
-    //   to: listing.contact_email,
-    //   subject: `New inquiry about "${listing.title}"`,
-    //   html: `<p>You have a new message from ${buyerName} (${buyerEmail}):</p><p>${message}</p>`
-    // });
+    // Email service integration (Resend example)
+    // To enable, set RESEND_API_KEY in your Supabase environment variables
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (RESEND_API_KEY) {
+      try {
+        const emailResponse = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${RESEND_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "GameChangrs Marketplace <noreply@gamechangrs.com>",
+            to: sellerContact.contact_email,
+            reply_to: buyerEmail,
+            subject: `New inquiry about "${listing.title}"`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #333;">New Marketplace Inquiry</h2>
+                <p>You have received a new message about your listing: <strong>${listing.title}</strong></p>
+                <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <p><strong>From:</strong> ${buyerName} (${buyerEmail})</p>
+                  <p><strong>Message:</strong></p>
+                  <p style="white-space: pre-wrap;">${message}</p>
+                </div>
+                <p style="color: #666; font-size: 14px;">
+                  You can reply directly to this email to contact ${buyerName}.
+                </p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                <p style="color: #999; font-size: 12px;">
+                  This message was sent through GameChangrs Marketplace. 
+                  Please arrange transactions safely and verify buyer identity.
+                </p>
+              </div>
+            `,
+            text: `
+New Marketplace Inquiry
+
+You have received a new message about your listing: ${listing.title}
+
+From: ${buyerName} (${buyerEmail})
+
+Message:
+${message}
+
+You can reply directly to this email to contact ${buyerName}.
+
+---
+This message was sent through GameChangrs Marketplace.
+            `,
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          const errorText = await emailResponse.text();
+          console.error("Email service error:", errorText);
+          // Continue even if email fails - we still log the contact
+        } else {
+          console.log("Email sent successfully to seller");
+        }
+      } catch (emailError) {
+        console.error("Error sending email:", emailError);
+        // Continue even if email fails
+      }
+    } else {
+      console.log("RESEND_API_KEY not set - email service disabled");
+    }
 
     return new Response(
       JSON.stringify({ 

@@ -42,80 +42,109 @@ export function AvailabilityEditor({ coachId, timezone }: AvailabilityEditorProp
   }, [timezone]);
 
   // Convert local time to UTC for storage
-  const localTimeToUtc = (time: string, dayOfWeek: number): { time: string; dayOffset: number } => {
-    // Create a date for the next occurrence of the specified day
+  const localTimeToUtc = (time: string, dayOfWeek: number): { time: string; dayOfWeek: number } => {
+    // Create a reference date for the given day of week
     const now = new Date();
-    const currentDay = now.getUTCDay();
-    const daysUntilTarget = (dayOfWeek - currentDay + 7) % 7;
+    const currentDay = now.getDay();
+    const daysUntilTarget = (dayOfWeek - currentDay + 7) % 7 || 7;
     const targetDate = new Date(now);
     targetDate.setDate(now.getDate() + daysUntilTarget);
     
-    // Parse time
+    // Parse the local time
     const [hours, minutes] = time.split(':').map(Number);
     
-    // Create a date string in the local timezone
-    const localDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}T${time}:00`;
+    // Create date string and parse it as if it's in the target timezone
+    const year = targetDate.getFullYear();
+    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const day = String(targetDate.getDate()).padStart(2, '0');
+    const dateTimeStr = `${year}-${month}-${day}T${time}:00`;
     
-    // Get the UTC offset for the timezone
-    const formatter = new Intl.DateTimeFormat('en-US', {
+    // Create a date object and get UTC values using timezone formatting
+    const localDateTime = new Date(dateTimeStr);
+    
+    // Get the offset for the target timezone
+    const tzFormatter = new Intl.DateTimeFormat('en-US', {
       timeZone: resolvedTimezone,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit',
       hour12: false,
     });
     
-    // Create a date in UTC and adjust for timezone
-    const localDate = new Date(localDateStr);
-    const utcDate = new Date(localDate.toLocaleString('en-US', { timeZone: 'UTC' }));
-    const tzDate = new Date(localDate.toLocaleString('en-US', { timeZone: resolvedTimezone }));
-    const offsetMs = tzDate.getTime() - utcDate.getTime();
+    // Calculate offset by comparing
+    const utcFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'UTC',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
     
-    const utcTime = new Date(localDate.getTime() - offsetMs);
-    const utcHours = utcTime.getUTCHours();
-    const utcMinutes = utcTime.getUTCMinutes();
-    const utcDay = utcTime.getUTCDay();
+    // Create a date where we set it as local time in the target timezone
+    // Then get what that time is in UTC
+    const refDate = new Date(`${year}-${month}-${day}T12:00:00Z`);
+    const tzParts = tzFormatter.formatToParts(refDate);
+    const utcParts = utcFormatter.formatToParts(refDate);
     
-    const dayOffset = utcDay - dayOfWeek;
+    const tzHour = parseInt(tzParts.find(p => p.type === 'hour')?.value || '0');
+    const utcHour = parseInt(utcParts.find(p => p.type === 'hour')?.value || '0');
+    const offsetHours = tzHour - utcHour;
+    
+    // Convert local hours to UTC
+    let utcHours = hours - offsetHours;
+    let utcDayOfWeek = dayOfWeek;
+    
+    if (utcHours < 0) {
+      utcHours += 24;
+      utcDayOfWeek = (dayOfWeek - 1 + 7) % 7;
+    } else if (utcHours >= 24) {
+      utcHours -= 24;
+      utcDayOfWeek = (dayOfWeek + 1) % 7;
+    }
     
     return {
-      time: `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`,
-      dayOffset: dayOffset,
+      time: `${String(utcHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
+      dayOfWeek: utcDayOfWeek,
     };
   };
 
   // Convert UTC time to local time for display
-  const utcTimeToLocal = (time: string, dayOfWeek: number): { time: string; dayOffset: number } => {
+  const utcTimeToLocal = (time: string, dayOfWeek: number): { time: string; dayOfWeek: number } => {
+    // Parse the UTC time
+    const [hours, minutes] = time.split(':').map(Number);
+    
+    // Create a reference date in UTC
     const now = new Date();
     const currentDay = now.getUTCDay();
-    const daysUntilTarget = (dayOfWeek - currentDay + 7) % 7;
-    const targetDate = new Date(now);
-    targetDate.setUTCDate(now.getUTCDate() + daysUntilTarget);
+    const daysUntilTarget = (dayOfWeek - currentDay + 7) % 7 || 7;
+    const refDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + daysUntilTarget, hours, minutes, 0));
     
-    const [hours, minutes] = time.split(':').map(Number);
-    targetDate.setUTCHours(hours, minutes, 0, 0);
-    
+    // Format in the target timezone
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: resolvedTimezone,
       hour: '2-digit',
       minute: '2-digit',
-      hour12: false,
       weekday: 'short',
+      hour12: false,
     });
     
-    const parts = formatter.formatToParts(targetDate);
+    const parts = formatter.formatToParts(refDate);
     const localHour = parts.find(p => p.type === 'hour')?.value || '00';
     const localMinute = parts.find(p => p.type === 'minute')?.value || '00';
     
-    const localDate = new Date(targetDate.toLocaleString('en-US', { timeZone: resolvedTimezone }));
-    const localDay = localDate.getDay();
-    const dayOffset = localDay - dayOfWeek;
+    // Get the local day
+    const localDate = new Date(refDate.toLocaleString('en-US', { timeZone: resolvedTimezone }));
+    const localDayOfWeek = localDate.getDay();
     
     return {
       time: `${localHour}:${localMinute}`,
-      dayOffset: dayOffset,
+      dayOfWeek: localDayOfWeek,
     };
   };
 
@@ -160,14 +189,11 @@ export function AvailabilityEditor({ coachId, timezone }: AvailabilityEditorProp
     // Convert local times to UTC
     const startUtc = localTimeToUtc(newSlot.start_time, newSlot.day_of_week);
     const endUtc = localTimeToUtc(newSlot.end_time, newSlot.day_of_week);
-    
-    // Adjust day if timezone conversion crosses day boundary
-    const utcDayOfWeek = (newSlot.day_of_week + startUtc.dayOffset + 7) % 7;
 
-    // Check for overlap
+    // Check for overlap using the UTC day
     const overlaps = availability.some(
       (av) =>
-        av.day_of_week === utcDayOfWeek &&
+        av.day_of_week === startUtc.dayOfWeek &&
         ((startUtc.time >= av.start_time_utc &&
           startUtc.time < av.end_time_utc) ||
           (endUtc.time > av.start_time_utc &&
@@ -190,7 +216,7 @@ export function AvailabilityEditor({ coachId, timezone }: AvailabilityEditorProp
       const { error } = await supabase.from("coach_availability").insert([
         {
           coach_id: coachId,
-          day_of_week: utcDayOfWeek,
+          day_of_week: startUtc.dayOfWeek,
           start_time_utc: startUtc.time,
           end_time_utc: endUtc.time,
         },
@@ -277,7 +303,8 @@ export function AvailabilityEditor({ coachId, timezone }: AvailabilityEditorProp
     avs.forEach((av) => {
       const localStart = utcTimeToLocal(av.start_time_utc, av.day_of_week);
       const localEnd = utcTimeToLocal(av.end_time_utc, av.day_of_week);
-      const localDay = (av.day_of_week + localStart.dayOffset + 7) % 7;
+      // Use the local day from the conversion
+      const localDay = localStart.dayOfWeek;
       
       if (!grouped[localDay]) {
         grouped[localDay] = [];

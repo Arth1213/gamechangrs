@@ -3,7 +3,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, User, CheckCircle, XCircle, Calendar as CalendarIcon, Globe } from "lucide-react";
+import { Clock, User, CheckCircle, XCircle, Calendar as CalendarIcon, Globe, MapPin } from "lucide-react";
 import { Session, Coach, Player } from "@/types/coaching";
 import { formatDate } from "@/lib/helpers";
 import { cn } from "@/lib/utils";
@@ -120,12 +120,54 @@ export function SessionCalendar({
     }
   };
 
+  const getStatusDotColor = (status: string) => {
+    switch (status) {
+      case "confirmed":
+        return "bg-green-500";
+      case "pending":
+        return "bg-yellow-500";
+      case "completed":
+        return "bg-blue-500";
+      case "canceled":
+        return "bg-red-500";
+      default:
+        return "bg-primary";
+    }
+  };
+
   const getCoachName = (coachId: string) => {
     return coaches.find((c) => c.id === coachId)?.name || "Coach";
   };
 
   const getPlayerName = (playerId: string) => {
     return players.find((p) => p.id === playerId)?.name || "Player";
+  };
+
+  const getCoach = (coachId: string) => {
+    return coaches.find((c) => c.id === coachId);
+  };
+
+  const getPlayer = (playerId: string) => {
+    return players.find((p) => p.id === playerId);
+  };
+
+  // Check if a date has sessions
+  const dateHasSessions = (date: Date) => {
+    const dateKey = formatInTimeZone(date, timezone, "yyyy-MM-dd");
+    return sessionsByDate[dateKey] && sessionsByDate[dateKey].length > 0;
+  };
+
+  // Get session status for a date (for dot color)
+  const getDateSessionStatus = (date: Date) => {
+    const dateKey = formatInTimeZone(date, timezone, "yyyy-MM-dd");
+    const dateSessions = sessionsByDate[dateKey] || [];
+    if (dateSessions.length === 0) return null;
+    
+    // Priority: confirmed > pending > completed > canceled
+    if (dateSessions.some(s => s.status === "confirmed")) return "confirmed";
+    if (dateSessions.some(s => s.status === "pending")) return "pending";
+    if (dateSessions.some(s => s.status === "completed")) return "completed";
+    return "canceled";
   };
 
   const renderSession = (session: Session) => {
@@ -192,6 +234,26 @@ export function SessionCalendar({
     );
   };
 
+  // Custom day content with dot indicator
+  const renderDayContent = (day: Date) => {
+    const hasSessions = dateHasSessions(day);
+    const status = getDateSessionStatus(day);
+    
+    return (
+      <div className="relative w-full h-full flex items-center justify-center">
+        <span>{day.getDate()}</span>
+        {hasSessions && status && (
+          <span 
+            className={cn(
+              "absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full",
+              getStatusDotColor(status)
+            )}
+          />
+        )}
+      </div>
+    );
+  };
+
   // Compact version for home page
   if (compact) {
     return (
@@ -214,60 +276,97 @@ export function SessionCalendar({
             selected={selectedDate}
             onSelect={setSelectedDate}
             className="rounded-md border pointer-events-auto mb-4"
-            modifiers={{
-              hasSession: datesWithSessions,
-            }}
-            modifiersStyles={{
-              hasSession: {
-                fontWeight: "bold",
-                backgroundColor: "hsl(var(--primary) / 0.2)",
-                borderRadius: "50%",
-              },
+            components={{
+              DayContent: ({ date }) => renderDayContent(date),
             }}
           />
 
-          {selectedDate && selectedDateSessions.length > 0 && (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {selectedDateSessions
-                .sort(
-                  (a, b) =>
-                    new Date(a.session_date_time_utc).getTime() -
-                    new Date(b.session_date_time_utc).getTime()
-                )
-                .map((session) => (
-                  <div
-                    key={session.id}
-                    className="p-3 rounded-lg bg-secondary/30 border border-border"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-3 h-3 text-primary" />
-                        <span className="text-sm font-medium">
-                          {formatTimeInTimezone(session.session_date_time_utc)}
-                        </span>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={cn("text-xs", getStatusColor(session.status || "pending"))}
-                      >
-                        {session.status}
-                      </Badge>
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {userType === "coach"
-                        ? `with ${getPlayerName(session.student_id)}`
-                        : `with ${getCoachName(session.coach_id)}`}
-                    </div>
-                  </div>
-                ))}
+          {/* Session Details for Selected Date */}
+          {selectedDate && (
+            <div className="border-t border-border pt-3">
+              <h4 className="font-medium text-sm text-foreground mb-2 flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4 text-primary" />
+                {formatDateInTimezone(selectedDate, "EEE, MMM d")}
+              </h4>
+              
+              {selectedDateSessions.length > 0 ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {selectedDateSessions
+                    .sort(
+                      (a, b) =>
+                        new Date(a.session_date_time_utc).getTime() -
+                        new Date(b.session_date_time_utc).getTime()
+                    )
+                    .map((session) => {
+                      const otherPerson = userType === "coach" 
+                        ? getPlayer(session.student_id)
+                        : getCoach(session.coach_id);
+                      
+                      return (
+                        <div
+                          key={session.id}
+                          className="p-3 rounded-lg bg-secondary/30 border border-border hover:border-primary/30 transition-colors"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className={cn(
+                                "w-2 h-2 rounded-full",
+                                getStatusDotColor(session.status || "pending")
+                              )} />
+                              <span className="text-sm font-medium">
+                                {formatTimeInTimezone(session.session_date_time_utc)}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                ({session.duration_minutes} min)
+                              </span>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className={cn("text-xs", getStatusColor(session.status || "pending"))}
+                            >
+                              {session.status}
+                            </Badge>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm">
+                              <User className="w-3 h-3 text-muted-foreground" />
+                              <span className="text-foreground">
+                                {userType === "coach"
+                                  ? getPlayerName(session.student_id)
+                                  : getCoachName(session.coach_id)}
+                              </span>
+                            </div>
+                            {otherPerson?.location && (
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <MapPin className="w-3 h-3" />
+                                {otherPerson.location}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No sessions scheduled
+                </p>
+              )}
             </div>
           )}
-
-          {selectedDate && selectedDateSessions.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-2">
-              No sessions on {formatDateInTimezone(selectedDate, "MMM d")}
-            </p>
-          )}
+          
+          {/* Legend */}
+          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-green-500" />
+              Confirmed
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-yellow-500" />
+              Pending
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
@@ -296,15 +395,8 @@ export function SessionCalendar({
             selected={selectedDate}
             onSelect={setSelectedDate}
             className="rounded-md border pointer-events-auto"
-            modifiers={{
-              hasSession: datesWithSessions,
-            }}
-            modifiersStyles={{
-              hasSession: {
-                fontWeight: "bold",
-                backgroundColor: "hsl(var(--primary) / 0.2)",
-                borderRadius: "50%",
-              },
+            components={{
+              DayContent: ({ date }) => renderDayContent(date),
             }}
           />
 

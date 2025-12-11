@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Calendar, Users, Star, Clock, MapPin, 
-  BookOpen, Plus, Eye, XCircle, Settings, Edit
+  BookOpen, Plus, Eye, XCircle, Settings, Edit, Search
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +15,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Player, Session, Coach, Connection } from "@/types/coaching";
 import { PlayerProfileEditor } from "@/components/coaching/PlayerProfileEditor";
 import { PendingConnections } from "@/components/coaching/PendingConnections";
+import { ConnectionRequestDialog } from "@/components/coaching/ConnectionRequestDialog";
+import { BrowseFilters } from "@/components/coaching/BrowseFilters";
 import { formatDate } from "@/lib/helpers";
 import { sortCoachesByMatch, getMaxExperienceYears } from "@/lib/coaching-matching";
 
@@ -25,12 +27,68 @@ const PlayerDashboard = () => {
   const [player, setPlayer] = useState<Player | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [matchedCoaches, setMatchedCoaches] = useState<any[]>([]);
+  const [browsableCoaches, setBrowsableCoaches] = useState<Coach[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [allConnections, setAllConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null);
+  const [connectionDialogOpen, setConnectionDialogOpen] = useState(false);
+
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<{
+    coachingLevel?: string;
+    location?: string;
+  }>({});
   
   // Handle tab from URL parameter
   const tabFromUrl = searchParams.get('tab');
   const defaultTab = tabFromUrl === 'profile' ? 'edit-profile' : 'sessions';
+
+  // Filtered coaches with search and filters
+  const filteredCoaches = useMemo(() => {
+    return browsableCoaches.filter((coach) => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch =
+          coach.name.toLowerCase().includes(query) ||
+          coach.location?.toLowerCase().includes(query) ||
+          coach.bio?.toLowerCase().includes(query) ||
+          coach.specialties?.some(s => s.toLowerCase().includes(query));
+        if (!matchesSearch) return false;
+      }
+
+      // Coaching level filter
+      if (filters.coachingLevel && filters.coachingLevel !== "all") {
+        if (coach.coaching_level !== filters.coachingLevel) return false;
+      }
+
+      // Location filter
+      if (filters.location && filters.location !== "all") {
+        if (coach.location !== filters.location) return false;
+      }
+
+      return true;
+    });
+  }, [browsableCoaches, searchQuery, filters]);
+
+  // Get unique locations for filter options
+  const coachLocations = useMemo(() => {
+    const locations = browsableCoaches
+      .map((c) => c.location)
+      .filter((loc): loc is string => !!loc);
+    return [...new Set(locations)].sort();
+  }, [browsableCoaches]);
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setFilters({});
+  };
 
   useEffect(() => {
     if (user) {
@@ -70,18 +128,21 @@ const PlayerDashboard = () => {
 
       if (sessionsData) setSessions(sessionsData as Session[]);
 
-      // Fetch connections
-      const { data: connectionsData } = await supabase
+      // Fetch all connections (for checking existing requests)
+      const { data: allConnectionsData } = await supabase
         .from("connections")
         .select("*")
-        .eq("student_id", playerData.id)
-        .eq("verified", true);
+        .eq("student_id", playerData.id);
 
-      if (connectionsData) {
-        setConnections(connectionsData as Connection[]);
+      if (allConnectionsData) {
+        setAllConnections(allConnectionsData as Connection[]);
 
-        // Fetch matched coaches
-        const coachIds = connectionsData.map((c) => c.coach_id);
+        // Filter verified connections
+        const verifiedConnections = allConnectionsData.filter(c => c.verified);
+        setConnections(verifiedConnections as Connection[]);
+
+        // Fetch matched coaches (verified connections only)
+        const coachIds = verifiedConnections.map((c) => c.coach_id);
         if (coachIds.length > 0) {
           const { data: coachesData } = await supabase
             .from("coaches")
@@ -95,6 +156,19 @@ const PlayerDashboard = () => {
             setMatchedCoaches(matched.map((m) => m.coach!));
           }
         }
+      }
+
+      // Fetch all browsable coaches
+      const { data: coachesData } = await supabase
+        .from("coaches")
+        .select("*")
+        .eq("is_active", true)
+        .neq("user_id", user.id);
+
+      if (coachesData) {
+        const maxExp = getMaxExperienceYears(coachesData as Coach[]);
+        const sorted = sortCoachesByMatch(coachesData as Coach[], playerData as Player, maxExp);
+        setBrowsableCoaches(sorted.map((m) => m.coach!));
       }
     } catch (error: any) {
       console.error("Error fetching data:", error);
@@ -282,7 +356,11 @@ const PlayerDashboard = () => {
           <Tabs defaultValue={defaultTab} className="space-y-6">
             <TabsList>
               <TabsTrigger value="sessions">Sessions</TabsTrigger>
-              <TabsTrigger value="coaches">Matched Coaches</TabsTrigger>
+              <TabsTrigger value="coaches">Connected Coaches</TabsTrigger>
+              <TabsTrigger value="browse">
+                <Search className="w-4 h-4 mr-1" />
+                Browse Coaches
+              </TabsTrigger>
               <TabsTrigger value="edit-profile">
                 <Edit className="w-4 h-4 mr-1" />
                 Edit Profile
@@ -400,17 +478,17 @@ const PlayerDashboard = () => {
               </div>
             </TabsContent>
 
-            {/* Matched Coaches Tab */}
+            {/* Connected Coaches Tab */}
             <TabsContent value="coaches">
-              <h2 className="font-display text-2xl font-bold text-foreground mb-4">
-                Matched Coaches
+              <PendingConnections userType="player" profileId={player.id} onConnectionChange={fetchData} />
+              
+              <h2 className="font-display text-2xl font-bold text-foreground mb-4 mt-8">
+                Connected Coaches
               </h2>
               {matchedCoaches.length === 0 ? (
                 <div className="p-8 rounded-2xl bg-gradient-card border border-border text-center">
                   <p className="text-muted-foreground mb-4">No connected coaches yet</p>
-                  <Button variant="hero" asChild>
-                    <Link to="/coaching-marketplace">Find Coaches</Link>
-                  </Button>
+                  <p className="text-sm text-muted-foreground">Browse coaches and send connection requests to get started</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -424,7 +502,7 @@ const PlayerDashboard = () => {
                         <div className="flex items-center gap-1">
                           <Star className="w-4 h-4 fill-primary text-primary" />
                           <span className="text-sm font-semibold">
-                            {coach.adjusted_rating.toFixed(1)}
+                            {coach.adjusted_rating?.toFixed(1) || '0.0'}
                           </span>
                         </div>
                       </div>
@@ -457,6 +535,114 @@ const PlayerDashboard = () => {
               )}
             </TabsContent>
 
+            {/* Browse Coaches Tab */}
+            <TabsContent value="browse">
+              <h2 className="font-display text-2xl font-bold text-foreground mb-4">
+                Browse Available Coaches
+              </h2>
+              
+              <BrowseFilters
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                filters={filters}
+                onFilterChange={handleFilterChange}
+                onClearFilters={clearFilters}
+                filterType="coaches"
+                locations={coachLocations}
+              />
+
+              {filteredCoaches.length === 0 ? (
+                <div className="p-8 rounded-2xl bg-gradient-card border border-border text-center">
+                  <p className="text-muted-foreground">
+                    {browsableCoaches.length === 0 
+                      ? "No coaches available at the moment" 
+                      : "No coaches match your filters"}
+                  </p>
+                  {browsableCoaches.length > 0 && (
+                    <Button variant="outline" className="mt-4" onClick={clearFilters}>
+                      Clear Filters
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredCoaches.map((coach) => {
+                    const existingConnection = allConnections.find(c => c.coach_id === coach.id);
+                    const isConnected = existingConnection?.verified;
+                    const isPending = existingConnection && !existingConnection.verified && existingConnection.status === 'pending';
+                    
+                    return (
+                      <div
+                        key={coach.id}
+                        className="p-6 rounded-2xl bg-gradient-card border border-border"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            {coach.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {isConnected && (
+                              <Badge variant="default" className="bg-green-500/20 text-green-400">Connected</Badge>
+                            )}
+                            {isPending && (
+                              <Badge variant="secondary">Pending</Badge>
+                            )}
+                            <div className="flex items-center gap-1">
+                              <Star className="w-4 h-4 fill-primary text-primary" />
+                              <span className="text-sm font-semibold">
+                                {coach.adjusted_rating?.toFixed(1) || '0.0'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <h3 className="font-semibold text-foreground mb-1">{coach.name}</h3>
+                        {coach.location && (
+                          <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {coach.location}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          <Badge variant="outline" className="text-xs capitalize">{coach.coaching_level}</Badge>
+                          <Badge variant="secondary" className="text-xs">{coach.years_experience}y exp</Badge>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" asChild className="flex-1">
+                            <Link to={`/coaching-marketplace/coach/${coach.id}`}>
+                              <Eye className="w-3 h-3 mr-1" />
+                              View
+                            </Link>
+                          </Button>
+                          {!isConnected && !isPending && (
+                            <Button 
+                              size="sm" 
+                              variant="default"
+                              className="flex-1"
+                              onClick={() => {
+                                setSelectedCoach(coach);
+                                setConnectionDialogOpen(true);
+                              }}
+                            >
+                              <Plus className="w-3 h-3 mr-1" />
+                              Connect
+                            </Button>
+                          )}
+                          {isConnected && (
+                            <Button size="sm" variant="hero" asChild className="flex-1">
+                              <Link to={`/coaching-marketplace/book/${coach.id}`}>
+                                <Plus className="w-3 h-3 mr-1" />
+                                Book
+                              </Link>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+
             {/* Edit Profile Tab */}
             <TabsContent value="edit-profile">
               <h2 className="font-display text-2xl font-bold text-foreground mb-4">
@@ -465,6 +651,20 @@ const PlayerDashboard = () => {
               <PlayerProfileEditor player={player} onSave={fetchData} />
             </TabsContent>
           </Tabs>
+
+          {/* Connection Request Dialog */}
+          {selectedCoach && (
+            <ConnectionRequestDialog
+              open={connectionDialogOpen}
+              onOpenChange={setConnectionDialogOpen}
+              triggerButton={false}
+              targetType="coach"
+              targetId={selectedCoach.id}
+              targetName={selectedCoach.name}
+              targetEmail={selectedCoach.email}
+              onSuccess={fetchData}
+            />
+          )}
         </div>
       </section>
 

@@ -231,216 +231,220 @@ export const UserDashboard = () => {
           </p>
         </div>
 
-        {/* Role Status Section */}
-        <div className="rounded-2xl bg-gradient-card border border-border p-6 mb-10">
-          <h3 className="font-display font-bold text-foreground mb-4 flex items-center gap-2">
-            <UserCircle className="w-5 h-5 text-primary" />
-            Your Coaching Roles
-          </h3>
-          
-          {loading ? (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-              Loading...
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Current Roles */}
-              <div className="flex flex-wrap gap-3 items-center">
-                {coachProfile && (
-                  <Badge variant="default" className="text-sm py-1 px-3">
-                    <GraduationCap className="w-4 h-4 mr-1" />
-                    Coach
-                  </Badge>
-                )}
-                {playerProfile && (
-                  <Badge variant="secondary" className="text-sm py-1 px-3">
-                    <UserCircle className="w-4 h-4 mr-1" />
-                    Player
-                  </Badge>
-                )}
-                {!coachProfile && !playerProfile && (
-                  <span className="text-muted-foreground text-sm">No coaching roles set up yet</span>
-                )}
+        {/* Role Status Section with Calendar */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+          {/* Coaching Roles */}
+          <div className="lg:col-span-2 rounded-2xl bg-gradient-card border border-border p-6">
+            <h3 className="font-display font-bold text-foreground mb-4 flex items-center gap-2">
+              <UserCircle className="w-5 h-5 text-primary" />
+              Your Coaching Roles
+            </h3>
+            
+            {loading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                Loading...
               </div>
-
-              {/* Profile Cards with Edit Options */}
-              {(coachProfile || playerProfile) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            ) : (
+              <div className="space-y-4">
+                {/* Current Roles */}
+                <div className="flex flex-wrap gap-3 items-center">
                   {coachProfile && (
-                    <div className="rounded-xl bg-secondary/30 p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                          {coachProfile.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold text-foreground truncate">{coachProfile.name}</h4>
-                            {coachProfile.is_verified && (
-                              <Badge variant="secondary" className="bg-green-500/20 text-green-400 text-xs">Verified</Badge>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-2">
-                            {coachProfile.location && (
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                {coachProfile.location}
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                              {coachProfile.average_rating?.toFixed(1) || '0.0'}
-                            </span>
-                            <span>{coachProfile.years_experience} yrs</span>
-                          </div>
-                          
-                          {/* Coach Stats: Matched Players & Sessions */}
-                          <div className="flex flex-wrap gap-3 text-xs mb-3">
-                            <div className="flex items-center gap-1 text-primary">
-                              <Users className="w-3 h-3" />
-                              <span>{matchedPlayers.length} student{matchedPlayers.length !== 1 ? 's' : ''}</span>
-                            </div>
-                            {upcomingSessions.filter(s => s.coach_id === coachProfile.id).length > 0 && (
-                              <div className="flex items-center gap-1 text-green-500">
-                                <Calendar className="w-3 h-3" />
-                                <span>{upcomingSessions.filter(s => s.coach_id === coachProfile.id).length} upcoming</span>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Next Session for Coach */}
-                          {upcomingSessions.filter(s => s.coach_id === coachProfile.id).length > 0 && (
-                            <div className="bg-primary/10 rounded-lg p-2 mb-3 text-xs">
-                              <p className="text-muted-foreground">Next session:</p>
-                              <p className="text-foreground font-medium">
-                                {format(new Date(upcomingSessions.filter(s => s.coach_id === coachProfile.id)[0].session_date_time_utc), "MMM d, h:mm a")}
-                              </p>
-                            </div>
-                          )}
-                          
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="hero" asChild>
-                              <Link to="/coaching-marketplace/coach-dashboard?tab=profile">
-                                Edit Profile
-                              </Link>
-                            </Button>
-                            <Button size="sm" variant="ghost" asChild>
-                              <Link to={`/coaching-marketplace/coach/${coachProfile.id}`}>
-                                <Eye className="w-3 h-3" />
-                              </Link>
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <Badge variant="default" className="text-sm py-1 px-3">
+                      <GraduationCap className="w-4 h-4 mr-1" />
+                      Coach
+                    </Badge>
                   )}
-
                   {playerProfile && (
-                    <div className="rounded-xl bg-secondary/30 p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">
-                          {playerProfile.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-foreground mb-1 truncate">{playerProfile.name}</h4>
-                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-2">
-                            {playerProfile.location && (
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                {playerProfile.location}
-                              </span>
-                            )}
-                            {playerProfile.playing_role && (
-                              <span className="capitalize">{playerProfile.playing_role}</span>
-                            )}
-                            <span className="capitalize">{playerProfile.experience_level}</span>
-                          </div>
-                          
-                          {/* Player Stats: Matched Coaches & Sessions */}
-                          <div className="flex flex-wrap gap-3 text-xs mb-3">
-                            <div className="flex items-center gap-1 text-accent">
-                              <GraduationCap className="w-3 h-3" />
-                              <span>{matchedCoaches.length} coach{matchedCoaches.length !== 1 ? 'es' : ''}</span>
-                            </div>
-                            {upcomingSessions.filter(s => s.student_id === playerProfile.id).length > 0 && (
-                              <div className="flex items-center gap-1 text-green-500">
-                                <Calendar className="w-3 h-3" />
-                                <span>{upcomingSessions.filter(s => s.student_id === playerProfile.id).length} upcoming</span>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Next Session for Player */}
-                          {upcomingSessions.filter(s => s.student_id === playerProfile.id).length > 0 && (
-                            <div className="bg-accent/10 rounded-lg p-2 mb-3 text-xs">
-                              <p className="text-muted-foreground">Next session:</p>
-                              <p className="text-foreground font-medium">
-                                {format(new Date(upcomingSessions.filter(s => s.student_id === playerProfile.id)[0].session_date_time_utc), "MMM d, h:mm a")}
-                              </p>
-                            </div>
-                          )}
-                          
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="hero" asChild>
-                              <Link to="/coaching-marketplace/player-dashboard?tab=profile">
-                                Edit Profile
-                              </Link>
-                            </Button>
-                            <Button size="sm" variant="ghost" asChild>
-                              <Link to={`/coaching-marketplace/player/${playerProfile.id}`}>
-                                <Eye className="w-3 h-3" />
-                              </Link>
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <Badge variant="secondary" className="text-sm py-1 px-3">
+                      <UserCircle className="w-4 h-4 mr-1" />
+                      Player
+                    </Badge>
+                  )}
+                  {!coachProfile && !playerProfile && (
+                    <span className="text-muted-foreground text-sm">No coaching roles set up yet</span>
                   )}
                 </div>
-              )}
 
-              {/* Role Management Options */}
-              <div className="flex flex-wrap gap-3 pt-2 border-t border-border mt-4">
-                {coachProfile ? (
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to="/coaching-marketplace/coach-dashboard?tab=profile">
-                      <GraduationCap className="w-4 h-4 mr-1" />
-                      Edit Coach Profile
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to="/coaching-marketplace/coach-signup">
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Coach Profile
-                    </Link>
-                  </Button>
+                {/* Profile Cards with Edit Options */}
+                {(coachProfile || playerProfile) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    {coachProfile && (
+                      <div className="rounded-xl bg-secondary/30 p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            {coachProfile.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold text-foreground truncate">{coachProfile.name}</h4>
+                              {coachProfile.is_verified && (
+                                <Badge variant="secondary" className="bg-green-500/20 text-green-400 text-xs">Verified</Badge>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-2">
+                              {coachProfile.location && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {coachProfile.location}
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1">
+                                <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                                {coachProfile.average_rating?.toFixed(1) || '0.0'}
+                              </span>
+                              <span>{coachProfile.years_experience} yrs</span>
+                            </div>
+                            
+                            {/* Coach Stats: Matched Players & Sessions */}
+                            <div className="flex flex-wrap gap-3 text-xs mb-3">
+                              <div className="flex items-center gap-1 text-primary">
+                                <Users className="w-3 h-3" />
+                                <span>{matchedPlayers.length} student{matchedPlayers.length !== 1 ? 's' : ''}</span>
+                              </div>
+                              {upcomingSessions.filter(s => s.coach_id === coachProfile.id).length > 0 && (
+                                <div className="flex items-center gap-1 text-green-500">
+                                  <Calendar className="w-3 h-3" />
+                                  <span>{upcomingSessions.filter(s => s.coach_id === coachProfile.id).length} upcoming</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Next Session for Coach */}
+                            {upcomingSessions.filter(s => s.coach_id === coachProfile.id).length > 0 && (
+                              <div className="bg-primary/10 rounded-lg p-2 mb-3 text-xs">
+                                <p className="text-muted-foreground">Next session:</p>
+                                <p className="text-foreground font-medium">
+                                  {format(new Date(upcomingSessions.filter(s => s.coach_id === coachProfile.id)[0].session_date_time_utc), "MMM d, h:mm a")}
+                                </p>
+                              </div>
+                            )}
+                            
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="hero" asChild>
+                                <Link to="/coaching-marketplace/coach-dashboard?tab=profile">
+                                  Edit Profile
+                                </Link>
+                              </Button>
+                              <Button size="sm" variant="ghost" asChild>
+                                <Link to={`/coaching-marketplace/coach/${coachProfile.id}`}>
+                                  <Eye className="w-3 h-3" />
+                                </Link>
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {playerProfile && (
+                      <div className="rounded-xl bg-secondary/30 p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">
+                            {playerProfile.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-foreground mb-1 truncate">{playerProfile.name}</h4>
+                            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-2">
+                              {playerProfile.location && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {playerProfile.location}
+                                </span>
+                              )}
+                              {playerProfile.playing_role && (
+                                <span className="capitalize">{playerProfile.playing_role}</span>
+                              )}
+                              <span className="capitalize">{playerProfile.experience_level}</span>
+                            </div>
+                            
+                            {/* Player Stats: Matched Coaches & Sessions */}
+                            <div className="flex flex-wrap gap-3 text-xs mb-3">
+                              <div className="flex items-center gap-1 text-accent">
+                                <GraduationCap className="w-3 h-3" />
+                                <span>{matchedCoaches.length} coach{matchedCoaches.length !== 1 ? 'es' : ''}</span>
+                              </div>
+                              {upcomingSessions.filter(s => s.student_id === playerProfile.id).length > 0 && (
+                                <div className="flex items-center gap-1 text-green-500">
+                                  <Calendar className="w-3 h-3" />
+                                  <span>{upcomingSessions.filter(s => s.student_id === playerProfile.id).length} upcoming</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Next Session for Player */}
+                            {upcomingSessions.filter(s => s.student_id === playerProfile.id).length > 0 && (
+                              <div className="bg-accent/10 rounded-lg p-2 mb-3 text-xs">
+                                <p className="text-muted-foreground">Next session:</p>
+                                <p className="text-foreground font-medium">
+                                  {format(new Date(upcomingSessions.filter(s => s.student_id === playerProfile.id)[0].session_date_time_utc), "MMM d, h:mm a")}
+                                </p>
+                              </div>
+                            )}
+                            
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="hero" asChild>
+                                <Link to="/coaching-marketplace/player-dashboard?tab=profile">
+                                  Edit Profile
+                                </Link>
+                              </Button>
+                              <Button size="sm" variant="ghost" asChild>
+                                <Link to={`/coaching-marketplace/player/${playerProfile.id}`}>
+                                  <Eye className="w-3 h-3" />
+                                </Link>
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
-                {playerProfile ? (
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to="/coaching-marketplace/player-dashboard?tab=profile">
-                      <UserCircle className="w-4 h-4 mr-1" />
-                      Edit Player Profile
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to="/coaching-marketplace/player-signup">
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Player Profile
-                    </Link>
-                  </Button>
-                )}
+
+                {/* Role Management Options */}
+                <div className="flex flex-wrap gap-3 pt-2 border-t border-border mt-4">
+                  {coachProfile ? (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to="/coaching-marketplace/coach-dashboard?tab=profile">
+                        <GraduationCap className="w-4 h-4 mr-1" />
+                        Edit Coach Profile
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to="/coaching-marketplace/coach-signup">
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add Coach Profile
+                      </Link>
+                    </Button>
+                  )}
+                  {playerProfile ? (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to="/coaching-marketplace/player-dashboard?tab=profile">
+                        <UserCircle className="w-4 h-4 mr-1" />
+                        Edit Player Profile
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to="/coaching-marketplace/player-signup">
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add Player Profile
+                      </Link>
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Calendar Section for Coach or Player */}
-        {(coachProfile || playerProfile) && allSessions.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-            {/* Session Calendar */}
-            <div className="lg:col-span-2">
+          {/* Session Calendar - Always visible for users with profiles */}
+          {!loading && (coachProfile || playerProfile) && (
+            <div className="rounded-2xl bg-gradient-card border border-border p-6">
+              <h3 className="font-display font-bold text-foreground mb-4 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-primary" />
+                Your Schedule
+              </h3>
               <SessionCalendar
                 sessions={allSessions}
                 userType={coachProfile ? "coach" : "player"}
@@ -450,91 +454,93 @@ export const UserDashboard = () => {
                 compact
               />
             </div>
+          )}
+        </div>
 
-            {/* Connections Sidebar */}
-            <div className="space-y-6">
-              {/* Matched Coaches (for players) */}
-              {matchedCoaches.length > 0 && (
-                <div className="rounded-2xl bg-gradient-card border border-border p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                        <GraduationCap className="w-5 h-5 text-accent" />
-                      </div>
-                      <h3 className="font-display font-bold text-foreground">Your Coaches</h3>
+        {/* Connections Section */}
+        {(matchedCoaches.length > 0 || matchedPlayers.length > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+            {/* Matched Coaches (for players) */}
+            {matchedCoaches.length > 0 && (
+              <div className="rounded-2xl bg-gradient-card border border-border p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                      <GraduationCap className="w-5 h-5 text-accent" />
                     </div>
-                    <Link to="/coaching-marketplace/player-dashboard" className="text-sm text-accent hover:underline flex items-center gap-1">
-                      View All <ArrowRight className="w-3 h-3" />
-                    </Link>
+                    <h3 className="font-display font-bold text-foreground">Your Coaches</h3>
                   </div>
-                  <div className="space-y-3">
-                    {matchedCoaches.slice(0, 3).map((coach) => (
-                      <Link 
-                        key={coach.id} 
-                        to={`/coaching-marketplace/coach/${coach.id}`}
-                        className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">
-                            {coach.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground text-sm">{coach.name}</p>
-                            <p className="text-xs text-muted-foreground">{coach.coaching_level} • {coach.years_experience} yrs</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 text-sm">
-                          <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                          {coach.average_rating?.toFixed(1) || '0.0'}
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
+                  <Link to="/coaching-marketplace/player-dashboard" className="text-sm text-accent hover:underline flex items-center gap-1">
+                    View All <ArrowRight className="w-3 h-3" />
+                  </Link>
                 </div>
-              )}
+                <div className="space-y-3">
+                  {matchedCoaches.slice(0, 3).map((coach) => (
+                    <Link 
+                      key={coach.id} 
+                      to={`/coaching-marketplace/coach/${coach.id}`}
+                      className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">
+                          {coach.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground text-sm">{coach.name}</p>
+                          <p className="text-xs text-muted-foreground">{coach.coaching_level} • {coach.years_experience} yrs</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-sm">
+                        <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                        {coach.average_rating?.toFixed(1) || '0.0'}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
-              {/* Matched Players (for coaches) */}
-              {matchedPlayers.length > 0 && (
-                <div className="rounded-2xl bg-gradient-card border border-border p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                        <Users className="w-5 h-5 text-accent" />
-                      </div>
-                      <h3 className="font-display font-bold text-foreground">Your Students</h3>
+            {/* Matched Players (for coaches) */}
+            {matchedPlayers.length > 0 && (
+              <div className="rounded-2xl bg-gradient-card border border-border p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-accent" />
                     </div>
-                    <Link to="/coaching-marketplace/coach-dashboard" className="text-sm text-accent hover:underline flex items-center gap-1">
-                      View All <ArrowRight className="w-3 h-3" />
-                    </Link>
+                    <h3 className="font-display font-bold text-foreground">Your Students</h3>
                   </div>
-                  <div className="space-y-3">
-                    {matchedPlayers.slice(0, 3).map((player) => (
-                      <Link 
-                        key={player.id} 
-                        to={`/coaching-marketplace/player/${player.id}`}
-                        className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                            {player.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground text-sm">{player.name}</p>
-                            <p className="text-xs text-muted-foreground capitalize">{player.experience_level} • {player.playing_role || 'Player'}</p>
-                          </div>
-                        </div>
-                        {player.location && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            {player.location}
-                          </span>
-                        )}
-                      </Link>
-                    ))}
-                  </div>
+                  <Link to="/coaching-marketplace/coach-dashboard" className="text-sm text-accent hover:underline flex items-center gap-1">
+                    View All <ArrowRight className="w-3 h-3" />
+                  </Link>
                 </div>
-              )}
-            </div>
+                <div className="space-y-3">
+                  {matchedPlayers.slice(0, 3).map((player) => (
+                    <Link 
+                      key={player.id} 
+                      to={`/coaching-marketplace/player/${player.id}`}
+                      className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                          {player.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground text-sm">{player.name}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{player.experience_level} • {player.playing_role || 'Player'}</p>
+                        </div>
+                      </div>
+                      {player.location && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {player.location}
+                        </span>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

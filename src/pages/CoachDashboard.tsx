@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { AvailabilityEditor } from "@/components/coaching/AvailabilityEditor";
 import { CoachProfileEditor } from "@/components/coaching/CoachProfileEditor";
 import { PendingConnections } from "@/components/coaching/PendingConnections";
 import { ConnectionRequestDialog } from "@/components/coaching/ConnectionRequestDialog";
+import { BrowseFilters } from "@/components/coaching/BrowseFilters";
 import { formatDate } from "@/lib/helpers";
 import { sortPlayersByMatch } from "@/lib/coaching-matching";
 
@@ -34,9 +35,73 @@ const CoachDashboard = () => {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [connectionDialogOpen, setConnectionDialogOpen] = useState(false);
   
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<{
+    experienceLevel?: string;
+    location?: string;
+    playingRole?: string;
+  }>({});
+  
   // Handle tab from URL parameter
   const tabFromUrl = searchParams.get('tab');
   const defaultTab = tabFromUrl === 'profile' ? 'edit-profile' : 'sessions';
+
+  // Filtered players with search and filters
+  const filteredPlayers = useMemo(() => {
+    return browsablePlayers.filter((player) => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch =
+          player.name.toLowerCase().includes(query) ||
+          player.location?.toLowerCase().includes(query) ||
+          player.playing_role?.toLowerCase().includes(query);
+        if (!matchesSearch) return false;
+      }
+
+      // Experience level filter
+      if (filters.experienceLevel && filters.experienceLevel !== "all") {
+        if (player.experience_level !== filters.experienceLevel) return false;
+      }
+
+      // Location filter
+      if (filters.location && filters.location !== "all") {
+        if (player.location !== filters.location) return false;
+      }
+
+      // Playing role filter
+      if (filters.playingRole && filters.playingRole !== "all") {
+        if (player.playing_role !== filters.playingRole) return false;
+      }
+
+      return true;
+    });
+  }, [browsablePlayers, searchQuery, filters]);
+
+  // Get unique locations and roles for filter options
+  const playerLocations = useMemo(() => {
+    const locations = browsablePlayers
+      .map((p) => p.location)
+      .filter((loc): loc is string => !!loc);
+    return [...new Set(locations)].sort();
+  }, [browsablePlayers]);
+
+  const playerRoles = useMemo(() => {
+    const roles = browsablePlayers
+      .map((p) => p.playing_role)
+      .filter((role): role is string => !!role);
+    return [...new Set(roles)].sort();
+  }, [browsablePlayers]);
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setFilters({});
+  };
 
   useEffect(() => {
     if (user) {
@@ -512,13 +577,34 @@ const CoachDashboard = () => {
               <h2 className="font-display text-2xl font-bold text-foreground mb-4">
                 Browse Available Players
               </h2>
-              {browsablePlayers.length === 0 ? (
+              
+              <BrowseFilters
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                filters={filters}
+                onFilterChange={handleFilterChange}
+                onClearFilters={clearFilters}
+                filterType="players"
+                locations={playerLocations}
+                roles={playerRoles}
+              />
+
+              {filteredPlayers.length === 0 ? (
                 <div className="p-8 rounded-2xl bg-gradient-card border border-border text-center">
-                  <p className="text-muted-foreground">No players available at the moment</p>
+                  <p className="text-muted-foreground">
+                    {browsablePlayers.length === 0 
+                      ? "No players available at the moment" 
+                      : "No players match your filters"}
+                  </p>
+                  {browsablePlayers.length > 0 && (
+                    <Button variant="outline" className="mt-4" onClick={clearFilters}>
+                      Clear Filters
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {browsablePlayers.map((player) => {
+                  {filteredPlayers.map((player) => {
                     const existingConnection = allConnections.find(c => c.student_id === player.id);
                     const isConnected = existingConnection?.verified;
                     const isPending = existingConnection && !existingConnection.verified && existingConnection.status === 'pending';

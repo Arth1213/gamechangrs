@@ -42,8 +42,15 @@ const CoachSignup = () => {
   const [linkInput, setLinkInput] = useState("");
 
   useEffect(() => {
-    checkExistingProfile();
     fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      checkExistingProfile();
+    } else {
+      setCheckingProfile(false);
+    }
   }, [user]);
 
   const checkExistingProfile = async () => {
@@ -52,19 +59,23 @@ const CoachSignup = () => {
       return;
     }
     
-    const { data: existingCoach } = await supabase
-      .from("coaches")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    
-    if (existingCoach) {
-      toast({
-        title: "Profile Exists",
-        description: "You already have a coach profile. Redirecting to dashboard.",
-      });
-      navigate("/coaching-marketplace/coach-dashboard");
-      return;
+    try {
+      const { data: existingCoach } = await supabase
+        .from("coaches")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (existingCoach) {
+        toast({
+          title: "Profile Exists",
+          description: "You already have a coach profile. Redirecting to dashboard.",
+        });
+        navigate("/coaching-marketplace/coach-dashboard");
+        return;
+      }
+    } catch (error) {
+      console.error("Error checking profile:", error);
     }
     setCheckingProfile(false);
   };

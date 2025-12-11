@@ -21,6 +21,8 @@ const CoachSignup = () => {
   const [loading, setLoading] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [categories, setCategories] = useState<CoachingCategory[]>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [existingProfileId, setExistingProfileId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<CoachProfileForm>({
     name: "",
@@ -47,19 +49,19 @@ const CoachSignup = () => {
 
   // Update form data when user is available
   useEffect(() => {
-    if (user) {
+    if (user && !isEditMode) {
       setFormData(prev => ({
         ...prev,
         name: user.user_metadata?.full_name || prev.name,
         email: user.email || prev.email,
       }));
     }
-  }, [user]);
+  }, [user, isEditMode]);
 
   // Check for existing profile after auth is loaded
   useEffect(() => {
     if (authLoading) {
-      return; // Wait for auth to finish loading
+      return;
     }
     
     if (user) {
@@ -78,17 +80,28 @@ const CoachSignup = () => {
     try {
       const { data: existingCoach } = await supabase
         .from("coaches")
-        .select("id")
+        .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
       
       if (existingCoach) {
-        toast({
-          title: "Profile Exists",
-          description: "You already have a coach profile. Redirecting to dashboard.",
+        // Load existing data for editing
+        setIsEditMode(true);
+        setExistingProfileId(existingCoach.id);
+        setFormData({
+          name: existingCoach.name || "",
+          email: existingCoach.email || "",
+          phone: existingCoach.phone || "",
+          location: existingCoach.location || "",
+          timezone: existingCoach.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+          specialties: existingCoach.specialties || [],
+          coaching_level: (existingCoach.coaching_level || "intermediate") as CoachingLevel,
+          years_experience: existingCoach.years_experience || 0,
+          teams_coached: existingCoach.teams_coached || [],
+          notable_players_coached: existingCoach.notable_players_coached || [],
+          external_links: existingCoach.external_links || [],
+          bio: existingCoach.bio || "",
         });
-        navigate("/coaching-marketplace/coach-dashboard");
-        return;
       }
     } catch (error) {
       console.error("Error checking profile:", error);
@@ -127,45 +140,49 @@ const CoachSignup = () => {
 
     setLoading(true);
     try {
-      // Check again if profile exists to prevent duplicate key error
-      const { data: existingCoach } = await supabase
-        .from("coaches")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const profileData = {
+        ...formData,
+        teams_coached: formData.teams_coached.filter(Boolean),
+        notable_players_coached: formData.notable_players_coached.filter(Boolean),
+        external_links: formData.external_links.filter(Boolean),
+      };
 
-      if (existingCoach) {
+      if (isEditMode && existingProfileId) {
+        // Update existing profile
+        const { error } = await supabase
+          .from("coaches")
+          .update(profileData)
+          .eq("id", existingProfileId);
+
+        if (error) throw error;
+
         toast({
-          title: "Profile Already Exists",
-          description: "You already have a coach profile. Redirecting to dashboard.",
+          title: "Profile Updated!",
+          description: "Your coach profile has been updated successfully.",
         });
-        navigate("/coaching-marketplace/coach-dashboard");
-        return;
+      } else {
+        // Create new profile
+        const { error } = await supabase.from("coaches").insert([
+          {
+            user_id: user.id,
+            ...profileData,
+          },
+        ]);
+
+        if (error) throw error;
+
+        toast({
+          title: "Profile Created!",
+          description: "Your coach profile has been created successfully.",
+        });
       }
-
-      const { error } = await supabase.from("coaches").insert([
-        {
-          user_id: user.id,
-          ...formData,
-          teams_coached: formData.teams_coached.filter(Boolean),
-          notable_players_coached: formData.notable_players_coached.filter(Boolean),
-          external_links: formData.external_links.filter(Boolean),
-        },
-      ]);
-
-      if (error) throw error;
-
-      toast({
-        title: "Profile Created!",
-        description: "Your coach profile has been created successfully.",
-      });
 
       navigate("/coaching-marketplace/coach-dashboard");
     } catch (error: any) {
-      console.error("Error creating profile:", error);
+      console.error("Error saving profile:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create profile. Please try again.",
+        description: error.message || "Failed to save profile. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -255,10 +272,10 @@ const CoachSignup = () => {
           </Button>
 
           <h1 className="font-display text-4xl font-bold text-foreground mb-2">
-            Create Coach Profile
+            {isEditMode ? "Update Coach Profile" : "Create Coach Profile"}
           </h1>
           <p className="text-muted-foreground mb-8">
-            Set up your coaching profile to start connecting with players
+            {isEditMode ? "Update your coaching profile details" : "Set up your coaching profile to start connecting with players"}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -474,7 +491,7 @@ const CoachSignup = () => {
             </div>
 
             <Button type="submit" variant="hero" size="lg" className="w-full" disabled={loading}>
-              {loading ? "Creating Profile..." : "Create Coach Profile"}
+              {loading ? (isEditMode ? "Updating..." : "Creating...") : (isEditMode ? "Update Coach Profile" : "Create Coach Profile")}
             </Button>
           </form>
         </div>

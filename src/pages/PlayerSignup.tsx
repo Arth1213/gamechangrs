@@ -20,6 +20,8 @@ const PlayerSignup = () => {
   const [loading, setLoading] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [categories, setCategories] = useState<CoachingCategory[]>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [existingProfileId, setExistingProfileId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<PlayerProfileForm>({
     name: "",
@@ -50,19 +52,19 @@ const PlayerSignup = () => {
 
   // Update form data when user is available
   useEffect(() => {
-    if (user) {
+    if (user && !isEditMode) {
       setFormData(prev => ({
         ...prev,
         name: user.user_metadata?.full_name || prev.name,
         email: user.email || prev.email,
       }));
     }
-  }, [user]);
+  }, [user, isEditMode]);
 
   // Check for existing profile after auth is loaded
   useEffect(() => {
     if (authLoading) {
-      return; // Wait for auth to finish loading
+      return;
     }
     
     if (user) {
@@ -81,17 +83,34 @@ const PlayerSignup = () => {
     try {
       const { data: existingPlayer } = await supabase
         .from("players")
-        .select("id")
+        .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
       
       if (existingPlayer) {
-        toast({
-          title: "Profile Exists",
-          description: "You already have a player profile. Redirecting to dashboard.",
+        // Load existing data for editing
+        setIsEditMode(true);
+        setExistingProfileId(existingPlayer.id);
+        setFormData({
+          name: existingPlayer.name || "",
+          email: existingPlayer.email || "",
+          phone: existingPlayer.phone || "",
+          location: existingPlayer.location || "",
+          timezone: existingPlayer.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+          age_group: existingPlayer.age_group || "",
+          playing_role: existingPlayer.playing_role || "",
+          training_categories_needed: existingPlayer.training_categories_needed || [],
+          experience_level: (existingPlayer.experience_level || "beginner") as ExperienceLevel,
+          matches_played: existingPlayer.matches_played || 0,
+          batting_strike_rate: existingPlayer.batting_strike_rate,
+          batting_average: existingPlayer.batting_average,
+          bowling_economy: existingPlayer.bowling_economy,
+          best_figures: existingPlayer.best_figures || "",
+          external_links: existingPlayer.external_links || [],
+          preferred_mode: (existingPlayer.preferred_mode || "either") as PreferredMode,
+          preferred_days: existingPlayer.preferred_days || [],
+          preferred_time_range: existingPlayer.preferred_time_range || "",
         });
-        navigate("/coaching-marketplace/player-dashboard");
-        return;
       }
     } catch (error) {
       console.error("Error checking profile:", error);
@@ -130,44 +149,48 @@ const PlayerSignup = () => {
 
     setLoading(true);
     try {
-      // Check again if profile exists to prevent duplicate key error
-      const { data: existingPlayer } = await supabase
-        .from("players")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const profileData = {
+        ...formData,
+        external_links: formData.external_links.filter(Boolean),
+        preferred_days: formData.preferred_days.filter(Boolean),
+      };
 
-      if (existingPlayer) {
+      if (isEditMode && existingProfileId) {
+        // Update existing profile
+        const { error } = await supabase
+          .from("players")
+          .update(profileData)
+          .eq("id", existingProfileId);
+
+        if (error) throw error;
+
         toast({
-          title: "Profile Already Exists",
-          description: "You already have a player profile. Redirecting to dashboard.",
+          title: "Profile Updated!",
+          description: "Your player profile has been updated successfully.",
         });
-        navigate("/coaching-marketplace/player-dashboard");
-        return;
+      } else {
+        // Create new profile
+        const { error } = await supabase.from("players").insert([
+          {
+            user_id: user.id,
+            ...profileData,
+          },
+        ]);
+
+        if (error) throw error;
+
+        toast({
+          title: "Profile Created!",
+          description: "Your player profile has been created successfully.",
+        });
       }
-
-      const { error } = await supabase.from("players").insert([
-        {
-          user_id: user.id,
-          ...formData,
-          external_links: formData.external_links.filter(Boolean),
-          preferred_days: formData.preferred_days.filter(Boolean),
-        },
-      ]);
-
-      if (error) throw error;
-
-      toast({
-        title: "Profile Created!",
-        description: "Your player profile has been created successfully.",
-      });
 
       navigate("/coaching-marketplace/player-dashboard");
     } catch (error: any) {
-      console.error("Error creating profile:", error);
+      console.error("Error saving profile:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create profile. Please try again.",
+        description: error.message || "Failed to save profile. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -234,10 +257,10 @@ const PlayerSignup = () => {
           </Button>
 
           <h1 className="font-display text-4xl font-bold text-foreground mb-2">
-            Create Player Profile
+            {isEditMode ? "Update Player Profile" : "Create Player Profile"}
           </h1>
           <p className="text-muted-foreground mb-8">
-            Set up your player profile to find the perfect coach
+            {isEditMode ? "Update your player profile details" : "Set up your player profile to find the perfect coach"}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -507,7 +530,7 @@ const PlayerSignup = () => {
             </div>
 
             <Button type="submit" variant="hero" size="lg" className="w-full" disabled={loading}>
-              {loading ? "Creating Profile..." : "Create Player Profile"}
+              {loading ? (isEditMode ? "Updating..." : "Creating...") : (isEditMode ? "Update Player Profile" : "Create Player Profile")}
             </Button>
           </form>
         </div>

@@ -34,7 +34,11 @@ export function AvailabilityEditor({ coachId, timezone }: AvailabilityEditorProp
   });
 
   const resolvedTimezone = useMemo(() => {
-    return timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // Use provided timezone if valid, otherwise default to browser timezone
+    if (timezone && timezone.trim() !== '' && timezone !== 'UTC') {
+      return timezone;
+    }
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
   }, [timezone]);
 
   // Convert local time to UTC for storage

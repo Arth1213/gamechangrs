@@ -21,6 +21,10 @@ interface ConnectionRequestDialogProps {
   targetEmail: string;
   isConnected?: boolean;
   onSuccess?: () => void;
+  // Controlled mode props
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  triggerButton?: boolean;
 }
 
 export const ConnectionRequestDialog = ({
@@ -30,12 +34,20 @@ export const ConnectionRequestDialog = ({
   targetEmail,
   isConnected = false,
   onSuccess,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  triggerButton = true,
 }: ConnectionRequestDialogProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+
+  // Support both controlled and uncontrolled modes
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
 
   const sendConnectionRequest = async () => {
     if (!user) {
@@ -170,12 +182,14 @@ export const ConnectionRequestDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="hero" className="gap-2">
-          <UserPlus className="w-4 h-4" />
-          Connect
-        </Button>
-      </DialogTrigger>
+      {triggerButton && (
+        <DialogTrigger asChild>
+          <Button variant="hero" className="gap-2">
+            <UserPlus className="w-4 h-4" />
+            Connect
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Connect with {targetName}</DialogTitle>

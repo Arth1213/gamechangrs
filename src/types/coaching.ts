@@ -90,6 +90,10 @@ export interface Connection {
   verified: boolean;
   verified_at: string | null;
   created_at: string;
+  status?: string;
+  requester_type?: string;
+  requester_email?: string;
+  recipient_email?: string;
 }
 
 export interface CoachAvailability {

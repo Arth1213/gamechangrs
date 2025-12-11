@@ -220,6 +220,10 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
+          recipient_email: string | null
+          requester_email: string | null
+          requester_type: string | null
+          status: string | null
           student_id: string
           verified: boolean | null
           verified_at: string | null
@@ -230,6 +234,10 @@ export type Database = {
           created_at?: string
           expires_at: string
           id?: string
+          recipient_email?: string | null
+          requester_email?: string | null
+          requester_type?: string | null
+          status?: string | null
           student_id: string
           verified?: boolean | null
           verified_at?: string | null
@@ -240,6 +248,10 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          recipient_email?: string | null
+          requester_email?: string | null
+          requester_type?: string | null
+          status?: string | null
           student_id?: string
           verified?: boolean | null
           verified_at?: string | null

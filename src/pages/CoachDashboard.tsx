@@ -15,6 +15,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Coach, Session, Player, Connection } from "@/types/coaching";
 import { AvailabilityEditor } from "@/components/coaching/AvailabilityEditor";
 import { CoachProfileEditor } from "@/components/coaching/CoachProfileEditor";
+import { PendingConnections } from "@/components/coaching/PendingConnections";
 import { formatDate } from "@/lib/helpers";
 import { sortPlayersByMatch } from "@/lib/coaching-matching";
 

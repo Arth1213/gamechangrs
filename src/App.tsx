@@ -27,6 +27,7 @@ import SessionBooking from "./pages/SessionBooking";
 import SessionRating from "./pages/SessionRating";
 import CoachProfile from "./pages/CoachProfile";
 import PlayerProfile from "./pages/PlayerProfile";
+import VerifyConnection from "./pages/VerifyConnection";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -106,6 +107,7 @@ const App = () => (
                 <SessionRating />
               </ProtectedRoute>
             } />
+            <Route path="/coaching-marketplace/verify-connection" element={<VerifyConnection />} />
             <Route path="*" element={<NotFound />} />
             </Routes>
           </NotificationProvider>

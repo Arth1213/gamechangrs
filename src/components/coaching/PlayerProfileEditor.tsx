@@ -5,8 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Check, Plus, X, Save } from "lucide-react";
+import { Check, Plus, X, Save, Globe } from "lucide-react";
 import { Player, CoachingCategory, ExperienceLevel, PreferredMode } from "@/types/coaching";
+import { TIMEZONES, getBrowserTimezone } from "@/lib/timezones";
 
 interface PlayerProfileEditorProps {
   player: Player;
@@ -169,6 +170,26 @@ export const PlayerProfileEditor = ({ player, onSave }: PlayerProfileEditorProps
               className="mt-2"
               placeholder="City, State"
             />
+          </div>
+          <div>
+            <Label htmlFor="timezone">
+              <span className="flex items-center gap-1">
+                <Globe className="w-4 h-4" />
+                Timezone
+              </span>
+            </Label>
+            <select
+              id="timezone"
+              value={formData.timezone || getBrowserTimezone()}
+              onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+              className="w-full h-10 px-4 rounded-xl bg-secondary border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary mt-2"
+            >
+              {TIMEZONES.map((tz) => (
+                <option key={tz.value} value={tz.value}>
+                  {tz.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <Label htmlFor="age_group">Age Group</Label>

@@ -76,16 +76,20 @@ const PlayerSignup = () => {
 
   const checkExistingProfile = async () => {
     if (!user) {
+      console.log("checkExistingProfile: No user");
       setCheckingProfile(false);
       return;
     }
     
     try {
-      const { data: existingPlayer } = await supabase
+      console.log("checkExistingProfile: Checking for user_id", user.id);
+      const { data: existingPlayer, error } = await supabase
         .from("players")
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
+      
+      console.log("checkExistingProfile result:", { existingPlayer, error });
       
       if (existingPlayer) {
         // Load existing data for editing
@@ -111,6 +115,7 @@ const PlayerSignup = () => {
           preferred_days: existingPlayer.preferred_days || [],
           preferred_time_range: existingPlayer.preferred_time_range || "",
         });
+        console.log("checkExistingProfile: Edit mode enabled");
       }
     } catch (error) {
       console.error("Error checking profile:", error);
@@ -156,11 +161,13 @@ const PlayerSignup = () => {
       };
 
       // Double-check for existing profile to handle race conditions
-      const { data: existingPlayer } = await supabase
+      const { data: existingPlayer, error: checkError } = await supabase
         .from("players")
         .select("id")
         .eq("user_id", user.id)
         .maybeSingle();
+
+      console.log("Existing player check:", { existingPlayer, checkError, isEditMode, existingProfileId });
 
       if (existingPlayer || (isEditMode && existingProfileId)) {
         // Update existing profile

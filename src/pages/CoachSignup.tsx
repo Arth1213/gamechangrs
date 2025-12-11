@@ -127,6 +127,22 @@ const CoachSignup = () => {
 
     setLoading(true);
     try {
+      // Check again if profile exists to prevent duplicate key error
+      const { data: existingCoach } = await supabase
+        .from("coaches")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existingCoach) {
+        toast({
+          title: "Profile Already Exists",
+          description: "You already have a coach profile. Redirecting to dashboard.",
+        });
+        navigate("/coaching-marketplace/coach-dashboard");
+        return;
+      }
+
       const { error } = await supabase.from("coaches").insert([
         {
           user_id: user.id,

@@ -211,18 +211,25 @@ export function BookSessionDialog({
     }
   };
 
-  // Get dates with availability
+  // Get dates with availability (considering specific_date field)
   const datesWithAvailability = useMemo(() => {
     const dates: Date[] = [];
     const today = new Date();
     
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 14; i++) {
       const date = new Date(today);
       date.setDate(date.getDate() + i);
       
-      const dayOfWeek = date.getUTCDay();
-      const hasAvail = availability.some(av => av.day_of_week === dayOfWeek);
       const dateStr = date.toISOString().split("T")[0];
+      const dayOfWeek = date.getUTCDay();
+      
+      // Check for specific date availability first
+      const hasSpecificDateAvail = availability.some(av => av.specific_date === dateStr);
+      
+      // Fall back to day-of-week availability
+      const hasDayOfWeekAvail = availability.some(av => !av.specific_date && av.day_of_week === dayOfWeek);
+      
+      const hasAvail = hasSpecificDateAvail || hasDayOfWeekAvail;
       const isBlocked = blockedDates.some(bd => bd.blocked_date === dateStr);
       
       if (hasAvail && !isBlocked) {
@@ -344,7 +351,7 @@ export function BookSessionDialog({
                   <div>
                     <Label className="text-sm font-medium mb-2 block">Session Duration</Label>
                     <div className="flex gap-2">
-                      {[30, 60, 90, 120].map((mins) => (
+                      {[60, 90].map((mins) => (
                         <Button
                           key={mins}
                           size="sm"

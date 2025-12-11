@@ -99,7 +99,12 @@ export function isWithinAvailability(
   
   return matchingAvailability.some(av => {
     const availStart = timeToMinutes(av.start_time_utc);
-    const availEnd = timeToMinutes(av.end_time_utc);
+    let availEnd = timeToMinutes(av.end_time_utc);
+    
+    // Handle midnight crossing
+    if (availEnd <= availStart) {
+      availEnd += 24 * 60;
+    }
     
     return slotStartMinutes >= availStart && slotEndMinutes <= availEnd;
   });
@@ -147,16 +152,28 @@ export function generateTimeSlots(
   // Generate slots for each availability block
   matchingAvailability.forEach(av => {
     const startMinutes = timeToMinutes(av.start_time_utc);
-    const endMinutes = timeToMinutes(av.end_time_utc);
+    let endMinutes = timeToMinutes(av.end_time_utc);
+    
+    // Handle midnight crossing (e.g., 17:00-01:00 means end is next day)
+    if (endMinutes <= startMinutes) {
+      endMinutes += 24 * 60; // Add 24 hours worth of minutes
+    }
     
     let currentMinutes = startMinutes;
     
     while (currentMinutes + durationMinutes <= endMinutes) {
       const slotStart = new Date(date);
-      slotStart.setUTCHours(Math.floor(currentMinutes / 60));
-      slotStart.setUTCMinutes(currentMinutes % 60);
+      const hours = Math.floor(currentMinutes / 60) % 24;
+      const mins = currentMinutes % 60;
+      slotStart.setUTCHours(hours);
+      slotStart.setUTCMinutes(mins);
       slotStart.setUTCSeconds(0);
       slotStart.setUTCMilliseconds(0);
+      
+      // If we've crossed midnight, add a day
+      if (currentMinutes >= 24 * 60) {
+        slotStart.setUTCDate(slotStart.getUTCDate() + 1);
+      }
       
       const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60000);
       

@@ -105,35 +105,37 @@ const CoachingMarketplace = () => {
           });
         }
 
-        // If coach, fetch players
+        // If coach, fetch ALL active players (not just connected ones)
         if (coachData) {
-          const { data: connections } = await supabase
-            .from("connections")
-            .select("student_id")
-            .eq("coach_id", (coachData as any).id)
-            .eq("verified", true);
+          const { data: playersData } = await supabase
+            .from("players")
+            .select("*")
+            .eq("is_active", true);
           
-          const connectedPlayerIds = connections?.map((c: any) => c.student_id) || [];
-          
-          if (connectedPlayerIds.length > 0) {
-            const { data: playersData } = await supabase
-              .from("players")
-              .select("*")
-              .in("id", connectedPlayerIds)
-              .eq("is_active", true);
+          if (playersData) {
+            // Get connected player IDs
+            const { data: connections } = await supabase
+              .from("connections")
+              .select("student_id")
+              .eq("coach_id", (coachData as any).id)
+              .eq("verified", true);
             
-            if (playersData) {
-              const playersWithCategories = await Promise.all(
-                (playersData as any[]).map(async (player) => {
-                  const { data: playerCats } = await supabase
-                    .from("coaching_categories")
-                    .select("*")
-                    .in("id", player.training_categories_needed || []);
-                  return { ...player, categories: playerCats || [] };
-                })
-              );
-              setPlayers(playersWithCategories);
-            }
+            const connectedPlayerIds = new Set(connections?.map((c: any) => c.student_id) || []);
+            
+            const playersWithCategories = await Promise.all(
+              (playersData as any[]).map(async (player) => {
+                const { data: playerCats } = await supabase
+                  .from("coaching_categories")
+                  .select("*")
+                  .in("id", player.training_categories_needed || []);
+                return { 
+                  ...player, 
+                  categories: playerCats || [],
+                  isConnected: connectedPlayerIds.has(player.id)
+                };
+              })
+            );
+            setPlayers(playersWithCategories);
           }
         }
       } else {
@@ -404,8 +406,15 @@ const CoachingMarketplace = () => {
             // Coach view - show connected players
             filteredPlayers.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">No connected players found.</p>
-                <p className="text-sm text-muted-foreground">Players will appear here once they connect with you.</p>
+                <p className="text-muted-foreground mb-4">No players found matching your criteria.</p>
+                <Button variant="outline" onClick={() => {
+                  setSearchQuery("");
+                  setSelectedCategories([]);
+                  setSelectedLevel("all");
+                  setSelectedLocation("");
+                }}>
+                  Clear Filters
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -426,10 +435,17 @@ const CoachingMarketplace = () => {
                           </div>
                         )}
                       </div>
-                      <Badge variant="secondary">
-                        <Users className="w-3 h-3 mr-1" />
-                        Player
-                      </Badge>
+                      {player.isConnected ? (
+                        <Badge variant="default" className="bg-green-500/10 text-green-500">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Connected
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          <Users className="w-3 h-3 mr-1" />
+                          Player
+                        </Badge>
+                      )}
                     </div>
 
                     {/* Playing Role */}

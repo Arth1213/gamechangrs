@@ -155,12 +155,20 @@ const PlayerSignup = () => {
         preferred_days: formData.preferred_days.filter(Boolean),
       };
 
-      if (isEditMode && existingProfileId) {
+      // Double-check for existing profile to handle race conditions
+      const { data: existingPlayer } = await supabase
+        .from("players")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existingPlayer || (isEditMode && existingProfileId)) {
         // Update existing profile
+        const profileIdToUpdate = existingPlayer?.id || existingProfileId;
         const { error } = await supabase
           .from("players")
           .update(profileData)
-          .eq("id", existingProfileId);
+          .eq("id", profileIdToUpdate);
 
         if (error) throw error;
 

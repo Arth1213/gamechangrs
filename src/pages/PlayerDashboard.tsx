@@ -11,7 +11,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Player, Session, Coach, Connection } from "@/types/coaching";
 import { PlayerProfileEditor } from "@/components/coaching/PlayerProfileEditor";
 import { formatDate } from "@/lib/helpers";
@@ -20,11 +20,16 @@ import { sortCoachesByMatch, getMaxExperienceYears } from "@/lib/coaching-matchi
 const PlayerDashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [player, setPlayer] = useState<Player | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [matchedCoaches, setMatchedCoaches] = useState<any[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Handle tab from URL parameter
+  const tabFromUrl = searchParams.get('tab');
+  const defaultTab = tabFromUrl === 'profile' ? 'edit-profile' : 'sessions';
 
   useEffect(() => {
     if (user) {
@@ -273,7 +278,7 @@ const PlayerDashboard = () => {
           </div>
 
           {/* Tabs */}
-          <Tabs defaultValue="sessions" className="space-y-6">
+          <Tabs defaultValue={defaultTab} className="space-y-6">
             <TabsList>
               <TabsTrigger value="sessions">Sessions</TabsTrigger>
               <TabsTrigger value="coaches">Matched Coaches</TabsTrigger>

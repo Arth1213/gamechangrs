@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link, useSearchParams } from "react-router-dom";
 import { Coach, Session, Player, Connection } from "@/types/coaching";
 import { AvailabilityEditor } from "@/components/coaching/AvailabilityEditor";
+import { SessionCalendar } from "@/components/coaching/SessionCalendar";
 import { CoachProfileEditor } from "@/components/coaching/CoachProfileEditor";
 import { PendingConnections } from "@/components/coaching/PendingConnections";
 import { ConnectionRequestDialog } from "@/components/coaching/ConnectionRequestDialog";
@@ -45,7 +46,7 @@ const CoachDashboard = () => {
   
   // Handle tab from URL parameter
   const tabFromUrl = searchParams.get('tab');
-  const defaultTab = tabFromUrl === 'profile' ? 'edit-profile' : 'sessions';
+  const defaultTab = tabFromUrl === 'profile' ? 'edit-profile' : 'calendar';
 
   // Filtered players with search and filters
   const filteredPlayers = useMemo(() => {
@@ -139,7 +140,27 @@ const CoachDashboard = () => {
         .eq("coach_id", coachData.id)
         .order("session_date_time_utc", { ascending: true });
 
-      if (sessionsData) setSessions(sessionsData as Session[]);
+      if (sessionsData) {
+        setSessions(sessionsData as Session[]);
+        
+        // Fetch all players from sessions for calendar display
+        const sessionPlayerIds = [...new Set(sessionsData.map((s) => s.student_id))];
+        if (sessionPlayerIds.length > 0) {
+          const { data: sessionPlayersData } = await supabase
+            .from("players")
+            .select("*")
+            .in("id", sessionPlayerIds);
+          
+          if (sessionPlayersData) {
+            // Merge with matched students (will be updated below)
+            setMatchedStudents(prev => {
+              const existingIds = prev.map(p => p.id);
+              const newPlayers = sessionPlayersData.filter(p => !existingIds.includes(p.id));
+              return [...prev, ...(newPlayers as Player[])];
+            });
+          }
+        }
+      }
 
       // Fetch all connections (for checking existing requests)
       const { data: allConnectionsData } = await supabase
@@ -398,7 +419,11 @@ const CoachDashboard = () => {
 
           {/* Tabs */}
           <Tabs defaultValue={defaultTab} className="space-y-6">
-            <TabsList>
+            <TabsList className="flex-wrap">
+              <TabsTrigger value="calendar">
+                <Calendar className="w-4 h-4 mr-1" />
+                Calendar
+              </TabsTrigger>
               <TabsTrigger value="sessions">Sessions</TabsTrigger>
               <TabsTrigger value="students">Connected Students</TabsTrigger>
               <TabsTrigger value="browse">
@@ -411,6 +436,17 @@ const CoachDashboard = () => {
                 Edit Profile
               </TabsTrigger>
             </TabsList>
+
+            {/* Calendar Tab */}
+            <TabsContent value="calendar">
+              <SessionCalendar
+                sessions={sessions}
+                userType="coach"
+                players={matchedStudents}
+                onConfirmSession={confirmSession}
+                onCancelSession={cancelSession}
+              />
+            </TabsContent>
 
             {/* Sessions Tab */}
             <TabsContent value="sessions" className="space-y-6">

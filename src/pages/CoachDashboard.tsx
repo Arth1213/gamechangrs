@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Calendar, Users, Star, Clock, MapPin, 
-  Settings, Plus, Eye, XCircle, CheckCircle, Edit
+  Settings, Plus, Eye, XCircle, CheckCircle, Edit, Search
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,6 +16,7 @@ import { Coach, Session, Player, Connection } from "@/types/coaching";
 import { AvailabilityEditor } from "@/components/coaching/AvailabilityEditor";
 import { CoachProfileEditor } from "@/components/coaching/CoachProfileEditor";
 import { PendingConnections } from "@/components/coaching/PendingConnections";
+import { ConnectionRequestDialog } from "@/components/coaching/ConnectionRequestDialog";
 import { formatDate } from "@/lib/helpers";
 import { sortPlayersByMatch } from "@/lib/coaching-matching";
 
@@ -26,8 +27,12 @@ const CoachDashboard = () => {
   const [coach, setCoach] = useState<Coach | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [matchedStudents, setMatchedStudents] = useState<any[]>([]);
+  const [browsablePlayers, setBrowsablePlayers] = useState<Player[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [allConnections, setAllConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [connectionDialogOpen, setConnectionDialogOpen] = useState(false);
   
   // Handle tab from URL parameter
   const tabFromUrl = searchParams.get('tab');
@@ -71,18 +76,21 @@ const CoachDashboard = () => {
 
       if (sessionsData) setSessions(sessionsData as Session[]);
 
-      // Fetch connections
-      const { data: connectionsData } = await supabase
+      // Fetch all connections (for checking existing requests)
+      const { data: allConnectionsData } = await supabase
         .from("connections")
         .select("*")
-        .eq("coach_id", coachData.id)
-        .eq("verified", true);
+        .eq("coach_id", coachData.id);
 
-      if (connectionsData) {
-        setConnections(connectionsData as Connection[]);
+      if (allConnectionsData) {
+        setAllConnections(allConnectionsData as Connection[]);
+        
+        // Filter verified connections
+        const verifiedConnections = allConnectionsData.filter(c => c.verified);
+        setConnections(verifiedConnections as Connection[]);
 
-        // Fetch matched students
-        const studentIds = connectionsData.map((c) => c.student_id);
+        // Fetch matched students (verified connections only)
+        const studentIds = verifiedConnections.map((c) => c.student_id);
         if (studentIds.length > 0) {
           const { data: studentsData } = await supabase
             .from("players")
@@ -95,6 +103,18 @@ const CoachDashboard = () => {
             setMatchedStudents(matched.map((m) => m.player!));
           }
         }
+      }
+
+      // Fetch all browsable players (excluding own player profile if exists)
+      const { data: playersData } = await supabase
+        .from("players")
+        .select("*")
+        .eq("is_active", true)
+        .neq("user_id", user.id);
+
+      if (playersData) {
+        const sorted = sortPlayersByMatch(playersData as Player[], coachData as Coach);
+        setBrowsablePlayers(sorted.map((m) => m.player!));
       }
     } catch (error: any) {
       console.error("Error fetching data:", error);
@@ -315,7 +335,11 @@ const CoachDashboard = () => {
           <Tabs defaultValue={defaultTab} className="space-y-6">
             <TabsList>
               <TabsTrigger value="sessions">Sessions</TabsTrigger>
-              <TabsTrigger value="students">Matched Students</TabsTrigger>
+              <TabsTrigger value="students">Connected Students</TabsTrigger>
+              <TabsTrigger value="browse">
+                <Search className="w-4 h-4 mr-1" />
+                Browse Players
+              </TabsTrigger>
               <TabsTrigger value="availability">Availability</TabsTrigger>
               <TabsTrigger value="edit-profile">
                 <Edit className="w-4 h-4 mr-1" />
@@ -443,17 +467,17 @@ const CoachDashboard = () => {
               </div>
             </TabsContent>
 
-            {/* Matched Students Tab */}
+            {/* Connected Students Tab */}
             <TabsContent value="students">
-              <h2 className="font-display text-2xl font-bold text-foreground mb-4">
-                Matched Students
+              <PendingConnections userType="coach" profileId={coach.id} onConnectionChange={fetchData} />
+              
+              <h2 className="font-display text-2xl font-bold text-foreground mb-4 mt-8">
+                Connected Students
               </h2>
               {matchedStudents.length === 0 ? (
                 <div className="p-8 rounded-2xl bg-gradient-card border border-border text-center">
                   <p className="text-muted-foreground mb-4">No connected students yet</p>
-                  <Button variant="outline" asChild>
-                    <Link to="/coaching-marketplace">Browse Marketplace</Link>
-                  </Button>
+                  <p className="text-sm text-muted-foreground">Browse players and send connection requests to get started</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -483,6 +507,80 @@ const CoachDashboard = () => {
               )}
             </TabsContent>
 
+            {/* Browse Players Tab */}
+            <TabsContent value="browse">
+              <h2 className="font-display text-2xl font-bold text-foreground mb-4">
+                Browse Available Players
+              </h2>
+              {browsablePlayers.length === 0 ? (
+                <div className="p-8 rounded-2xl bg-gradient-card border border-border text-center">
+                  <p className="text-muted-foreground">No players available at the moment</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {browsablePlayers.map((player) => {
+                    const existingConnection = allConnections.find(c => c.student_id === player.id);
+                    const isConnected = existingConnection?.verified;
+                    const isPending = existingConnection && !existingConnection.verified && existingConnection.status === 'pending';
+                    
+                    return (
+                      <div
+                        key={player.id}
+                        className="p-6 rounded-2xl bg-gradient-card border border-border"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            {player.name.charAt(0).toUpperCase()}
+                          </div>
+                          {isConnected && (
+                            <Badge variant="default" className="bg-green-500/20 text-green-400">Connected</Badge>
+                          )}
+                          {isPending && (
+                            <Badge variant="secondary">Pending</Badge>
+                          )}
+                        </div>
+                        <h3 className="font-semibold text-foreground mb-1">{player.name}</h3>
+                        {player.location && (
+                          <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {player.location}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          <Badge variant="outline" className="text-xs">{player.experience_level}</Badge>
+                          {player.playing_role && (
+                            <Badge variant="secondary" className="text-xs">{player.playing_role}</Badge>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" asChild className="flex-1">
+                            <Link to={`/coaching-marketplace/player/${player.id}`}>
+                              <Eye className="w-3 h-3 mr-1" />
+                              View
+                            </Link>
+                          </Button>
+                          {!isConnected && !isPending && (
+                            <Button 
+                              size="sm" 
+                              variant="default"
+                              className="flex-1"
+                              onClick={() => {
+                                setSelectedPlayer(player);
+                                setConnectionDialogOpen(true);
+                              }}
+                            >
+                              <Plus className="w-3 h-3 mr-1" />
+                              Connect
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+
             {/* Availability Tab */}
             <TabsContent value="availability">
               <AvailabilityEditor coachId={coach.id} />
@@ -496,6 +594,20 @@ const CoachDashboard = () => {
               <CoachProfileEditor coach={coach} onSave={fetchData} />
             </TabsContent>
           </Tabs>
+
+          {/* Connection Request Dialog */}
+          {selectedPlayer && (
+            <ConnectionRequestDialog
+              open={connectionDialogOpen}
+              onOpenChange={setConnectionDialogOpen}
+              triggerButton={false}
+              targetType="player"
+              targetId={selectedPlayer.id}
+              targetName={selectedPlayer.name}
+              targetEmail={selectedPlayer.email}
+              onSuccess={fetchData}
+            />
+          )}
         </div>
       </section>
 

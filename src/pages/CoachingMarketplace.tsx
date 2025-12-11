@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Search, Filter, MapPin, Star, Users, Award, 
-  Calendar, Mail, UserPlus, CheckCircle, XCircle
+  Search, MapPin, Star, Users, Award, 
+  Calendar, UserPlus, CheckCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,8 +26,10 @@ const CoachingMarketplace = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [coaches, setCoaches] = useState<CoachWithDetails[]>([]);
+  const [players, setPlayers] = useState<any[]>([]);
   const [categories, setCategories] = useState<CoachingCategory[]>([]);
   const [filteredCoaches, setFilteredCoaches] = useState<CoachWithDetails[]>([]);
+  const [filteredPlayers, setFilteredPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Filters
@@ -40,18 +42,26 @@ const CoachingMarketplace = () => {
   
   // Player profile for matching
   const [playerProfile, setPlayerProfile] = useState<any>(null);
+  const [coachProfile, setCoachProfile] = useState<any>(null);
   
   // Check if user has coach/player profile
   const [hasCoachProfile, setHasCoachProfile] = useState<boolean | null>(null);
   const [hasPlayerProfile, setHasPlayerProfile] = useState<boolean | null>(null);
+
+  // Determine view mode based on user role
+  const isCoachView = user && hasCoachProfile;
 
   useEffect(() => {
     fetchData();
   }, [user]);
 
   useEffect(() => {
-    applyFilters();
-  }, [coaches, searchQuery, selectedCategories, selectedLevel, selectedLocation, minRating, sortBy, playerProfile]);
+    if (isCoachView) {
+      applyPlayerFilters();
+    } else {
+      applyFilters();
+    }
+  }, [coaches, players, searchQuery, selectedCategories, selectedLevel, selectedLocation, minRating, sortBy, playerProfile, coachProfile, isCoachView]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -64,41 +74,16 @@ const CoachingMarketplace = () => {
       
       if (cats) setCategories(cats as CoachingCategory[]);
 
-      // Fetch coaches
-      const { data: coachesData } = await supabase
-        .from("coaches")
-        .select("*")
-        .eq("is_active", true)
-        .order("adjusted_rating", { ascending: false });
-
-      if (coachesData) {
-        // Fetch categories for each coach
-        const coachesWithDetails = await Promise.all(
-          (coachesData as any[]).map(async (coach) => {
-            const { data: coachCategories } = await supabase
-              .from("coaching_categories")
-              .select("*")
-              .in("id", coach.specialties || []);
-            
-            return {
-              ...coach,
-              categories: coachCategories || [],
-            } as CoachWithDetails;
-          })
-        );
-        
-        setCoaches(coachesWithDetails);
-      }
-
-      // If user is logged in, check their profiles and fetch player profile for matching
+      // If user is logged in, check their profiles
       if (user) {
         // Check for coach profile
-        const { data: coachProfile } = await supabase
+        const { data: coachData } = await supabase
           .from("coaches")
-          .select("id")
+          .select("*")
           .eq("user_id", user.id)
           .maybeSingle();
-        setHasCoachProfile(!!coachProfile);
+        setHasCoachProfile(!!coachData);
+        if (coachData) setCoachProfile(coachData);
         
         // Check for player profile
         const { data: playerData } = await supabase
@@ -119,15 +104,72 @@ const CoachingMarketplace = () => {
             categories: playerCategories || [],
           });
         }
+
+        // If coach, fetch players
+        if (coachData) {
+          const { data: connections } = await supabase
+            .from("connections")
+            .select("student_id")
+            .eq("coach_id", (coachData as any).id)
+            .eq("verified", true);
+          
+          const connectedPlayerIds = connections?.map((c: any) => c.student_id) || [];
+          
+          if (connectedPlayerIds.length > 0) {
+            const { data: playersData } = await supabase
+              .from("players")
+              .select("*")
+              .in("id", connectedPlayerIds)
+              .eq("is_active", true);
+            
+            if (playersData) {
+              const playersWithCategories = await Promise.all(
+                (playersData as any[]).map(async (player) => {
+                  const { data: playerCats } = await supabase
+                    .from("coaching_categories")
+                    .select("*")
+                    .in("id", player.training_categories_needed || []);
+                  return { ...player, categories: playerCats || [] };
+                })
+              );
+              setPlayers(playersWithCategories);
+            }
+          }
+        }
       } else {
         setHasCoachProfile(null);
         setHasPlayerProfile(null);
+      }
+
+      // Fetch coaches (for players or non-logged-in users)
+      const { data: coachesData } = await supabase
+        .from("coaches")
+        .select("*")
+        .eq("is_active", true)
+        .order("adjusted_rating", { ascending: false });
+
+      if (coachesData) {
+        const coachesWithDetails = await Promise.all(
+          (coachesData as any[]).map(async (coach) => {
+            const { data: coachCategories } = await supabase
+              .from("coaching_categories")
+              .select("*")
+              .in("id", coach.specialties || []);
+            
+            return {
+              ...coach,
+              categories: coachCategories || [],
+            } as CoachWithDetails;
+          })
+        );
+        
+        setCoaches(coachesWithDetails);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
         title: "Error",
-        description: "Failed to load coaches. Please try again.",
+        description: "Failed to load data. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -138,7 +180,6 @@ const CoachingMarketplace = () => {
   const applyFilters = () => {
     let filtered = [...coaches];
 
-    // Search filter
     if (searchQuery) {
       filtered = filtered.filter(
         (coach) =>
@@ -148,44 +189,68 @@ const CoachingMarketplace = () => {
       );
     }
 
-    // Category filter
     if (selectedCategories.length > 0) {
       filtered = filtered.filter((coach) =>
         selectedCategories.some((catId) => coach.specialties.includes(catId))
       );
     }
 
-    // Level filter
     if (selectedLevel !== "all") {
       filtered = filtered.filter((coach) => coach.coaching_level === selectedLevel);
     }
 
-    // Location filter
     if (selectedLocation) {
       filtered = filtered.filter((coach) =>
         coach.location?.toLowerCase().includes(selectedLocation.toLowerCase())
       );
     }
 
-    // Rating filter
     filtered = filtered.filter((coach) => coach.adjusted_rating >= minRating);
 
-    // Calculate match scores if player profile exists
     if (playerProfile) {
       const maxExp = getMaxExperienceYears(filtered);
       const matchResults = sortCoachesByMatch(filtered, playerProfile, maxExp);
       filtered = matchResults.map((r) => r.coach!);
     }
 
-    // Sort
     if (sortBy === "rating") {
       filtered.sort((a, b) => b.adjusted_rating - a.adjusted_rating);
     } else if (sortBy === "experience") {
       filtered.sort((a, b) => b.years_experience - a.years_experience);
     }
-    // "match" sorting is already done by sortCoachesByMatch
 
     setFilteredCoaches(filtered);
+  };
+
+  const applyPlayerFilters = () => {
+    let filtered = [...players];
+
+    if (searchQuery) {
+      filtered = filtered.filter(
+        (player) =>
+          player.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          player.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          player.playing_role?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    if (selectedCategories.length > 0) {
+      filtered = filtered.filter((player) =>
+        selectedCategories.some((catId) => player.training_categories_needed?.includes(catId))
+      );
+    }
+
+    if (selectedLevel !== "all") {
+      filtered = filtered.filter((player) => player.experience_level === selectedLevel);
+    }
+
+    if (selectedLocation) {
+      filtered = filtered.filter((player) =>
+        player.location?.toLowerCase().includes(selectedLocation.toLowerCase())
+      );
+    }
+
+    setFilteredPlayers(filtered);
   };
 
   const toggleCategory = (categoryId: string) => {
@@ -207,24 +272,22 @@ const CoachingMarketplace = () => {
               Coaching <span className="text-gradient-primary">Marketplace</span>
             </h1>
             <p className="text-lg text-muted-foreground mb-4">
-              Find the perfect coach to elevate your cricket game. Connect with experienced coaches who match your training needs.
+              {isCoachView 
+                ? "View and manage your connected players." 
+                : "Find the perfect coach to elevate your cricket game. Connect with experienced coaches who match your training needs."}
             </p>
-            {/* Show signup buttons for non-logged-in users OR logged-in users without profiles */}
-            {(!user || (user && (hasPlayerProfile === false || hasCoachProfile === false))) && (
+            {/* Show signup buttons ONLY for non-logged-in users */}
+            {!user && (
               <div className="flex gap-4 justify-center flex-wrap">
-                {(!user || hasPlayerProfile === false) && (
-                  <Button variant="hero" asChild>
-                    <Link to="/coaching-marketplace/player-signup">Join as Player</Link>
-                  </Button>
-                )}
-                {(!user || hasCoachProfile === false) && (
-                  <Button variant="outline" asChild>
-                    <Link to="/coaching-marketplace/coach-signup">Become a Coach</Link>
-                  </Button>
-                )}
+                <Button variant="hero" asChild>
+                  <Link to="/coaching-marketplace/player-signup">Join as Player</Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link to="/coaching-marketplace/coach-signup">Become a Coach</Link>
+                </Button>
               </div>
             )}
-            {/* Show dashboard links for users with profiles */}
+            {/* Show dashboard links for logged-in users with profiles */}
             {user && (hasCoachProfile || hasPlayerProfile) && (
               <div className="flex gap-4 justify-center flex-wrap">
                 {hasCoachProfile && (
@@ -253,22 +316,24 @@ const CoachingMarketplace = () => {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Search coaches by name, location, or bio..."
+                  placeholder={isCoachView ? "Search players by name, location, or role..." : "Search coaches by name, location, or bio..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-12"
                 />
               </div>
-              <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="match">Best Match</SelectItem>
-                  <SelectItem value="rating">Highest Rating</SelectItem>
-                  <SelectItem value="experience">Most Experience</SelectItem>
-                </SelectContent>
-              </Select>
+              {!isCoachView && (
+                <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                  <SelectTrigger className="w-full md:w-48">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="match">Best Match</SelectItem>
+                    <SelectItem value="rating">Highest Rating</SelectItem>
+                    <SelectItem value="experience">Most Experience</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* Category Filters */}
@@ -289,7 +354,7 @@ const CoachingMarketplace = () => {
             <div className="flex flex-wrap gap-4">
               <Select value={selectedLevel} onValueChange={setSelectedLevel}>
                 <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Coaching Level" />
+                  <SelectValue placeholder={isCoachView ? "Experience Level" : "Coaching Level"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Levels</SelectItem>
@@ -307,20 +372,22 @@ const CoachingMarketplace = () => {
                 className="w-full sm:w-48"
               />
 
-              <Select 
-                value={minRating.toString()} 
-                onValueChange={(v) => setMinRating(Number(v))}
-              >
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Min Rating" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">Any Rating</SelectItem>
-                  <SelectItem value="3">3+ Stars</SelectItem>
-                  <SelectItem value="4">4+ Stars</SelectItem>
-                  <SelectItem value="4.5">4.5+ Stars</SelectItem>
-                </SelectContent>
-              </Select>
+              {!isCoachView && (
+                <Select 
+                  value={minRating.toString()} 
+                  onValueChange={(v) => setMinRating(Number(v))}
+                >
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Min Rating" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Any Rating</SelectItem>
+                    <SelectItem value="3">3+ Stars</SelectItem>
+                    <SelectItem value="4">4+ Stars</SelectItem>
+                    <SelectItem value="4.5">4.5+ Stars</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
         </div>
@@ -333,108 +400,194 @@ const CoachingMarketplace = () => {
             <div className="text-center py-12">
               <div className="w-10 h-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
             </div>
-          ) : filteredCoaches.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">No coaches found matching your criteria.</p>
-              <Button variant="outline" onClick={() => {
-                setSearchQuery("");
-                setSelectedCategories([]);
-                setSelectedLevel("all");
-                setSelectedLocation("");
-                setMinRating(0);
-              }}>
-                Clear Filters
-              </Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredCoaches.map((coach) => (
-                <div
-                  key={coach.id}
-                  className="rounded-2xl bg-gradient-card border border-border p-6 hover:border-primary/30 transition-all duration-300"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h3 className="font-display text-xl font-bold text-foreground mb-1">
-                        {coach.name}
-                      </h3>
-                      {coach.location && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
-                          <MapPin className="w-3 h-3" />
-                          {coach.location}
-                        </div>
+          ) : isCoachView ? (
+            // Coach view - show connected players
+            filteredPlayers.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground mb-4">No connected players found.</p>
+                <p className="text-sm text-muted-foreground">Players will appear here once they connect with you.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredPlayers.map((player) => (
+                  <div
+                    key={player.id}
+                    className="rounded-2xl bg-gradient-card border border-border p-6 hover:border-primary/30 transition-all duration-300"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h3 className="font-display text-xl font-bold text-foreground mb-1">
+                          {player.name}
+                        </h3>
+                        {player.location && (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+                            <MapPin className="w-3 h-3" />
+                            {player.location}
+                          </div>
+                        )}
+                      </div>
+                      <Badge variant="secondary">
+                        <Users className="w-3 h-3 mr-1" />
+                        Player
+                      </Badge>
+                    </div>
+
+                    {/* Playing Role */}
+                    {player.playing_role && (
+                      <div className="flex items-center gap-2 mb-4">
+                        <Award className="w-4 h-4 text-primary" />
+                        <span className="font-semibold capitalize">{player.playing_role}</span>
+                      </div>
+                    )}
+
+                    {/* Training Categories */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {player.categories?.slice(0, 3).map((cat: any) => (
+                        <Badge key={cat.id} variant="outline" className="text-xs">
+                          {cat.name}
+                        </Badge>
+                      ))}
+                      {player.categories && player.categories.length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{player.categories.length - 3} more
+                        </Badge>
                       )}
                     </div>
-                    {coach.is_verified && (
-                      <Badge variant="secondary" className="bg-green-500/10 text-green-500">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Verified
-                      </Badge>
-                    )}
-                  </div>
 
-                  {/* Rating */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-primary text-primary" />
-                      <span className="font-semibold">{coach.adjusted_rating.toFixed(1)}</span>
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                      <div>
+                        <div className="text-muted-foreground">Level</div>
+                        <div className="font-semibold capitalize">{player.experience_level || 'Not set'}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Age Group</div>
+                        <div className="font-semibold capitalize">{player.age_group || 'Not set'}</div>
+                      </div>
                     </div>
-                    <span className="text-sm text-muted-foreground">
-                      ({coach.number_of_ratings} {coach.number_of_ratings === 1 ? 'rating' : 'ratings'})
-                    </span>
-                  </div>
 
-                  {/* Specialties */}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {coach.categories?.slice(0, 3).map((cat) => (
-                      <Badge key={cat.id} variant="outline" className="text-xs">
-                        {cat.name}
-                      </Badge>
-                    ))}
-                    {coach.categories && coach.categories.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{coach.categories.length - 3} more
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Stats */}
-                  <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                    <div>
-                      <div className="text-muted-foreground">Level</div>
-                      <div className="font-semibold capitalize">{coach.coaching_level}</div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Experience</div>
-                      <div className="font-semibold">{coach.years_experience} years</div>
-                    </div>
-                  </div>
-
-                  {/* Bio preview */}
-                  {coach.bio && (
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                      {coach.bio}
-                    </p>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex gap-2">
-                    <Button variant="hero" size="sm" className="flex-1" asChild>
-                      <Link to={`/coaching-marketplace/coach/${coach.id}`}>
-                        View Profile
-                      </Link>
-                    </Button>
-                    {user && (
-                      <Button variant="outline" size="sm" asChild>
-                        <Link to={`/coaching-marketplace/connect/${coach.id}`}>
-                          <UserPlus className="w-4 h-4" />
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <Button variant="hero" size="sm" className="flex-1" asChild>
+                        <Link to={`/coaching-marketplace/player/${player.id}`}>
+                          View Profile
                         </Link>
                       </Button>
-                    )}
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={`/coaching-marketplace/book/${player.id}`}>
+                          <Calendar className="w-4 h-4" />
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
+          ) : (
+            // Player/non-logged-in view - show coaches
+            filteredCoaches.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground mb-4">No coaches found matching your criteria.</p>
+                <Button variant="outline" onClick={() => {
+                  setSearchQuery("");
+                  setSelectedCategories([]);
+                  setSelectedLevel("all");
+                  setSelectedLocation("");
+                  setMinRating(0);
+                }}>
+                  Clear Filters
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredCoaches.map((coach) => (
+                  <div
+                    key={coach.id}
+                    className="rounded-2xl bg-gradient-card border border-border p-6 hover:border-primary/30 transition-all duration-300"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h3 className="font-display text-xl font-bold text-foreground mb-1">
+                          {coach.name}
+                        </h3>
+                        {coach.location && (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+                            <MapPin className="w-3 h-3" />
+                            {coach.location}
+                          </div>
+                        )}
+                      </div>
+                      {coach.is_verified && (
+                        <Badge variant="secondary" className="bg-green-500/10 text-green-500">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Verified
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Rating */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 fill-primary text-primary" />
+                        <span className="font-semibold">{coach.adjusted_rating.toFixed(1)}</span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        ({coach.number_of_ratings} {coach.number_of_ratings === 1 ? 'rating' : 'ratings'})
+                      </span>
+                    </div>
+
+                    {/* Specialties */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {coach.categories?.slice(0, 3).map((cat) => (
+                        <Badge key={cat.id} variant="outline" className="text-xs">
+                          {cat.name}
+                        </Badge>
+                      ))}
+                      {coach.categories && coach.categories.length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{coach.categories.length - 3} more
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                      <div>
+                        <div className="text-muted-foreground">Level</div>
+                        <div className="font-semibold capitalize">{coach.coaching_level}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Experience</div>
+                        <div className="font-semibold">{coach.years_experience} years</div>
+                      </div>
+                    </div>
+
+                    {/* Bio preview */}
+                    {coach.bio && (
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                        {coach.bio}
+                      </p>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <Button variant="hero" size="sm" className="flex-1" asChild>
+                        <Link to={`/coaching-marketplace/coach/${coach.id}`}>
+                          View Profile
+                        </Link>
+                      </Button>
+                      {user && (
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to={`/coaching-marketplace/connect/${coach.id}`}>
+                            <UserPlus className="w-4 h-4" />
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       </section>
@@ -445,4 +598,3 @@ const CoachingMarketplace = () => {
 };
 
 export default CoachingMarketplace;
-

@@ -1,14 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus, Clock } from "lucide-react";
+import { X, Plus, Clock, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CoachAvailability } from "@/types/coaching";
 
 interface AvailabilityEditorProps {
   coachId: string;
+  timezone?: string;
 }
 
 const daysOfWeek = [
@@ -21,16 +22,98 @@ const daysOfWeek = [
   { value: 6, label: "Saturday" },
 ];
 
-export function AvailabilityEditor({ coachId }: AvailabilityEditorProps) {
+export function AvailabilityEditor({ coachId, timezone }: AvailabilityEditorProps) {
   const { toast } = useToast();
   const [availability, setAvailability] = useState<CoachAvailability[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newSlot, setNewSlot] = useState({
     day_of_week: 1,
-    start_time_utc: "09:00",
-    end_time_utc: "17:00",
+    start_time: "09:00",
+    end_time: "17:00",
   });
+
+  const resolvedTimezone = useMemo(() => {
+    return timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  }, [timezone]);
+
+  // Convert local time to UTC for storage
+  const localTimeToUtc = (time: string, dayOfWeek: number): { time: string; dayOffset: number } => {
+    // Create a date for the next occurrence of the specified day
+    const now = new Date();
+    const currentDay = now.getUTCDay();
+    const daysUntilTarget = (dayOfWeek - currentDay + 7) % 7;
+    const targetDate = new Date(now);
+    targetDate.setDate(now.getDate() + daysUntilTarget);
+    
+    // Parse time
+    const [hours, minutes] = time.split(':').map(Number);
+    
+    // Create a date string in the local timezone
+    const localDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}T${time}:00`;
+    
+    // Get the UTC offset for the timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: resolvedTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    
+    // Create a date in UTC and adjust for timezone
+    const localDate = new Date(localDateStr);
+    const utcDate = new Date(localDate.toLocaleString('en-US', { timeZone: 'UTC' }));
+    const tzDate = new Date(localDate.toLocaleString('en-US', { timeZone: resolvedTimezone }));
+    const offsetMs = tzDate.getTime() - utcDate.getTime();
+    
+    const utcTime = new Date(localDate.getTime() - offsetMs);
+    const utcHours = utcTime.getUTCHours();
+    const utcMinutes = utcTime.getUTCMinutes();
+    const utcDay = utcTime.getUTCDay();
+    
+    const dayOffset = utcDay - dayOfWeek;
+    
+    return {
+      time: `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`,
+      dayOffset: dayOffset,
+    };
+  };
+
+  // Convert UTC time to local time for display
+  const utcTimeToLocal = (time: string, dayOfWeek: number): { time: string; dayOffset: number } => {
+    const now = new Date();
+    const currentDay = now.getUTCDay();
+    const daysUntilTarget = (dayOfWeek - currentDay + 7) % 7;
+    const targetDate = new Date(now);
+    targetDate.setUTCDate(now.getUTCDate() + daysUntilTarget);
+    
+    const [hours, minutes] = time.split(':').map(Number);
+    targetDate.setUTCHours(hours, minutes, 0, 0);
+    
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: resolvedTimezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      weekday: 'short',
+    });
+    
+    const parts = formatter.formatToParts(targetDate);
+    const localHour = parts.find(p => p.type === 'hour')?.value || '00';
+    const localMinute = parts.find(p => p.type === 'minute')?.value || '00';
+    
+    const localDate = new Date(targetDate.toLocaleString('en-US', { timeZone: resolvedTimezone }));
+    const localDay = localDate.getDay();
+    const dayOffset = localDay - dayOfWeek;
+    
+    return {
+      time: `${localHour}:${localMinute}`,
+      dayOffset: dayOffset,
+    };
+  };
 
   useEffect(() => {
     fetchAvailability();
@@ -61,7 +144,7 @@ export function AvailabilityEditor({ coachId }: AvailabilityEditorProps) {
   };
 
   const addAvailability = async () => {
-    if (newSlot.start_time_utc >= newSlot.end_time_utc) {
+    if (newSlot.start_time >= newSlot.end_time) {
       toast({
         title: "Invalid Time",
         description: "End time must be after start time.",
@@ -70,16 +153,23 @@ export function AvailabilityEditor({ coachId }: AvailabilityEditorProps) {
       return;
     }
 
+    // Convert local times to UTC
+    const startUtc = localTimeToUtc(newSlot.start_time, newSlot.day_of_week);
+    const endUtc = localTimeToUtc(newSlot.end_time, newSlot.day_of_week);
+    
+    // Adjust day if timezone conversion crosses day boundary
+    const utcDayOfWeek = (newSlot.day_of_week + startUtc.dayOffset + 7) % 7;
+
     // Check for overlap
     const overlaps = availability.some(
       (av) =>
-        av.day_of_week === newSlot.day_of_week &&
-        ((newSlot.start_time_utc >= av.start_time_utc &&
-          newSlot.start_time_utc < av.end_time_utc) ||
-          (newSlot.end_time_utc > av.start_time_utc &&
-            newSlot.end_time_utc <= av.end_time_utc) ||
-          (newSlot.start_time_utc <= av.start_time_utc &&
-            newSlot.end_time_utc >= av.end_time_utc))
+        av.day_of_week === utcDayOfWeek &&
+        ((startUtc.time >= av.start_time_utc &&
+          startUtc.time < av.end_time_utc) ||
+          (endUtc.time > av.start_time_utc &&
+            endUtc.time <= av.end_time_utc) ||
+          (startUtc.time <= av.start_time_utc &&
+            endUtc.time >= av.end_time_utc))
     );
 
     if (overlaps) {
@@ -96,7 +186,9 @@ export function AvailabilityEditor({ coachId }: AvailabilityEditorProps) {
       const { error } = await supabase.from("coach_availability").insert([
         {
           coach_id: coachId,
-          ...newSlot,
+          day_of_week: utcDayOfWeek,
+          start_time_utc: startUtc.time,
+          end_time_utc: endUtc.time,
         },
       ]);
 
@@ -109,8 +201,8 @@ export function AvailabilityEditor({ coachId }: AvailabilityEditorProps) {
 
       setNewSlot({
         day_of_week: 1,
-        start_time_utc: "09:00",
-        end_time_utc: "17:00",
+        start_time: "09:00",
+        end_time: "17:00",
       });
       fetchAvailability();
     } catch (error: any) {
@@ -174,14 +266,44 @@ export function AvailabilityEditor({ coachId }: AvailabilityEditorProps) {
     );
   }
 
+  // Group availability by local day (converting from UTC)
+  const groupByLocalDay = (avs: CoachAvailability[]) => {
+    const grouped: Record<number, { slot: CoachAvailability; localStart: string; localEnd: string }[]> = {};
+    
+    avs.forEach((av) => {
+      const localStart = utcTimeToLocal(av.start_time_utc, av.day_of_week);
+      const localEnd = utcTimeToLocal(av.end_time_utc, av.day_of_week);
+      const localDay = (av.day_of_week + localStart.dayOffset + 7) % 7;
+      
+      if (!grouped[localDay]) {
+        grouped[localDay] = [];
+      }
+      grouped[localDay].push({
+        slot: av,
+        localStart: localStart.time,
+        localEnd: localEnd.time,
+      });
+    });
+    
+    return grouped;
+  };
+
+  const groupedLocal = groupByLocalDay(availability);
+
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="font-display text-xl font-bold text-foreground mb-4">
-          Weekly Availability
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display text-xl font-bold text-foreground">
+            Weekly Availability
+          </h3>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Globe className="w-4 h-4" />
+            {resolvedTimezone}
+          </div>
+        </div>
         <p className="text-sm text-muted-foreground mb-6">
-          Set your recurring weekly availability. Times are stored in UTC.
+          Set your recurring weekly availability. Times are shown in your timezone.
         </p>
 
         {/* Add New Slot */}
@@ -204,23 +326,23 @@ export function AvailabilityEditor({ coachId }: AvailabilityEditorProps) {
               </select>
             </div>
             <div>
-              <Label>Start Time (UTC)</Label>
+              <Label>Start Time</Label>
               <input
                 type="time"
-                value={newSlot.start_time_utc}
+                value={newSlot.start_time}
                 onChange={(e) =>
-                  setNewSlot({ ...newSlot, start_time_utc: e.target.value })
+                  setNewSlot({ ...newSlot, start_time: e.target.value })
                 }
                 className="w-full h-10 px-4 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary mt-2"
               />
             </div>
             <div>
-              <Label>End Time (UTC)</Label>
+              <Label>End Time</Label>
               <input
                 type="time"
-                value={newSlot.end_time_utc}
+                value={newSlot.end_time}
                 onChange={(e) =>
-                  setNewSlot({ ...newSlot, end_time_utc: e.target.value })
+                  setNewSlot({ ...newSlot, end_time: e.target.value })
                 }
                 className="w-full h-10 px-4 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary mt-2"
               />
@@ -242,7 +364,7 @@ export function AvailabilityEditor({ coachId }: AvailabilityEditorProps) {
         {/* Display Availability */}
         <div className="space-y-4">
           {daysOfWeek.map((day) => {
-            const daySlots = grouped[day.value] || [];
+            const daySlots = groupedLocal[day.value] || [];
             return (
               <div
                 key={day.value}
@@ -256,14 +378,14 @@ export function AvailabilityEditor({ coachId }: AvailabilityEditorProps) {
                 </div>
                 {daySlots.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {daySlots.map((slot) => (
+                    {daySlots.map(({ slot, localStart, localEnd }) => (
                       <Badge
                         key={slot.id}
                         variant="secondary"
                         className="flex items-center gap-2 px-3 py-1.5"
                       >
                         <Clock className="w-3 h-3" />
-                        {slot.start_time_utc} - {slot.end_time_utc} UTC
+                        {localStart} - {localEnd}
                         <button
                           onClick={() => removeAvailability(slot.id)}
                           className="ml-1 hover:text-destructive"

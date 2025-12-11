@@ -762,7 +762,7 @@ const CoachDashboard = () => {
 
             {/* Availability Tab */}
             <TabsContent value="availability">
-              <AvailabilityEditor coachId={coach.id} />
+              <AvailabilityEditor coachId={coach.id} timezone={coach.timezone || undefined} />
             </TabsContent>
 
             {/* Edit Profile Tab */}

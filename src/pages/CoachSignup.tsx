@@ -15,7 +15,7 @@ import { Link } from "react-router-dom";
 import { CoachingCategory, CoachProfileForm, CoachingLevel } from "@/types/coaching";
 
 const CoachSignup = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -23,8 +23,8 @@ const CoachSignup = () => {
   const [categories, setCategories] = useState<CoachingCategory[]>([]);
   
   const [formData, setFormData] = useState<CoachProfileForm>({
-    name: user?.user_metadata?.full_name || "",
-    email: user?.email || "",
+    name: "",
+    email: "",
     phone: "",
     location: "",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -45,13 +45,29 @@ const CoachSignup = () => {
     fetchCategories();
   }, []);
 
+  // Update form data when user is available
   useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.user_metadata?.full_name || prev.name,
+        email: user.email || prev.email,
+      }));
+    }
+  }, [user]);
+
+  // Check for existing profile after auth is loaded
+  useEffect(() => {
+    if (authLoading) {
+      return; // Wait for auth to finish loading
+    }
+    
     if (user) {
       checkExistingProfile();
     } else {
       setCheckingProfile(false);
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   const checkExistingProfile = async () => {
     if (!user) {

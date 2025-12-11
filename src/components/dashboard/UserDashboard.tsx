@@ -163,9 +163,27 @@ export const UserDashboard = () => {
       <div className="container mx-auto px-4">
         {/* Welcome Header */}
         <div className="mb-10">
-          <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-3">
-            Welcome back, <span className="text-gradient-primary">{userName}</span>!
-          </h1>
+          <div className="flex flex-wrap items-center gap-3 mb-3">
+            <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-foreground">
+              Welcome back, <span className="text-gradient-primary">{userName}</span>!
+            </h1>
+            {!loading && (coachProfile || playerProfile) && (
+              <div className="flex gap-2">
+                {coachProfile && (
+                  <Badge variant="default" className="text-sm py-1 px-3">
+                    <GraduationCap className="w-4 h-4 mr-1" />
+                    Coach
+                  </Badge>
+                )}
+                {playerProfile && (
+                  <Badge variant="secondary" className="text-sm py-1 px-3">
+                    <UserCircle className="w-4 h-4 mr-1" />
+                    Player
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
           <p className="text-muted-foreground text-lg">
             Ready to elevate your game? Here's your personalized dashboard.
           </p>

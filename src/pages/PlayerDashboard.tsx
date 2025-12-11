@@ -6,13 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Calendar, Users, Star, Clock, MapPin, 
-  BookOpen, Plus, Eye, XCircle, Settings
+  BookOpen, Plus, Eye, XCircle, Settings, Edit
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { Player, Session, Coach, Connection } from "@/types/coaching";
+import { PlayerProfileEditor } from "@/components/coaching/PlayerProfileEditor";
 import { formatDate } from "@/lib/helpers";
 import { sortCoachesByMatch, getMaxExperienceYears } from "@/lib/coaching-matching";
 
@@ -276,6 +277,10 @@ const PlayerDashboard = () => {
             <TabsList>
               <TabsTrigger value="sessions">Sessions</TabsTrigger>
               <TabsTrigger value="coaches">Matched Coaches</TabsTrigger>
+              <TabsTrigger value="edit-profile">
+                <Edit className="w-4 h-4 mr-1" />
+                Edit Profile
+              </TabsTrigger>
             </TabsList>
 
             {/* Sessions Tab */}
@@ -444,6 +449,14 @@ const PlayerDashboard = () => {
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            {/* Edit Profile Tab */}
+            <TabsContent value="edit-profile">
+              <h2 className="font-display text-2xl font-bold text-foreground mb-4">
+                Edit Your Profile
+              </h2>
+              <PlayerProfileEditor player={player} onSave={fetchData} />
             </TabsContent>
           </Tabs>
         </div>

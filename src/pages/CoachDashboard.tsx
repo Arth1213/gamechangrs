@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Calendar, Users, Star, Clock, MapPin, 
-  Settings, Plus, Eye, XCircle, CheckCircle
+  Settings, Plus, Eye, XCircle, CheckCircle, Edit
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { Coach, Session, Player, Connection } from "@/types/coaching";
 import { AvailabilityEditor } from "@/components/coaching/AvailabilityEditor";
+import { CoachProfileEditor } from "@/components/coaching/CoachProfileEditor";
 import { formatDate } from "@/lib/helpers";
 import { sortPlayersByMatch } from "@/lib/coaching-matching";
 
@@ -310,6 +311,10 @@ const CoachDashboard = () => {
               <TabsTrigger value="sessions">Sessions</TabsTrigger>
               <TabsTrigger value="students">Matched Students</TabsTrigger>
               <TabsTrigger value="availability">Availability</TabsTrigger>
+              <TabsTrigger value="edit-profile">
+                <Edit className="w-4 h-4 mr-1" />
+                Edit Profile
+              </TabsTrigger>
             </TabsList>
 
             {/* Sessions Tab */}
@@ -475,6 +480,14 @@ const CoachDashboard = () => {
             {/* Availability Tab */}
             <TabsContent value="availability">
               <AvailabilityEditor coachId={coach.id} />
+            </TabsContent>
+
+            {/* Edit Profile Tab */}
+            <TabsContent value="edit-profile">
+              <h2 className="font-display text-2xl font-bold text-foreground mb-4">
+                Edit Your Profile
+              </h2>
+              <CoachProfileEditor coach={coach} onSave={fetchData} />
             </TabsContent>
           </Tabs>
         </div>

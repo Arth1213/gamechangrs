@@ -66,7 +66,7 @@ const SessionBooking = () => {
         return;
       }
 
-      setCoach(coachData);
+      setCoach(coachData as Coach);
 
       // Fetch player
       const { data: playerData } = await supabase
@@ -113,7 +113,7 @@ const SessionBooking = () => {
         .eq("coach_id", coachId)
         .order("day_of_week", { ascending: true });
 
-      if (availabilityData) setAvailability(availabilityData);
+      if (availabilityData) setAvailability(availabilityData as CoachAvailability[]);
 
       // Fetch blocked dates
       const { data: blockedData } = await supabase
@@ -122,7 +122,7 @@ const SessionBooking = () => {
         .eq("coach_id", coachId)
         .gte("blocked_date", new Date().toISOString().split("T")[0]);
 
-      if (blockedData) setBlockedDates(blockedData);
+      if (blockedData) setBlockedDates(blockedData as BlockedDate[]);
 
       // Fetch existing sessions
       const { data: sessionsData } = await supabase
@@ -132,7 +132,7 @@ const SessionBooking = () => {
         .gte("session_date_time_utc", new Date().toISOString())
         .neq("status", "canceled");
 
-      if (sessionsData) setExistingSessions(sessionsData);
+      if (sessionsData) setExistingSessions(sessionsData as Session[]);
     } catch (error: any) {
       console.error("Error fetching data:", error);
       toast({

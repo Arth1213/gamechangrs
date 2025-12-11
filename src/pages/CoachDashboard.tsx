@@ -53,7 +53,7 @@ const CoachDashboard = () => {
         return;
       }
 
-      setCoach(coachData);
+      setCoach(coachData as Coach);
 
       // Fetch sessions
       const { data: sessionsData } = await supabase
@@ -62,7 +62,7 @@ const CoachDashboard = () => {
         .eq("coach_id", coachData.id)
         .order("session_date_time_utc", { ascending: true });
 
-      if (sessionsData) setSessions(sessionsData);
+      if (sessionsData) setSessions(sessionsData as Session[]);
 
       // Fetch connections
       const { data: connectionsData } = await supabase
@@ -72,7 +72,7 @@ const CoachDashboard = () => {
         .eq("verified", true);
 
       if (connectionsData) {
-        setConnections(connectionsData);
+        setConnections(connectionsData as Connection[]);
 
         // Fetch matched students
         const studentIds = connectionsData.map((c) => c.student_id);
@@ -84,7 +84,7 @@ const CoachDashboard = () => {
             .eq("is_active", true);
 
           if (studentsData) {
-            const matched = sortPlayersByMatch(studentsData, coachData);
+            const matched = sortPlayersByMatch(studentsData as Player[], coachData as Coach);
             setMatchedStudents(matched.map((m) => m.player!));
           }
         }

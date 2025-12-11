@@ -56,7 +56,7 @@ const SessionRating = () => {
         return;
       }
 
-      setSession(sessionData);
+      setSession(sessionData as Session);
 
       // Verify user owns this session
       const { data: playerData } = await supabase
@@ -82,7 +82,7 @@ const SessionRating = () => {
         .eq("id", sessionData.coach_id)
         .single();
 
-      if (coachData) setCoach(coachData);
+      if (coachData) setCoach(coachData as Coach);
 
       // Check for existing rating
       const { data: ratingData } = await supabase

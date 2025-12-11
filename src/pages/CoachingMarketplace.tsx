@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { CoachWithDetails, CoachingCategory } from "@/types/coaching";
 import { sortCoachesByMatch, getMaxExperienceYears } from "@/lib/coaching-matching";
+import { ConnectionRequestDialog } from "@/components/coaching/ConnectionRequestDialog";
 import {
   Select,
   SelectContent,
@@ -489,11 +490,15 @@ const CoachingMarketplace = () => {
                           View Profile
                         </Link>
                       </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link to={`/coaching-marketplace/book/${player.id}`}>
-                          <Calendar className="w-4 h-4" />
-                        </Link>
-                      </Button>
+                      {!player.isConnected && (
+                        <ConnectionRequestDialog
+                          targetId={player.id}
+                          targetType="player"
+                          targetName={player.name}
+                          targetEmail={player.email}
+                          isConnected={player.isConnected}
+                        />
+                      )}
                     </div>
                   </div>
                 ))}
@@ -592,12 +597,13 @@ const CoachingMarketplace = () => {
                           View Profile
                         </Link>
                       </Button>
-                      {user && (
-                        <Button variant="outline" size="sm" asChild>
-                          <Link to={`/coaching-marketplace/connect/${coach.id}`}>
-                            <UserPlus className="w-4 h-4" />
-                          </Link>
-                        </Button>
+                      {user && hasPlayerProfile && (
+                        <ConnectionRequestDialog
+                          targetId={coach.id}
+                          targetType="coach"
+                          targetName={coach.name}
+                          targetEmail={coach.email}
+                        />
                       )}
                     </div>
                   </div>

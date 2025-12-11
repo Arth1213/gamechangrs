@@ -30,11 +30,20 @@ export function isValidConnectionCode(
 }
 
 /**
- * Get expiration time (10 minutes from now)
+ * Get expiration time (10 minutes from now - for manual code exchange)
  */
 export function getCodeExpiration(): Date {
   const expiresAt = new Date();
   expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+  return expiresAt;
+}
+
+/**
+ * Get expiration time for email-based verification (24 hours)
+ */
+export function getEmailCodeExpiration(): Date {
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + 24);
   return expiresAt;
 }
 

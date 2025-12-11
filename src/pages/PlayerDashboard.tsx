@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link, useSearchParams } from "react-router-dom";
 import { Player, Session, Coach, Connection } from "@/types/coaching";
 import { PlayerProfileEditor } from "@/components/coaching/PlayerProfileEditor";
+import { PendingConnections } from "@/components/coaching/PendingConnections";
 import { formatDate } from "@/lib/helpers";
 import { sortCoachesByMatch, getMaxExperienceYears } from "@/lib/coaching-matching";
 

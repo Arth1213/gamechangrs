@@ -307,9 +307,16 @@ export const UserDashboard = () => {
                 </div>
               )}
 
-              {/* Add Role Options */}
+              {/* Role Management Options */}
               <div className="flex flex-wrap gap-3 pt-2 border-t border-border mt-4">
-                {!coachProfile && (
+                {coachProfile ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/coaching-marketplace/coach-dashboard?tab=profile">
+                      <GraduationCap className="w-4 h-4 mr-1" />
+                      Edit Coach Profile
+                    </Link>
+                  </Button>
+                ) : (
                   <Button variant="outline" size="sm" asChild>
                     <Link to="/coaching-marketplace/coach-signup">
                       <Plus className="w-4 h-4 mr-1" />
@@ -317,7 +324,14 @@ export const UserDashboard = () => {
                     </Link>
                   </Button>
                 )}
-                {!playerProfile && (
+                {playerProfile ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/coaching-marketplace/player-dashboard?tab=profile">
+                      <UserCircle className="w-4 h-4 mr-1" />
+                      Edit Player Profile
+                    </Link>
+                  </Button>
+                ) : (
                   <Button variant="outline" size="sm" asChild>
                     <Link to="/coaching-marketplace/player-signup">
                       <Plus className="w-4 h-4 mr-1" />

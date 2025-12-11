@@ -171,127 +171,146 @@ export const UserDashboard = () => {
           </p>
         </div>
 
-        {/* Coaching Profile Cards */}
-        {(coachProfile || playerProfile) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-            {/* Coach Profile Card */}
-            {coachProfile && (
-              <div className="rounded-2xl bg-gradient-card border border-border p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">
-                    {coachProfile.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-display font-bold text-foreground">{coachProfile.name}</h3>
-                      <Badge variant="default">Coach</Badge>
-                      {coachProfile.is_verified && (
-                        <Badge variant="secondary" className="bg-green-500/20 text-green-400 text-xs">Verified</Badge>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-3">
-                      {coachProfile.location && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {coachProfile.location}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                        {coachProfile.average_rating?.toFixed(1) || '0.0'}
-                      </span>
-                      <span>{coachProfile.years_experience} yrs exp</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" asChild>
-                        <Link to="/coaching-marketplace/coach-dashboard">
-                          <Eye className="w-3 h-3 mr-1" />
-                          Dashboard
-                        </Link>
-                      </Button>
-                      <Button size="sm" variant="ghost" asChild>
-                        <Link to={`/coaching-marketplace/coach/${coachProfile.id}`}>
-                          View Profile
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+        {/* Role Status Section */}
+        <div className="rounded-2xl bg-gradient-card border border-border p-6 mb-10">
+          <h3 className="font-display font-bold text-foreground mb-4 flex items-center gap-2">
+            <UserCircle className="w-5 h-5 text-primary" />
+            Your Coaching Roles
+          </h3>
+          
+          {loading ? (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              Loading...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Current Roles */}
+              <div className="flex flex-wrap gap-3 items-center">
+                {coachProfile && (
+                  <Badge variant="default" className="text-sm py-1 px-3">
+                    <GraduationCap className="w-4 h-4 mr-1" />
+                    Coach
+                  </Badge>
+                )}
+                {playerProfile && (
+                  <Badge variant="secondary" className="text-sm py-1 px-3">
+                    <UserCircle className="w-4 h-4 mr-1" />
+                    Player
+                  </Badge>
+                )}
+                {!coachProfile && !playerProfile && (
+                  <span className="text-muted-foreground text-sm">No coaching roles set up yet</span>
+                )}
               </div>
-            )}
 
-            {/* Player Profile Card */}
-            {playerProfile && (
-              <div className="rounded-2xl bg-gradient-card border border-border p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center text-accent text-xl font-bold">
-                    {playerProfile.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-display font-bold text-foreground">{playerProfile.name}</h3>
-                      <Badge variant="secondary">Player</Badge>
+              {/* Profile Cards with Edit Options */}
+              {(coachProfile || playerProfile) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  {coachProfile && (
+                    <div className="rounded-xl bg-secondary/30 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                          {coachProfile.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold text-foreground truncate">{coachProfile.name}</h4>
+                            {coachProfile.is_verified && (
+                              <Badge variant="secondary" className="bg-green-500/20 text-green-400 text-xs">Verified</Badge>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-2">
+                            {coachProfile.location && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {coachProfile.location}
+                              </span>
+                            )}
+                            <span className="flex items-center gap-1">
+                              <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                              {coachProfile.average_rating?.toFixed(1) || '0.0'}
+                            </span>
+                            <span>{coachProfile.years_experience} yrs</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="hero" asChild>
+                              <Link to="/coaching-marketplace/coach-dashboard?tab=profile">
+                                Edit Profile
+                              </Link>
+                            </Button>
+                            <Button size="sm" variant="ghost" asChild>
+                              <Link to={`/coaching-marketplace/coach/${coachProfile.id}`}>
+                                <Eye className="w-3 h-3" />
+                              </Link>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-3">
-                      {playerProfile.location && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {playerProfile.location}
-                        </span>
-                      )}
-                      {playerProfile.playing_role && (
-                        <span>{playerProfile.playing_role}</span>
-                      )}
-                      <span className="capitalize">{playerProfile.experience_level}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" asChild>
-                        <Link to="/coaching-marketplace/player-dashboard">
-                          <Eye className="w-3 h-3 mr-1" />
-                          Dashboard
-                        </Link>
-                      </Button>
-                      <Button size="sm" variant="ghost" asChild>
-                        <Link to={`/coaching-marketplace/player/${playerProfile.id}`}>
-                          View Profile
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+                  )}
 
-        {/* Sign up prompts if no coaching profile */}
-        {!loading && !coachProfile && !playerProfile && (
-          <div className="rounded-2xl bg-gradient-card border border-border p-6 mb-10">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Users className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-display font-bold text-foreground">Join the Coaching Marketplace</h3>
-                <p className="text-sm text-muted-foreground">Connect with coaches or offer your expertise</p>
+                  {playerProfile && (
+                    <div className="rounded-xl bg-secondary/30 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">
+                          {playerProfile.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-foreground mb-1 truncate">{playerProfile.name}</h4>
+                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-2">
+                            {playerProfile.location && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {playerProfile.location}
+                              </span>
+                            )}
+                            {playerProfile.playing_role && (
+                              <span className="capitalize">{playerProfile.playing_role}</span>
+                            )}
+                            <span className="capitalize">{playerProfile.experience_level}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="hero" asChild>
+                              <Link to="/coaching-marketplace/player-dashboard?tab=profile">
+                                Edit Profile
+                              </Link>
+                            </Button>
+                            <Button size="sm" variant="ghost" asChild>
+                              <Link to={`/coaching-marketplace/player/${playerProfile.id}`}>
+                                <Eye className="w-3 h-3" />
+                              </Link>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Add Role Options */}
+              <div className="flex flex-wrap gap-3 pt-2 border-t border-border mt-4">
+                {!coachProfile && (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/coaching-marketplace/coach-signup">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Coach Profile
+                    </Link>
+                  </Button>
+                )}
+                {!playerProfile && (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/coaching-marketplace/player-signup">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Player Profile
+                    </Link>
+                  </Button>
+                )}
               </div>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="hero" size="sm" asChild>
-                <Link to="/coaching-marketplace/coach-signup">
-                  <GraduationCap className="w-4 h-4 mr-2" />
-                  Become a Coach
-                </Link>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/coaching-marketplace/player-signup">
-                  <UserCircle className="w-4 h-4 mr-2" />
-                  Sign Up as Player
-                </Link>
-              </Button>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Upcoming Sessions & Matches Row */}
         {(upcomingSessions.length > 0 || matchedCoaches.length > 0 || matchedPlayers.length > 0) && (

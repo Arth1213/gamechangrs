@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Check, Plus, X, Save, Globe } from "lucide-react";
+import { Check, Plus, X, Save, Globe, Wand2, Loader2 } from "lucide-react";
 import { Player, CoachingCategory, ExperienceLevel, PreferredMode } from "@/types/coaching";
 import { TIMEZONES, getBrowserTimezone } from "@/lib/timezones";
 import { ProfilePictureUpload } from "./ProfilePictureUpload";
@@ -42,6 +42,7 @@ export const PlayerProfileEditor = ({ player, onSave }: PlayerProfileEditorProps
   });
 
   const [linkInput, setLinkInput] = useState("");
+  const [scraping, setScraping] = useState(false);
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
   useEffect(() => {
@@ -136,6 +137,58 @@ export const PlayerProfileEditor = ({ player, onSave }: PlayerProfileEditorProps
       ...prev,
       external_links: prev.external_links.filter((_, i) => i !== index),
     }));
+  };
+
+  const scrapeProfileFromUrl = async (url: string) => {
+    if (!url.trim()) return;
+    
+    setScraping(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('scrape-profile-url', {
+        body: { url, profileType: 'player' },
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.data) {
+        const extracted = data.data;
+        
+        // Update form with extracted data (only non-empty values)
+        setFormData(prev => ({
+          ...prev,
+          name: extracted.name || prev.name,
+          location: extracted.location || prev.location,
+          playing_role: extracted.playing_role || prev.playing_role,
+          age_group: extracted.age_group || prev.age_group,
+          experience_level: extracted.experience_level || prev.experience_level,
+          matches_played: extracted.matches_played ?? prev.matches_played,
+          batting_average: extracted.batting_average ?? prev.batting_average,
+          batting_strike_rate: extracted.batting_strike_rate ?? prev.batting_strike_rate,
+          bowling_economy: extracted.bowling_economy ?? prev.bowling_economy,
+          best_figures: extracted.best_figures || prev.best_figures,
+        }));
+
+        toast({
+          title: "Profile Data Extracted",
+          description: "Relevant information has been added to your profile. Review and save when ready.",
+        });
+      } else {
+        toast({
+          title: "No Data Found",
+          description: data?.error || "Could not extract profile data from this URL.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error scraping URL:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to extract profile data.",
+        variant: "destructive",
+      });
+    } finally {
+      setScraping(false);
+    }
   };
 
   return (
@@ -339,7 +392,10 @@ export const PlayerProfileEditor = ({ player, onSave }: PlayerProfileEditorProps
 
         <div>
           <Label>External Links</Label>
-          <div className="flex gap-2 mt-2">
+          <p className="text-xs text-muted-foreground mt-1 mb-2">
+            Add profile URLs and we can extract relevant data to fill your profile
+          </p>
+          <div className="flex gap-2">
             <Input
               value={linkInput}
               onChange={(e) => setLinkInput(e.target.value)}
@@ -349,14 +405,32 @@ export const PlayerProfileEditor = ({ player, onSave }: PlayerProfileEditorProps
             <Button type="button" variant="outline" onClick={addLink}>
               <Plus className="w-4 h-4" />
             </Button>
+            <Button 
+              type="button" 
+              variant="secondary" 
+              onClick={() => scrapeProfileFromUrl(linkInput)}
+              disabled={!linkInput.trim() || scraping}
+              title="Extract profile data from URL"
+            >
+              {scraping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+            </Button>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
             {formData.external_links.map((link, index) => (
-              <Badge key={index} variant="secondary">
-                <a href={link} target="_blank" rel="noopener noreferrer" className="hover:underline">
+              <Badge key={index} variant="secondary" className="max-w-full">
+                <a href={link} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-[200px]">
                   {link}
                 </a>
-                <button type="button" onClick={() => removeLink(index)} className="ml-2 hover:text-destructive">
+                <button 
+                  type="button" 
+                  onClick={() => scrapeProfileFromUrl(link)} 
+                  className="ml-2 hover:text-primary"
+                  title="Extract data from this URL"
+                  disabled={scraping}
+                >
+                  <Wand2 className="w-3 h-3" />
+                </button>
+                <button type="button" onClick={() => removeLink(index)} className="ml-1 hover:text-destructive">
                   <X className="w-3 h-3" />
                 </button>
               </Badge>

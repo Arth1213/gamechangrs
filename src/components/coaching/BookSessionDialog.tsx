@@ -148,6 +148,48 @@ export function BookSessionDialog({
 
     setBooking(true);
     try {
+      // Check for existing session at the same time to prevent double-booking
+      const sessionStart = selectedSlot.start.toISOString();
+      const sessionEnd = new Date(selectedSlot.start.getTime() + duration * 60000).toISOString();
+      
+      const { data: existingSession } = await supabase
+        .from("sessions")
+        .select("id")
+        .eq("coach_id", selectedCoach.id)
+        .neq("status", "canceled")
+        .gte("session_date_time_utc", new Date().toISOString())
+        .limit(100);
+      
+      // Check for overlapping sessions
+      const hasConflict = existingSession?.some(session => {
+        // We need to fetch the full session to check overlap
+        return false; // Will check with better query
+      });
+
+      // More precise conflict check
+      const { data: conflictCheck } = await supabase
+        .from("sessions")
+        .select("id, session_date_time_utc, duration_minutes")
+        .eq("coach_id", selectedCoach.id)
+        .neq("status", "canceled")
+        .gte("session_date_time_utc", new Date(selectedSlot.start.getTime() - 24 * 60 * 60 * 1000).toISOString())
+        .lte("session_date_time_utc", new Date(selectedSlot.start.getTime() + 24 * 60 * 60 * 1000).toISOString());
+
+      if (conflictCheck && conflictCheck.length > 0) {
+        const slotStart = selectedSlot.start.getTime();
+        const slotEnd = slotStart + duration * 60000;
+        
+        for (const session of conflictCheck) {
+          const existingStart = new Date(session.session_date_time_utc).getTime();
+          const existingEnd = existingStart + (session.duration_minutes || 60) * 60000;
+          
+          // Check if times overlap
+          if (slotStart < existingEnd && slotEnd > existingStart) {
+            throw new Error("This time slot is no longer available. Please select another time.");
+          }
+        }
+      }
+
       // Insert session
       const { data: sessionData, error: sessionError } = await supabase
         .from("sessions")

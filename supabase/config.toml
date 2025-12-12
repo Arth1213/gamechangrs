@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.send-session-notification]
 verify_jwt = false
+
+[functions.scrape-profile-url]
+verify_jwt = true

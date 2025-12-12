@@ -32,14 +32,14 @@ export default function AnalysisDetail() {
     const fetchAnalysis = async () => {
       if (!user || !id) return;
 
+      // First try to fetch (RLS will handle access - either own analysis or connected player's)
       const { data, error } = await supabase
         .from("analysis_results")
         .select("*")
         .eq("id", id)
-        .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) {
+      if (error || !data) {
         setError("Analysis not found or you don't have permission to view it.");
       } else {
         setAnalysis(data);

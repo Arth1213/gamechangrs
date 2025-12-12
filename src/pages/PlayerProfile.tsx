@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { ArrowLeft, MapPin, Clock, ExternalLink, Trophy, Target } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, ExternalLink, Trophy, Target, Video, Calendar } from "lucide-react";
 import { ProfileAvatar } from "@/components/coaching/ProfileAvatar";
+import { format } from "date-fns";
 
 interface Player {
   id: string;
@@ -38,19 +39,35 @@ interface CoachingCategory {
   name: string;
 }
 
+interface AnalysisResult {
+  id: string;
+  mode: string;
+  overall_score: number;
+  created_at: string;
+  video_duration: string | null;
+}
+
 const PlayerProfile = () => {
   const { playerId } = useParams();
   const { user } = useAuth();
   const [player, setPlayer] = useState<Player | null>(null);
   const [categories, setCategories] = useState<CoachingCategory[]>([]);
+  const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
+  const [isConnectedCoach, setIsConnectedCoach] = useState(false);
 
   useEffect(() => {
     fetchPlayer();
     fetchCategories();
   }, [playerId, user]);
+
+  useEffect(() => {
+    if (isConnectedCoach && player?.user_id) {
+      fetchPlayerAnalysisResults();
+    }
+  }, [isConnectedCoach, player]);
 
   const fetchPlayer = async () => {
     if (!playerId) return;
@@ -98,6 +115,7 @@ const PlayerProfile = () => {
             .maybeSingle();
           
           setHasAccess(!!isConnected);
+          setIsConnectedCoach(!!isConnected);
         }
       }
       
@@ -112,6 +130,20 @@ const PlayerProfile = () => {
       .from("coaching_categories")
       .select("*");
     if (data) setCategories(data as CoachingCategory[]);
+  };
+
+  const fetchPlayerAnalysisResults = async () => {
+    if (!player?.user_id) return;
+
+    const { data, error } = await supabase
+      .from("analysis_results")
+      .select("id, mode, overall_score, created_at, video_duration")
+      .eq("user_id", player.user_id)
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setAnalysisResults(data);
+    }
   };
 
   const getCategoryName = (id: string) => {
@@ -368,6 +400,60 @@ const PlayerProfile = () => {
                   </a>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Video Analysis Results - Only for connected coaches */}
+          {isConnectedCoach && analysisResults.length > 0 && (
+            <div className="rounded-2xl bg-gradient-card border border-border p-6 mt-6">
+              <h2 className="font-display text-xl font-bold text-foreground mb-4">
+                <Video className="w-5 h-5 inline mr-2" />
+                Video Analysis History
+              </h2>
+              <div className="space-y-3">
+                {analysisResults.map((result) => (
+                  <Link
+                    key={result.id}
+                    to={`/analysis/${result.id}`}
+                    className="block p-4 rounded-xl bg-secondary/50 hover:bg-secondary/70 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
+                          result.overall_score >= 80 ? 'bg-green-500/20 text-green-500' :
+                          result.overall_score >= 60 ? 'bg-yellow-500/20 text-yellow-500' :
+                          'bg-red-500/20 text-red-500'
+                        }`}>
+                          {result.overall_score}
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground capitalize">
+                            {result.mode} Analysis
+                          </p>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {format(new Date(result.created_at), "MMM d, yyyy 'at' h:mm a")}
+                            {result.video_duration && ` • ${result.video_duration}`}
+                          </p>
+                        </div>
+                      </div>
+                      <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isConnectedCoach && analysisResults.length === 0 && (
+            <div className="rounded-2xl bg-gradient-card border border-border p-6 mt-6">
+              <h2 className="font-display text-xl font-bold text-foreground mb-4">
+                <Video className="w-5 h-5 inline mr-2" />
+                Video Analysis History
+              </h2>
+              <p className="text-muted-foreground text-center py-4">
+                This player hasn't uploaded any video analysis yet.
+              </p>
             </div>
           )}
         </div>

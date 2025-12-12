@@ -90,7 +90,11 @@ export const UserDashboard = () => {
           .order("session_date_time_utc", { ascending: true });
         
         if (allSessionsData) {
-          setAllSessions(prev => [...prev, ...(allSessionsData as Session[])]);
+          setAllSessions(prev => {
+            const existingIds = new Set(prev.map(s => s.id));
+            const newSessions = (allSessionsData as Session[]).filter(s => !existingIds.has(s.id));
+            return [...prev, ...newSessions];
+          });
           
           // Filter upcoming sessions
           const upcoming = allSessionsData.filter(s => 
@@ -143,13 +147,21 @@ export const UserDashboard = () => {
           .order("session_date_time_utc", { ascending: true });
         
         if (allSessionsData) {
-          setAllSessions(prev => [...prev, ...(allSessionsData as Session[])]);
+          setAllSessions(prev => {
+            const existingIds = new Set(prev.map(s => s.id));
+            const newSessions = (allSessionsData as Session[]).filter(s => !existingIds.has(s.id));
+            return [...prev, ...newSessions];
+          });
           
           // Filter upcoming sessions
           const upcoming = allSessionsData.filter(s => 
             new Date(s.session_date_time_utc) > new Date() && s.status !== "canceled"
           ).slice(0, 3);
-          setUpcomingSessions(prev => [...prev, ...(upcoming as Session[])]);
+          setUpcomingSessions(prev => {
+            const existingIds = new Set(prev.map(s => s.id));
+            const newSessions = (upcoming as Session[]).filter(s => !existingIds.has(s.id));
+            return [...prev, ...newSessions];
+          });
           
           // Fetch all coaches from sessions
           const coachIds = [...new Set(allSessionsData.map(s => s.coach_id))];

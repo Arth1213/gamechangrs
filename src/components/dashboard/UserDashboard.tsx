@@ -699,7 +699,7 @@ export const UserDashboard = () => {
                   Your Analysis History
                 </h2>
               </div>
-              <Link to="/analytics" className="text-sm text-primary hover:underline flex items-center gap-1">
+              <Link to="/analysis-history" className="text-sm text-primary hover:underline flex items-center gap-1">
                 View All <ArrowRight className="w-4 h-4" />
               </Link>
             </div>

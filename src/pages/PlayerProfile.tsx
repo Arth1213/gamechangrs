@@ -45,6 +45,7 @@ interface AnalysisResult {
   overall_score: number;
   created_at: string;
   video_duration: string | null;
+  video_url: string | null;
 }
 
 const PlayerProfile = () => {
@@ -137,7 +138,7 @@ const PlayerProfile = () => {
 
     const { data, error } = await supabase
       .from("analysis_results")
-      .select("id, mode, overall_score, created_at, video_duration")
+      .select("id, mode, overall_score, created_at, video_duration, video_url")
       .eq("user_id", player.user_id)
       .order("created_at", { ascending: false });
 
@@ -427,8 +428,14 @@ const PlayerProfile = () => {
                           {result.overall_score}
                         </div>
                         <div>
-                          <p className="font-medium text-foreground capitalize">
+                          <p className="font-medium text-foreground capitalize flex items-center gap-2">
                             {result.mode} Analysis
+                            {result.video_url && (
+                              <span className="inline-flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                <Video className="w-3 h-3" />
+                                Video
+                              </span>
+                            )}
                           </p>
                           <p className="text-sm text-muted-foreground flex items-center gap-1">
                             <Calendar className="w-3 h-3" />

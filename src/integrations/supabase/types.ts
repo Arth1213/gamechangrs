@@ -26,6 +26,7 @@ export type Database = {
           scores: Json
           user_id: string
           video_duration: string | null
+          video_url: string | null
         }
         Insert: {
           angles: Json
@@ -38,6 +39,7 @@ export type Database = {
           scores: Json
           user_id: string
           video_duration?: string | null
+          video_url?: string | null
         }
         Update: {
           angles?: Json
@@ -50,6 +52,7 @@ export type Database = {
           scores?: Json
           user_id?: string
           video_duration?: string | null
+          video_url?: string | null
         }
         Relationships: []
       }

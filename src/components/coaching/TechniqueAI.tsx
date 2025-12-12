@@ -894,6 +894,31 @@ export function TechniqueAI() {
 
     setIsSaving(true);
     try {
+      let savedVideoUrl: string | null = null;
+
+      // Upload video to storage if it's a user-uploaded video (not demo)
+      if (videoFile && !isDemo) {
+        const fileExt = videoFile.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('analysis-videos')
+          .upload(fileName, videoFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Video upload error:', uploadError);
+          toast.error('Failed to upload video');
+        } else {
+          const { data: urlData } = supabase.storage
+            .from('analysis-videos')
+            .getPublicUrl(uploadData.path);
+          savedVideoUrl = urlData.publicUrl;
+        }
+      }
+
       const { error } = await supabase
         .from('analysis_results')
         .insert([{
@@ -904,7 +929,8 @@ export function TechniqueAI() {
           scores: JSON.parse(JSON.stringify(analysisData.scores)),
           feedback: JSON.parse(JSON.stringify(analysisData.feedback)),
           drills: JSON.parse(JSON.stringify(analysisData.drills)),
-          overall_score: analysisData.scores.overall
+          overall_score: analysisData.scores.overall,
+          video_url: savedVideoUrl
         }]);
 
       if (error) throw error;

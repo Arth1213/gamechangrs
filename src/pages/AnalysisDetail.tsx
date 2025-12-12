@@ -6,7 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { AnalysisResults } from "@/components/coaching/AnalysisResults";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Video, Play } from "lucide-react";
 import { format } from "date-fns";
 
 interface StoredAnalysis {
@@ -18,6 +18,7 @@ interface StoredAnalysis {
   feedback: any;
   drills: any;
   video_duration: string | null;
+  video_url: string | null;
   created_at: string;
 }
 
@@ -176,6 +177,31 @@ export default function AnalysisDetail() {
                   {analysis.video_duration && ` • Duration: ${analysis.video_duration}`}
                 </p>
               </div>
+
+              {/* Video Player Section */}
+              {analysis.video_url && (
+                <div className="mb-8 rounded-2xl bg-gradient-card border border-border p-6">
+                  <h2 className="font-display text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Video className="w-5 h-5 text-primary" />
+                    Analyzed Video
+                  </h2>
+                  <div className="relative rounded-xl overflow-hidden bg-secondary/50">
+                    <video
+                      src={analysis.video_url}
+                      controls
+                      className="w-full max-h-[500px] object-contain"
+                      poster=""
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-3 flex items-center gap-2">
+                    <Play className="w-4 h-4" />
+                    Click play to review the original video that was analyzed
+                  </p>
+                </div>
+              )}
+
               <AnalysisResults 
                 analysis={transformToAnalysisFormat(analysis)} 
                 mode={analysis.mode as 'batting' | 'bowling'} 

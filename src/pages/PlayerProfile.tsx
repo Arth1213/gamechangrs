@@ -7,6 +7,7 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, MapPin, Clock, ExternalLink, Trophy, Target } from "lucide-react";
+import { ProfileAvatar } from "@/components/coaching/ProfileAvatar";
 
 interface Player {
   id: string;
@@ -29,6 +30,7 @@ interface Player {
   preferred_days: string[];
   preferred_time_range: string | null;
   user_id: string;
+  profile_picture_url: string | null;
 }
 
 interface CoachingCategory {
@@ -189,9 +191,11 @@ const PlayerProfile = () => {
           {/* Profile Header */}
           <div className="rounded-2xl bg-gradient-card border border-border p-8 mb-6">
             <div className="flex flex-col md:flex-row gap-6">
-              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center text-primary text-3xl font-bold">
-                {player.name.charAt(0).toUpperCase()}
-              </div>
+              <ProfileAvatar
+                name={player.name}
+                imageUrl={player.profile_picture_url}
+                size="lg"
+              />
               
               <div className="flex-1">
                 <h1 className="font-display text-3xl font-bold text-foreground mb-2">

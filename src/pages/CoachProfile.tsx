@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { ArrowLeft, MapPin, Clock, Star, ExternalLink, Award, Users, Calendar } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Star, ExternalLink, Award, Users, Calendar, Sparkles, Loader2 } from "lucide-react";
 import { ProfileAvatar } from "@/components/coaching/ProfileAvatar";
 
 interface Coach {
@@ -27,6 +27,7 @@ interface Coach {
   number_of_ratings: number | null;
   is_verified: boolean | null;
   profile_picture_url: string | null;
+  user_id: string;
 }
 
 interface CoachingCategory {
@@ -42,11 +43,51 @@ const CoachProfile = () => {
   const [categories, setCategories] = useState<CoachingCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [careerSummary, setCareerSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   useEffect(() => {
     fetchCoach();
     fetchCategories();
   }, [coachId]);
+
+  useEffect(() => {
+    if (coach) {
+      generateCareerSummary();
+    }
+  }, [coach]);
+
+  const generateCareerSummary = async () => {
+    if (!coach) return;
+    
+    setSummaryLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-career-summary', {
+        body: {
+          type: 'coach',
+          name: coach.name,
+          bio: coach.bio,
+          location: coach.location,
+          years_experience: coach.years_experience,
+          coaching_level: coach.coaching_level,
+          specialties: coach.specialties,
+          teams_coached: coach.teams_coached,
+          notable_players_coached: coach.notable_players_coached,
+          average_rating: coach.average_rating,
+          number_of_ratings: coach.number_of_ratings,
+        }
+      });
+
+      if (error) throw error;
+      if (data?.summary) {
+        setCareerSummary(data.summary);
+      }
+    } catch (error) {
+      console.error('Error generating career summary:', error);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
 
   const fetchCoach = async () => {
     if (!coachId) return;
@@ -207,6 +248,24 @@ const CoachProfile = () => {
                 </>
               )}
             </div>
+          </div>
+
+          {/* Career Summary */}
+          <div className="rounded-2xl bg-gradient-card border border-border p-6 mb-6">
+            <h2 className="font-display text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Career Summary
+            </h2>
+            {summaryLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating summary...
+              </div>
+            ) : careerSummary ? (
+              <p className="text-muted-foreground leading-relaxed">{careerSummary}</p>
+            ) : (
+              <p className="text-muted-foreground italic">Unable to generate summary</p>
+            )}
           </div>
 
           {/* Bio */}

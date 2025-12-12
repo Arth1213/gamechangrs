@@ -12,6 +12,7 @@ import Coaching from "./pages/Coaching";
 import TechniqueAI from "./pages/TechniqueAI";
 import Analytics from "./pages/Analytics";
 import AnalysisDetail from "./pages/AnalysisDetail";
+import AnalysisHistory from "./pages/AnalysisHistory";
 import Marketplace from "./pages/Marketplace";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
@@ -49,6 +50,11 @@ const App = () => (
             <Route path="/analysis/:id" element={
               <ProtectedRoute>
                 <AnalysisDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/analysis-history" element={
+              <ProtectedRoute>
+                <AnalysisHistory />
               </ProtectedRoute>
             } />
             <Route path="/marketplace" element={<Marketplace />} />

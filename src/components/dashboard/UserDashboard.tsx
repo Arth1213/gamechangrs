@@ -568,6 +568,89 @@ export const UserDashboard = () => {
                     </Button>
                   )}
                 </div>
+
+                {/* Connections inside Coaching Roles */}
+                {(matchedCoaches.length > 0 || matchedPlayers.length > 0) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 mt-4 border-t border-border">
+                    {/* Matched Coaches (for players) */}
+                    {matchedCoaches.length > 0 && (
+                      <div className="rounded-xl bg-secondary/20 p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <GraduationCap className="w-4 h-4 text-accent" />
+                            <h4 className="font-semibold text-foreground text-sm">Your Coaches</h4>
+                          </div>
+                          <Link to="/coaching-marketplace/player-dashboard" className="text-xs text-accent hover:underline flex items-center gap-1">
+                            View All <ArrowRight className="w-3 h-3" />
+                          </Link>
+                        </div>
+                        <div className="space-y-2">
+                          {matchedCoaches.slice(0, 3).map((coach) => (
+                            <Link 
+                              key={coach.id} 
+                              to={`/coaching-marketplace/coach/${coach.id}`}
+                              className="flex items-center justify-between p-2 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold text-sm">
+                                  {coach.name.charAt(0)}
+                                </div>
+                                <div>
+                                  <p className="font-medium text-foreground text-sm">{coach.name}</p>
+                                  <p className="text-xs text-muted-foreground">{coach.coaching_level} • {coach.years_experience} yrs</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 text-xs">
+                                <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                                {coach.average_rating?.toFixed(1) || '0.0'}
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Matched Players (for coaches) */}
+                    {matchedPlayers.length > 0 && (
+                      <div className="rounded-xl bg-secondary/20 p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-accent" />
+                            <h4 className="font-semibold text-foreground text-sm">Your Students</h4>
+                          </div>
+                          <Link to="/coaching-marketplace/coach-dashboard" className="text-xs text-accent hover:underline flex items-center gap-1">
+                            View All <ArrowRight className="w-3 h-3" />
+                          </Link>
+                        </div>
+                        <div className="space-y-2">
+                          {matchedPlayers.slice(0, 3).map((player) => (
+                            <Link 
+                              key={player.id} 
+                              to={`/coaching-marketplace/player/${player.id}`}
+                              className="flex items-center justify-between p-2 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                                  {player.name.charAt(0)}
+                                </div>
+                                <div>
+                                  <p className="font-medium text-foreground text-sm">{player.name}</p>
+                                  <p className="text-xs text-muted-foreground capitalize">{player.experience_level} • {player.playing_role || 'Player'}</p>
+                                </div>
+                              </div>
+                              {player.location && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {player.location}
+                                </span>
+                              )}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -593,92 +676,6 @@ export const UserDashboard = () => {
           )}
         </div>
 
-        {/* Connections Section */}
-        {(matchedCoaches.length > 0 || matchedPlayers.length > 0) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-            {/* Matched Coaches (for players) */}
-            {matchedCoaches.length > 0 && (
-              <div className="rounded-2xl bg-gradient-card border border-border p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                      <GraduationCap className="w-5 h-5 text-accent" />
-                    </div>
-                    <h3 className="font-display font-bold text-foreground">Your Coaches</h3>
-                  </div>
-                  <Link to="/coaching-marketplace/player-dashboard" className="text-sm text-accent hover:underline flex items-center gap-1">
-                    View All <ArrowRight className="w-3 h-3" />
-                  </Link>
-                </div>
-                <div className="space-y-3">
-                  {matchedCoaches.slice(0, 3).map((coach) => (
-                    <Link 
-                      key={coach.id} 
-                      to={`/coaching-marketplace/coach/${coach.id}`}
-                      className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">
-                          {coach.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground text-sm">{coach.name}</p>
-                          <p className="text-xs text-muted-foreground">{coach.coaching_level} • {coach.years_experience} yrs</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 text-sm">
-                        <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                        {coach.average_rating?.toFixed(1) || '0.0'}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Matched Players (for coaches) */}
-            {matchedPlayers.length > 0 && (
-              <div className="rounded-2xl bg-gradient-card border border-border p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-accent" />
-                    </div>
-                    <h3 className="font-display font-bold text-foreground">Your Students</h3>
-                  </div>
-                  <Link to="/coaching-marketplace/coach-dashboard" className="text-sm text-accent hover:underline flex items-center gap-1">
-                    View All <ArrowRight className="w-3 h-3" />
-                  </Link>
-                </div>
-                <div className="space-y-3">
-                  {matchedPlayers.slice(0, 3).map((player) => (
-                    <Link 
-                      key={player.id} 
-                      to={`/coaching-marketplace/player/${player.id}`}
-                      className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                          {player.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground text-sm">{player.name}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{player.experience_level} • {player.playing_role || 'Player'}</p>
-                        </div>
-                      </div>
-                      {player.location && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {player.location}
-                        </span>
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">

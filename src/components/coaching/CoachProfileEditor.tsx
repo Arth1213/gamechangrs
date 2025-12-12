@@ -10,6 +10,7 @@ import { Check, Plus, X, Save, Globe } from "lucide-react";
 import { Coach, CoachingCategory, CoachingLevel } from "@/types/coaching";
 import { TIMEZONES, getBrowserTimezone } from "@/lib/timezones";
 import { ProfilePictureUpload } from "./ProfilePictureUpload";
+import { LocationAutocomplete } from "./LocationAutocomplete";
 
 interface CoachProfileEditorProps {
   coach: Coach;
@@ -157,10 +158,10 @@ export const CoachProfileEditor = ({ coach, onSave }: CoachProfileEditorProps) =
           </div>
           <div>
             <Label htmlFor="location">Location</Label>
-            <Input
+            <LocationAutocomplete
               id="location"
               value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              onChange={(value) => setFormData({ ...formData, location: value })}
               className="mt-2"
               placeholder="City, State"
             />

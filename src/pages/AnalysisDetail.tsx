@@ -1,13 +1,25 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { AnalysisResults } from "@/components/coaching/AnalysisResults";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Video, Play } from "lucide-react";
+import { ArrowLeft, Loader2, Video, Play, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface StoredAnalysis {
   id: string;
@@ -20,14 +32,48 @@ interface StoredAnalysis {
   video_duration: string | null;
   video_url: string | null;
   created_at: string;
+  user_id: string;
 }
 
 export default function AnalysisDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [analysis, setAnalysis] = useState<StoredAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const isOwner = analysis && user && analysis.user_id === user.id;
+
+  const handleDelete = async () => {
+    if (!analysis || !user) return;
+    
+    setIsDeleting(true);
+    try {
+      // Delete video from storage if exists
+      if (analysis.video_url) {
+        const urlParts = analysis.video_url.split('/');
+        const fileName = urlParts.slice(-2).join('/'); // user_id/filename
+        await supabase.storage.from('analysis-videos').remove([fileName]);
+      }
+
+      const { error } = await supabase
+        .from('analysis_results')
+        .delete()
+        .eq('id', analysis.id);
+
+      if (error) throw error;
+      
+      toast.success('Analysis deleted successfully');
+      navigate('/');
+    } catch (error) {
+      console.error('Error deleting analysis:', error);
+      toast.error('Failed to delete analysis');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -152,12 +198,43 @@ export default function AnalysisDetail() {
       <Navbar />
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-5xl">
-          <Button variant="ghost" asChild className="mb-6">
-            <Link to="/" className="flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Dashboard
-            </Link>
-          </Button>
+          <div className="flex items-center justify-between mb-6">
+            <Button variant="ghost" asChild>
+              <Link to="/" className="flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Dashboard
+              </Link>
+            </Button>
+            
+            {isOwner && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive gap-2">
+                    <Trash2 className="w-4 h-4" />
+                    Delete Analysis
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Analysis?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete this analysis and its associated video. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {isDeleting ? 'Deleting...' : 'Delete'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
 
           {error ? (
             <div className="text-center py-16">

@@ -207,13 +207,25 @@ export const PlayerProfileEditor = ({ player, onSave }: PlayerProfileEditorProps
           </div>
           <div>
             <Label htmlFor="age_group">Age Group</Label>
-            <Input
+            <select
               id="age_group"
               value={formData.age_group}
               onChange={(e) => setFormData({ ...formData, age_group: e.target.value })}
-              className="mt-2"
-              placeholder="e.g., U-15, U-18, Senior"
-            />
+              className="w-full h-10 px-4 rounded-xl bg-secondary border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary mt-2"
+            >
+              <option value="">Select age group</option>
+              <option value="U10">U10</option>
+              <option value="U11">U11</option>
+              <option value="U12">U12</option>
+              <option value="U13">U13</option>
+              <option value="U14">U14</option>
+              <option value="U15">U15</option>
+              <option value="U16">U16</option>
+              <option value="U19">U19</option>
+              <option value="U21">U21</option>
+              <option value="Adult">Adult</option>
+              <option value="Masters">Masters</option>
+            </select>
           </div>
           <div>
             <Label htmlFor="playing_role">Playing Role</Label>

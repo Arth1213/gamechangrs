@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useSearchParams } from "react-router-dom";
-import { Coach, Session, Player, Connection } from "@/types/coaching";
+import { Coach, Session, Player, Connection, CoachingCategory } from "@/types/coaching";
 import { AvailabilityEditor } from "@/components/coaching/AvailabilityEditor";
 import { SessionCalendar } from "@/components/coaching/SessionCalendar";
 import { CoachProfileEditor } from "@/components/coaching/CoachProfileEditor";
@@ -32,6 +32,7 @@ const CoachDashboard = () => {
   const [browsablePlayers, setBrowsablePlayers] = useState<Player[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [allConnections, setAllConnections] = useState<Connection[]>([]);
+  const [categories, setCategories] = useState<CoachingCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [connectionDialogOpen, setConnectionDialogOpen] = useState(false);
@@ -104,6 +105,12 @@ const CoachDashboard = () => {
     setFilters({});
   };
 
+  // Helper to get category name from ID
+  const getCategoryName = (categoryId: string): string => {
+    const category = categories.find(c => c.id === categoryId);
+    return category?.name || categoryId;
+  };
+
   useEffect(() => {
     if (user) {
       fetchData();
@@ -115,6 +122,16 @@ const CoachDashboard = () => {
 
     setLoading(true);
     try {
+      // Fetch categories first for name lookup
+      const { data: categoriesData } = await supabase
+        .from("coaching_categories")
+        .select("*")
+        .order("name");
+      
+      if (categoriesData) {
+        setCategories(categoriesData as CoachingCategory[]);
+      }
+
       // Fetch coach profile
       const { data: coachData } = await supabase
         .from("coaches")
@@ -412,7 +429,7 @@ const CoachDashboard = () => {
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline">{coach.coaching_level} Level</Badge>
                   {coach.specialties?.slice(0, 3).map((s) => (
-                    <Badge key={s} variant="secondary">{s}</Badge>
+                    <Badge key={s} variant="secondary">{getCategoryName(s)}</Badge>
                   ))}
                 </div>
               </div>

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { ArrowLeft, MapPin, Clock, ExternalLink, Trophy, Target, Video, Calendar } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, ExternalLink, Trophy, Target, Video, Calendar, Sparkles, Loader2 } from "lucide-react";
 import { ProfileAvatar } from "@/components/coaching/ProfileAvatar";
 import { format } from "date-fns";
 
@@ -58,6 +58,8 @@ const PlayerProfile = () => {
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [isConnectedCoach, setIsConnectedCoach] = useState(false);
+  const [careerSummary, setCareerSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   useEffect(() => {
     fetchPlayer();
@@ -69,6 +71,49 @@ const PlayerProfile = () => {
       fetchPlayerAnalysisResults();
     }
   }, [isConnectedCoach, player]);
+
+  useEffect(() => {
+    if (player && hasAccess) {
+      generateCareerSummary();
+    }
+  }, [player, hasAccess]);
+
+  const generateCareerSummary = async () => {
+    if (!player) return;
+    
+    setSummaryLoading(true);
+    try {
+      const categoryNames = player.training_categories_needed?.map(id => 
+        categories.find(c => c.id === id)?.name || id
+      ) || [];
+
+      const { data, error } = await supabase.functions.invoke('generate-career-summary', {
+        body: {
+          type: 'player',
+          name: player.name,
+          location: player.location,
+          age_group: player.age_group,
+          playing_role: player.playing_role,
+          experience_level: player.experience_level,
+          matches_played: player.matches_played,
+          batting_average: player.batting_average,
+          batting_strike_rate: player.batting_strike_rate,
+          bowling_economy: player.bowling_economy,
+          best_figures: player.best_figures,
+          training_categories_needed: categoryNames,
+        }
+      });
+
+      if (error) throw error;
+      if (data?.summary) {
+        setCareerSummary(data.summary);
+      }
+    } catch (error) {
+      console.error('Error generating career summary:', error);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
 
   const fetchPlayer = async () => {
     if (!playerId) return;
@@ -273,6 +318,24 @@ const PlayerProfile = () => {
                   </Link>
                 </Button>
               </div>
+            )}
+          </div>
+
+          {/* Career Summary */}
+          <div className="rounded-2xl bg-gradient-card border border-border p-6 mb-6">
+            <h2 className="font-display text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Career Summary
+            </h2>
+            {summaryLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating summary...
+              </div>
+            ) : careerSummary ? (
+              <p className="text-muted-foreground leading-relaxed">{careerSummary}</p>
+            ) : (
+              <p className="text-muted-foreground italic">Unable to generate summary</p>
             )}
           </div>
 

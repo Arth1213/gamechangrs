@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.scrape-profile-url]
 verify_jwt = true
+
+[functions.generate-career-summary]
+verify_jwt = false

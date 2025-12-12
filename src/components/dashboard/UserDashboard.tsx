@@ -13,6 +13,7 @@ import {
 import { format } from "date-fns";
 import { Coach, Player, Session } from "@/types/coaching";
 import { SessionCalendar } from "@/components/coaching/SessionCalendar";
+import { ProfileAvatar } from "@/components/coaching/ProfileAvatar";
 
 interface AnalysisResult {
   id: string;
@@ -406,9 +407,11 @@ export const UserDashboard = () => {
                     {coachProfile && (
                       <div className="rounded-xl bg-secondary/30 p-4">
                         <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                            {coachProfile.name.charAt(0).toUpperCase()}
-                          </div>
+                          <ProfileAvatar 
+                            name={coachProfile.name} 
+                            imageUrl={coachProfile.profile_picture_url} 
+                            size="md" 
+                          />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <h4 className="font-semibold text-foreground truncate">{coachProfile.name}</h4>
@@ -474,9 +477,11 @@ export const UserDashboard = () => {
                     {playerProfile && (
                       <div className="rounded-xl bg-secondary/30 p-4">
                         <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">
-                            {playerProfile.name.charAt(0).toUpperCase()}
-                          </div>
+                          <ProfileAvatar 
+                            name={playerProfile.name} 
+                            imageUrl={playerProfile.profile_picture_url} 
+                            size="md" 
+                          />
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-foreground mb-1 truncate">{playerProfile.name}</h4>
                             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-2">
@@ -592,9 +597,11 @@ export const UserDashboard = () => {
                               className="flex items-center justify-between p-2 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
                             >
                               <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold text-sm">
-                                  {coach.name.charAt(0)}
-                                </div>
+                                <ProfileAvatar 
+                                  name={coach.name} 
+                                  imageUrl={coach.profile_picture_url} 
+                                  size="xs" 
+                                />
                                 <div>
                                   <p className="font-medium text-foreground text-sm">{coach.name}</p>
                                   <p className="text-xs text-muted-foreground">{coach.coaching_level} • {coach.years_experience} yrs</p>
@@ -630,9 +637,11 @@ export const UserDashboard = () => {
                               className="flex items-center justify-between p-2 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
                             >
                               <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                                  {player.name.charAt(0)}
-                                </div>
+                                <ProfileAvatar 
+                                  name={player.name} 
+                                  imageUrl={player.profile_picture_url} 
+                                  size="xs" 
+                                />
                                 <div>
                                   <p className="font-medium text-foreground text-sm">{player.name}</p>
                                   <p className="text-xs text-muted-foreground capitalize">{player.experience_level} • {player.playing_role || 'Player'}</p>

@@ -223,6 +223,7 @@ export interface MatchResult {
   match_score: number;
   category_match_percentage: number;
   experience_match: number;
+  location_match?: number;
 }
 
 // Connection request types

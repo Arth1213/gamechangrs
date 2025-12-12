@@ -6,14 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
   Search, MapPin, Star, Users, Award, 
-  Calendar, UserPlus, CheckCircle
+  Calendar, UserPlus, CheckCircle, Sparkles
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
-import { CoachWithDetails, CoachingCategory } from "@/types/coaching";
-import { sortCoachesByMatch, getMaxExperienceYears } from "@/lib/coaching-matching";
+import { CoachWithDetails, CoachingCategory, MatchResult } from "@/types/coaching";
+import { sortCoachesByMatch, getMaxExperienceYears, getRecommendedCoaches, getRecommendedPlayers, sortPlayersByMatch } from "@/lib/coaching-matching";
 import { ConnectionRequestDialog } from "@/components/coaching/ConnectionRequestDialog";
 import {
   Select,
@@ -49,6 +49,10 @@ const CoachingMarketplace = () => {
   const [hasCoachProfile, setHasCoachProfile] = useState<boolean | null>(null);
   const [hasPlayerProfile, setHasPlayerProfile] = useState<boolean | null>(null);
 
+  // Recommendations
+  const [recommendedCoaches, setRecommendedCoaches] = useState<MatchResult[]>([]);
+  const [recommendedPlayers, setRecommendedPlayers] = useState<MatchResult[]>([]);
+
   // Determine view mode based on user role
   const isCoachView = user && hasCoachProfile;
 
@@ -63,6 +67,21 @@ const CoachingMarketplace = () => {
       applyFilters();
     }
   }, [coaches, players, searchQuery, selectedCategories, selectedLevel, selectedLocation, minRating, sortBy, playerProfile, coachProfile, isCoachView]);
+
+  // Generate recommendations when data is available
+  useEffect(() => {
+    if (playerProfile && coaches.length > 0 && !isCoachView) {
+      const recommended = getRecommendedCoaches(coaches, playerProfile, 3);
+      setRecommendedCoaches(recommended);
+    }
+  }, [playerProfile, coaches, isCoachView]);
+
+  useEffect(() => {
+    if (coachProfile && players.length > 0 && isCoachView) {
+      const recommended = getRecommendedPlayers(players, coachProfile, 3);
+      setRecommendedPlayers(recommended);
+    }
+  }, [coachProfile, players, isCoachView]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -395,6 +414,113 @@ const CoachingMarketplace = () => {
           </div>
         </div>
       </section>
+
+      {/* Recommended For You Section */}
+      {!loading && user && (
+        (isCoachView && recommendedPlayers.length > 0) || 
+        (!isCoachView && hasPlayerProfile && recommendedCoaches.length > 0)
+      ) && (
+        <section className="py-8 border-b border-border">
+          <div className="container mx-auto px-4">
+            <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-primary" />
+              Recommended for You
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {isCoachView ? (
+                // Show recommended players for coach
+                recommendedPlayers.map((match) => (
+                  <div
+                    key={match.player?.id}
+                    className="rounded-2xl bg-gradient-to-br from-primary/10 via-transparent to-transparent border border-primary/30 p-6 hover:border-primary/50 transition-all duration-300"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <Badge variant="default" className="bg-primary/20 text-primary text-xs">
+                        {Math.round(match.match_score * 100)}% Match
+                      </Badge>
+                      {match.location_match && match.location_match > 0.5 && (
+                        <Badge variant="outline" className="text-xs">
+                          <MapPin className="w-3 h-3 mr-1" />
+                          Nearby
+                        </Badge>
+                      )}
+                    </div>
+                    <h3 className="font-display text-lg font-bold text-foreground mb-1">
+                      {match.player?.name}
+                    </h3>
+                    {match.player?.location && (
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+                        <MapPin className="w-3 h-3" />
+                        {match.player.location}
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {match.player?.training_categories_needed?.slice(0, 2).map((catId: string) => {
+                        const cat = categories.find(c => c.id === catId);
+                        return cat ? (
+                          <Badge key={cat.id} variant="outline" className="text-xs">
+                            {cat.name}
+                          </Badge>
+                        ) : null;
+                      })}
+                    </div>
+                    <Button variant="hero" size="sm" className="w-full" asChild>
+                      <Link to={`/coaching-marketplace/player/${match.player?.id}`}>
+                        View Profile
+                      </Link>
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                // Show recommended coaches for player
+                recommendedCoaches.map((match) => (
+                  <div
+                    key={match.coach?.id}
+                    className="rounded-2xl bg-gradient-to-br from-primary/10 via-transparent to-transparent border border-primary/30 p-6 hover:border-primary/50 transition-all duration-300"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <Badge variant="default" className="bg-primary/20 text-primary text-xs">
+                        {Math.round(match.match_score * 100)}% Match
+                      </Badge>
+                      {match.location_match && match.location_match > 0.5 && (
+                        <Badge variant="outline" className="text-xs">
+                          <MapPin className="w-3 h-3 mr-1" />
+                          Nearby
+                        </Badge>
+                      )}
+                    </div>
+                    <h3 className="font-display text-lg font-bold text-foreground mb-1">
+                      {match.coach?.name}
+                    </h3>
+                    {match.coach?.location && (
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+                        <MapPin className="w-3 h-3" />
+                        {match.coach.location}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 mb-3">
+                      <Star className="w-4 h-4 fill-primary text-primary" />
+                      <span className="font-semibold">{match.coach?.adjusted_rating?.toFixed(1)}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {match.coach?.categories?.slice(0, 2).map((cat) => (
+                        <Badge key={cat.id} variant="outline" className="text-xs">
+                          {cat.name}
+                        </Badge>
+                      ))}
+                    </div>
+                    <Button variant="hero" size="sm" className="w-full" asChild>
+                      <Link to={`/coaching-marketplace/coach/${match.coach?.id}`}>
+                        View Profile
+                      </Link>
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Results */}
       <section className="py-12">

@@ -7,6 +7,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, MapPin, Clock, Star, ExternalLink, Award, Users, Calendar } from "lucide-react";
+import { ProfileAvatar } from "@/components/coaching/ProfileAvatar";
 
 interface Coach {
   id: string;
@@ -25,6 +26,7 @@ interface Coach {
   average_rating: number | null;
   number_of_ratings: number | null;
   is_verified: boolean | null;
+  profile_picture_url: string | null;
 }
 
 interface CoachingCategory {
@@ -129,9 +131,11 @@ const CoachProfile = () => {
           {/* Profile Header */}
           <div className="rounded-2xl bg-gradient-card border border-border p-8 mb-6">
             <div className="flex flex-col md:flex-row gap-6">
-              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center text-primary text-3xl font-bold">
-                {coach.name.charAt(0).toUpperCase()}
-              </div>
+              <ProfileAvatar
+                name={coach.name}
+                imageUrl={coach.profile_picture_url}
+                size="lg"
+              />
               
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
@@ -274,7 +278,7 @@ const CoachProfile = () => {
                 <ExternalLink className="w-5 h-5 inline mr-2" />
                 External Links
               </h2>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-4">
                 {coach.external_links.map((link, index) => (
                   <a
                     key={index}
@@ -284,7 +288,13 @@ const CoachProfile = () => {
                     className="text-primary hover:underline flex items-center gap-1"
                   >
                     <ExternalLink className="w-3 h-3" />
-                    {new URL(link).hostname}
+                    {(() => {
+                      try {
+                        return new URL(link).hostname;
+                      } catch {
+                        return link;
+                      }
+                    })()}
                   </a>
                 ))}
               </div>

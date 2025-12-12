@@ -717,7 +717,7 @@ export const UserDashboard = () => {
                 </div>
                 <p className="text-muted-foreground mb-4">No analysis yet</p>
                 <Button variant="hero" size="sm" asChild>
-                  <Link to="/coaching">
+                  <Link to="/techniqueai">
                     <Plus className="w-4 h-4" />
                     Start Your First Analysis
                   </Link>

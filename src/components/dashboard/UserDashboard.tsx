@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -33,6 +34,7 @@ interface MarketplaceListing {
 
 export const UserDashboard = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [coachProfile, setCoachProfile] = useState<Coach | null>(null);
@@ -192,6 +194,126 @@ export const UserDashboard = () => {
   }, [user]);
 
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Athlete";
+
+  // Session confirmation handler (for coaches)
+  const handleConfirmSession = useCallback(async (sessionId: string) => {
+    if (!coachProfile) return;
+    
+    try {
+      const { data: sessionData } = await supabase
+        .from("sessions")
+        .select("*, players!sessions_student_id_fkey(name, email)")
+        .eq("id", sessionId)
+        .single();
+
+      const { error } = await supabase
+        .from("sessions")
+        .update({ status: "confirmed" })
+        .eq("id", sessionId);
+
+      if (error) throw error;
+
+      // Send notification
+      if (sessionData) {
+        try {
+          await supabase.functions.invoke("send-session-notification", {
+            body: {
+              sessionId: sessionId,
+              coachEmail: coachProfile.email,
+              coachName: coachProfile.name,
+              playerEmail: sessionData.players?.email || "",
+              playerName: sessionData.players?.name || "Player",
+              sessionDateTime: sessionData.session_date_time_utc,
+              durationMinutes: sessionData.duration_minutes,
+              timezone: coachProfile.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+              action: "confirmed",
+            },
+          });
+        } catch (emailError) {
+          console.error("Error sending notification:", emailError);
+        }
+      }
+
+      toast({
+        title: "Session Confirmed",
+        description: "The session has been confirmed and notification sent.",
+      });
+
+      // Update local state
+      setAllSessions(prev => 
+        prev.map(s => s.id === sessionId ? { ...s, status: "confirmed" } : s)
+      );
+    } catch (error: any) {
+      console.error("Error confirming session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to confirm session.",
+        variant: "destructive",
+      });
+    }
+  }, [coachProfile, toast]);
+
+  // Session cancellation handler
+  const handleCancelSession = useCallback(async (sessionId: string) => {
+    try {
+      const { data: sessionData } = await supabase
+        .from("sessions")
+        .select("*, players!sessions_student_id_fkey(name, email), coaches!sessions_coach_id_fkey(name, email, timezone)")
+        .eq("id", sessionId)
+        .single();
+
+      const { error } = await supabase
+        .from("sessions")
+        .update({
+          status: "canceled",
+          canceled_at: new Date().toISOString(),
+        })
+        .eq("id", sessionId);
+
+      if (error) throw error;
+
+      // Send notification
+      if (sessionData) {
+        const coach = sessionData.coaches || coachProfile;
+        const playerInfo = sessionData.players || playerProfile;
+        
+        try {
+          await supabase.functions.invoke("send-session-notification", {
+            body: {
+              sessionId: sessionId,
+              coachEmail: coach?.email || "",
+              coachName: coach?.name || "Coach",
+              playerEmail: playerInfo?.email || "",
+              playerName: playerInfo?.name || "Player",
+              sessionDateTime: sessionData.session_date_time_utc,
+              durationMinutes: sessionData.duration_minutes,
+              timezone: coach?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+              action: "canceled",
+            },
+          });
+        } catch (emailError) {
+          console.error("Error sending notification:", emailError);
+        }
+      }
+
+      toast({
+        title: "Session Canceled",
+        description: "The session has been canceled and notification sent.",
+      });
+
+      // Update local state
+      setAllSessions(prev => 
+        prev.map(s => s.id === sessionId ? { ...s, status: "canceled", canceled_at: new Date().toISOString() } : s)
+      );
+    } catch (error: any) {
+      console.error("Error canceling session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel session.",
+        variant: "destructive",
+      });
+    }
+  }, [coachProfile, playerProfile, toast]);
 
   const quickActions = [
     { name: "AI Coaching", path: "/coaching", icon: Zap, color: "primary" },
@@ -451,6 +573,8 @@ export const UserDashboard = () => {
                 coaches={matchedCoaches}
                 players={matchedPlayers}
                 timezone={coachProfile?.timezone || playerProfile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
+                onConfirmSession={coachProfile ? handleConfirmSession : undefined}
+                onCancelSession={handleCancelSession}
                 compact
               />
             </div>

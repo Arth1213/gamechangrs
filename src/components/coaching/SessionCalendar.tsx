@@ -301,6 +301,9 @@ export function SessionCalendar({
                       const otherPerson = userType === "coach" 
                         ? getPlayer(session.student_id)
                         : getCoach(session.coach_id);
+                      const isUpcoming = new Date(session.session_date_time_utc) > new Date();
+                      const canConfirm = userType === "coach" && session.status === "pending" && isUpcoming;
+                      const canCancel = isUpcoming && session.status !== "canceled" && session.status !== "completed";
                       
                       return (
                         <div
@@ -328,19 +331,55 @@ export function SessionCalendar({
                             </Badge>
                           </div>
                           
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-sm">
-                              <User className="w-3 h-3 text-muted-foreground" />
-                              <span className="text-foreground">
-                                {userType === "coach"
-                                  ? getPlayerName(session.student_id)
-                                  : getCoachName(session.coach_id)}
-                              </span>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="space-y-1 flex-1">
+                              <div className="flex items-center gap-2 text-sm">
+                                <User className="w-3 h-3 text-muted-foreground" />
+                                <span className="text-foreground">
+                                  {userType === "coach"
+                                    ? getPlayerName(session.student_id)
+                                    : getCoachName(session.coach_id)}
+                                </span>
+                              </div>
+                              {otherPerson?.location && (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <MapPin className="w-3 h-3" />
+                                  {otherPerson.location}
+                                </div>
+                              )}
                             </div>
-                            {otherPerson?.location && (
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <MapPin className="w-3 h-3" />
-                                {otherPerson.location}
+                            
+                            {/* Action buttons for coaches */}
+                            {(canConfirm || canCancel) && (
+                              <div className="flex items-center gap-1 shrink-0">
+                                {canConfirm && onConfirmSession && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0 text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onConfirmSession(session.id);
+                                    }}
+                                    title="Confirm session"
+                                  >
+                                    <CheckCircle className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                {canCancel && onCancelSession && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onCancelSession(session.id);
+                                    }}
+                                    title="Cancel session"
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </Button>
+                                )}
                               </div>
                             )}
                           </div>

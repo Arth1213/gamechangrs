@@ -372,7 +372,7 @@ export const UserDashboard = () => {
           <div className="lg:col-span-2 rounded-2xl bg-gradient-card border border-border p-6">
             <h3 className="font-display font-bold text-foreground mb-4 flex items-center gap-2">
               <UserCircle className="w-5 h-5 text-primary" />
-              Your Coaching Roles
+              Your Persona
             </h3>
             
             {loading ? (

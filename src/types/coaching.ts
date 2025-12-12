@@ -23,6 +23,7 @@ export interface Coach {
   phone: string | null;
   location: string | null;
   timezone: string;
+  profile_picture_url: string | null;
   
   // Coaching Details
   specialties: string[]; // Array of category IDs
@@ -54,6 +55,7 @@ export interface Player {
   phone: string | null;
   location: string | null;
   timezone: string;
+  profile_picture_url: string | null;
   
   // Player Details
   age_group: string | null;

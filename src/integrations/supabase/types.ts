@@ -140,6 +140,7 @@ export type Database = {
           notable_players_coached: string[] | null
           number_of_ratings: number | null
           phone: string | null
+          profile_picture_url: string | null
           specialties: string[] | null
           teams_coached: string[] | null
           timezone: string | null
@@ -163,6 +164,7 @@ export type Database = {
           notable_players_coached?: string[] | null
           number_of_ratings?: number | null
           phone?: string | null
+          profile_picture_url?: string | null
           specialties?: string[] | null
           teams_coached?: string[] | null
           timezone?: string | null
@@ -186,6 +188,7 @@ export type Database = {
           notable_players_coached?: string[] | null
           number_of_ratings?: number | null
           phone?: string | null
+          profile_picture_url?: string | null
           specialties?: string[] | null
           teams_coached?: string[] | null
           timezone?: string | null
@@ -348,6 +351,7 @@ export type Database = {
           preferred_days: string[] | null
           preferred_mode: string | null
           preferred_time_range: string | null
+          profile_picture_url: string | null
           timezone: string | null
           training_categories_needed: string[] | null
           updated_at: string
@@ -373,6 +377,7 @@ export type Database = {
           preferred_days?: string[] | null
           preferred_mode?: string | null
           preferred_time_range?: string | null
+          profile_picture_url?: string | null
           timezone?: string | null
           training_categories_needed?: string[] | null
           updated_at?: string
@@ -398,6 +403,7 @@ export type Database = {
           preferred_days?: string[] | null
           preferred_mode?: string | null
           preferred_time_range?: string | null
+          profile_picture_url?: string | null
           timezone?: string | null
           training_categories_needed?: string[] | null
           updated_at?: string

@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, Plus, X, Save, Globe } from "lucide-react";
 import { Coach, CoachingCategory, CoachingLevel } from "@/types/coaching";
 import { TIMEZONES, getBrowserTimezone } from "@/lib/timezones";
+import { ProfilePictureUpload } from "./ProfilePictureUpload";
 
 interface CoachProfileEditorProps {
   coach: Coach;
@@ -31,6 +32,7 @@ export const CoachProfileEditor = ({ coach, onSave }: CoachProfileEditorProps) =
     teams_coached: coach.teams_coached || [],
     notable_players_coached: coach.notable_players_coached || [],
     external_links: coach.external_links || [],
+    profile_picture_url: coach.profile_picture_url || null,
   });
 
   const [teamInput, setTeamInput] = useState("");
@@ -68,6 +70,7 @@ export const CoachProfileEditor = ({ coach, onSave }: CoachProfileEditorProps) =
           teams_coached: formData.teams_coached.filter(Boolean),
           notable_players_coached: formData.notable_players_coached.filter(Boolean),
           external_links: formData.external_links.filter(Boolean),
+          profile_picture_url: formData.profile_picture_url,
         })
         .eq("id", coach.id);
 
@@ -117,6 +120,16 @@ export const CoachProfileEditor = ({ coach, onSave }: CoachProfileEditorProps) =
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Profile Picture */}
+      <div className="rounded-2xl bg-gradient-card border border-border p-6">
+        <h3 className="font-display text-xl font-bold text-foreground mb-4">Profile Picture</h3>
+        <ProfilePictureUpload
+          currentImageUrl={formData.profile_picture_url}
+          name={formData.name}
+          onImageUploaded={(url) => setFormData({ ...formData, profile_picture_url: url })}
+        />
+      </div>
+
       {/* Basic Info */}
       <div className="rounded-2xl bg-gradient-card border border-border p-6 space-y-4">
         <h3 className="font-display text-xl font-bold text-foreground">Basic Information</h3>

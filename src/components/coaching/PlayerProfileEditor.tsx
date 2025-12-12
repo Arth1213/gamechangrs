@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, Plus, X, Save, Globe } from "lucide-react";
 import { Player, CoachingCategory, ExperienceLevel, PreferredMode } from "@/types/coaching";
 import { TIMEZONES, getBrowserTimezone } from "@/lib/timezones";
+import { ProfilePictureUpload } from "./ProfilePictureUpload";
 
 interface PlayerProfileEditorProps {
   player: Player;
@@ -36,6 +37,7 @@ export const PlayerProfileEditor = ({ player, onSave }: PlayerProfileEditorProps
     preferred_mode: player.preferred_mode || "either",
     preferred_days: player.preferred_days || [],
     preferred_time_range: player.preferred_time_range || "",
+    profile_picture_url: player.profile_picture_url || null,
   });
 
   const [linkInput, setLinkInput] = useState("");
@@ -78,6 +80,7 @@ export const PlayerProfileEditor = ({ player, onSave }: PlayerProfileEditorProps
           preferred_mode: formData.preferred_mode,
           preferred_days: formData.preferred_days.filter(Boolean),
           preferred_time_range: formData.preferred_time_range || null,
+          profile_picture_url: formData.profile_picture_url,
         })
         .eq("id", player.id);
 
@@ -136,6 +139,16 @@ export const PlayerProfileEditor = ({ player, onSave }: PlayerProfileEditorProps
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Profile Picture */}
+      <div className="rounded-2xl bg-gradient-card border border-border p-6">
+        <h3 className="font-display text-xl font-bold text-foreground mb-4">Profile Picture</h3>
+        <ProfilePictureUpload
+          currentImageUrl={formData.profile_picture_url}
+          name={formData.name}
+          onImageUploaded={(url) => setFormData({ ...formData, profile_picture_url: url })}
+        />
+      </div>
+
       {/* Basic Info */}
       <div className="rounded-2xl bg-gradient-card border border-border p-6 space-y-4">
         <h3 className="font-display text-xl font-bold text-foreground">Basic Information</h3>

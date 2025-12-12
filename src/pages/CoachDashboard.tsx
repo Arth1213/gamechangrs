@@ -19,6 +19,7 @@ import { CoachProfileEditor } from "@/components/coaching/CoachProfileEditor";
 import { PendingConnections } from "@/components/coaching/PendingConnections";
 import { ConnectionRequestDialog } from "@/components/coaching/ConnectionRequestDialog";
 import { BrowseFilters } from "@/components/coaching/BrowseFilters";
+import { ProfileAvatar } from "@/components/coaching/ProfileAvatar";
 import { formatDate } from "@/lib/helpers";
 import { sortPlayersByMatch } from "@/lib/coaching-matching";
 
@@ -395,9 +396,11 @@ const CoachDashboard = () => {
           {/* Profile Header */}
           <div className="rounded-2xl bg-gradient-card border border-border p-6 mb-8">
             <div className="flex flex-col md:flex-row gap-6">
-              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold">
-                {coach.name.charAt(0).toUpperCase()}
-              </div>
+              <ProfileAvatar 
+                name={coach.name} 
+                imageUrl={coach.profile_picture_url} 
+                size="lg" 
+              />
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="font-display text-3xl font-bold text-foreground">

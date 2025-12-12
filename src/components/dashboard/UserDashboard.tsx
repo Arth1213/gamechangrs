@@ -677,23 +677,8 @@ export const UserDashboard = () => {
         </div>
 
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-          {quickActions.map((action) => (
-            <Link key={action.path} to={action.path} className="group">
-              <div className={`p-5 rounded-2xl bg-card border border-border hover:border-${action.color}/50 transition-all duration-300 hover:shadow-glow`}>
-                <div className={`w-12 h-12 rounded-xl bg-${action.color}/10 flex items-center justify-center mb-4 group-hover:bg-${action.color}/20 transition-colors`}>
-                  <action.icon className={`w-6 h-6 text-${action.color}`} />
-                </div>
-                <h3 className="font-display font-semibold text-foreground">
-                  {action.name}
-                </h3>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Analysis History & Gear Listings */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
           {/* Analysis History */}
           <div className="rounded-2xl bg-gradient-card border border-border p-6">
             <div className="flex items-center justify-between mb-6">
@@ -850,6 +835,23 @@ export const UserDashboard = () => {
             )}
           </div>
         </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+          {quickActions.map((action) => (
+            <Link key={action.path} to={action.path} className="group">
+              <div className={`p-5 rounded-2xl bg-card border border-border hover:border-${action.color}/50 transition-all duration-300 hover:shadow-glow`}>
+                <div className={`w-12 h-12 rounded-xl bg-${action.color}/10 flex items-center justify-center mb-4 group-hover:bg-${action.color}/20 transition-colors`}>
+                  <action.icon className={`w-6 h-6 text-${action.color}`} />
+                </div>
+                <h3 className="font-display font-semibold text-foreground">
+                  {action.name}
+                </h3>
+              </div>
+            </Link>
+          ))}
+        </div>
+
       </div>
     </section>
   );

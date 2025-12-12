@@ -44,7 +44,8 @@ export default function AnalysisDetail() {
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const isOwner = analysis && user && analysis.user_id === user.id;
+  // Only show delete for owner of the analysis
+  const isOwner = Boolean(analysis && user && analysis.user_id === user.id);
 
   const handleDelete = async () => {
     if (!analysis || !user) return;

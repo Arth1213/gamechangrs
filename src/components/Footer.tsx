@@ -5,9 +5,9 @@ export const Footer = () => {
   return (
     <footer className="bg-card border-t border-border">
       <div className="container mx-auto px-4 py-12 lg:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
+        <div className="flex flex-col md:flex-row justify-between items-start gap-12 lg:gap-20">
           {/* Brand */}
-          <div className="space-y-4">
+          <div className="space-y-4 max-w-xs">
             <Link to="/" className="flex items-center gap-2">
               <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
                 <Zap className="w-5 h-5 text-primary-foreground" />
@@ -24,7 +24,7 @@ export const Footer = () => {
           {/* Quick Links */}
           <div>
             <h4 className="font-display font-semibold text-foreground mb-4">Quick Links</h4>
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {[
                 { label: "AI Coaching", path: "/technique-ai" },
                 { label: "Analytics", path: "/analytics" },

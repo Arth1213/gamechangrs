@@ -5,7 +5,7 @@ export const Footer = () => {
   return (
     <footer className="bg-card border-t border-border">
       <div className="container mx-auto px-4 py-12 lg:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
           {/* Brand */}
           <div className="space-y-4">
             <Link to="/" className="flex items-center gap-2">
@@ -39,18 +39,6 @@ export const Footer = () => {
                   >
                     {item.label}
                   </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Sports */}
-          <div>
-            <h4 className="font-display font-semibold text-foreground mb-4">Sports</h4>
-            <ul className="space-y-2">
-              {["Cricket Analytics", "Tennis Analysis", "Youth Leagues", "Training Programs"].map((item) => (
-                <li key={item}>
-                  <span className="text-muted-foreground text-sm">{item}</span>
                 </li>
               ))}
             </ul>

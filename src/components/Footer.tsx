@@ -24,7 +24,7 @@ export const Footer = () => {
           {/* Quick Links */}
           <div>
             <h4 className="font-display font-semibold text-foreground mb-4">Quick Links</h4>
-            <ul className="space-y-3">
+            <div className="grid grid-cols-3 gap-x-8 gap-y-3">
               {[
                 { label: "AI Coaching", path: "/technique-ai" },
                 { label: "Analytics", path: "/analytics" },
@@ -32,22 +32,21 @@ export const Footer = () => {
                 { label: "About Us", path: "/about" },
                 { label: "Contact Us", path: "/contact" },
               ].map((item) => (
-                <li key={item.path}>
-                  <Link
-                    to={item.path}
-                    className="text-muted-foreground hover:text-primary text-sm transition-colors"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className="text-muted-foreground hover:text-primary text-sm transition-colors"
+                >
+                  {item.label}
+                </Link>
               ))}
-            </ul>
+            </div>
           </div>
 
           {/* Connect */}
           <div>
             <h4 className="font-display font-semibold text-foreground mb-4">Connect With Us</h4>
-            <div className="flex gap-3">
+            <div className="grid grid-cols-3 gap-3">
               {[
                 { icon: Twitter, href: "https://x.com/game-changrs" },
                 { icon: Instagram, href: "https://instagram.com/game_chngrs" },

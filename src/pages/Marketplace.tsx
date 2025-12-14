@@ -116,68 +116,32 @@ const Marketplace = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      {/* Hero */}
-      <section className="pt-32 pb-12 bg-gradient-hero">
+      {/* Compact Hero */}
+      <section className="pt-24 pb-6 bg-gradient-hero">
         <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6">
-              <Heart className="w-4 h-4 text-accent" />
-              <span className="text-sm font-medium text-accent">Supporting Youth Athletes</span>
+          <div className="max-w-4xl mx-auto">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+              <div>
+                <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
+                  Gear <span className="text-gradient-accent">Marketplace</span>
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Quality sports equipment at affordable prices
+                </p>
+              </div>
+              <Button variant="accent" size="default" onClick={handleCreateListing}>
+                <Plus className="w-4 h-4" />
+                Donate or Sell Gear
+              </Button>
             </div>
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-              Gear <span className="text-gradient-accent">Marketplace</span>
-            </h1>
-            <p className="text-lg text-muted-foreground mb-4">
-              Quality sports equipment at affordable prices. Every purchase helps provide gear to underprivileged young athletes.
-            </p>
             
-            {/* Important Notice */}
-            <div className="bg-secondary/50 border border-border rounded-xl p-4 mb-8 text-left">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-foreground mb-1">Connection Platform Only</p>
-                  <p className="text-muted-foreground">
-                    This marketplace connects buyers and sellers directly. We do not process payments or handle transactions. 
-                    Buyers and sellers communicate via email and arrange their own transactions safely.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <Button variant="accent" size="xl" onClick={handleCreateListing}>
-              <Plus className="w-5 h-5" />
-              Donate or Sell Gear
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Impact Banner */}
-      <section className="py-8 bg-primary/10 border-y border-primary/20">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-center gap-8 text-center md:text-left">
-            <div className="flex items-center gap-3">
-              <Package className="w-8 h-8 text-primary" />
-              <div>
-                <p className="font-display font-bold text-2xl text-foreground">5,000+</p>
-                <p className="text-muted-foreground text-sm">Items Listed</p>
-              </div>
-            </div>
-            <div className="hidden md:block w-px h-12 bg-border" />
-            <div className="flex items-center gap-3">
-              <Heart className="w-8 h-8 text-primary" />
-              <div>
-                <p className="font-display font-bold text-2xl text-foreground">2,500+</p>
-                <p className="text-muted-foreground text-sm">Kids Helped</p>
-              </div>
-            </div>
-            <div className="hidden md:block w-px h-12 bg-border" />
-            <div className="flex items-center gap-3">
-              <Tag className="w-8 h-8 text-primary" />
-              <div>
-                <p className="font-display font-bold text-2xl text-foreground">$500K+</p>
-                <p className="text-muted-foreground text-sm">Saved by Families</p>
+            {/* Compact Notice */}
+            <div className="bg-secondary/50 border border-border rounded-lg p-3 text-left">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">Connection Platform Only:</span> We connect buyers and sellers directly. Arrange transactions via email safely.
+                </p>
               </div>
             </div>
           </div>
@@ -185,24 +149,24 @@ const Marketplace = () => {
       </section>
 
       {/* Filters */}
-      <section className="py-8 border-b border-border bg-card">
+      <section className="py-4 border-b border-border bg-card">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col md:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search for gear..."
-                className="w-full h-12 pl-12 pr-4 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full h-10 pl-10 pr-4 rounded-lg bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
               />
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-3">
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="h-12 px-6 rounded-xl bg-secondary border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="h-10 px-4 rounded-lg bg-secondary border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
               >
                 <option>All</option>
                 <option>Cricket</option>
@@ -218,27 +182,27 @@ const Marketplace = () => {
       </section>
 
       {/* Products Grid */}
-      <section className="py-12">
+      <section className="py-6">
         <div className="container mx-auto px-4">
           {isLoading ? (
-            <div className="text-center py-12 text-muted-foreground">Loading listings...</div>
+            <div className="text-center py-8 text-muted-foreground">Loading listings...</div>
           ) : filteredListings.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-8">
               <p className="text-muted-foreground mb-4">No listings found.</p>
-              <Button variant="outline" onClick={handleCreateListing}>
+              <Button variant="outline" size="sm" onClick={handleCreateListing}>
                 <Plus className="w-4 h-4 mr-2" />
                 Be the first to list!
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {filteredListings.map((listing) => (
                 <div
                   key={listing.id}
-                  className="rounded-2xl bg-gradient-card border border-border overflow-hidden hover:border-primary/30 transition-all duration-300 group"
+                  className="rounded-xl bg-gradient-card border border-border overflow-hidden hover:border-primary/30 transition-all duration-300 group"
                 >
-                  {/* Image */}
-                  <div className="aspect-square bg-secondary/50 overflow-hidden relative">
+                  {/* Compact Image */}
+                  <div className="aspect-[4/3] bg-secondary/50 overflow-hidden relative">
                     {listing.image_url ? (
                       <img 
                         src={listing.image_url} 
@@ -247,67 +211,49 @@ const Marketplace = () => {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Package className="w-16 h-16 text-muted-foreground/30" />
+                        <Package className="w-10 h-10 text-muted-foreground/30" />
                       </div>
                     )}
                     {/* Listing type badge */}
-                    <div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-medium ${
+                    <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-medium ${
                       listing.listing_type === "donation" 
                         ? "bg-green-500/90 text-white" 
                         : "bg-primary/90 text-primary-foreground"
                     }`}>
-                      {listing.listing_type === "donation" ? "Free - Donation" : "For Sale"}
+                      {listing.listing_type === "donation" ? "Free" : "Sale"}
                     </div>
                     {/* Owner badge */}
                     {listing.is_owner && (
-                      <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-background/90 text-xs font-medium text-foreground flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3" />
-                        Your Listing
+                      <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-background/90 text-[10px] font-medium text-foreground flex items-center gap-0.5">
+                        <CheckCircle className="w-2.5 h-2.5" />
+                        Yours
                       </div>
                     )}
                   </div>
 
-                  {/* Content */}
-                  <div className="p-6">
-                    <div className="mb-3">
-                      <h3 className="font-display font-semibold text-foreground mb-1">
-                        {listing.title}
-                      </h3>
-                      {listing.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">{listing.description}</p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-3 mb-4 flex-wrap">
-                      <span className="px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
+                  {/* Compact Content */}
+                  <div className="p-3">
+                    <h3 className="font-medium text-sm text-foreground mb-1 line-clamp-1">
+                      {listing.title}
+                    </h3>
+                    
+                    <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                      <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium">
                         {listing.condition}
                       </span>
-                      <span className="px-2 py-1 rounded-lg bg-secondary text-muted-foreground text-xs">
+                      <span className="px-1.5 py-0.5 rounded bg-secondary text-muted-foreground text-[10px]">
                         {listing.category}
                       </span>
-                      {listing.location && (
-                        <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                          <MapPin className="w-3 h-3" />
-                          {listing.location}
-                        </span>
-                      )}
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
                         {listing.listing_type === "donation" ? (
-                          <span className="font-display text-xl font-bold text-green-500">FREE</span>
+                          <span className="font-bold text-sm text-green-500">FREE</span>
                         ) : (
-                          <div className="flex items-baseline gap-2">
-                            <span className="font-display text-2xl font-bold text-foreground">
-                              ${listing.price?.toLocaleString()}
-                            </span>
-                            {listing.original_price && listing.original_price > (listing.price || 0) && (
-                              <span className="text-muted-foreground line-through text-sm">
-                                ${listing.original_price.toLocaleString()}
-                              </span>
-                            )}
-                          </div>
+                          <span className="font-bold text-sm text-foreground">
+                            ${listing.price?.toLocaleString()}
+                          </span>
                         )}
                       </div>
                       
@@ -315,18 +261,20 @@ const Marketplace = () => {
                         <Button 
                           variant="outline" 
                           size="sm"
+                          className="h-7 text-xs px-2"
                           onClick={() => setDelistingId(listing.id)}
                         >
-                          Mark as Sold
+                          Sold
                         </Button>
                       ) : (
                         <Button 
                           variant="hero" 
                           size="sm"
+                          className="h-7 text-xs px-2"
                           onClick={() => handleContact(listing)}
                         >
-                          <Mail className="w-4 h-4 mr-1" />
-                          {listing.listing_type === "donation" ? "Request" : "Buy"}
+                          <Mail className="w-3 h-3 mr-1" />
+                          {listing.listing_type === "donation" ? "Get" : "Buy"}
                         </Button>
                       )}
                     </div>
@@ -338,21 +286,18 @@ const Marketplace = () => {
         </div>
       </section>
 
-      {/* Donate CTA */}
-      <section className="py-20 bg-gradient-card border-t border-border">
+      {/* Compact Donate CTA */}
+      <section className="py-10 bg-gradient-card border-t border-border">
         <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 className="font-display text-xl md:text-2xl font-bold text-foreground mb-2">
               Have Gear to Share?
             </h2>
-            <p className="text-muted-foreground mb-4">
-              Your old equipment could be the start of someone's sports journey. Donate or sell at affordable prices to help underprivileged young athletes pursue their dreams.
+            <p className="text-sm text-muted-foreground mb-4">
+              Your old equipment could help young athletes. Upload a photo and our AI auto-fills the details!
             </p>
-            <p className="text-sm text-muted-foreground mb-8">
-              Simply upload a photo and our AI will auto-fill the details for you!
-            </p>
-            <Button variant="hero" size="xl" onClick={handleCreateListing}>
-              <Plus className="w-5 h-5" />
+            <Button variant="hero" size="default" onClick={handleCreateListing}>
+              <Plus className="w-4 h-4" />
               List Your Gear
             </Button>
           </div>

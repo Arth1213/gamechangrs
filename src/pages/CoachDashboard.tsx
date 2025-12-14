@@ -6,12 +6,23 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Calendar, Users, Star, Clock, MapPin, 
-  Settings, Plus, Eye, XCircle, CheckCircle, Edit, Search
+  Settings, Plus, Eye, XCircle, CheckCircle, Edit, Search, Trash2
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Coach, Session, Player, Connection, CoachingCategory } from "@/types/coaching";
 import { AvailabilityEditor } from "@/components/coaching/AvailabilityEditor";
 import { SessionCalendar } from "@/components/coaching/SessionCalendar";
@@ -343,6 +354,39 @@ const CoachDashboard = () => {
     }
   };
 
+  const navigate = useNavigate();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const deleteCoachProfile = async () => {
+    if (!coach) return;
+    
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("coaches")
+        .delete()
+        .eq("id", coach.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Profile Deleted",
+        description: "Your coach profile has been deleted successfully.",
+      });
+
+      navigate("/coaching-marketplace");
+    } catch (error: any) {
+      console.error("Error deleting coach profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete coach profile. You may have active connections or sessions.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -449,6 +493,33 @@ const CoachDashboard = () => {
                     Settings
                   </Link>
                 </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Profile
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Coach Profile</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete your coach profile? This action cannot be undone.
+                        All your availability slots and connections will be removed.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={deleteCoachProfile}
+                        disabled={isDeleting}
+                        className="bg-destructive hover:bg-destructive/90"
+                      >
+                        {isDeleting ? "Deleting..." : "Delete Profile"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           </div>

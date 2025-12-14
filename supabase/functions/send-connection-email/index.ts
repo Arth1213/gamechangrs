@@ -39,8 +39,8 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("RESEND_API_KEY is not configured");
     }
 
-    // Use the project URL for verification links
-    const baseUrl = "https://e14399ba-fbf2-42cf-bf82-4c38048ee762.lovableproject.com";
+    // Use the project URL for verification links - get from environment or use production URL
+    const baseUrl = Deno.env.get("SITE_URL") || "https://wpczgwxsriezaubncuom.lovableproject.com";
     const verifyUrl = `${baseUrl}/coaching-marketplace/verify-connection?code=${verificationCode}&connectionId=${connectionId}`;
 
     let subject: string;

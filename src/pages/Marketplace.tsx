@@ -326,7 +326,7 @@ const Marketplace = () => {
                           onClick={() => handleContact(listing)}
                         >
                           <Mail className="w-4 h-4 mr-1" />
-                          Contact
+                          {listing.listing_type === "donation" ? "Request" : "Buy"}
                         </Button>
                       )}
                     </div>

@@ -133,41 +133,64 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             from: "GameChangrs Marketplace <noreply@gamechangrs.com>",
             to: sellerContact.contact_email,
+            cc: buyerEmail,
             reply_to: buyerEmail,
-            subject: `New inquiry about "${listing.title}"`,
+            subject: `Gear Marketplace: Inquiry about "${listing.title}"`,
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #333;">New Marketplace Inquiry</h2>
-                <p>You have received a new message about your listing: <strong>${listing.title}</strong></p>
-                <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                  <p><strong>From:</strong> ${buyerName} (${buyerEmail})</p>
-                  <p><strong>Message:</strong></p>
-                  <p style="white-space: pre-wrap;">${message}</p>
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 12px 12px 0 0;">
+                  <h1 style="color: white; margin: 0; font-size: 24px;">GameChangrs Gear Marketplace</h1>
                 </div>
-                <p style="color: #666; font-size: 14px;">
-                  You can reply directly to this email to contact ${buyerName}.
-                </p>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-                <p style="color: #999; font-size: 12px;">
-                  This message was sent through GameChangrs Marketplace. 
-                  Please arrange transactions safely and verify buyer identity.
-                </p>
+                <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+                  <h2 style="color: #333; margin-top: 0;">New Inquiry for Your Listing</h2>
+                  <p style="color: #666;">Someone is interested in your item: <strong>${listing.title}</strong></p>
+                  
+                  <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
+                    <p style="margin: 0 0 10px 0;"><strong>Buyer:</strong> ${buyerName}</p>
+                    <p style="margin: 0 0 15px 0;"><strong>Email:</strong> <a href="mailto:${buyerEmail}" style="color: #667eea;">${buyerEmail}</a></p>
+                    <p style="margin: 0 0 5px 0;"><strong>Message:</strong></p>
+                    <p style="white-space: pre-wrap; margin: 0; color: #333;">${message}</p>
+                  </div>
+                  
+                  <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <p style="margin: 0; color: #2e7d32; font-size: 14px;">
+                      <strong>💡 Next Steps:</strong> Simply reply to this email to start the conversation with ${buyerName}. 
+                      Both parties are copied on this email to facilitate direct communication.
+                    </p>
+                  </div>
+                  
+                  <hr style="border: none; border-top: 1px solid #eee; margin: 25px 0;">
+                  <p style="color: #999; font-size: 12px; margin: 0;">
+                    This message was sent through GameChangrs Gear Marketplace. 
+                    We facilitate connections but do not process payments. 
+                    Please arrange transactions safely and verify identities before meeting.
+                  </p>
+                </div>
               </div>
             `,
             text: `
-New Marketplace Inquiry
+GameChangrs Gear Marketplace - New Inquiry
 
-You have received a new message about your listing: ${listing.title}
+Hi,
 
-From: ${buyerName} (${buyerEmail})
+Someone is interested in your listing: ${listing.title}
 
-Message:
+BUYER DETAILS:
+Name: ${buyerName}
+Email: ${buyerEmail}
+
+MESSAGE:
 ${message}
 
-You can reply directly to this email to contact ${buyerName}.
+---
+
+NEXT STEPS:
+Simply reply to this email to start the conversation. Both the buyer and seller are copied on this email to facilitate direct communication.
 
 ---
-This message was sent through GameChangrs Marketplace.
+This message was sent through GameChangrs Gear Marketplace.
+We facilitate connections but do not process payments.
+Please arrange transactions safely and verify identities before meeting.
             `,
           }),
         });

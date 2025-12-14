@@ -177,85 +177,82 @@ export const PendingConnections = ({
   }
 
   if (pendingConnections.length === 0) {
-    return (
-      <div className="text-center py-6 text-muted-foreground">
-        <UserPlus className="w-8 h-8 mx-auto mb-2 opacity-50" />
-        <p className="text-sm">No pending connection requests</p>
-      </div>
-    );
+    return null; // Don't show anything if no pending connections
   }
 
   return (
-    <div className="space-y-3">
+    <div className="rounded-2xl bg-gradient-card border-2 border-primary/50 p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h4 className="font-medium text-sm flex items-center gap-2">
-          <Mail className="w-4 h-4" />
-          Pending Requests ({pendingConnections.length})
+        <h4 className="font-semibold text-lg flex items-center gap-2 text-foreground">
+          <Mail className="w-5 h-5 text-primary" />
+          Pending Connection Requests ({pendingConnections.length})
         </h4>
         <Button variant="ghost" size="sm" onClick={fetchPendingConnections}>
-          <RefreshCw className="w-3 h-3" />
+          <RefreshCw className="w-4 h-4" />
         </Button>
       </div>
       
-      {pendingConnections.map((conn) => {
-        const isExpired = new Date(conn.expires_at) < new Date();
-        const otherPartyName = userType === "coach" 
-          ? conn.player?.name 
-          : conn.coach?.name;
-        const otherPartyEmail = userType === "coach"
-          ? conn.player?.email
-          : conn.coach?.email;
+      <div className="grid gap-3">
+        {pendingConnections.map((conn) => {
+          const isExpired = new Date(conn.expires_at) < new Date();
+          const otherPartyName = userType === "coach" 
+            ? conn.player?.name 
+            : conn.coach?.name;
+          const otherPartyEmail = userType === "coach"
+            ? conn.player?.email
+            : conn.coach?.email;
 
-        return (
-          <div
-            key={conn.id}
-            className={`rounded-lg border p-3 ${isExpired ? 'opacity-50' : ''}`}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">
-                  {otherPartyName || "Unknown"}
-                </p>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock className="w-3 h-3" />
-                  {isExpired ? (
-                    <span className="text-destructive">Expired</span>
-                  ) : (
-                    <span>Expires {format(new Date(conn.expires_at), "MMM d, h:mm a")}</span>
-                  )}
-                </div>
-              </div>
-              
-              {!isExpired && (
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 w-7 p-0 text-green-500 hover:text-green-600 hover:bg-green-500/10"
-                    onClick={() => acceptConnection(conn.id, otherPartyEmail || "", otherPartyName || "")}
-                    disabled={actionLoading === conn.id}
-                  >
-                    {actionLoading === conn.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+          return (
+            <div
+              key={conn.id}
+              className={`rounded-xl border bg-background/50 p-4 ${isExpired ? 'opacity-50' : ''}`}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground truncate">
+                    {otherPartyName || "Unknown"}
+                  </p>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    {isExpired ? (
+                      <span className="text-destructive">Expired</span>
                     ) : (
-                      <CheckCircle className="w-4 h-4" />
+                      <span>Expires {format(new Date(conn.expires_at), "MMM d, h:mm a")}</span>
                     )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => declineConnection(conn.id)}
-                    disabled={actionLoading === conn.id}
-                  >
-                    <XCircle className="w-4 h-4" />
-                  </Button>
+                  </div>
                 </div>
-              )}
+                
+                {!isExpired && (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => acceptConnection(conn.id, otherPartyEmail || "", otherPartyName || "")}
+                      disabled={actionLoading === conn.id}
+                    >
+                      {actionLoading === conn.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                      ) : (
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                      )}
+                      Accept
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => declineConnection(conn.id)}
+                      disabled={actionLoading === conn.id}
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      Decline
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 };

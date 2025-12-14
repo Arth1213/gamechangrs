@@ -68,20 +68,28 @@ const CoachingMarketplace = () => {
     }
   }, [coaches, players, searchQuery, selectedCategories, selectedLevel, selectedLocation, minRating, sortBy, playerProfile, coachProfile, isCoachView]);
 
-  // Generate recommendations when data is available
+  // State for connections
+  const [connectedCoachIds, setConnectedCoachIds] = useState<Set<string>>(new Set());
+  const [connectedPlayerIds, setConnectedPlayerIds] = useState<Set<string>>(new Set());
+
+  // Generate recommendations when data is available (excluding already connected)
   useEffect(() => {
     if (playerProfile && coaches.length > 0 && !isCoachView) {
-      const recommended = getRecommendedCoaches(coaches, playerProfile, 3);
+      // Filter out already connected coaches for recommendations
+      const unconnectedCoaches = coaches.filter(c => !connectedCoachIds.has(c.id));
+      const recommended = getRecommendedCoaches(unconnectedCoaches, playerProfile, 3);
       setRecommendedCoaches(recommended);
     }
-  }, [playerProfile, coaches, isCoachView]);
+  }, [playerProfile, coaches, isCoachView, connectedCoachIds]);
 
   useEffect(() => {
     if (coachProfile && players.length > 0 && isCoachView) {
-      const recommended = getRecommendedPlayers(players, coachProfile, 3);
+      // Filter out already connected players for recommendations
+      const unconnectedPlayers = players.filter(p => !connectedPlayerIds.has(p.id));
+      const recommended = getRecommendedPlayers(unconnectedPlayers, coachProfile, 3);
       setRecommendedPlayers(recommended);
     }
-  }, [coachProfile, players, isCoachView]);
+  }, [coachProfile, players, isCoachView, connectedPlayerIds]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -140,7 +148,8 @@ const CoachingMarketplace = () => {
               .eq("coach_id", (coachData as any).id)
               .eq("verified", true);
             
-            const connectedPlayerIds = new Set(connections?.map((c: any) => c.student_id) || []);
+            const connectedIds = new Set(connections?.map((c: any) => c.student_id) || []);
+            setConnectedPlayerIds(connectedIds);
             
             const playersWithCategories = await Promise.all(
               (playersData as any[]).map(async (player) => {
@@ -151,12 +160,30 @@ const CoachingMarketplace = () => {
                 return { 
                   ...player, 
                   categories: playerCats || [],
-                  isConnected: connectedPlayerIds.has(player.id)
+                  isConnected: connectedIds.has(player.id)
                 };
               })
             );
+            // Sort: connected players first
+            playersWithCategories.sort((a, b) => {
+              if (a.isConnected && !b.isConnected) return -1;
+              if (!a.isConnected && b.isConnected) return 1;
+              return 0;
+            });
             setPlayers(playersWithCategories);
           }
+        }
+
+        // If player, fetch connected coach IDs
+        if (playerData) {
+          const { data: connections } = await supabase
+            .from("connections")
+            .select("coach_id")
+            .eq("student_id", (playerData as any).id)
+            .eq("verified", true);
+          
+          const connectedIds = new Set(connections?.map((c: any) => c.coach_id) || []);
+          setConnectedCoachIds(connectedIds);
         }
       } else {
         setHasCoachProfile(null);
@@ -181,9 +208,17 @@ const CoachingMarketplace = () => {
             return {
               ...coach,
               categories: coachCategories || [],
-            } as CoachWithDetails;
+              isConnected: connectedCoachIds.has(coach.id),
+            } as CoachWithDetails & { isConnected: boolean };
           })
         );
+        
+        // Sort: connected coaches first
+        coachesWithDetails.sort((a, b) => {
+          if (a.isConnected && !b.isConnected) return -1;
+          if (!a.isConnected && b.isConnected) return 1;
+          return 0;
+        });
         
         setCoaches(coachesWithDetails);
       }
@@ -454,6 +489,19 @@ const CoachingMarketplace = () => {
                         {match.player.location}
                       </div>
                     )}
+                    {/* Level and Age Group */}
+                    <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Level: </span>
+                        <span className="font-medium capitalize">{match.player?.experience_level || 'N/A'}</span>
+                      </div>
+                      {match.player?.age_group && (
+                        <div>
+                          <span className="text-muted-foreground">Age: </span>
+                          <span className="font-medium">{match.player.age_group}</span>
+                        </div>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-1 mb-3">
                       {match.player?.training_categories_needed?.slice(0, 2).map((catId: string) => {
                         const cat = categories.find(c => c.id === catId);
@@ -498,6 +546,17 @@ const CoachingMarketplace = () => {
                         {match.coach.location}
                       </div>
                     )}
+                    {/* Level and Experience */}
+                    <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Level: </span>
+                        <span className="font-medium capitalize">{match.coach?.coaching_level || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Exp: </span>
+                        <span className="font-medium">{match.coach?.years_experience || 0} yrs</span>
+                      </div>
+                    </div>
                     <div className="flex items-center gap-2 mb-3">
                       <Star className="w-4 h-4 fill-primary text-primary" />
                       <span className="font-semibold">{match.coach?.adjusted_rating?.toFixed(1)}</span>
@@ -522,9 +581,12 @@ const CoachingMarketplace = () => {
         </section>
       )}
 
-      {/* Results */}
+      {/* All Section */}
       <section className="py-12">
         <div className="container mx-auto px-4">
+          <h2 className="font-display text-2xl font-bold text-foreground mb-6">
+            All {isCoachView ? 'Players' : 'Coaches'}
+          </h2>
           {loading ? (
             <div className="text-center py-12">
               <div className="w-10 h-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
@@ -664,12 +726,20 @@ const CoachingMarketplace = () => {
                           </div>
                         )}
                       </div>
-                      {coach.is_verified && (
-                        <Badge variant="secondary" className="bg-green-500/10 text-green-500">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Verified
-                        </Badge>
-                      )}
+                      <div className="flex gap-1">
+                        {(coach as any).isConnected && (
+                          <Badge variant="default" className="bg-green-500/10 text-green-500">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Connected
+                          </Badge>
+                        )}
+                        {coach.is_verified && (
+                          <Badge variant="secondary" className="bg-blue-500/10 text-blue-500">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Verified
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
                     {/* Rating */}
@@ -723,7 +793,7 @@ const CoachingMarketplace = () => {
                           View Profile
                         </Link>
                       </Button>
-                      {user && hasPlayerProfile && (
+                      {user && hasPlayerProfile && !(coach as any).isConnected && (
                         <ConnectionRequestDialog
                           targetId={coach.id}
                           targetType="coach"

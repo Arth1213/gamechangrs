@@ -6,12 +6,23 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Calendar, Users, Star, Clock, MapPin, 
-  BookOpen, Plus, Eye, XCircle, Settings, Edit, Search, CalendarPlus
+  BookOpen, Plus, Eye, XCircle, Settings, Edit, Search, CalendarPlus, Trash2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Player, Session, Coach, Connection } from "@/types/coaching";
 import { PlayerProfileEditor } from "@/components/coaching/PlayerProfileEditor";
 import { SessionCalendar } from "@/components/coaching/SessionCalendar";
@@ -234,6 +245,39 @@ const PlayerDashboard = () => {
     }
   };
 
+  const navigate = useNavigate();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const deletePlayerProfile = async () => {
+    if (!player) return;
+    
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("players")
+        .delete()
+        .eq("id", player.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Profile Deleted",
+        description: "Your player profile has been deleted successfully.",
+      });
+
+      navigate("/coaching-marketplace");
+    } catch (error: any) {
+      console.error("Error deleting player profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete player profile. You may have active connections or sessions.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -334,6 +378,33 @@ const PlayerDashboard = () => {
                     Settings
                   </Link>
                 </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Profile
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Player Profile</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete your player profile? This action cannot be undone.
+                        All your connections and session history will be removed.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={deletePlayerProfile}
+                        disabled={isDeleting}
+                        className="bg-destructive hover:bg-destructive/90"
+                      >
+                        {isDeleting ? "Deleting..." : "Delete Profile"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           </div>

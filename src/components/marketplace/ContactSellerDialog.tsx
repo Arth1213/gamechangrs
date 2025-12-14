@@ -78,7 +78,7 @@ export function ContactSellerDialog({
 
       toast({
         title: "Message Sent!",
-        description: "The seller will receive your message and can contact you directly.",
+        description: "Both you and the seller have received the email. You can now communicate directly via email to arrange the transaction.",
       });
       onOpenChange(false);
       setFormData({
@@ -107,7 +107,7 @@ export function ContactSellerDialog({
             Contact Seller
           </DialogTitle>
           <DialogDescription>
-            Send a message about "{listingTitle}". The seller will receive your message and can reply to your email.
+            Send a message about "{listingTitle}". Both you and the seller will receive this email to facilitate direct communication.
           </DialogDescription>
         </DialogHeader>
 
@@ -156,7 +156,7 @@ export function ContactSellerDialog({
           <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
             <ShieldCheck className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
             <p className="text-xs text-muted-foreground">
-              Your email is shared with the seller so they can respond. We don't share seller emails publicly.
+              Both you and the seller will be copied on the email. This allows you to negotiate and arrange the transaction directly over email. We don't process payments.
             </p>
           </div>
 

@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "GameChangrs Marketplace <onboarding@resend.dev>",
+            from: "GameChangrs Marketplace <noreply@game-changrs.com>",
             to: sellerContact.contact_email,
             cc: buyerEmail,
             reply_to: buyerEmail,

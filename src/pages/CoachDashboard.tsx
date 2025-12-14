@@ -453,6 +453,11 @@ const CoachDashboard = () => {
             </div>
           </div>
 
+          {/* Pending Connections Alert - Prominent placement */}
+          <div className="mb-8">
+            <PendingConnections userType="coach" profileId={coach.id} onConnectionChange={fetchData} />
+          </div>
+
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="p-6 rounded-2xl bg-gradient-card border border-border">

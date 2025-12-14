@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { Coach, Player, Session } from "@/types/coaching";
 import { SessionCalendar } from "@/components/coaching/SessionCalendar";
 import { ProfileAvatar } from "@/components/coaching/ProfileAvatar";
+import { PendingConnections } from "@/components/coaching/PendingConnections";
 
 interface AnalysisResult {
   id: string;
@@ -365,6 +366,26 @@ export const UserDashboard = () => {
             Ready to elevate your game? Here's your personalized dashboard.
           </p>
         </div>
+
+        {/* Pending Connections - Prominent placement for both coaches and players */}
+        {!loading && (coachProfile || playerProfile) && (
+          <div className="mb-8 space-y-4">
+            {coachProfile && (
+              <PendingConnections 
+                userType="coach" 
+                profileId={coachProfile.id} 
+                onConnectionChange={() => window.location.reload()} 
+              />
+            )}
+            {playerProfile && (
+              <PendingConnections 
+                userType="player" 
+                profileId={playerProfile.id} 
+                onConnectionChange={() => window.location.reload()} 
+              />
+            )}
+          </div>
+        )}
 
         {/* Role Status Section with Calendar */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">

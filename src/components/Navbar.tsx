@@ -69,7 +69,7 @@ export const Navbar = () => {
             ) : user ? (
               <>
                 <NotificationBell />
-                <DropdownMenu>
+              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="default" className="gap-2">
                     <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">

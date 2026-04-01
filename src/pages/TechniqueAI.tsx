@@ -14,14 +14,14 @@ const TechniqueAI = () => {
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6">
               <Sparkles className="w-4 h-4 text-accent" />
-              <span className="text-sm font-medium text-accent">Advanced Pose Detection</span>
+              <span className="text-sm font-medium text-accent">Batting AI Tracker</span>
             </div>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-              <span className="text-gradient-primary">TechniqueAI</span> Analysis
+              <span className="text-gradient-primary">TechniqueAI</span> Batting Analysis
             </h1>
             <p className="text-lg text-muted-foreground">
-              Upload your cricket videos and get real-time pose detection with biomechanical analysis. 
-              See exactly how your body moves and receive instant feedback on your technique.
+              Upload a cricket batting clip to get pose-driven scoring, phase-by-phase feedback,
+              and drills that replace the old AI video analysis flow.
             </p>
           </div>
         </div>

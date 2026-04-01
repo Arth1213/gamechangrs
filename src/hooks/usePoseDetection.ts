@@ -219,7 +219,7 @@ export function usePoseDetection() {
         poseRef.current = pose;
       } catch (err) {
         console.error('Failed to initialize MediaPipe Pose:', err);
-        setError('Failed to initialize pose detection. Using fallback.');
+        setError('Failed to initialize pose detection.');
       }
     };
 
@@ -241,6 +241,10 @@ export function usePoseDetection() {
     const frames: PoseFrame[] = [];
 
     try {
+      if (!poseRef.current) {
+        throw new Error('Pose model is not ready yet');
+      }
+
       // Create video element for processing
       const video = document.createElement('video');
       video.src = URL.createObjectURL(videoFile);
@@ -282,30 +286,18 @@ export function usePoseDetection() {
         let joints: Joint[] = [];
         let angles: Angle[] = [];
 
-        if (poseRef.current) {
-          try {
-            // Process frame with MediaPipe
-            const results = await new Promise<Results>((resolve) => {
-              poseRef.current!.onResults((result) => resolve(result));
-              poseRef.current!.send({ image: canvas });
-            });
+        try {
+          const results = await new Promise<Results>((resolve) => {
+            poseRef.current!.onResults((result) => resolve(result));
+            poseRef.current!.send({ image: canvas });
+          });
 
-            if (results.poseLandmarks) {
-              joints = landmarksToJoints(results.poseLandmarks);
-              angles = calculateCricketAngles(joints);
-            }
-          } catch (err) {
-            console.warn('Pose detection failed for frame', i, err);
-            // Use fallback simulation for this frame
-            const fallback = simulatePoseDetection();
-            joints = fallback.joints;
-            angles = fallback.angles;
+          if (results.poseLandmarks) {
+            joints = landmarksToJoints(results.poseLandmarks);
+            angles = calculateCricketAngles(joints);
           }
-        } else {
-          // Fallback to simulation if MediaPipe not available
-          const fallback = simulatePoseDetection();
-          joints = fallback.joints;
-          angles = fallback.angles;
+        } catch (err) {
+          console.warn('Pose detection failed for frame', i, err);
         }
 
         const frame: PoseFrame = { timestamp, joints, angles };
@@ -316,6 +308,11 @@ export function usePoseDetection() {
 
       // Cleanup
       URL.revokeObjectURL(video.src);
+
+      const validFrames = frames.filter((frame) => frame.joints.length > 0);
+      if (validFrames.length === 0) {
+        throw new Error('No valid pose landmarks were detected in this video');
+      }
       
       setPoseFrames(frames);
       setIsProcessing(false);
@@ -323,24 +320,8 @@ export function usePoseDetection() {
     } catch (err) {
       console.error('Video processing error:', err);
       setError(err instanceof Error ? err.message : 'Failed to process video');
-      
-      // Fallback to simulated frames
-      for (let i = 0; i < 30; i++) {
-        const { joints, angles } = simulatePoseDetection();
-        const frame: PoseFrame = {
-          timestamp: (i / 30) * 5000,
-          joints,
-          angles,
-        };
-        frames.push(frame);
-        setCurrentFrame(frame);
-        setProgress(((i + 1) / 30) * 100);
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-      
-      setPoseFrames(frames);
       setIsProcessing(false);
-      return frames;
+      throw err;
     }
   }, []);
 
@@ -362,26 +343,4 @@ export function usePoseDetection() {
     videoRef,
     error,
   };
-}
-
-// Fallback simulation for when MediaPipe fails
-function simulatePoseDetection(): { joints: Joint[], angles: Angle[] } {
-  const baseJoints: Joint[] = [
-    { name: 'nose', x: 0.5 + (Math.random() - 0.5) * 0.02, y: 0.15 + (Math.random() - 0.5) * 0.01, z: 0, visibility: 0.95 },
-    { name: 'left_shoulder', x: 0.42 + (Math.random() - 0.5) * 0.02, y: 0.25 + (Math.random() - 0.5) * 0.01, z: 0, visibility: 0.92 },
-    { name: 'right_shoulder', x: 0.58 + (Math.random() - 0.5) * 0.02, y: 0.25 + (Math.random() - 0.5) * 0.01, z: 0, visibility: 0.93 },
-    { name: 'left_elbow', x: 0.35 + (Math.random() - 0.5) * 0.03, y: 0.38 + (Math.random() - 0.5) * 0.02, z: 0, visibility: 0.88 },
-    { name: 'right_elbow', x: 0.68 + (Math.random() - 0.5) * 0.03, y: 0.35 + (Math.random() - 0.5) * 0.02, z: 0, visibility: 0.89 },
-    { name: 'left_wrist', x: 0.30 + (Math.random() - 0.5) * 0.04, y: 0.48 + (Math.random() - 0.5) * 0.03, z: 0, visibility: 0.85 },
-    { name: 'right_wrist', x: 0.75 + (Math.random() - 0.5) * 0.04, y: 0.45 + (Math.random() - 0.5) * 0.03, z: 0, visibility: 0.86 },
-    { name: 'left_hip', x: 0.44 + (Math.random() - 0.5) * 0.02, y: 0.52 + (Math.random() - 0.5) * 0.01, z: 0, visibility: 0.90 },
-    { name: 'right_hip', x: 0.56 + (Math.random() - 0.5) * 0.02, y: 0.52 + (Math.random() - 0.5) * 0.01, z: 0, visibility: 0.91 },
-    { name: 'left_knee', x: 0.42 + (Math.random() - 0.5) * 0.03, y: 0.72 + (Math.random() - 0.5) * 0.02, z: 0, visibility: 0.87 },
-    { name: 'right_knee', x: 0.58 + (Math.random() - 0.5) * 0.03, y: 0.72 + (Math.random() - 0.5) * 0.02, z: 0, visibility: 0.88 },
-    { name: 'left_ankle', x: 0.40 + (Math.random() - 0.5) * 0.03, y: 0.92 + (Math.random() - 0.5) * 0.02, z: 0, visibility: 0.82 },
-    { name: 'right_ankle', x: 0.60 + (Math.random() - 0.5) * 0.03, y: 0.92 + (Math.random() - 0.5) * 0.02, z: 0, visibility: 0.83 },
-  ];
-
-  const angles = calculateCricketAngles(baseJoints);
-  return { joints: baseJoints, angles };
 }

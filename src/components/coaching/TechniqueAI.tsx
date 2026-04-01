@@ -1,1653 +1,1059 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { 
-  Upload, Play, Video, Ruler, Clock, Target, Trophy, Medal,
-  MessageSquare, Dumbbell, CheckCircle, AlertTriangle, XCircle, 
-  Lightbulb, Download, BarChart3, X, Eye, EyeOff, RefreshCw, LogIn,
-  History, Trash2, TrendingUp, Calendar
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useRef, useState } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { format } from 'date-fns';
+  Activity,
+  Clipboard,
+  Dumbbell,
+  Eye,
+  Play,
+  Sparkles,
+  Trash2,
+  Upload,
+  Video,
+} from "lucide-react";
+import { toast } from "sonner";
 
-const DEMO_VIDEO_URL = '/demo-video.mp4';
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { PoseOverlay } from "@/components/coaching/PoseOverlay";
+import { usePoseDetection, type Joint, type PoseFrame } from "@/hooks/usePoseDetection";
 
-interface AnalysisHistoryItem {
+type Handedness = "right" | "left";
+type CameraAngle = "side-on" | "front-on" | "three-quarter";
+type BowlingType = "pace" | "spin" | "mixed";
+
+type ShotType =
+  | "straight-drive"
+  | "cover-drive"
+  | "on-drive"
+  | "pull"
+  | "hook"
+  | "square-cut"
+  | "late-cut"
+  | "sweep"
+  | "slog-sweep-ramp-scoop"
+  | "forward-defensive"
+  | "backward-defensive"
+  | "glance-flick"
+  | "back-foot-punch";
+
+type Severity = "critical" | "major" | "minor";
+type AnalysisStage = "idle" | "pose" | "scoring" | "complete";
+
+interface ShotProfile {
+  label: string;
+  cues: string[];
+  biases: string[];
+}
+
+interface IssueDefinition {
+  title: string;
+  category: PhaseKey;
+  fix: string;
+  drill: string;
+  tip: string;
+}
+
+type PhaseKey =
+  | "setup"
+  | "backlift"
+  | "trigger"
+  | "downswing"
+  | "contact"
+  | "followThrough"
+  | "shot";
+
+interface PhaseScore {
+  key: PhaseKey;
+  label: string;
+  weight: number;
+  score: number;
+}
+
+interface Finding {
   id: string;
-  created_at: string;
-  mode: 'batting' | 'bowling';
-  overall_score: number;
-  scores: {
-    technique: number;
-    balance: number;
-    timing: number;
-    followThrough: number;
-  };
-  angles: {
-    elbow: number;
-    knee: number;
-    shoulder: number;
-    head: number;
-  };
+  title: string;
+  severity: Severity;
+  fix: string;
+  drill: string;
+  tip: string;
+  category: PhaseKey;
 }
 
-// MediaPipe types - loaded via script tag from CDN
-declare global {
-  interface Window {
-    Pose: any;
-  }
+interface Drill {
+  title: string;
+  focus: string;
+  description: string;
 }
 
-type PoseResults = {
-  poseLandmarks?: Array<{ x: number; y: number; z: number; visibility: number }>;
+interface SnapshotItem {
+  title: string;
+  tag: string;
+  copy: string;
+}
+
+interface TrackerReport {
+  score: number;
+  band: string;
+  heading: string;
+  summary: string;
+  phaseScores: PhaseScore[];
+  findings: Finding[];
+  drills: Drill[];
+  snapshots: SnapshotItem[];
+}
+
+interface FrameFeature {
+  headOffset: number;
+  shoulderTilt: number;
+  hipTilt: number;
+  stanceRatio: number;
+  trailWristLift: number;
+  leadWristLift: number;
+  wristSeparation: number;
+  leadKneeAngle: number;
+  trailKneeAngle: number;
+  leadElbowAngle: number;
+  trailElbowAngle: number;
+  shoulderRotation: number;
+  hipRotation: number;
+  handMid: Point;
+  leadWrist: Point;
+  trailWrist: Point;
+  shoulderSpan: number;
+  hipsMid: Point;
+  shouldersMid: Point;
+}
+
+interface Point {
+  x: number;
+  y: number;
+  z: number;
+}
+
+const PHASES: Array<{ key: PhaseKey; label: string; weight: number }> = [
+  { key: "setup", label: "Setup", weight: 15 },
+  { key: "backlift", label: "Backlift", weight: 18 },
+  { key: "trigger", label: "Trigger", weight: 12 },
+  { key: "downswing", label: "Downswing", weight: 23 },
+  { key: "contact", label: "Contact Zone", weight: 12 },
+  { key: "followThrough", label: "Follow-through", weight: 10 },
+  { key: "shot", label: "Shot Match", weight: 10 },
+];
+
+const SHOT_PROFILES: Record<ShotType, ShotProfile> = {
+  "straight-drive": {
+    label: "Straight Drive",
+    cues: ["Head over the line", "Vertical bat path", "Full transfer into the ball"],
+    biases: ["front-foot-late", "bat-path-across", "weight-transfer-holds"],
+  },
+  "cover-drive": {
+    label: "Cover Drive",
+    cues: ["Front shoulder stays closed", "Stride to the pitch", "Hands under the eyes"],
+    biases: ["open-stance", "head-falling-away", "hard-hands"],
+  },
+  "on-drive": {
+    label: "On Drive",
+    cues: ["Balanced head line", "Controlled hip release", "Bat close to the pad"],
+    biases: ["hip-open-early", "contact-too-early", "weight-transfer-holds"],
+  },
+  pull: {
+    label: "Pull Shot",
+    cues: ["Back-foot base stable", "Head stays level", "Hands stay above the ball"],
+    biases: ["balance-finish", "head-falling-away", "contact-too-high"],
+  },
+  hook: {
+    label: "Hook Shot",
+    cues: ["Strong base", "Eyes level", "Controlled arc"],
+    biases: ["head-falling-away", "balance-finish", "bat-path-across"],
+  },
+  "square-cut": {
+    label: "Square Cut",
+    cues: ["Back-foot access", "Shoulders stay level", "Contact late enough"],
+    biases: ["backlift-low", "contact-too-late", "shoulder-misalignment"],
+  },
+  "late-cut": {
+    label: "Late Cut",
+    cues: ["Soft hands", "Delay contact", "Quiet head"],
+    biases: ["hard-hands", "contact-too-early", "head-falling-away"],
+  },
+  sweep: {
+    label: "Sweep Shot",
+    cues: ["Stable knee base", "Head inside the ball", "Smooth swing arc"],
+    biases: ["trigger-late", "balance-finish", "contact-too-high"],
+  },
+  "slog-sweep-ramp-scoop": {
+    label: "Slog Sweep / Ramp / Scoop",
+    cues: ["Strong base", "Clear intent early", "Controlled finish"],
+    biases: ["trigger-late", "bat-path-across", "balance-finish"],
+  },
+  "forward-defensive": {
+    label: "Forward Defensive",
+    cues: ["Stride to line", "Soft hands", "Head in front of the pad"],
+    biases: ["front-foot-late", "hard-hands", "contact-too-early"],
+  },
+  "backward-defensive": {
+    label: "Backward Defensive",
+    cues: ["Back-foot depth", "Compact backlift", "Body stays quiet"],
+    biases: ["trigger-late", "backlift-low", "weight-transfer-holds"],
+  },
+  "glance-flick": {
+    label: "Glance / Flick",
+    cues: ["Bat close to body", "Wrist timing", "Late contact"],
+    biases: ["contact-too-early", "hard-hands", "weight-transfer-holds"],
+  },
+  "back-foot-punch": {
+    label: "Back-foot Punch",
+    cues: ["Back-foot set early", "Head stays over base", "Controlled shoulder line"],
+    biases: ["trigger-late", "shoulder-misalignment", "balance-finish"],
+  },
 };
 
-type AnalysisMode = 'batting' | 'bowling';
+const ISSUES: Record<string, IssueDefinition> = {
+  "open-stance": {
+    title: "Base opens too early",
+    category: "setup",
+    fix: "Square the front shoulder for longer so the base reads line and length before release.",
+    drill: "Mirror setup holds with stump alignment and a 3-second pause before the trigger.",
+    tip: "Keep the front toe slightly calmer rather than opening the stance immediately.",
+  },
+  "head-falling-away": {
+    title: "Head falls away from the ball line",
+    category: "downswing",
+    fix: "Keep the nose travelling toward contact so the eyes stay level through the shot.",
+    drill: "Drop-feed head-over-ball reps with a cone set just outside off stump.",
+    tip: "Feel the chin finishing above the front knee instead of outside the frame.",
+  },
+  "hard-hands": {
+    title: "Bottom hand takes over",
+    category: "contact",
+    fix: "Soften the lower hand so the bat face can stay straighter into contact.",
+    drill: "Top-hand only feed drill, then progress to soft-hands check drives.",
+    tip: "Keep grip pressure light until the ball arrives under the eyes.",
+  },
+  "front-foot-late": {
+    title: "Front foot reaches line late",
+    category: "downswing",
+    fix: "Start the stride sooner so the front foot settles before the hands commit.",
+    drill: "Stride-and-freeze reps against underarm feeds with a beat count.",
+    tip: "Land the front foot first, then let the hands release.",
+  },
+  "backlift-low": {
+    title: "Backlift stays low",
+    category: "backlift",
+    fix: "Create a cleaner pickup so the bat can launch from a stronger position.",
+    drill: "Backlift checkpoints in the mirror, then slow-motion shadow swings.",
+    tip: "Lift with the hands rather than yanking the bat up with the shoulder.",
+  },
+  "trigger-late": {
+    title: "Trigger starts late",
+    category: "trigger",
+    fix: "Move earlier so the body is loaded before the release point is gone.",
+    drill: "Trigger-call drill where a partner cues movement just before release.",
+    tip: "The trigger prepares the body; it should not chase the ball.",
+  },
+  "weight-transfer-holds": {
+    title: "Weight transfer stalls",
+    category: "followThrough",
+    fix: "Finish with momentum through the shot instead of freezing on the back side.",
+    drill: "Step-through drives focusing on the chest and belt buckle finishing forward.",
+    tip: "Your finish should carry through target, not stop at contact.",
+  },
+  "hip-open-early": {
+    title: "Hips open too early",
+    category: "downswing",
+    fix: "Delay the hip release slightly so the swing path stays connected to the ball line.",
+    drill: "Split-step hip timing drill with a pause at launch and controlled release.",
+    tip: "Feel the front hip open with the swing, not before it.",
+  },
+  "shoulder-misalignment": {
+    title: "Shoulders tilt off line",
+    category: "downswing",
+    fix: "Hold a calmer shoulder line so the bat can travel on a straighter path.",
+    drill: "Alignment-stick swings keeping the top shoulder from peeling away.",
+    tip: "Stack the shoulders over the shot line instead of falling leg side.",
+  },
+  "bat-path-across": {
+    title: "Bat path cuts across the line",
+    category: "downswing",
+    fix: "Return the swing to a straighter plane that enters and exits through the target.",
+    drill: "Gate drill using two cones to force a vertical bat path through contact.",
+    tip: "Imagine the bat head travelling to mid-off or mid-on rather than square leg.",
+  },
+  "contact-too-early": {
+    title: "Contact happens too far in front",
+    category: "contact",
+    fix: "Let the ball come slightly deeper so the hands stay under the eyes.",
+    drill: "Late-contact feed drill with a target marker just under the front shoulder.",
+    tip: "Wait for the ball to arrive instead of reaching for it.",
+  },
+  "contact-too-late": {
+    title: "Contact happens too late",
+    category: "contact",
+    fix: "Meet the ball earlier by getting the feet and bat path ready sooner.",
+    drill: "Early-meet cue drill with throwdowns and a front-foot timing call.",
+    tip: "If the body is late, start the trigger earlier instead of swinging faster.",
+  },
+  "contact-too-high": {
+    title: "Contact height is unstable",
+    category: "contact",
+    fix: "Match the bounce sooner so the bat meets the ball in a more controllable zone.",
+    drill: "Tennis-ball bounce reading drill with repeated contact-height checkpoints.",
+    tip: "Track the bounce with the head level and let the hands adjust under it.",
+  },
+  "balance-finish": {
+    title: "Finish loses balance",
+    category: "followThrough",
+    fix: "Hold posture through the finish so the final frame still looks controlled.",
+    drill: "Hit-and-hold finish drill with a 2-second balance freeze after every rep.",
+    tip: "A stable finish usually means the earlier movement sequence was cleaner too.",
+  },
+};
 
-interface FeedbackItem {
-  type: 'positive' | 'warning' | 'critical';
-  title: string;
-  description: string;
-  drill: string | null;
+const STAGE_INDEX: Record<AnalysisStage, number> = {
+  idle: 0,
+  pose: 35,
+  scoring: 72,
+  complete: 100,
+};
+
+function getJoint(joints: Joint[], name: string) {
+  return joints.find((joint) => joint.name === name && joint.visibility > 0.45) ?? null;
 }
 
-interface DrillItem {
-  icon: 'dumbbell' | 'scale' | 'activity';
-  title: string;
-  description: string;
-  color: 'green' | 'blue' | 'purple';
+function toPoint(joint: Joint): Point {
+  return { x: joint.x, y: joint.y, z: joint.z ?? 0 };
 }
 
-interface AnalysisData {
-  currentMode: AnalysisMode;
-  videoDuration: string;
-  angles: {
-    elbow: number;
-    knee: number;
-    shoulder: number;
-    head: number;
+function average(values: number[]) {
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+}
+
+function stdDev(values: number[]) {
+  if (values.length < 2) return 0;
+  const mean = average(values);
+  return Math.sqrt(average(values.map((value) => (value - mean) ** 2)));
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function distance(a: Point, b: Point) {
+  return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2);
+}
+
+function midpoint(a: Point, b: Point): Point {
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+    z: (a.z + b.z) / 2,
   };
-  scores: {
-    overall: number;
-    technique: number;
-    balance: number;
-    timing: number;
-    followThrough: number;
-  };
-  feedback: FeedbackItem[];
-  drills: DrillItem[];
 }
 
-const BATTING_FEEDBACK: FeedbackItem[] = [
-  {
-    type: 'positive',
-    title: 'Excellent Head Position',
-    description: 'Head remains still and eyes level throughout the shot. Perfect for tracking the ball.',
-    drill: null
-  },
-  {
-    type: 'warning',
-    title: 'Back Leg Alignment',
-    description: 'Back knee angle exceeds optimal range (165° vs optimal 160-175°). Affects weight transfer and power generation.',
-    drill: 'Practice with back foot against wall to maintain optimal bend'
-  },
-  {
-    type: 'critical',
-    title: 'Shoulder Tilt Issue',
-    description: 'Excessive shoulder tilt (12°) causing off-balance during follow-through. Reduces shot consistency.',
-    drill: 'Focus on keeping shoulders level through the shot'
-  },
-  {
-    type: 'positive',
-    title: 'Good Bat Path',
-    description: 'Straight bat path with minimal deviation. Excellent for playing straight drives.',
-    drill: null
+function pathDistance(points: Point[]) {
+  let total = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    total += distance(points[index - 1], points[index]);
   }
-];
+  return total;
+}
 
-const BOWLING_FEEDBACK: FeedbackItem[] = [
-  {
-    type: 'positive',
-    title: 'Good Run-up Rhythm',
-    description: 'Consistent approach speed with proper acceleration pattern.',
-    drill: null
-  },
-  {
-    type: 'warning',
-    title: 'Front Foot Landing',
-    description: 'Front foot lands slightly across the crease (5° off optimal alignment).',
-    drill: 'Practice landing drills with alignment markers'
-  },
-  {
-    type: 'critical',
-    title: 'Arm Speed Variation',
-    description: 'Inconsistent arm speed during delivery affecting ball release timing.',
-    drill: 'Focus on maintaining consistent arm speed through delivery'
-  },
-  {
-    type: 'positive',
-    title: 'Excellent Follow-through',
-    description: 'Good momentum transfer and balanced finish position.',
-    drill: null
+function severityFromScore(score: number): Severity {
+  if (score < 58) return "critical";
+  if (score < 70) return "major";
+  return "minor";
+}
+
+function getBand(score: number) {
+  if (score >= 90) return "Elite base";
+  if (score >= 80) return "Strong base";
+  if (score >= 70) return "Match ready";
+  if (score >= 60) return "Raw but workable";
+  return "Major rebuild";
+}
+
+function scoreLabel(score: number) {
+  if (score >= 85) return "excellent";
+  if (score >= 75) return "good";
+  if (score >= 65) return "needs work";
+  return "priority fix";
+}
+
+function buildFrameFeature(frame: PoseFrame, handedness: Handedness): FrameFeature | null {
+  const leadPrefix = handedness === "right" ? "left" : "right";
+  const trailPrefix = handedness === "right" ? "right" : "left";
+
+  const nose = getJoint(frame.joints, "nose");
+  const leftShoulder = getJoint(frame.joints, "left_shoulder");
+  const rightShoulder = getJoint(frame.joints, "right_shoulder");
+  const leftHip = getJoint(frame.joints, "left_hip");
+  const rightHip = getJoint(frame.joints, "right_hip");
+  const leftAnkle = getJoint(frame.joints, "left_ankle");
+  const rightAnkle = getJoint(frame.joints, "right_ankle");
+  const leadWrist = getJoint(frame.joints, `${leadPrefix}_wrist`);
+  const trailWrist = getJoint(frame.joints, `${trailPrefix}_wrist`);
+  const leadShoulder = getJoint(frame.joints, `${leadPrefix}_shoulder`);
+  const trailShoulder = getJoint(frame.joints, `${trailPrefix}_shoulder`);
+
+  if (
+    !nose ||
+    !leftShoulder ||
+    !rightShoulder ||
+    !leftHip ||
+    !rightHip ||
+    !leftAnkle ||
+    !rightAnkle ||
+    !leadWrist ||
+    !trailWrist ||
+    !leadShoulder ||
+    !trailShoulder
+  ) {
+    return null;
   }
-];
 
-const BATTING_DRILLS: DrillItem[] = [
-  { icon: 'dumbbell', title: 'Back Foot Stability Drill', description: '3 sets × 10 reps daily', color: 'green' },
-  { icon: 'scale', title: 'Shoulder Alignment Exercise', description: '2 sets × 15 reps daily', color: 'blue' },
-  { icon: 'activity', title: 'Follow-through Practice', description: '5 minutes shadow batting', color: 'purple' }
-];
+  const shouldersMid = midpoint(toPoint(leftShoulder), toPoint(rightShoulder));
+  const hipsMid = midpoint(toPoint(leftHip), toPoint(rightHip));
+  const shoulderSpan = distance(toPoint(leftShoulder), toPoint(rightShoulder));
+  const hipSpan = distance(toPoint(leftHip), toPoint(rightHip));
+  const stanceWidth = distance(toPoint(leftAnkle), toPoint(rightAnkle));
+  if (shoulderSpan < 0.01 || hipSpan < 0.01 || stanceWidth < 0.01) {
+    return null;
+  }
 
-const BOWLING_DRILLS: DrillItem[] = [
-  { icon: 'activity', title: 'Approach Rhythm Drill', description: '5 × 20m sprints with markers', color: 'green' },
-  { icon: 'dumbbell', title: 'Front Foot Landing Practice', description: '3 sets × 10 deliveries', color: 'blue' },
-  { icon: 'scale', title: 'Arm Speed Consistency', description: '2 sets × 15 medicine ball throws', color: 'purple' }
-];
+  const getAngle = (name: string) => frame.angles.find((angle) => angle.name === name)?.value ?? 0;
 
-function calculateAngle(a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }): number {
-  const ab = Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2));
-  const bc = Math.sqrt(Math.pow(b.x - c.x, 2) + Math.pow(b.y - c.y, 2));
-  const ac = Math.sqrt(Math.pow(c.x - a.x, 2) + Math.pow(c.y - a.y, 2));
-  
-  if (ab === 0 || bc === 0) return 0;
-  const cosAngle = (Math.pow(ab, 2) + Math.pow(bc, 2) - Math.pow(ac, 2)) / (2 * ab * bc);
-  const clampedCos = Math.max(-1, Math.min(1, cosAngle));
-  return Math.round(Math.acos(clampedCos) * (180 / Math.PI));
+  return {
+    headOffset: Math.abs(nose.x - hipsMid.x) / shoulderSpan,
+    shoulderTilt: Math.abs(leftShoulder.y - rightShoulder.y) / shoulderSpan,
+    hipTilt: Math.abs(leftHip.y - rightHip.y) / hipSpan,
+    stanceRatio: stanceWidth / shoulderSpan,
+    trailWristLift: (trailShoulder.y - trailWrist.y) / shoulderSpan,
+    leadWristLift: (leadShoulder.y - leadWrist.y) / shoulderSpan,
+    wristSeparation: distance(toPoint(leadWrist), toPoint(trailWrist)) / shoulderSpan,
+    leadKneeAngle: getAngle(`${leadPrefix}_knee`),
+    trailKneeAngle: getAngle(`${trailPrefix}_knee`),
+    leadElbowAngle: getAngle(`${leadPrefix}_elbow`),
+    trailElbowAngle: getAngle(`${trailPrefix}_elbow`),
+    shoulderRotation: Math.abs(leftShoulder.z - rightShoulder.z) / shoulderSpan,
+    hipRotation: Math.abs(leftHip.z - rightHip.z) / hipSpan,
+    handMid: midpoint(toPoint(leadWrist), toPoint(trailWrist)),
+    leadWrist: toPoint(leadWrist),
+    trailWrist: toPoint(trailWrist),
+    shoulderSpan,
+    hipsMid,
+    shouldersMid,
+  };
+}
+
+function scoreShotFit(shotType: ShotType, metrics: Record<string, number>) {
+  if (["straight-drive", "cover-drive", "on-drive", "forward-defensive"].includes(shotType)) {
+    return average([metrics.frontFootIntentScore, metrics.headStabilityScore, metrics.transferScore]);
+  }
+
+  if (["pull", "hook", "square-cut", "late-cut", "backward-defensive", "back-foot-punch"].includes(shotType)) {
+    return average([metrics.backFootIntentScore, metrics.rotationScore, metrics.finishBalanceScore]);
+  }
+
+  if (["sweep", "slog-sweep-ramp-scoop"].includes(shotType)) {
+    return average([metrics.sweepIntentScore, metrics.swingPlaneScore, metrics.finishBalanceScore]);
+  }
+
+  return average([metrics.contactScore, metrics.swingPlaneScore, metrics.headStabilityScore]);
+}
+
+function buildReport(
+  frames: PoseFrame[],
+  context: {
+    handedness: Handedness;
+    cameraAngle: CameraAngle;
+    bowlingType: BowlingType;
+    shotType: ShotType;
+    fileName: string;
+    durationLabel: string;
+  },
+): TrackerReport {
+  const shotProfile = SHOT_PROFILES[context.shotType];
+  const features = frames.map((frame) => buildFrameFeature(frame, context.handedness)).filter(Boolean) as FrameFeature[];
+
+  if (features.length < 4) {
+    throw new Error("Not enough visible batting landmarks were detected.");
+  }
+
+  const first = features[0];
+  const middle = features[Math.floor(features.length / 2)];
+  const last = features[features.length - 1];
+  const headOffsets = features.map((feature) => feature.headOffset);
+  const shoulderTilts = features.map((feature) => feature.shoulderTilt);
+  const hipTilts = features.map((feature) => feature.hipTilt);
+  const handPath = pathDistance(features.map((feature) => feature.handMid)) / first.shoulderSpan;
+  const hipShift = Math.abs(last.hipsMid.x - first.hipsMid.x) / Math.max(first.stanceRatio, 0.001);
+
+  const metrics = {
+    headStabilityScore: clamp(100 - stdDev(headOffsets) * 210 - average(headOffsets) * 85, 35, 98),
+    setupBaseScore: clamp(100 - Math.abs(average(features.map((feature) => feature.stanceRatio)) - 1.45) * 55, 35, 96),
+    backliftScore: clamp((average(features.map((feature) => feature.trailWristLift)) + 0.35) * 110, 35, 96),
+    triggerScore: clamp(100 - Math.abs(first.leadKneeAngle - middle.leadKneeAngle) * 0.42, 35, 96),
+    rotationScore: clamp((average(features.map((feature) => feature.shoulderRotation + feature.hipRotation)) * 160) + 42, 35, 96),
+    swingPlaneScore: clamp(handPath * 32 + 42, 35, 96),
+    contactScore: clamp(
+      100 -
+        Math.abs(middle.wristSeparation - 1.05) * 50 -
+        Math.abs(middle.leadElbowAngle - 138) * 0.22,
+      35,
+      96,
+    ),
+    finishBalanceScore: clamp(100 - (last.headOffset * 95 + average(shoulderTilts) * 90 + average(hipTilts) * 70), 35, 96),
+    transferScore: clamp(hipShift * 120 + 30, 35, 96),
+    frontFootIntentScore: clamp(100 - Math.abs(first.leadKneeAngle - middle.leadKneeAngle) * 0.45 + hipShift * 24, 35, 96),
+    backFootIntentScore: clamp(100 - Math.abs(first.trailKneeAngle - middle.trailKneeAngle) * 0.45 + (1 - Math.min(hipShift, 1)) * 26, 35, 96),
+    sweepIntentScore: clamp(100 - Math.abs(average(features.map((feature) => (feature.leadKneeAngle + feature.trailKneeAngle) / 2)) - 128) * 0.42, 35, 96),
+  };
+
+  const phaseScores: PhaseScore[] = [
+    { key: "setup", label: "Setup", weight: 15, score: Math.round(average([metrics.headStabilityScore, metrics.setupBaseScore])) },
+    { key: "backlift", label: "Backlift", weight: 18, score: Math.round(average([metrics.backliftScore, metrics.headStabilityScore])) },
+    { key: "trigger", label: "Trigger", weight: 12, score: Math.round(average([metrics.triggerScore, metrics.setupBaseScore])) },
+    { key: "downswing", label: "Downswing", weight: 23, score: Math.round(average([metrics.rotationScore, metrics.swingPlaneScore, metrics.headStabilityScore])) },
+    { key: "contact", label: "Contact Zone", weight: 12, score: Math.round(average([metrics.contactScore, metrics.headStabilityScore])) },
+    { key: "followThrough", label: "Follow-through", weight: 10, score: Math.round(average([metrics.finishBalanceScore, metrics.transferScore])) },
+    { key: "shot", label: "Shot Match", weight: 10, score: Math.round(scoreShotFit(context.shotType, metrics)) },
+  ];
+
+  const weightedScore = Math.round(
+    phaseScores.reduce((sum, phase) => sum + phase.score * (phase.weight / 100), 0),
+  );
+
+  const issueIds = new Set<string>(shotProfile.biases);
+  if (metrics.headStabilityScore < 66) issueIds.add("head-falling-away");
+  if (metrics.setupBaseScore < 65) issueIds.add("open-stance");
+  if (metrics.backliftScore < 64) issueIds.add("backlift-low");
+  if (metrics.triggerScore < 63) issueIds.add("trigger-late");
+  if (metrics.rotationScore < 64 && context.cameraAngle !== "side-on") issueIds.add("shoulder-misalignment");
+  if (metrics.swingPlaneScore < 64) issueIds.add("bat-path-across");
+  if (metrics.contactScore < 63) issueIds.add("hard-hands");
+  if (metrics.transferScore < 64) issueIds.add("weight-transfer-holds");
+  if (metrics.finishBalanceScore < 62) issueIds.add("balance-finish");
+  if (["straight-drive", "cover-drive", "on-drive", "forward-defensive"].includes(context.shotType) && metrics.frontFootIntentScore < 62) {
+    issueIds.add("front-foot-late");
+  }
+
+  const findings = Array.from(issueIds)
+    .map((id) => {
+      const issue = ISSUES[id];
+      if (!issue) return null;
+      const categoryScore = phaseScores.find((phase) => phase.key === issue.category)?.score ?? weightedScore;
+      return {
+        id,
+        ...issue,
+        severity: severityFromScore(categoryScore),
+      } as Finding;
+    })
+    .filter(Boolean) as Finding[];
+
+  const sortedFindings = findings
+    .sort((a, b) => severityWeight(b.severity) - severityWeight(a.severity))
+    .slice(0, 5);
+
+  const drills = sortedFindings.slice(0, 3).map((finding, index) => ({
+    title: `${index + 1}. ${finding.drill}`,
+    focus: PHASES.find((phase) => phase.key === finding.category)?.label ?? "Skill",
+    description: `${finding.fix} Tip: ${finding.tip}`,
+  }));
+
+  const strengths = phaseScores
+    .filter((phase) => phase.score >= 78)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
+  return {
+    score: weightedScore,
+    band: getBand(weightedScore),
+    heading: `${shotProfile.label} batting review complete`,
+    summary: `The tracker read ${features.length} strong pose frames from ${context.fileName}. Best current shape shows in ${strengths.length ? strengths[0].label.toLowerCase() : "setup"}, while the biggest gains will come from sharpening ${sortedFindings.slice(0, 3).map((finding) => finding.title.toLowerCase()).join(", ")}.`,
+    phaseScores,
+    findings: sortedFindings,
+    drills,
+    snapshots: [
+      {
+        title: "Shot profile",
+        tag: "Context",
+        copy: `${shotProfile.label} | ${context.handedness}-handed batter | ${context.cameraAngle} | ${context.bowlingType}`,
+      },
+      {
+        title: "Clip read",
+        tag: "Pose",
+        copy: `${features.length} reliable pose frames extracted from a ${context.durationLabel} upload.`,
+      },
+      {
+        title: "Top strengths",
+        tag: "Strength",
+        copy: strengths.length
+          ? strengths.map((phase) => `${phase.label} ${phase.score}`).join(" | ")
+          : "No phase stood out strongly yet.",
+      },
+      {
+        title: "Model cues",
+        tag: "Focus",
+        copy: shotProfile.cues.join(" | "),
+      },
+    ],
+  };
+}
+
+function severityWeight(severity: Severity) {
+  if (severity === "critical") return 3;
+  if (severity === "major") return 2;
+  return 1;
+}
+
+function phaseTone(score: number) {
+  if (score >= 85) return "bg-primary/15 text-primary border-primary/20";
+  if (score >= 75) return "bg-accent/15 text-accent border-accent/20";
+  if (score >= 65) return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
+  return "bg-destructive/10 text-destructive border-destructive/20";
+}
+
+function severityTone(severity: Severity) {
+  if (severity === "critical") return "bg-destructive/10 text-destructive border-destructive/20";
+  if (severity === "major") return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
+  return "bg-accent/10 text-accent border-accent/20";
 }
 
 export function TechniqueAI() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { requireAuth } = useRequireAuth();
-  const isDemo = searchParams.get('demo') === 'true';
-  const demoLoadedRef = useRef(false);
-  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-  const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistoryItem[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const [analysisData, setAnalysisData] = useState<AnalysisData>({
-    currentMode: 'batting',
-    videoDuration: '0:00',
-    angles: { elbow: 145, knee: 165, shoulder: 12, head: 3 },
-    scores: { overall: 0, technique: 0, balance: 0, timing: 0, followThrough: 0 },
-    feedback: [],
-    drills: []
-  });
-
-  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-  const [poseOverlayVisible, setPoseOverlayVisible] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [poseModel, setPoseModel] = useState<any>(null);
-  const [poseError, setPoseError] = useState<string | null>(null);
-  const [isLoadingPose, setIsLoadingPose] = useState(true);
+  const [analysis, setAnalysis] = useState<TrackerReport | null>(null);
+  const [stage, setStage] = useState<AnalysisStage>("idle");
+  const [handedness, setHandedness] = useState<Handedness>("right");
+  const [cameraAngle, setCameraAngle] = useState<CameraAngle>("side-on");
+  const [shotType, setShotType] = useState<ShotType>("straight-drive");
+  const [bowlingType, setBowlingType] = useState<BowlingType>("pace");
+  const [videoDimensions, setVideoDimensions] = useState({ width: 960, height: 540 });
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const poseRef = useRef<any>(null);
-  const analysisAnglesRef = useRef<{ elbow: number[]; knee: number[]; shoulder: number[]; head: number[] }>({
-    elbow: [], knee: [], shoulder: [], head: []
-  });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { isProcessing, progress, currentFrame, processVideo, reset, error } = usePoseDetection();
 
-  // Load MediaPipe script from CDN
-  const loadMediaPipeScript = useCallback((): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      // Check if already loaded
-      if (window.Pose) {
-        resolve();
-        return;
-      }
-
-      // Check if script is already in DOM
-      const existingScript = document.querySelector('script[src*="@mediapipe/pose"]');
-      if (existingScript) {
-        existingScript.addEventListener('load', () => resolve());
-        existingScript.addEventListener('error', () => reject(new Error('Failed to load MediaPipe script')));
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js';
-      script.crossOrigin = 'anonymous';
-      script.onload = () => {
-        // Wait a bit for the global to be available
-        setTimeout(() => {
-          if (window.Pose) {
-            resolve();
-          } else {
-            reject(new Error('MediaPipe Pose not available after script load'));
-          }
-        }, 100);
-      };
-      script.onerror = () => reject(new Error('Failed to load MediaPipe script'));
-      document.head.appendChild(script);
-    });
-  }, []);
-
-  // Initialize MediaPipe Pose
-  const initializePose = useCallback(async () => {
-    try {
-      setIsLoadingPose(true);
-      setPoseError(null);
-
-      // Check WebGL support
-      const testCanvas = document.createElement('canvas');
-      const gl = testCanvas.getContext('webgl2') || testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
-      if (!gl) {
-        throw new Error('WebGL not supported in this browser');
-      }
-
-      // Close existing pose model if any
-      if (poseRef.current) {
-        try {
-          poseRef.current.close();
-        } catch (e) {
-          console.warn('Error closing previous pose model:', e);
-        }
-        poseRef.current = null;
-      }
-
-      // Load MediaPipe via script tag (works with Vite)
-      await loadMediaPipeScript();
-
-      // Create Pose instance using global constructor
-      const pose = new window.Pose({
-        locateFile: (file: string) => {
-          return `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`;
-        },
-      });
-
-      pose.setOptions({
-        modelComplexity: 1,
-        smoothLandmarks: true,
-        enableSegmentation: false,
-        smoothSegmentation: true,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5,
-      });
-
-      // Initialize with timeout
-      const initPromise = pose.initialize();
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Initialization timeout - please try again')), 45000)
-      );
-
-      await Promise.race([initPromise, timeoutPromise]);
-
-      poseRef.current = pose;
-      setPoseModel(pose);
-      setIsLoadingPose(false);
-      console.log('MediaPipe Pose initialized successfully');
-      return true;
-    } catch (error) {
-      console.error('Failed to initialize MediaPipe Pose:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setPoseError(`Failed to load pose detection: ${errorMessage}. Click "Retry" or refresh the page.`);
-      setIsLoadingPose(false);
-      return false;
-    }
-  }, [loadMediaPipeScript]);
-
-  // Auto-initialize on mount
   useEffect(() => {
-    let isMounted = true;
-    let retryCount = 0;
-    const maxRetries = 2;
-
-    const attemptInit = async () => {
-      while (retryCount < maxRetries && isMounted) {
-        const success = await initializePose();
-        if (success) return;
-        retryCount++;
-        if (retryCount < maxRetries && isMounted) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        }
-      }
-    };
-
-    attemptInit();
-
     return () => {
-      isMounted = false;
-      // Safely close pose model - check if it exists and hasn't been deleted
-      if (poseRef.current) {
-        try {
-          poseRef.current.close();
-        } catch (e) {
-          // Ignore errors if already deleted
-          console.warn('Pose cleanup error (safe to ignore):', e);
-        }
-        poseRef.current = null;
+      if (videoUrl) {
+        URL.revokeObjectURL(videoUrl);
       }
     };
-  }, [initializePose]);
+  }, [videoUrl]);
 
-  // Auto-load demo video when coming from Watch Demo button
-  useEffect(() => {
-    if (isDemo && poseModel && !demoLoadedRef.current) {
-      demoLoadedRef.current = true;
-      setVideoUrl(DEMO_VIDEO_URL);
-      toast.success('Demo video loaded! Click "Analyze Technique" to start analysis.');
-    }
-  }, [isDemo, poseModel]);
-
-  // Manual retry handler
-  const handleRetryPose = () => {
-    initializePose();
-  };
-
-  const onPoseResults = useCallback((results: PoseResults) => {
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-    if (!canvas || !video) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (results.poseLandmarks) {
-      const landmarks = results.poseLandmarks;
-      
-      // Full MediaPipe Pose connections (33 landmarks)
-      const POSE_CONNECTIONS = [
-        // Face
-        [0, 1], [1, 2], [2, 3], [3, 7], // Left eye
-        [0, 4], [4, 5], [5, 6], [6, 8], // Right eye
-        [9, 10], // Mouth
-        // Torso
-        [11, 12], // Shoulders
-        [11, 23], [12, 24], // Shoulder to hip
-        [23, 24], // Hips
-        // Left arm
-        [11, 13], [13, 15], [15, 17], [15, 19], [15, 21], [17, 19],
-        // Right arm
-        [12, 14], [14, 16], [16, 18], [16, 20], [16, 22], [18, 20],
-        // Left leg
-        [23, 25], [25, 27], [27, 29], [27, 31], [29, 31],
-        // Right leg
-        [24, 26], [26, 28], [28, 30], [28, 32], [30, 32],
-      ];
-
-      // Draw all connections with visibility-based opacity
-      POSE_CONNECTIONS.forEach(([start, end]) => {
-        const startPoint = landmarks[start];
-        const endPoint = landmarks[end];
-        if (startPoint && endPoint && startPoint.visibility > 0.5 && endPoint.visibility > 0.5) {
-          const opacity = Math.min(startPoint.visibility, endPoint.visibility);
-          ctx.beginPath();
-          ctx.moveTo(startPoint.x * canvas.width, startPoint.y * canvas.height);
-          ctx.lineTo(endPoint.x * canvas.width, endPoint.y * canvas.height);
-          ctx.strokeStyle = `rgba(16, 185, 129, ${opacity * 0.8})`;
-          ctx.lineWidth = 3;
-          ctx.stroke();
-        }
-      });
-
-      // Draw all 33 landmarks with color coding
-      landmarks.forEach((landmark, index) => {
-        if (landmark.visibility < 0.3) return;
-        
-        const x = landmark.x * canvas.width;
-        const y = landmark.y * canvas.height;
-        const size = 6;
-
-        // Color coding: face (purple), arms (green), torso (blue), legs (orange)
-        let color = '#10B981';
-        if (index <= 10) color = '#A855F7'; // Face - purple
-        else if (index <= 22) color = '#10B981'; // Arms & shoulders - green
-        else if (index <= 24) color = '#3B82F6'; // Hips - blue
-        else color = '#F59E0B'; // Legs - orange
-
-        // Draw glow effect
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 10;
-        
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.fill();
-        
-        // Draw white border
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        
-        ctx.shadowBlur = 0;
-      });
-
-      // Draw angle indicators on key joints
-      const drawAngleArc = (
-        joint: number, 
-        start: number, 
-        end: number, 
-        label: string, 
-        color: string
-      ) => {
-        const p1 = landmarks[start];
-        const p2 = landmarks[joint];
-        const p3 = landmarks[end];
-        
-        if (p1.visibility < 0.5 || p2.visibility < 0.5 || p3.visibility < 0.5) return;
-        
-        const angle = calculateAngle(
-          { x: p1.x, y: p1.y },
-          { x: p2.x, y: p2.y },
-          { x: p3.x, y: p3.y }
-        );
-        
-        const cx = p2.x * canvas.width;
-        const cy = p2.y * canvas.height;
-        const radius = 25;
-        
-        const angle1 = Math.atan2(p1.y - p2.y, p1.x - p2.x);
-        const angle2 = Math.atan2(p3.y - p2.y, p3.x - p2.x);
-        
-        // Draw arc
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius, angle1, angle2);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        // Draw angle text with background
-        const textX = cx + Math.cos((angle1 + angle2) / 2) * (radius + 15);
-        const textY = cy + Math.sin((angle1 + angle2) / 2) * (radius + 15);
-        
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(textX - 20, textY - 10, 40, 20);
-        
-        ctx.fillStyle = color;
-        ctx.font = 'bold 12px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`${Math.round(angle)}°`, textX, textY);
-        
-        return angle;
-      };
-
-      // Calculate and display key angles
-      const leftElbowAngle = drawAngleArc(13, 11, 15, 'L Elbow', '#10B981');
-      const rightElbowAngle = drawAngleArc(14, 12, 16, 'R Elbow', '#10B981');
-      const leftKneeAngle = drawAngleArc(25, 23, 27, 'L Knee', '#F59E0B');
-      const rightKneeAngle = drawAngleArc(26, 24, 28, 'R Knee', '#F59E0B');
-      const leftShoulderAngle = drawAngleArc(11, 23, 13, 'L Shoulder', '#3B82F6');
-      const rightShoulderAngle = drawAngleArc(12, 24, 14, 'R Shoulder', '#3B82F6');
-
-      // Calculate aggregate angles for analysis
-      const elbowAngle = leftElbowAngle || rightElbowAngle || 145;
-      const kneeAngle = leftKneeAngle || rightKneeAngle || 165;
-      
-      // Shoulder tilt (angle between shoulders relative to horizontal)
-      const shoulderTilt = Math.abs(
-        Math.atan2(landmarks[12].y - landmarks[11].y, landmarks[12].x - landmarks[11].x) * (180 / Math.PI)
-      );
-
-      // Head stability (nose position relative to shoulder midpoint)
-      const shoulderMidX = (landmarks[11].x + landmarks[12].x) / 2;
-      const shoulderMidY = (landmarks[11].y + landmarks[12].y) / 2;
-      const headDeviation = Math.sqrt(
-        Math.pow(landmarks[0].x - shoulderMidX, 2) + 
-        Math.pow(landmarks[0].y - shoulderMidY, 2)
-      ) * 100;
-
-      // Hip-shoulder separation (for bowling analysis)
-      const hipMidX = (landmarks[23].x + landmarks[24].x) / 2;
-      const hipMidY = (landmarks[23].y + landmarks[24].y) / 2;
-      const hipShoulderAngle = Math.abs(
-        Math.atan2(shoulderMidY - hipMidY, shoulderMidX - hipMidX) * (180 / Math.PI) - 90
-      );
-
-      // Store angles for averaging
-      analysisAnglesRef.current.elbow.push(elbowAngle);
-      analysisAnglesRef.current.knee.push(kneeAngle);
-      analysisAnglesRef.current.shoulder.push(shoulderTilt);
-      analysisAnglesRef.current.head.push(headDeviation);
-
-      // Draw landmark count indicator
-      const visibleCount = landmarks.filter(l => l.visibility > 0.5).length;
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(10, 10, 120, 30);
-      ctx.fillStyle = '#10B981';
-      ctx.font = 'bold 14px Inter, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(`${visibleCount}/33 Points`, 20, 25);
-
-      setAnalysisData(prev => ({
-        ...prev,
-        angles: {
-          elbow: Math.round(elbowAngle),
-          knee: Math.round(kneeAngle),
-          shoulder: Math.round(shoulderTilt),
-          head: Math.round(headDeviation)
-        }
-      }));
-    }
-  }, []);
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      if (videoUrl) URL.revokeObjectURL(videoUrl);
-      const url = URL.createObjectURL(file);
-      setVideoFile(file);
-      setVideoUrl(url);
-      setShowUploadModal(false);
-      setShowResults(false);
-    }
-  };
+    if (!file) return;
 
-  const [videoAspectRatio, setVideoAspectRatio] = useState<number>(16/9);
-
-  const syncCanvasSize = () => {
-    if (videoRef.current && canvasRef.current) {
-      // Get the video's actual rendered dimensions
-      const video = videoRef.current;
-      const rect = video.getBoundingClientRect();
-      
-      // Set canvas to match the video's rendered size
-      canvasRef.current.width = video.videoWidth;
-      canvasRef.current.height = video.videoHeight;
-      
-      // Apply the same visual size as the video
-      canvasRef.current.style.width = `${rect.width}px`;
-      canvasRef.current.style.height = `${rect.height}px`;
+    if (!file.type.startsWith("video/")) {
+      toast.error("Please upload a video file.");
+      return;
     }
+
+    if (videoUrl) {
+      URL.revokeObjectURL(videoUrl);
+    }
+
+    const nextUrl = URL.createObjectURL(file);
+    setSelectedFile(file);
+    setVideoUrl(nextUrl);
+    setAnalysis(null);
+    setStage("idle");
+    reset();
   };
 
   const handleVideoLoad = () => {
-    if (videoRef.current && canvasRef.current) {
-      const videoWidth = videoRef.current.videoWidth;
-      const videoHeight = videoRef.current.videoHeight;
-      
-      // Set canvas internal resolution to match video
-      canvasRef.current.width = videoWidth;
-      canvasRef.current.height = videoHeight;
-      
-      // Store aspect ratio
-      setVideoAspectRatio(videoWidth / videoHeight);
-      
-      // Sync canvas visual size after a brief delay to ensure video is laid out
-      setTimeout(syncCanvasSize, 100);
-      
-      const duration = videoRef.current.duration;
-      const minutes = Math.floor(duration / 60);
-      const seconds = Math.floor(duration % 60);
-      setAnalysisData(prev => ({
-        ...prev,
-        videoDuration: `${minutes}:${seconds.toString().padStart(2, '0')}`
-      }));
-    }
-  };
-
-  // Sync canvas size when window resizes
-  useEffect(() => {
-    const handleResize = () => {
-      if (videoUrl) {
-        syncCanvasSize();
-      }
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [videoUrl]);
-
-  const analyzeVideo = async () => {
-    // Only require auth for user-uploaded videos, not demo videos
-    if (!isDemo && !requireAuth("analyze videos")) return;
-    
-    if (!videoRef.current || !poseModel) {
-      toast.error('Video or pose model not ready');
-      return;
-    }
-
-    try {
-      poseModel.onResults(onPoseResults);
-      setIsAnalyzing(true);
-      setShowResults(false);
-      setPoseOverlayVisible(true);
-      analysisAnglesRef.current = { elbow: [], knee: [], shoulder: [], head: [] };
-
-      const video = videoRef.current;
-      video.currentTime = 0;
-
-      await new Promise<void>((resolve) => {
-        const onCanPlay = () => {
-          video.removeEventListener('canplay', onCanPlay);
-          resolve();
-        };
-        if (video.readyState >= 3) resolve();
-        else video.addEventListener('canplay', onCanPlay);
-      });
-
-      await video.play();
-
-      let frameCount = 0;
-      const maxFrames = 300;
-
-      const processFrame = async () => {
-        try {
-          if (video.paused || video.ended || frameCount >= maxFrames) {
-            generateResults();
-            setIsAnalyzing(false);
-            setShowResults(true);
-            video.pause();
-            return;
-          }
-
-          frameCount++;
-          await poseModel.send({ image: video });
-          requestAnimationFrame(processFrame);
-        } catch (error) {
-          console.error('Frame processing error:', error);
-          requestAnimationFrame(processFrame);
-        }
-      };
-
-      processFrame();
-    } catch (error) {
-      console.error('Analysis error:', error);
-      setIsAnalyzing(false);
-      toast.error('Failed to analyze video. Please try again.');
-    }
-  };
-
-  const generateResults = () => {
-    const angles = analysisAnglesRef.current;
-    const isBatting = analysisData.currentMode === 'batting';
-    
-    // Calculate averages
-    const avgElbow = angles.elbow.length > 0 ? angles.elbow.reduce((a, b) => a + b, 0) / angles.elbow.length : 145;
-    const avgKnee = angles.knee.length > 0 ? angles.knee.reduce((a, b) => a + b, 0) / angles.knee.length : 165;
-    const avgShoulder = angles.shoulder.length > 0 ? angles.shoulder.reduce((a, b) => a + b, 0) / angles.shoulder.length : 12;
-    const avgHead = angles.head.length > 0 ? angles.head.reduce((a, b) => a + b, 0) / angles.head.length : 3;
-
-    // Calculate min/max for consistency analysis
-    const elbowMin = angles.elbow.length > 0 ? Math.min(...angles.elbow) : 140;
-    const elbowMax = angles.elbow.length > 0 ? Math.max(...angles.elbow) : 150;
-    const kneeMin = angles.knee.length > 0 ? Math.min(...angles.knee) : 160;
-    const kneeMax = angles.knee.length > 0 ? Math.max(...angles.knee) : 170;
-    const elbowVariation = elbowMax - elbowMin;
-    const kneeVariation = kneeMax - kneeMin;
-
-    // Optimal ranges for batting vs bowling
-    const optimalRanges = isBatting ? {
-      elbow: { min: 140, max: 160, label: 'Front Elbow' },
-      knee: { min: 160, max: 175, label: 'Front Knee Flexion' },
-      shoulder: { max: 5, label: 'Shoulder Level' },
-      head: { max: 5, label: 'Head Stability' }
-    } : {
-      elbow: { min: 170, max: 180, label: 'Arm Extension' },
-      knee: { min: 110, max: 130, label: 'Front Knee' },
-      shoulder: { max: 10, label: 'Hip-Shoulder Separation' },
-      head: { max: 8, label: 'Head Position' }
-    };
-
-    // Calculate individual scores
-    const elbowScore = avgElbow >= optimalRanges.elbow.min && avgElbow <= optimalRanges.elbow.max 
-      ? 95 : Math.abs(avgElbow - (optimalRanges.elbow.min + optimalRanges.elbow.max) / 2) < 15 ? 75 : 55;
-    const kneeScore = avgKnee >= optimalRanges.knee.min && avgKnee <= optimalRanges.knee.max 
-      ? 95 : Math.abs(avgKnee - (optimalRanges.knee.min + optimalRanges.knee.max) / 2) < 15 ? 75 : 55;
-    const shoulderScore = avgShoulder <= optimalRanges.shoulder.max ? 95 : avgShoulder <= 15 ? 70 : 50;
-    const headScore = avgHead <= optimalRanges.head.max ? 95 : avgHead <= 10 ? 75 : 55;
-    const consistencyScore = elbowVariation < 20 && kneeVariation < 20 ? 90 : 65;
-
-    const overallScore = Math.round((elbowScore + kneeScore + shoulderScore + headScore + consistencyScore) / 5);
-
-    // Generate dynamic feedback based on actual measurements
-    const dynamicFeedback: FeedbackItem[] = [];
-
-    // Head stability feedback
-    if (avgHead <= optimalRanges.head.max) {
-      dynamicFeedback.push({
-        type: 'positive',
-        title: 'Excellent Head Position',
-        description: `Head deviation of only ${Math.round(avgHead)}° - outstanding stability for tracking the ball.`,
-        drill: null
-      });
-    } else if (avgHead <= 10) {
-      dynamicFeedback.push({
-        type: 'warning',
-        title: 'Head Movement Detected',
-        description: `Head deviation of ${Math.round(avgHead)}° exceeds optimal range. Minor adjustments needed for consistency.`,
-        drill: 'Practice with a mirror to keep eyes level throughout the action'
-      });
-    } else {
-      dynamicFeedback.push({
-        type: 'critical',
-        title: 'Excessive Head Movement',
-        description: `Head deviation of ${Math.round(avgHead)}° significantly impacts ball tracking and shot accuracy.`,
-        drill: 'Focus on keeping head still - practice with slow-motion shadow drills'
-      });
-    }
-
-    // Elbow/Arm feedback
-    if (elbowScore >= 90) {
-      dynamicFeedback.push({
-        type: 'positive',
-        title: isBatting ? 'Optimal Elbow Position' : 'Full Arm Extension',
-        description: `${optimalRanges.elbow.label} at ${Math.round(avgElbow)}° is within the ideal range (${optimalRanges.elbow.min}-${optimalRanges.elbow.max}°).`,
-        drill: null
-      });
-    } else {
-      const isLow = avgElbow < optimalRanges.elbow.min;
-      dynamicFeedback.push({
-        type: elbowScore >= 70 ? 'warning' : 'critical',
-        title: isBatting ? `Elbow ${isLow ? 'Under' : 'Over'}-Extended` : `Arm ${isLow ? 'Bent' : 'Hyper-Extended'}`,
-        description: `Measured ${Math.round(avgElbow)}° vs optimal ${optimalRanges.elbow.min}-${optimalRanges.elbow.max}°. ${isLow ? 'Extend more for power' : 'Reduce extension to prevent injury'}.`,
-        drill: isBatting ? 'Practice high elbow drills with resistance bands' : 'Focus on smooth arm rotation through delivery'
-      });
-    }
-
-    // Knee feedback
-    if (kneeScore >= 90) {
-      dynamicFeedback.push({
-        type: 'positive',
-        title: isBatting ? 'Good Knee Flexion' : 'Strong Front Knee Brace',
-        description: `${optimalRanges.knee.label} at ${Math.round(avgKnee)}° provides excellent power transfer.`,
-        drill: null
-      });
-    } else {
-      dynamicFeedback.push({
-        type: kneeScore >= 70 ? 'warning' : 'critical',
-        title: `${optimalRanges.knee.label} Issue`,
-        description: `Knee angle of ${Math.round(avgKnee)}° is outside optimal range (${optimalRanges.knee.min}-${optimalRanges.knee.max}°). Affects weight transfer.`,
-        drill: isBatting ? 'Practice lunges and knee stability exercises' : 'Focus on bracing front leg at delivery stride'
-      });
-    }
-
-    // Shoulder/Balance feedback
-    if (shoulderScore >= 90) {
-      dynamicFeedback.push({
-        type: 'positive',
-        title: 'Excellent Balance',
-        description: `${optimalRanges.shoulder.label} at ${Math.round(avgShoulder)}° shows great body control.`,
-        drill: null
-      });
-    } else {
-      dynamicFeedback.push({
-        type: shoulderScore >= 70 ? 'warning' : 'critical',
-        title: 'Balance Improvement Needed',
-        description: `${optimalRanges.shoulder.label} tilt of ${Math.round(avgShoulder)}° affects shot consistency and power.`,
-        drill: 'Work on core stability and single-leg balance exercises'
-      });
-    }
-
-    // Generate dynamic drills based on weakest areas
-    const dynamicDrills: DrillItem[] = [];
-    const scores = [
-      { area: 'elbow', score: elbowScore },
-      { area: 'knee', score: kneeScore },
-      { area: 'shoulder', score: shoulderScore },
-      { area: 'head', score: headScore }
-    ].sort((a, b) => a.score - b.score);
-
-    // Add drills for weakest areas
-    scores.slice(0, 3).forEach((item, index) => {
-      const colors: DrillItem['color'][] = ['green', 'blue', 'purple'];
-      const icons: DrillItem['icon'][] = ['dumbbell', 'scale', 'activity'];
-      
-      const drillMap: Record<string, { title: string; desc: string }> = {
-        elbow: isBatting 
-          ? { title: 'Elbow Extension Drill', desc: '3 sets × 15 resistance band pulls' }
-          : { title: 'Arm Speed Training', desc: '20 medicine ball throws daily' },
-        knee: isBatting
-          ? { title: 'Knee Flexion Lunges', desc: '3 sets × 12 weighted lunges' }
-          : { title: 'Front Foot Bracing', desc: '4 sets × 10 single-leg squats' },
-        shoulder: { title: 'Core Stability Work', desc: '3 sets × 30 second planks' },
-        head: { title: 'Head Stability Practice', desc: '5 minutes of slow-motion shadow work' }
-      };
-
-      dynamicDrills.push({
-        icon: icons[index],
-        title: drillMap[item.area].title,
-        description: drillMap[item.area].desc,
-        color: colors[index]
-      });
+    if (!videoRef.current || !containerRef.current) return;
+    const video = videoRef.current;
+    const width = containerRef.current.offsetWidth;
+    const aspectRatio = video.videoWidth / video.videoHeight || 16 / 9;
+    setVideoDimensions({
+      width,
+      height: width / aspectRatio,
     });
-
-    // Frame count for report
-    const framesAnalyzed = angles.elbow.length;
-
-    setAnalysisData(prev => ({
-      ...prev,
-      angles: {
-        elbow: Math.round(avgElbow),
-        knee: Math.round(avgKnee),
-        shoulder: Math.round(avgShoulder),
-        head: Math.round(avgHead)
-      },
-      scores: {
-        overall: overallScore,
-        technique: Math.round((elbowScore + kneeScore) / 2),
-        balance: shoulderScore,
-        timing: consistencyScore,
-        followThrough: Math.round((kneeScore + headScore) / 2)
-      },
-      feedback: dynamicFeedback,
-      drills: dynamicDrills
-    }));
-
-    toast.success(`Analysis complete! Processed ${framesAnalyzed} frames.`);
   };
 
-  const switchMode = (mode: AnalysisMode) => {
-    setAnalysisData(prev => ({
-      ...prev,
-      currentMode: mode,
-      feedback: mode === 'batting' ? BATTING_FEEDBACK : BOWLING_FEEDBACK,
-      drills: mode === 'batting' ? BATTING_DRILLS : BOWLING_DRILLS
-    }));
-  };
-
-  // Fetch analysis history
-  const fetchAnalysisHistory = useCallback(async () => {
-    if (!user) return;
-    
-    setIsLoadingHistory(true);
-    try {
-      const { data, error } = await supabase
-        .from('analysis_results')
-        .select('id, created_at, mode, overall_score, scores, angles')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      
-      if (error) throw error;
-      setAnalysisHistory((data || []) as AnalysisHistoryItem[]);
-    } catch (error) {
-      console.error('Error fetching history:', error);
-      toast.error('Failed to load analysis history');
-    } finally {
-      setIsLoadingHistory(false);
+  const clearVideo = () => {
+    if (videoUrl) {
+      URL.revokeObjectURL(videoUrl);
     }
-  }, [user]);
+    setSelectedFile(null);
+    setVideoUrl(null);
+    setAnalysis(null);
+    setStage("idle");
+    reset();
+  };
 
-  // Save analysis results
-  const saveAnalysis = async () => {
-    if (!user) {
-      setShowSignInPrompt(true);
+  const runAnalysis = async () => {
+    if (!selectedFile) {
+      toast.error("Upload a batting video first.");
       return;
     }
 
-    if (analysisData.scores.overall === 0) {
-      toast.error('Please complete an analysis first');
-      return;
-    }
-
-    setIsSaving(true);
     try {
-      let savedVideoUrl: string | null = null;
+      setStage("pose");
+      setAnalysis(null);
+      const frames = await processVideo(selectedFile);
+      setStage("scoring");
 
-      // Upload video to storage if it's a user-uploaded video (not demo)
-      if (videoFile && !isDemo) {
-        const fileExt = videoFile.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('analysis-videos')
-          .upload(fileName, videoFile, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (uploadError) {
-          console.error('Video upload error:', uploadError);
-          toast.error('Failed to upload video');
-        } else {
-          const { data: urlData } = supabase.storage
-            .from('analysis-videos')
-            .getPublicUrl(uploadData.path);
-          savedVideoUrl = urlData.publicUrl;
-        }
+      const validFrames = frames.filter((frame) => frame.joints.length > 0);
+      if (validFrames.length < 4) {
+        throw new Error("The pose model could not read enough body landmarks from this clip.");
       }
 
-      const { error } = await supabase
-        .from('analysis_results')
-        .insert([{
-          user_id: user.id,
-          mode: analysisData.currentMode,
-          video_duration: analysisData.videoDuration,
-          angles: JSON.parse(JSON.stringify(analysisData.angles)),
-          scores: JSON.parse(JSON.stringify(analysisData.scores)),
-          feedback: JSON.parse(JSON.stringify(analysisData.feedback)),
-          drills: JSON.parse(JSON.stringify(analysisData.drills)),
-          overall_score: analysisData.scores.overall,
-          video_url: savedVideoUrl
-        }]);
+      const durationLabel =
+        videoRef.current && Number.isFinite(videoRef.current.duration)
+          ? `${videoRef.current.duration.toFixed(1)}s`
+          : "short clip";
 
-      if (error) throw error;
-      toast.success('Analysis saved successfully!');
-      fetchAnalysisHistory();
-    } catch (error) {
-      console.error('Error saving analysis:', error);
-      toast.error('Failed to save analysis');
-    } finally {
-      setIsSaving(false);
+      const nextReport = buildReport(validFrames, {
+        handedness,
+        cameraAngle,
+        bowlingType,
+        shotType,
+        fileName: selectedFile.name,
+        durationLabel,
+      });
+
+      setAnalysis(nextReport);
+      setStage("complete");
+      toast.success("Batting analysis complete.");
+    } catch (analysisError) {
+      console.error(analysisError);
+      setStage("idle");
+      toast.error(
+        analysisError instanceof Error ? analysisError.message : "The video could not be analyzed.",
+      );
     }
   };
 
-  // Delete analysis from history
-  const deleteAnalysis = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('analysis_results')
-        .delete()
-        .eq('id', id);
+  const copySummary = async () => {
+    if (!analysis) return;
+    const text = [
+      `Game Changrs batting analysis`,
+      `Overall score: ${analysis.score} (${analysis.band})`,
+      `Top findings: ${analysis.findings.slice(0, 3).map((finding) => finding.title).join(", ")}`,
+      `Drills: ${analysis.drills.map((drill) => drill.title).join(" | ")}`,
+    ].join("\n");
 
-      if (error) throw error;
-      toast.success('Analysis deleted');
-      setAnalysisHistory(prev => prev.filter(item => item.id !== id));
-    } catch (error) {
-      console.error('Error deleting analysis:', error);
-      toast.error('Failed to delete analysis');
-    }
-  };
-
-  const downloadReport = () => {
-    if (!user) {
-      setShowSignInPrompt(true);
-      return;
-    }
-    toast.info('Generating PDF report with comprehensive analysis...');
-  };
-
-  const handleSignInRedirect = () => {
-    setShowSignInPrompt(false);
-    navigate('/auth');
-  };
-
-  const handleShowHistory = () => {
-    if (!user) {
-      setShowSignInPrompt(true);
-      return;
-    }
-    fetchAnalysisHistory();
-    setShowHistory(true);
-  };
-
-  const getAngleColor = (value: number, optimal: { min: number; max: number }) => {
-    if (value >= optimal.min && value <= optimal.max) return 'text-primary';
-    if (value >= optimal.min - 10 && value <= optimal.max + 10) return 'text-yellow-400';
-    return 'text-red-400';
-  };
-
-  const getAngleProgress = (value: number, optimal: { min: number; max: number }) => {
-    const mid = (optimal.min + optimal.max) / 2;
-    const range = optimal.max - optimal.min;
-    const diff = Math.abs(value - mid);
-    return Math.max(0, Math.min(100, 100 - (diff / range) * 100));
-  };
-
-  const getScoreRingOffset = (score: number) => {
-    const circumference = 2 * Math.PI * 45;
-    return circumference - (score / 100) * circumference;
-  };
-
-  const getFeedbackIcon = (type: FeedbackItem['type']) => {
-    switch (type) {
-      case 'positive': return <CheckCircle className="w-4 h-4 text-primary" />;
-      case 'warning': return <AlertTriangle className="w-4 h-4 text-yellow-400" />;
-      case 'critical': return <XCircle className="w-4 h-4 text-red-400" />;
-    }
-  };
-
-  const getFeedbackBgColor = (type: FeedbackItem['type']) => {
-    switch (type) {
-      case 'positive': return 'bg-primary/10';
-      case 'warning': return 'bg-yellow-400/10';
-      case 'critical': return 'bg-red-400/10';
-    }
-  };
-
-  const getDrillIcon = (icon: DrillItem['icon']) => {
-    switch (icon) {
-      case 'dumbbell': return <Dumbbell className="w-5 h-5" />;
-      case 'scale': return <Target className="w-5 h-5" />;
-      case 'activity': return <Play className="w-5 h-5" />;
-    }
-  };
-
-  const getDrillColor = (color: DrillItem['color']) => {
-    switch (color) {
-      case 'green': return 'bg-primary/20 text-primary';
-      case 'blue': return 'bg-blue-400/20 text-blue-400';
-      case 'purple': return 'bg-purple-400/20 text-purple-400';
-    }
+    await navigator.clipboard.writeText(text);
+    toast.success("Analysis summary copied.");
   };
 
   return (
     <div className="space-y-8">
-      {/* Mode Toggle & Upload */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button
-            variant={analysisData.currentMode === 'batting' ? 'default' : 'outline'}
-            onClick={() => switchMode('batting')}
-            className="gap-2"
-          >
-            <Target className="w-4 h-4" />
-            Batting
-          </Button>
-          <Button
-            variant={analysisData.currentMode === 'bowling' ? 'default' : 'outline'}
-            onClick={() => switchMode('bowling')}
-            className="gap-2"
-          >
-            <Play className="w-4 h-4" />
-            Bowling
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={handleShowHistory}
-            className="gap-2"
-          >
-            <History className="w-4 h-4" />
-            History
-          </Button>
-          <Button
-            onClick={() => {
-              if (!requireAuth("upload videos for analysis")) return;
-              setShowUploadModal(true);
-            }}
-            className="bg-gradient-primary hover:opacity-90 gap-2"
-          >
-            <Upload className="w-4 h-4" />
-            Analyze Video
-          </Button>
-        </div>
-      </div>
-
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Video and Analysis */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Video Section */}
-          <div className="bg-gradient-card rounded-2xl p-6 border border-border">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
-                <Video className="w-5 h-5 text-primary" />
-                Video Analysis
+      <div className="grid gap-6 xl:grid-cols-[1.05fr,1fr]">
+        <section className="rounded-3xl border border-border bg-gradient-card p-6 md:p-8">
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div>
+              <p className="mb-2 text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                game changrs module
+              </p>
+              <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">
+                AI batting analysis tracker
               </h2>
-              <div className="flex items-center gap-3">
-                <span className="px-3 py-1.5 bg-secondary rounded-full text-sm text-muted-foreground">
-                  {analysisData.currentMode.charAt(0).toUpperCase() + analysisData.currentMode.slice(1)} Mode
-                </span>
-                {videoUrl && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPoseOverlayVisible(!poseOverlayVisible)}
-                    className="gap-2"
-                  >
-                    {poseOverlayVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    Landmarks
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+                Replace the old analysis flow with a cleaner batting tracker that reads uploaded
+                cricket video, extracts pose landmarks, scores technique, and returns drills.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-right">
+              <p className="text-xs uppercase tracking-[0.2em] text-primary/80">overall</p>
+              <p className="font-display text-3xl font-bold text-foreground">
+                {analysis ? analysis.score : "--"}
+              </p>
+              <p className="text-xs text-muted-foreground">{analysis ? analysis.band : "Awaiting analysis"}</p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-2 text-sm">
+              <span className="text-muted-foreground">Handedness</span>
+              <select
+                value={handedness}
+                onChange={(event) => setHandedness(event.target.value as Handedness)}
+                className="h-11 w-full rounded-xl border border-border bg-background px-3 text-foreground"
+              >
+                <option value="right">Right-handed batter</option>
+                <option value="left">Left-handed batter</option>
+              </select>
+            </label>
+
+            <label className="space-y-2 text-sm">
+              <span className="text-muted-foreground">Camera angle</span>
+              <select
+                value={cameraAngle}
+                onChange={(event) => setCameraAngle(event.target.value as CameraAngle)}
+                className="h-11 w-full rounded-xl border border-border bg-background px-3 text-foreground"
+              >
+                <option value="side-on">Side-on</option>
+                <option value="front-on">Front-on</option>
+                <option value="three-quarter">Three-quarter</option>
+              </select>
+            </label>
+
+            <label className="space-y-2 text-sm">
+              <span className="text-muted-foreground">Shot type</span>
+              <select
+                value={shotType}
+                onChange={(event) => setShotType(event.target.value as ShotType)}
+                className="h-11 w-full rounded-xl border border-border bg-background px-3 text-foreground"
+              >
+                {Object.entries(SHOT_PROFILES).map(([value, profile]) => (
+                  <option key={value} value={value}>
+                    {profile.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 text-sm">
+              <span className="text-muted-foreground">Bowling type</span>
+              <select
+                value={bowlingType}
+                onChange={(event) => setBowlingType(event.target.value as BowlingType)}
+                className="h-11 w-full rounded-xl border border-border bg-background px-3 text-foreground"
+              >
+                <option value="pace">Pace</option>
+                <option value="spin">Spin</option>
+                <option value="mixed">Mixed / unknown</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-5">
+            {!selectedFile ? (
+              <label className="relative block cursor-pointer rounded-3xl border border-dashed border-primary/30 bg-primary/5 p-10 text-center transition-colors hover:border-primary/60 hover:bg-primary/10">
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={handleFileSelect}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+                  <Upload className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="font-display text-xl font-semibold text-foreground">
+                  Upload batting video
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  MP4, MOV, AVI. Side-on or front-on clips give the cleanest batting read.
+                </p>
+              </label>
+            ) : (
+              <div ref={containerRef} className="space-y-4">
+                <div className="relative overflow-hidden rounded-3xl border border-border bg-black">
+                  <video
+                    ref={videoRef}
+                    src={videoUrl ?? undefined}
+                    onLoadedMetadata={handleVideoLoad}
+                    controls={!isProcessing}
+                    className="w-full"
+                    style={{ maxHeight: "520px" }}
+                  />
+                  {currentFrame?.joints?.length ? (
+                    <PoseOverlay
+                      joints={currentFrame.joints}
+                      width={videoDimensions.width}
+                      height={videoDimensions.height}
+                    />
+                  ) : null}
+                </div>
+
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span className="rounded-full border border-border px-3 py-1">{selectedFile.name}</span>
+                  <span className="rounded-full border border-border px-3 py-1">
+                    {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB
+                  </span>
+                  <span className="rounded-full border border-border px-3 py-1">
+                    {SHOT_PROFILES[shotType].label}
+                  </span>
+                  <span className="rounded-full border border-border px-3 py-1">{cameraAngle}</span>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <Button onClick={runAnalysis} disabled={isProcessing} variant="hero">
+                    {isProcessing ? <Activity className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                    {isProcessing ? "Reading pose..." : "Analyze batting clip"}
                   </Button>
+                  <Button onClick={copySummary} disabled={!analysis} variant="outline">
+                    <Clipboard className="h-4 w-4" />
+                    Copy summary
+                  </Button>
+                  <Button onClick={clearVideo} variant="destructive">
+                    <Trash2 className="h-4 w-4" />
+                    Remove video
+                  </Button>
+                </div>
+
+                {(isProcessing || stage === "scoring") && (
+                  <div className="space-y-3 rounded-2xl border border-border bg-background/40 p-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {stage === "pose" ? "Pose extraction in progress" : "Scoring and feedback in progress"}
+                      </span>
+                      <span className="font-medium text-foreground">
+                        {Math.round(stage === "scoring" ? Math.max(progress, 78) : progress)}%
+                      </span>
+                    </div>
+                    <Progress value={stage === "scoring" ? Math.max(progress, 78) : progress} className="h-2" />
+                  </div>
+                )}
+
+                {error ? (
+                  <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+                    {error}
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="space-y-4 rounded-3xl border border-border bg-gradient-card p-6 md:p-8">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="mb-2 text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                analysis output
+              </p>
+              <h3 className="font-display text-2xl font-bold text-foreground">
+                Score, feedback, drills
+              </h3>
+            </div>
+            <Sparkles className="h-5 w-5 text-primary" />
+          </div>
+
+          <div className="rounded-2xl border border-border bg-background/40 p-5">
+            <p className="text-sm uppercase tracking-[0.22em] text-muted-foreground">
+              {stage === "idle"
+                ? "Waiting for upload"
+                : stage === "pose"
+                  ? "Reading pose landmarks"
+                  : stage === "scoring"
+                    ? "Scoring technique"
+                    : "Analysis complete"}
+            </p>
+            <h4 className="mt-2 font-display text-xl font-semibold text-foreground">
+              {analysis?.heading ?? "Upload a batting video to generate the report."}
+            </h4>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              {analysis?.summary ??
+                "This tracker replaces the old AI video analyzer with a focused batting module: upload, score, feedback, drills, and remove-video support."}
+            </p>
+            <div className="mt-4">
+              <Progress value={STAGE_INDEX[stage]} className="h-2" />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-border bg-background/40 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <Video className="h-4 w-4 text-primary" />
+                <h4 className="font-medium text-foreground">Phase scores</h4>
+              </div>
+              <div className="space-y-3">
+                {analysis ? (
+                  analysis.phaseScores.map((phase) => (
+                    <div key={phase.key} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-foreground">{phase.label}</span>
+                        <span className="text-muted-foreground">
+                          {phase.score} · {scoreLabel(phase.score)}
+                        </span>
+                      </div>
+                      <Progress value={phase.score} className="h-2" />
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Phase scores will appear here after the clip is analyzed.
+                  </p>
                 )}
               </div>
             </div>
 
-            <div className="relative rounded-xl overflow-hidden bg-secondary/50">
-              {!videoUrl ? (
-                <div className="aspect-video flex flex-col items-center justify-center">
-                  <div className="w-24 h-24 bg-secondary rounded-full flex items-center justify-center mb-6">
-                    <Upload className="w-10 h-10 text-primary" />
-                  </div>
-                  <p className="text-xl font-semibold mb-2">Upload Your Cricket Video</p>
-                  <p className="text-muted-foreground mb-6">Supports .mp4, .mov, .avi up to 100MB</p>
-                  <Button onClick={() => {
-                    if (!requireAuth("upload videos for analysis")) return;
-                    setShowUploadModal(true);
-                  }} className="bg-gradient-primary gap-2">
-                    <Upload className="w-4 h-4" />
-                    Choose Video File
-                  </Button>
-                </div>
-              ) : (
-                <div className="relative w-full flex items-center justify-center bg-black/20 rounded-lg overflow-hidden" style={{ maxHeight: '400px' }}>
-                  <video
-                    ref={videoRef}
-                    src={videoUrl}
-                    className="max-w-full max-h-[400px]"
-                    controls
-                    onLoadedMetadata={handleVideoLoad}
-                    style={{ display: 'block' }}
-                  />
-                  <canvas
-                    ref={canvasRef}
-                    className="absolute pointer-events-none"
-                    style={{ 
-                      display: poseOverlayVisible ? 'block' : 'none',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      maxWidth: '100%',
-                      maxHeight: '400px'
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-
-            {videoUrl && (
-              <div className="mt-6 grid grid-cols-3 gap-4">
-                <div className="bg-secondary/50 rounded-xl p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
-                    <Ruler className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Frame Rate</p>
-                    <p className="text-lg font-semibold">30 FPS</p>
-                  </div>
-                </div>
-                <div className="bg-secondary/50 rounded-xl p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-400/20 rounded-lg flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Duration</p>
-                    <p className="text-lg font-semibold">{analysisData.videoDuration}</p>
-                  </div>
-                </div>
-                <div className="bg-secondary/50 rounded-xl p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-400/20 rounded-lg flex items-center justify-center">
-                    <Target className="w-5 h-5 text-purple-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Landmarks</p>
-                    <p className="text-lg font-semibold">33 Points</p>
-                  </div>
-                </div>
+            <div className="rounded-2xl border border-border bg-background/40 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <Eye className="h-4 w-4 text-primary" />
+                <h4 className="font-medium text-foreground">Snapshot</h4>
               </div>
-            )}
-
-            {videoUrl && !isAnalyzing && !showResults && (
-              <Button
-                onClick={analyzeVideo}
-                disabled={isLoadingPose || !poseModel}
-                className="w-full mt-6 bg-gradient-primary gap-2"
-              >
-                <Play className="w-4 h-4" />
-                {isLoadingPose ? 'Loading AI Model...' : 'Start Analysis'}
-              </Button>
-            )}
-
-            {isAnalyzing && (
-              <div className="mt-6 text-center">
-                <div className="inline-flex items-center gap-3 px-6 py-3 bg-primary/20 rounded-full">
-                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  <span className="text-primary font-medium">Analyzing technique...</span>
-                </div>
-              </div>
-            )}
-
-            {poseError && (
-              <div className="mt-4 p-4 bg-red-400/10 border border-red-400/20 rounded-lg">
-                <div className="flex items-center justify-between gap-4">
-                  <p className="text-red-400 text-sm">{poseError}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRetryPose}
-                    disabled={isLoadingPose}
-                    className="shrink-0 border-red-400/50 text-red-400 hover:bg-red-400/10"
-                  >
-                    {isLoadingPose ? 'Loading...' : 'Retry'}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Real-time Angles */}
-          <div className="bg-gradient-card rounded-2xl p-6 border border-border">
-            <h2 className="text-xl font-bold text-foreground flex items-center gap-3 mb-6">
-              <BarChart3 className="w-5 h-5 text-primary" />
-              Real-time Angle Analysis
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: 'Front Elbow', value: analysisData.angles.elbow, optimal: { min: 140, max: 160 }, unit: '°' },
-                { label: 'Back Knee', value: analysisData.angles.knee, optimal: { min: 160, max: 175 }, unit: '°' },
-                { label: 'Shoulder Tilt', value: analysisData.angles.shoulder, optimal: { min: 0, max: 5 }, unit: '°' },
-                { label: 'Head Position', value: analysisData.angles.head, optimal: { min: 0, max: 5 }, unit: '°' }
-              ].map((angle, index) => (
-                <div key={index} className="bg-secondary/50 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">{angle.label}</span>
-                    <span className={`font-semibold ${getAngleColor(angle.value, angle.optimal)}`}>
-                      {angle.value}{angle.unit}
-                    </span>
-                  </div>
-                  <Progress value={getAngleProgress(angle.value, angle.optimal)} className="h-2" />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Optimal: {angle.optimal.min}-{angle.optimal.max}{angle.unit}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column - Results */}
-        <div className="space-y-6">
-          {/* Overall Score */}
-          <div className="bg-gradient-card rounded-2xl p-6 border border-border">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
-                <Trophy className="w-5 h-5 text-accent" />
-                Overall Score
-              </h2>
-              {showResults && (
-                <span className="px-3 py-1.5 bg-secondary rounded-full text-sm flex items-center gap-2">
-                  <Medal className="w-4 h-4 text-accent" />
-                  {analysisData.scores.overall >= 80 ? 'Advanced' : analysisData.scores.overall >= 60 ? 'Intermediate' : 'Beginner'}
-                </span>
-              )}
-            </div>
-
-            <div className="flex flex-col items-center">
-              <div className="relative w-48 h-48 mb-6">
-                <svg className="w-full h-full" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="45" fill="none" stroke="hsl(var(--secondary))" strokeWidth="8" />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="none"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray={2 * Math.PI * 45}
-                    strokeDashoffset={getScoreRingOffset(showResults ? analysisData.scores.overall : 0)}
-                    transform="rotate(-90 50 50)"
-                    style={{ transition: 'stroke-dashoffset 1s ease-out' }}
-                  />
-                  <text x="50" y="50" textAnchor="middle" dy="5" className="text-3xl font-bold fill-foreground">
-                    {showResults ? analysisData.scores.overall : '--'}
-                  </text>
-                  <text x="50" y="62" textAnchor="middle" className="text-sm fill-muted-foreground">/100</text>
-                </svg>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 w-full">
-                {[
-                  { label: 'Technique', value: analysisData.scores.technique, color: 'text-primary' },
-                  { label: 'Balance', value: analysisData.scores.balance, color: 'text-yellow-400' },
-                  { label: 'Timing', value: analysisData.scores.timing, color: 'text-blue-400' },
-                  { label: 'Follow-through', value: analysisData.scores.followThrough, color: 'text-purple-400' }
-                ].map((score, index) => (
-                  <div key={index} className="text-center p-3 bg-secondary/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground">{score.label}</p>
-                    <p className={`text-xl font-bold ${score.color}`}>
-                      {showResults ? score.value : '--'}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Detailed Feedback */}
-          {showResults && analysisData.feedback.length > 0 && (
-            <div className="bg-gradient-card rounded-2xl p-6 border border-border">
-              <h2 className="text-xl font-bold text-foreground flex items-center gap-3 mb-6">
-                <MessageSquare className="w-5 h-5 text-primary" />
-                Detailed Analysis
-              </h2>
-              <div className="space-y-4">
-                {analysisData.feedback.map((item, index) => (
-                  <div key={index} className="bg-secondary/50 rounded-xl p-4">
-                    <div className="flex items-start gap-3">
-                      <div className={`w-8 h-8 ${getFeedbackBgColor(item.type)} rounded-lg flex items-center justify-center mt-0.5`}>
-                        {getFeedbackIcon(item.type)}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-foreground mb-1">{item.title}</h4>
-                        <p className="text-sm text-muted-foreground">{item.description}</p>
-                        {item.drill && (
-                          <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
-                            <Lightbulb className="w-3 h-3" />
-                            <strong>Drill:</strong> {item.drill}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Recommended Drills */}
-          {showResults && analysisData.drills.length > 0 && (
-            <div className="bg-gradient-card rounded-2xl p-6 border border-border">
-              <h2 className="text-xl font-bold text-foreground flex items-center gap-3 mb-6">
-                <Dumbbell className="w-5 h-5 text-primary" />
-                Recommended Drills
-              </h2>
               <div className="space-y-3">
-                {analysisData.drills.map((drill, index) => (
-                  <div key={index} className="flex items-center p-3 bg-secondary/30 rounded-lg gap-3">
-                    <div className={`w-10 h-10 ${getDrillColor(drill.color)} rounded-lg flex items-center justify-center`}>
-                      {getDrillIcon(drill.icon)}
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">{drill.title}</p>
-                      <p className="text-sm text-muted-foreground">{drill.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <Button 
-                  onClick={saveAnalysis} 
-                  disabled={isSaving || analysisData.scores.overall === 0}
-                  className="flex-1 bg-gradient-primary gap-2"
-                >
-                  {isSaving ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4" />
-                  )}
-                  {isSaving ? 'Saving...' : 'Save Analysis'}
-                </Button>
-                <Button onClick={downloadReport} variant="outline" className="flex-1 gap-2">
-                  <Download className="w-4 h-4" />
-                  Download PDF
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Cricket Context Section */}
-      <div className="bg-gradient-card rounded-2xl p-8 border border-border">
-        <h2 className="text-2xl font-bold text-foreground flex items-center gap-3 mb-6">
-          <Target className="w-6 h-6 text-primary" />
-          Cricket Technique Analysis
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <h3 className="text-xl font-bold text-foreground mb-4">Batting Analysis Parameters</h3>
-            <div className="space-y-4">
-              <div className="p-4 bg-secondary/50 rounded-xl">
-                <h4 className="font-semibold text-primary mb-2">Stance & Setup</h4>
-                <p className="text-muted-foreground text-sm">Analyzes initial position, grip, and balance before ball delivery</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {['Feet Alignment', 'Knee Flex', 'Head Position'].map(tag => (
-                    <span key={tag} className="px-2 py-1 bg-secondary rounded text-xs">{tag}</span>
-                  ))}
-                </div>
-              </div>
-              <div className="p-4 bg-secondary/50 rounded-xl">
-                <h4 className="font-semibold text-blue-400 mb-2">Backlift & Trigger</h4>
-                <p className="text-muted-foreground text-sm">Measures bat pick-up angle and initial movement timing</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {['Bat Angle', 'Weight Transfer', 'Front Foot Movement'].map(tag => (
-                    <span key={tag} className="px-2 py-1 bg-secondary rounded text-xs">{tag}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-xl font-bold text-foreground mb-4">Bowling Analysis Parameters</h3>
-            <div className="space-y-4">
-              <div className="p-4 bg-secondary/50 rounded-xl">
-                <h4 className="font-semibold text-accent mb-2">Run-up & Delivery</h4>
-                <p className="text-muted-foreground text-sm">Analyzes approach speed, gather position, and front foot landing</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {['Approach Rhythm', 'Front Foot Braking', 'Arm Speed'].map(tag => (
-                    <span key={tag} className="px-2 py-1 bg-secondary rounded text-xs">{tag}</span>
-                  ))}
-                </div>
-              </div>
-              <div className="p-4 bg-secondary/50 rounded-xl">
-                <h4 className="font-semibold text-purple-400 mb-2">Follow-through & Recovery</h4>
-                <p className="text-muted-foreground text-sm">Measures completion of action and return to fielding position</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {['Momentum Transfer', 'Body Alignment', 'Recovery Speed'].map(tag => (
-                    <span key={tag} className="px-2 py-1 bg-secondary rounded text-xs">{tag}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-2xl p-8 max-w-md w-full border border-border shadow-elevated">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-foreground">Upload Cricket Video</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowUploadModal(false)}>
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-
-            <label className="block border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary transition-colors cursor-pointer mb-6">
-              <input
-                type="file"
-                accept="video/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-                <Upload className="w-8 h-8 text-primary" />
-              </div>
-              <p className="text-lg font-semibold text-foreground mb-2">Drop your video here</p>
-              <p className="text-muted-foreground mb-4">or click to browse files</p>
-              <p className="text-sm text-muted-foreground">Supports .mp4, .mov, .avi up to 100MB</p>
-            </label>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-muted-foreground mb-2">Analysis Mode</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => switchMode('batting')}
-                    className={`p-4 rounded-xl text-center transition-colors ${
-                      analysisData.currentMode === 'batting'
-                        ? 'bg-primary/20 border-2 border-primary'
-                        : 'bg-secondary hover:bg-secondary/80 border-2 border-transparent'
-                    }`}
-                  >
-                    <Target className="w-8 h-8 mx-auto mb-2 text-primary" />
-                    <p className="font-semibold">Batting</p>
-                    <p className="text-xs text-muted-foreground">Front foot, backlift, follow-through</p>
-                  </button>
-                  <button
-                    onClick={() => switchMode('bowling')}
-                    className={`p-4 rounded-xl text-center transition-colors ${
-                      analysisData.currentMode === 'bowling'
-                        ? 'bg-primary/20 border-2 border-primary'
-                        : 'bg-secondary hover:bg-secondary/80 border-2 border-transparent'
-                    }`}
-                  >
-                    <Play className="w-8 h-8 mx-auto mb-2 text-blue-400" />
-                    <p className="font-semibold">Bowling</p>
-                    <p className="text-xs text-muted-foreground">Run-up, delivery, follow-through</p>
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowUploadModal(false)}
-                >
-                  Cancel
-                </Button>
-                <label className="flex-1">
-                  <input
-                    type="file"
-                    accept="video/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                  <Button className="w-full bg-gradient-primary gap-2" asChild>
-                    <span>
-                      <Upload className="w-4 h-4" />
-                      Select Video
-                    </span>
-                  </Button>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Sign In Prompt Modal */}
-      <Dialog open={showSignInPrompt} onOpenChange={setShowSignInPrompt}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <LogIn className="w-5 h-5 text-primary" />
-              Sign In Required
-            </DialogTitle>
-            <DialogDescription>
-              Create a free account to save and download your analysis reports. Your results will be stored securely for future reference.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-3 mt-4">
-            <Button onClick={handleSignInRedirect} className="w-full gap-2">
-              <LogIn className="w-4 h-4" />
-              Sign In / Create Account
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => setShowSignInPrompt(false)}
-              className="w-full"
-            >
-              Continue Without Saving
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Analysis History Modal */}
-      <Dialog open={showHistory} onOpenChange={setShowHistory}>
-        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <History className="w-5 h-5 text-primary" />
-              Your Analysis History
-            </DialogTitle>
-            <DialogDescription>
-              Compare your progress over time and track your improvement.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {isLoadingHistory ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="w-6 h-6 animate-spin text-primary" />
-            </div>
-          ) : analysisHistory.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No analysis results saved yet.</p>
-              <p className="text-sm">Complete an analysis and save it to see your history here.</p>
-            </div>
-          ) : (
-            <div className="space-y-4 mt-4">
-              {analysisHistory.map((item, index) => {
-                const prevItem = analysisHistory[index + 1];
-                const improvement = prevItem ? item.overall_score - prevItem.overall_score : 0;
-                
-                return (
-                  <div 
-                    key={item.id}
-                    className="p-4 rounded-xl bg-gradient-card border border-border hover:border-primary/30 transition-all"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium capitalize">
-                            {item.mode}
-                          </span>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {format(new Date(item.created_at), 'MMM d, yyyy h:mm a')}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-4">
-                          <div className="text-2xl font-bold text-foreground">
-                            {item.overall_score}%
-                          </div>
-                          {improvement !== 0 && (
-                            <div className={`flex items-center gap-1 text-sm ${improvement > 0 ? 'text-primary' : 'text-red-400'}`}>
-                              <TrendingUp className={`w-4 h-4 ${improvement < 0 ? 'rotate-180' : ''}`} />
-                              {improvement > 0 ? '+' : ''}{improvement}%
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="grid grid-cols-4 gap-2 mt-3 text-xs">
-                          <div className="text-center p-2 rounded-lg bg-secondary/50">
-                            <div className="text-muted-foreground">Technique</div>
-                            <div className="font-semibold text-foreground">{item.scores?.technique || 0}%</div>
-                          </div>
-                          <div className="text-center p-2 rounded-lg bg-secondary/50">
-                            <div className="text-muted-foreground">Balance</div>
-                            <div className="font-semibold text-foreground">{item.scores?.balance || 0}%</div>
-                          </div>
-                          <div className="text-center p-2 rounded-lg bg-secondary/50">
-                            <div className="text-muted-foreground">Timing</div>
-                            <div className="font-semibold text-foreground">{item.scores?.timing || 0}%</div>
-                          </div>
-                          <div className="text-center p-2 rounded-lg bg-secondary/50">
-                            <div className="text-muted-foreground">Follow-through</div>
-                            <div className="font-semibold text-foreground">{item.scores?.followThrough || 0}%</div>
-                          </div>
-                        </div>
+                {analysis ? (
+                  analysis.snapshots.map((item) => (
+                    <div key={item.title} className="space-y-1 rounded-xl border border-border/60 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium text-foreground">{item.title}</span>
+                        <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                          {item.tag}
+                        </span>
                       </div>
-                      
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteAnalysis(item.id)}
-                        className="text-muted-foreground hover:text-red-400"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <p className="text-sm leading-6 text-muted-foreground">{item.copy}</p>
                     </div>
-                  </div>
-                );
-              })}
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Clip context and model cues will appear here after analysis.
+                  </p>
+                )}
+              </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-background/40 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <h4 className="font-medium text-foreground">Technical feedback</h4>
+            </div>
+            <div className="space-y-3">
+              {analysis ? (
+                analysis.findings.map((finding) => (
+                  <div key={finding.id} className="rounded-xl border border-border/60 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <h5 className="font-medium text-foreground">{finding.title}</h5>
+                      <span className={`rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] ${severityTone(finding.severity)}`}>
+                        {finding.severity}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{finding.fix}</p>
+                    <p className="mt-2 text-sm text-primary">Tip: {finding.tip}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Your highest-impact batting faults will appear here after analysis.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-background/40 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Dumbbell className="h-4 w-4 text-primary" />
+              <h4 className="font-medium text-foreground">Recommended drills</h4>
+            </div>
+            <div className="space-y-3">
+              {analysis ? (
+                analysis.drills.map((drill) => (
+                  <div key={drill.title} className="rounded-xl border border-border/60 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <h5 className="font-medium text-foreground">{drill.title}</h5>
+                      <span className={`rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] ${phaseTone(80)}`}>
+                        {drill.focus}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{drill.description}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Practice drills and coaching tips will appear here after the tracker scores the clip.
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

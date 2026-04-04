@@ -43,6 +43,10 @@ const handler = async (req: Request): Promise<Response> => {
     const baseUrl = Deno.env.get("SITE_URL") || "https://wpczgwxsriezaubncuom.lovableproject.com";
     const verifyUrl = `${baseUrl}/coaching-marketplace/verify-connection?code=${verificationCode}&connectionId=${connectionId}`;
 
+    // Generate a unique Jitsi Meet room for this connection
+    const roomId = `gamechangrs-${connectionId.slice(0, 8)}-${Date.now().toString(36)}`;
+    const meetLink = `https://meet.jit.si/${roomId}`;
+
     let subject: string;
     let htmlContent: string;
 
@@ -62,6 +66,16 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Or use this verification code: <strong style="font-size: 24px; color: #2563eb;">${verificationCode}</strong></p>
           <p style="color: #666; font-size: 14px;">This code expires in 24 hours.</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+          <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 16px; margin: 20px 0;">
+            <p style="margin: 0 0 8px; font-weight: bold; color: #0369a1;">📹 Video Meeting Room</p>
+            <p style="margin: 0 0 12px; color: #555; font-size: 14px;">A dedicated video meeting room has been created for your coaching sessions. Both of you can use this link anytime:</p>
+            <div style="text-align: center;">
+              <a href="${meetLink}" style="background-color: #0ea5e9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">
+                Join Video Meeting
+              </a>
+            </div>
+            <p style="margin: 12px 0 0; color: #888; font-size: 12px; text-align: center;">Link: ${meetLink}</p>
+          </div>
           <p style="color: #999; font-size: 12px;">If you didn't expect this request, you can safely ignore this email.</p>
         </div>
       `;
@@ -78,6 +92,16 @@ const handler = async (req: Request): Promise<Response> => {
             <li>Book coaching sessions</li>
             <li>Start your training journey together</li>
           </ul>
+          <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 16px; margin: 20px 0;">
+            <p style="margin: 0 0 8px; font-weight: bold; color: #0369a1;">📹 Video Meeting Room</p>
+            <p style="margin: 0 0 12px; color: #555; font-size: 14px;">Use this dedicated link for your coaching sessions:</p>
+            <div style="text-align: center;">
+              <a href="${meetLink}" style="background-color: #0ea5e9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">
+                Join Video Meeting
+              </a>
+            </div>
+            <p style="margin: 12px 0 0; color: #888; font-size: 12px; text-align: center;">Link: ${meetLink}</p>
+          </div>
           <div style="text-align: center; margin: 30px 0;">
             <a href="${baseUrl}/coaching-marketplace" style="background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">
               Go to Dashboard

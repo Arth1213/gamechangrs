@@ -139,6 +139,14 @@
   .animate-scale-in {
     animation: scaleIn 0.4s ease-out forwards;
   }
+
+  .animate-orbit-spin {
+    animation: orbitSpin 12s linear infinite;
+  }
+
+  .animate-orbit-reverse {
+    animation: orbitSpinReverse 9s linear infinite;
+  }
 }
 
 @keyframes float {
@@ -171,6 +179,16 @@
     opacity: 1;
     transform: scale(1);
   }
+}
+
+@keyframes orbitSpin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes orbitSpinReverse {
+  from { transform: translate(-50%, -50%) rotate(360deg); }
+  to { transform: translate(-50%, -50%) rotate(0deg); }
 }
 
 /* Custom scrollbar */

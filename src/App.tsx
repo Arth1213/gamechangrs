@@ -8,7 +8,6 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import Coaching from "./pages/Coaching";
 import TechniqueAI from "./pages/TechniqueAI";
 import Analytics from "./pages/Analytics";
 import AnalysisDetail from "./pages/AnalysisDetail";

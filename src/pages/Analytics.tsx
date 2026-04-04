@@ -2,254 +2,526 @@ import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { 
-  BarChart3, TrendingUp, Users, Target, Search, Filter,
-  ChevronDown, ArrowUpRight, ArrowDownRight
+import { supabase } from "@/integrations/supabase/client";
+import {
+  AlertCircle,
+  ArrowUpRight,
+  BarChart3,
+  ExternalLink,
+  Loader2,
+  Search,
+  ShieldAlert,
+  Target,
+  TrendingUp,
+  Trophy,
+  Users,
 } from "lucide-react";
-import { useRequireAuth } from "@/hooks/useRequireAuth";
+
+type Trend = "up" | "down" | "neutral";
+
+interface SummaryCard {
+  label: string;
+  value: string;
+  icon: "players" | "runs" | "batting" | "bowling";
+  changeLabel: string;
+  trend: Trend;
+}
+
+interface DerivedInsight {
+  title: string;
+  body: string;
+}
+
+interface FormatSplit {
+  format: string;
+  matches: number | null;
+  runs: number | null;
+  battingAverage: number | null;
+  strikeRate: number | null;
+  wickets: number | null;
+  economy: number | null;
+}
+
+interface CricClubsAnalyticsResponse {
+  searchQuery: string;
+  sourceUrl: string;
+  searchedAt: string;
+  player: {
+    name: string | null;
+    role: string | null;
+    team: string | null;
+    battingStyle: string | null;
+    bowlingStyle: string | null;
+  };
+  stats: {
+    matches: number | null;
+    innings: number | null;
+    runs: number | null;
+    battingAverage: number | null;
+    strikeRate: number | null;
+    highestScore: string | null;
+    notOuts: number | null;
+    fours: number | null;
+    sixes: number | null;
+    ducks: number | null;
+    wickets: number | null;
+    bowlingAverage: number | null;
+    economy: number | null;
+    bowlingStrikeRate: number | null;
+    bestBowling: string | null;
+    maidens: number | null;
+    catches: number | null;
+    stumpings: number | null;
+    runOuts: number | null;
+  };
+  formatSplits: FormatSplit[];
+  explicitInsights: {
+    dismissalPatterns: string[];
+    bowlerTypeNotes: string[];
+    groundingNotes: string[];
+  };
+  derived: {
+    summaryCards: SummaryCard[];
+    strengths: DerivedInsight[];
+    concerns: DerivedInsight[];
+    selectionSummary: string;
+    battingProfile: string;
+    dismissalRisk: string;
+    matchupRead: string;
+    recommendation: string;
+    dataLimitations: string[];
+  };
+}
+
+const statIconMap = {
+  players: Users,
+  runs: BarChart3,
+  batting: TrendingUp,
+  bowling: Target,
+} as const;
 
 const Analytics = () => {
-  const [selectedTeam, setSelectedTeam] = useState("All Teams");
-  const [selectedPlayer, setSelectedPlayer] = useState("");
-  const { requireAuth } = useRequireAuth();
+  const [playerQuery, setPlayerQuery] = useState("");
+  const [clubHint, setClubHint] = useState("");
+  const [result, setResult] = useState<CricClubsAnalyticsResponse | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const mockTeams = [
-    { name: "Thunder Hawks", wins: 12, losses: 3, avg: 245 },
-    { name: "Rising Stars", wins: 10, losses: 5, avg: 228 },
-    { name: "Golden Eagles", wins: 9, losses: 6, avg: 215 },
-    { name: "Storm Breakers", wins: 8, losses: 7, avg: 198 },
-  ];
+  const handleSearch = async () => {
+    const trimmedQuery = playerQuery.trim();
+    const trimmedHint = clubHint.trim();
 
-  const mockPlayers = [
-    { name: "Aiden Smith", role: "Batsman", avg: 42.5, sr: 128.3, trend: "up" },
-    { name: "Ryan Patel", role: "Bowler", wickets: 24, econ: 5.2, trend: "up" },
-    { name: "James Wilson", role: "All-rounder", avg: 35.2, wickets: 12, trend: "down" },
-    { name: "Michael Brown", role: "Batsman", avg: 38.7, sr: 115.6, trend: "up" },
-  ];
+    if (trimmedQuery.length < 3) {
+      setErrorMessage("Enter at least 3 characters for the player search.");
+      setResult(null);
+      return;
+    }
+
+    setIsSearching(true);
+    setErrorMessage(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("cricclubs-player-analytics", {
+        body: {
+          query: trimmedQuery,
+          clubHint: trimmedHint || null,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || "Search failed");
+      }
+
+      if (!data) {
+        throw new Error("No player data came back from CricClubs.");
+      }
+
+      setResult(data as CricClubsAnalyticsResponse);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to fetch player analytics right now.";
+      setErrorMessage(message);
+      setResult(null);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
-      {/* Hero */}
+
       <section className="pt-32 pb-12 bg-gradient-hero">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
               <BarChart3 className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Real-Time Data</span>
+              <span className="text-sm font-medium text-primary">CricClubs Live Search</span>
             </div>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
               Analytics <span className="text-gradient-primary">Engine</span>
             </h1>
             <p className="text-lg text-muted-foreground">
-              Comprehensive youth cricket league analytics powered by CricClubs data. Make data-driven coaching decisions.
+              Search a real player name, pull the public CricClubs profile, and turn actual stats
+              into grounded scouting notes for selection and match planning.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Search & Filters */}
       <section className="py-8 border-b border-border bg-card">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr_auto] gap-4">
+            <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search players, teams, or matches..."
-                value={selectedPlayer}
-                onChange={(e) => setSelectedPlayer(e.target.value)}
+                placeholder="Search CricClubs player name..."
+                value={playerQuery}
+                onChange={(event) => setPlayerQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    void handleSearch();
+                  }
+                }}
                 className="w-full h-12 pl-12 pr-4 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
-            <div className="flex gap-4">
-              <button className="h-12 px-6 rounded-xl bg-secondary border border-border text-foreground flex items-center gap-2 hover:bg-secondary/80 transition-colors">
-                <Filter className="w-5 h-5" />
-                Filters
-                <ChevronDown className="w-4 h-4" />
-              </button>
-              <select
-                value={selectedTeam}
-                onChange={(e) => setSelectedTeam(e.target.value)}
-                className="h-12 px-6 rounded-xl bg-secondary border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option>All Teams</option>
-                {mockTeams.map((team) => (
-                  <option key={team.name}>{team.name}</option>
-                ))}
-              </select>
-            </div>
+
+            <input
+              type="text"
+              placeholder="Optional club or league hint"
+              value={clubHint}
+              onChange={(event) => setClubHint(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  void handleSearch();
+                }
+              }}
+              className="w-full h-12 px-4 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+
+            <Button
+              variant="hero"
+              size="lg"
+              className="h-12"
+              disabled={isSearching}
+              onClick={() => void handleSearch()}
+            >
+              {isSearching ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Searching
+                </>
+              ) : (
+                "Run Analytics"
+              )}
+            </Button>
           </div>
+
+          <div className="mt-4 text-sm text-muted-foreground">
+            This uses public CricClubs pages only. If CricClubs does not expose a stat split, the
+            analysis leaves that area blank instead of inventing an answer.
+          </div>
+
+          {errorMessage ? (
+            <div className="mt-4 flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-foreground">
+              <AlertCircle className="mt-0.5 w-4 h-4 text-destructive shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          ) : null}
         </div>
       </section>
 
-      {/* Stats Overview */}
       <section className="py-12">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            {[
-              { label: "Total Teams", value: "48", icon: Users, change: "+12%", up: true },
-              { label: "Active Players", value: "624", icon: Target, change: "+8%", up: true },
-              { label: "Matches Played", value: "156", icon: BarChart3, change: "+24%", up: true },
-              { label: "Avg Run Rate", value: "7.2", icon: TrendingUp, change: "-2%", up: false },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="p-6 rounded-2xl bg-gradient-card border border-border"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <stat.icon className="w-6 h-6 text-primary" />
-                  </div>
-                  <span
-                    className={`flex items-center gap-1 text-sm font-medium ${
-                      stat.up ? "text-primary" : "text-destructive"
-                    }`}
-                  >
-                    {stat.up ? (
-                      <ArrowUpRight className="w-4 h-4" />
-                    ) : (
-                      <ArrowDownRight className="w-4 h-4" />
-                    )}
-                    {stat.change}
-                  </span>
-                </div>
-                <p className="font-display text-3xl font-bold text-foreground mb-1">
-                  {stat.value}
+          {!result ? (
+            <div className="rounded-3xl border border-border bg-gradient-card p-8 md:p-10">
+              <div className="max-w-2xl">
+                <h2 className="font-display text-2xl font-bold text-foreground mb-3">
+                  Search A Player To Replace The Mock Analytics
+                </h2>
+                <p className="text-muted-foreground mb-6">
+                  This section no longer depends on fake sample teams or demo players. It waits for
+                  a real CricClubs search, then shows only the stats and scouting notes grounded in
+                  that public player profile.
                 </p>
-                <p className="text-muted-foreground text-sm">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Teams Table */}
-          <div className="mb-12">
-            <h2 className="font-display text-2xl font-bold text-foreground mb-6">
-              Team Standings
-            </h2>
-            <div className="rounded-2xl bg-gradient-card border border-border overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Team</th>
-                      <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">Wins</th>
-                      <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">Losses</th>
-                      <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">Avg Score</th>
-                      <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mockTeams.map((team, index) => (
-                      <tr
-                        key={team.name}
-                        className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors"
-                      >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center font-display font-bold text-primary">
-                              {index + 1}
-                            </div>
-                            <span className="font-medium text-foreground">{team.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-center text-primary font-semibold">{team.wins}</td>
-                        <td className="px-6 py-4 text-center text-destructive font-semibold">{team.losses}</td>
-                        <td className="px-6 py-4 text-center text-muted-foreground">{team.avg}</td>
-                        <td className="px-6 py-4 text-right">
-                          <Button variant="ghost" size="sm" onClick={() => requireAuth("view team details")}>
-                            View Details
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[
+                    {
+                      title: "Selection View",
+                      body: "Instant summary for coaches deciding whether a player is more anchor, enforcer, all-round cover, or matchup-specific.",
+                    },
+                    {
+                      title: "Batting Read",
+                      body: "Average, strike rate, boundary profile, and format splits are used to frame how the player scores.",
+                    },
+                    {
+                      title: "Honest Gaps",
+                      body: "If dismissal patterns or bowler-type splits are not present on the public page, the UI says that clearly.",
+                    },
+                  ].map((item) => (
+                    <div key={item.title} className="rounded-2xl border border-border bg-background/60 p-5">
+                      <h3 className="font-semibold text-foreground mb-2">{item.title}</h3>
+                      <p className="text-sm text-muted-foreground">{item.body}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Players Grid */}
-          <div>
-            <h2 className="font-display text-2xl font-bold text-foreground mb-6">
-              Top Performers
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {mockPlayers.map((player) => (
-                <div
-                  key={player.name}
-                  className="p-6 rounded-2xl bg-gradient-card border border-border hover:border-primary/30 transition-all duration-300"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-display font-bold">
-                      {player.name.split(" ").map((n) => n[0]).join("")}
+          ) : (
+            <>
+              <div className="rounded-3xl border border-border bg-gradient-card p-8 mb-8">
+                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+                  <div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-4">
+                      <Trophy className="w-4 h-4 text-primary" />
+                      <span className="text-xs font-medium text-primary">Public CricClubs Profile</span>
                     </div>
-                    <span
-                      className={`flex items-center gap-1 text-sm font-medium ${
-                        player.trend === "up" ? "text-primary" : "text-destructive"
-                      }`}
-                    >
-                      {player.trend === "up" ? (
-                        <ArrowUpRight className="w-4 h-4" />
-                      ) : (
-                        <ArrowDownRight className="w-4 h-4" />
-                      )}
-                    </span>
+                    <h2 className="font-display text-3xl font-bold text-foreground mb-2">
+                      {result.player.name || result.searchQuery}
+                    </h2>
+                    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                      <span>{result.player.role || "Role unavailable"}</span>
+                      <span>{result.player.team || "Team unavailable"}</span>
+                      <span>{result.player.battingStyle || "Batting style unavailable"}</span>
+                      <span>{result.player.bowlingStyle || "Bowling style unavailable"}</span>
+                    </div>
                   </div>
-                  <h3 className="font-display font-semibold text-foreground mb-1">
-                    {player.name}
-                  </h3>
-                  <p className="text-primary text-sm mb-4">{player.role}</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    {player.role === "Batsman" || player.role === "All-rounder" ? (
-                      <>
-                        <div>
-                          <p className="text-muted-foreground text-xs">Average</p>
-                          <p className="font-semibold text-foreground">{player.avg}</p>
-                        </div>
-                        {player.sr && (
-                          <div>
-                            <p className="text-muted-foreground text-xs">Strike Rate</p>
-                            <p className="font-semibold text-foreground">{player.sr}</p>
-                          </div>
-                        )}
-                      </>
-                    ) : null}
-                    {player.role === "Bowler" || player.role === "All-rounder" ? (
-                      <>
-                        <div>
-                          <p className="text-muted-foreground text-xs">Wickets</p>
-                          <p className="font-semibold text-foreground">{player.wickets}</p>
-                        </div>
-                        {player.econ && (
-                          <div>
-                            <p className="text-muted-foreground text-xs">Economy</p>
-                            <p className="font-semibold text-foreground">{player.econ}</p>
-                          </div>
-                        )}
-                      </>
-                    ) : null}
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <a
+                      href={result.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex"
+                    >
+                      <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                        View Source
+                        <ExternalLink className="w-4 h-4 ml-2" />
+                      </Button>
+                    </a>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* CTA */}
-      <section className="py-20 bg-gradient-card border-t border-border">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="font-display text-3xl font-bold text-foreground mb-4">
-            Want Deeper Insights?
-          </h2>
-          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Connect your CricClubs account for real-time team and player analytics customized for your coaching needs.
-          </p>
-          <Button variant="hero" size="xl" onClick={() => requireAuth("connect your CricClubs account")}>
-            Connect CricClubs Account
-          </Button>
+                <div className="mt-6 rounded-2xl border border-border bg-background/60 p-5">
+                  <p className="text-sm font-medium text-foreground mb-2">Selection Summary</p>
+                  <p className="text-muted-foreground">{result.derived.selectionSummary}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                {result.derived.summaryCards.map((card) => {
+                  const Icon = statIconMap[card.icon];
+
+                  return (
+                    <div
+                      key={card.label}
+                      className="p-6 rounded-2xl bg-gradient-card border border-border"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Icon className="w-6 h-6 text-primary" />
+                        </div>
+                        <span
+                          className={`flex items-center gap-1 text-sm font-medium ${
+                            card.trend === "up"
+                              ? "text-primary"
+                              : card.trend === "down"
+                                ? "text-destructive"
+                                : "text-muted-foreground"
+                          }`}
+                        >
+                          {card.trend === "up" ? (
+                            <ArrowUpRight className="w-4 h-4" />
+                          ) : card.trend === "down" ? (
+                            <ShieldAlert className="w-4 h-4" />
+                          ) : null}
+                          {card.changeLabel}
+                        </span>
+                      </div>
+                      <p className="font-display text-3xl font-bold text-foreground mb-1">
+                        {card.value}
+                      </p>
+                      <p className="text-muted-foreground text-sm">{card.label}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-8 mb-10">
+                <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                  <h3 className="font-display text-2xl font-bold text-foreground mb-4">
+                    Tactical Read
+                  </h3>
+                  <div className="space-y-5">
+                    <div>
+                      <p className="text-sm font-medium text-foreground mb-2">Batting Profile</p>
+                      <p className="text-muted-foreground">{result.derived.battingProfile}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground mb-2">Dismissal Risk</p>
+                      <p className="text-muted-foreground">{result.derived.dismissalRisk}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground mb-2">Bowler Matchup</p>
+                      <p className="text-muted-foreground">{result.derived.matchupRead}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground mb-2">Selection Recommendation</p>
+                      <p className="text-muted-foreground">{result.derived.recommendation}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                  <h3 className="font-display text-2xl font-bold text-foreground mb-4">
+                    Raw Stat Snapshot
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      { label: "Matches", value: result.stats.matches },
+                      { label: "Innings", value: result.stats.innings },
+                      { label: "Runs", value: result.stats.runs },
+                      { label: "Bat Avg", value: result.stats.battingAverage },
+                      { label: "Strike Rate", value: result.stats.strikeRate },
+                      { label: "Highest", value: result.stats.highestScore },
+                      { label: "Wickets", value: result.stats.wickets },
+                      { label: "Economy", value: result.stats.economy },
+                      { label: "Best Bowling", value: result.stats.bestBowling },
+                      { label: "Catches", value: result.stats.catches },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-2xl border border-border bg-background/60 p-4">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                          {item.label}
+                        </p>
+                        <p className="font-semibold text-foreground">
+                          {item.value === null || item.value === "" ? "Unavailable" : item.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+                <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                  <h3 className="font-display text-2xl font-bold text-foreground mb-4">
+                    Strength Signals
+                  </h3>
+                  <div className="space-y-4">
+                    {result.derived.strengths.length > 0 ? (
+                      result.derived.strengths.map((item) => (
+                        <div key={item.title} className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
+                          <p className="font-semibold text-foreground mb-1">{item.title}</p>
+                          <p className="text-sm text-muted-foreground">{item.body}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground">
+                        Not enough public signal on this profile to mark a clear strength.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                  <h3 className="font-display text-2xl font-bold text-foreground mb-4">
+                    Risk Signals
+                  </h3>
+                  <div className="space-y-4">
+                    {result.derived.concerns.length > 0 ? (
+                      result.derived.concerns.map((item) => (
+                        <div
+                          key={item.title}
+                          className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5"
+                        >
+                          <p className="font-semibold text-foreground mb-1">{item.title}</p>
+                          <p className="text-sm text-muted-foreground">{item.body}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground">
+                        No major red flag was directly supported by the public stats returned.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 mb-10">
+                <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                  <h3 className="font-display text-2xl font-bold text-foreground mb-4">
+                    Format Splits
+                  </h3>
+                  {result.formatSplits.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Format</th>
+                            <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Matches</th>
+                            <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Runs</th>
+                            <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Avg</th>
+                            <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">SR</th>
+                            <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Wkts</th>
+                            <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Econ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {result.formatSplits.map((split) => (
+                            <tr key={split.format} className="border-b border-border last:border-0">
+                              <td className="px-4 py-3 text-foreground font-medium">{split.format}</td>
+                              <td className="px-4 py-3 text-center text-muted-foreground">{split.matches ?? "-"}</td>
+                              <td className="px-4 py-3 text-center text-muted-foreground">{split.runs ?? "-"}</td>
+                              <td className="px-4 py-3 text-center text-muted-foreground">
+                                {split.battingAverage ?? "-"}
+                              </td>
+                              <td className="px-4 py-3 text-center text-muted-foreground">
+                                {split.strikeRate ?? "-"}
+                              </td>
+                              <td className="px-4 py-3 text-center text-muted-foreground">{split.wickets ?? "-"}</td>
+                              <td className="px-4 py-3 text-center text-muted-foreground">{split.economy ?? "-"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      This public CricClubs page did not expose a clean format split table.
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                  <h3 className="font-display text-2xl font-bold text-foreground mb-4">
+                    Data Limits
+                  </h3>
+                  <div className="space-y-4">
+                    {result.derived.dataLimitations.map((item) => (
+                      <div key={item} className="rounded-2xl border border-border bg-background/60 p-4">
+                        <p className="text-sm text-muted-foreground">{item}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {result.explicitInsights.groundingNotes.length > 0 ? (
+                    <div className="mt-6">
+                      <p className="text-sm font-medium text-foreground mb-3">Grounding Notes</p>
+                      <div className="space-y-3">
+                        {result.explicitInsights.groundingNotes.map((note) => (
+                          <div key={note} className="rounded-2xl border border-border bg-background/60 p-4">
+                            <p className="text-sm text-muted-foreground">{note}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </section>
 

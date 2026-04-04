@@ -23,3 +23,6 @@ verify_jwt = true
 
 [functions.generate-career-summary]
 verify_jwt = false
+
+[functions.cricclubs-player-analytics]
+verify_jwt = false

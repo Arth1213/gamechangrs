@@ -121,18 +121,28 @@ const Analytics = () => {
     setErrorMessage(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke("cricclubs-player-analytics", {
-        body: {
-          query: trimmedQuery,
-          clubHint: trimmedHint || null,
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cricclubs-player-analytics`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            query: trimmedQuery,
+            clubHint: trimmedHint || null,
+          }),
         },
-      });
+      );
 
-      if (error) {
-        throw new Error(error.message || "Search failed");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || `Search failed (${response.status})`);
       }
 
-      if (!data) {
+      if (!data || !data.player) {
         throw new Error("No player data came back from CricClubs.");
       }
 

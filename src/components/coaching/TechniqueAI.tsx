@@ -108,6 +108,7 @@ interface FrameFeature {
   hipTilt: number;
   stanceRatio: number;
   visibilityScore: number;
+  hasLowerBodyRead: boolean;
   trailWristLift: number;
   leadWristLift: number;
   wristSeparation: number;
@@ -404,10 +405,6 @@ function buildFrameFeature(frame: PoseFrame, handedness: Handedness): FrameFeatu
     !nose ||
     !leftShoulder ||
     !rightShoulder ||
-    !leftHip ||
-    !rightHip ||
-    !leftAnkle ||
-    !rightAnkle ||
     !leadWrist ||
     !trailWrist ||
     !leadShoulder ||
@@ -417,11 +414,12 @@ function buildFrameFeature(frame: PoseFrame, handedness: Handedness): FrameFeatu
   }
 
   const shouldersMid = midpoint(toPoint(leftShoulder), toPoint(rightShoulder));
-  const hipsMid = midpoint(toPoint(leftHip), toPoint(rightHip));
+  const hipsMid =
+    leftHip && rightHip ? midpoint(toPoint(leftHip), toPoint(rightHip)) : shouldersMid;
   const shoulderSpan = distance(toPoint(leftShoulder), toPoint(rightShoulder));
-  const hipSpan = distance(toPoint(leftHip), toPoint(rightHip));
-  const stanceWidth = distance(toPoint(leftAnkle), toPoint(rightAnkle));
-  if (shoulderSpan < 0.01 || hipSpan < 0.01 || stanceWidth < 0.01) {
+  const hipSpan = leftHip && rightHip ? distance(toPoint(leftHip), toPoint(rightHip)) : shoulderSpan;
+  const stanceWidth = leftAnkle && rightAnkle ? distance(toPoint(leftAnkle), toPoint(rightAnkle)) : shoulderSpan * 1.45;
+  if (shoulderSpan < 0.01 || hipSpan < 0.01) {
     return null;
   }
 
@@ -430,21 +428,24 @@ function buildFrameFeature(frame: PoseFrame, handedness: Handedness): FrameFeatu
   return {
     headOffset: Math.abs(nose.x - hipsMid.x) / shoulderSpan,
     shoulderTilt: Math.abs(leftShoulder.y - rightShoulder.y) / shoulderSpan,
-    hipTilt: Math.abs(leftHip.y - rightHip.y) / hipSpan,
+    hipTilt: leftHip && rightHip ? Math.abs(leftHip.y - rightHip.y) / hipSpan : 0,
     stanceRatio: stanceWidth / shoulderSpan,
     visibilityScore: average(
       [
         nose,
         leftShoulder,
         rightShoulder,
+        leadWrist,
+        trailWrist,
         leftHip,
         rightHip,
         leftAnkle,
         rightAnkle,
-        leadWrist,
-        trailWrist,
-      ].map((joint) => joint.visibility),
+      ]
+        .filter(Boolean)
+        .map((joint) => (joint as Joint).visibility),
     ),
+    hasLowerBodyRead: Boolean(leftHip && rightHip && leftAnkle && rightAnkle),
     trailWristLift: (trailShoulder.y - trailWrist.y) / shoulderSpan,
     leadWristLift: (leadShoulder.y - leadWrist.y) / shoulderSpan,
     wristSeparation: distance(toPoint(leadWrist), toPoint(trailWrist)) / shoulderSpan,
@@ -494,7 +495,7 @@ function buildReport(
   const shotProfile = SHOT_PROFILES[context.shotType];
   const features = frames.map((frame) => buildFrameFeature(frame, context.handedness)).filter(Boolean) as FrameFeature[];
 
-  if (features.length < 4) {
+  if (features.length < 2) {
     throw new Error("The clip did not keep the batter visible for long enough to produce a reliable batting read.");
   }
 
@@ -505,6 +506,8 @@ function buildReport(
   const shoulderTilts = features.map((feature) => feature.shoulderTilt);
   const hipTilts = features.map((feature) => feature.hipTilt);
   const visibilityScores = features.map((feature) => feature.visibilityScore);
+  const lowerBodyCoverage = average(features.map((feature) => (feature.hasLowerBodyRead ? 1 : 0)));
+  const upperBodyOnlyRead = lowerBodyCoverage < 0.45;
   const handPath = pathDistance(features.map((feature) => feature.handMid)) / first.shoulderSpan;
   const hipShift = Math.abs(last.hipsMid.x - first.hipsMid.x) / Math.max(first.stanceRatio, 0.001);
   const trailWristRange = range(features.map((feature) => feature.trailWristLift));
@@ -520,9 +523,13 @@ function buildReport(
 
   const metrics = {
     headStabilityScore: clamp(100 - stdDev(headOffsets) * 210 - average(headOffsets) * 92, 30, 94),
-    setupBaseScore: clamp(100 - Math.abs(average(features.map((feature) => feature.stanceRatio)) - 1.45) * 55, 30, 92),
+    setupBaseScore: upperBodyOnlyRead
+      ? clamp(90 - average(shoulderTilts) * 140 - stdDev(headOffsets) * 75, 30, 86)
+      : clamp(100 - Math.abs(average(features.map((feature) => feature.stanceRatio)) - 1.45) * 55, 30, 92),
     backliftScore: clamp((average(features.map((feature) => feature.trailWristLift)) + 0.28) * 105, 30, 92),
-    triggerScore: clamp(100 - Math.abs(first.leadKneeAngle - middle.leadKneeAngle) * 0.48, 30, 92),
+    triggerScore: upperBodyOnlyRead
+      ? clamp(78 - stdDev(features.map((feature) => feature.trailWristLift)) * 140, 30, 82)
+      : clamp(100 - Math.abs(first.leadKneeAngle - middle.leadKneeAngle) * 0.48, 30, 92),
     rotationScore: clamp((average(features.map((feature) => feature.shoulderRotation + feature.hipRotation)) * 150) + 38, 30, 92),
     swingPlaneScore: clamp(handPath * 30 + 36, 30, 92),
     contactScore: clamp(
@@ -533,7 +540,7 @@ function buildReport(
       92,
     ),
     finishBalanceScore: clamp(100 - (last.headOffset * 98 + average(shoulderTilts) * 95 + average(hipTilts) * 72), 30, 92),
-    transferScore: clamp(hipShift * 112 + 26, 30, 92),
+    transferScore: upperBodyOnlyRead ? 58 : clamp(hipShift * 112 + 26, 30, 92),
     frontFootIntentScore: clamp(100 - Math.abs(first.leadKneeAngle - middle.leadKneeAngle) * 0.48 + hipShift * 20, 30, 92),
     backFootIntentScore: clamp(100 - Math.abs(first.trailKneeAngle - middle.trailKneeAngle) * 0.48 + (1 - Math.min(hipShift, 1)) * 20, 30, 92),
     sweepIntentScore: clamp(100 - Math.abs(average(features.map((feature) => (feature.leadKneeAngle + feature.trailKneeAngle) / 2)) - 128) * 0.45, 30, 92),
@@ -541,14 +548,22 @@ function buildReport(
     motionReadScore,
   };
 
-  const phaseScores: PhaseScore[] = [
-    { key: "setup", label: "Setup", weight: 16, score: Math.round(average([metrics.headStabilityScore, metrics.setupBaseScore])) },
-    { key: "backlift", label: "Backlift", weight: 20, score: Math.round(average([metrics.backliftScore, metrics.headStabilityScore])) },
-    { key: "trigger", label: "Trigger", weight: 14, score: Math.round(average([metrics.triggerScore, metrics.setupBaseScore])) },
-    { key: "downswing", label: "Downswing", weight: 28, score: Math.round(average([metrics.rotationScore, metrics.swingPlaneScore, metrics.headStabilityScore])) },
-    { key: "contact", label: "Contact Zone", weight: 12, score: Math.round(average([metrics.contactScore, metrics.headStabilityScore])) },
-    { key: "shot", label: "Shot Match", weight: 10, score: Math.round(scoreShotFit(context.shotType, metrics)) },
-  ];
+  const phaseScores: PhaseScore[] = upperBodyOnlyRead
+    ? [
+        { key: "setup", label: "Setup", weight: 24, score: Math.round(average([metrics.headStabilityScore, metrics.setupBaseScore])) },
+        { key: "backlift", label: "Backlift", weight: 22, score: Math.round(average([metrics.backliftScore, metrics.headStabilityScore])) },
+        { key: "downswing", label: "Downswing", weight: 28, score: Math.round(average([metrics.rotationScore, metrics.swingPlaneScore, metrics.headStabilityScore])) },
+        { key: "contact", label: "Contact Zone", weight: 16, score: Math.round(average([metrics.contactScore, metrics.headStabilityScore])) },
+        { key: "shot", label: "Shot Match", weight: 10, score: Math.round(average([metrics.contactScore, metrics.swingPlaneScore, metrics.headStabilityScore])) },
+      ]
+    : [
+        { key: "setup", label: "Setup", weight: 16, score: Math.round(average([metrics.headStabilityScore, metrics.setupBaseScore])) },
+        { key: "backlift", label: "Backlift", weight: 20, score: Math.round(average([metrics.backliftScore, metrics.headStabilityScore])) },
+        { key: "trigger", label: "Trigger", weight: 14, score: Math.round(average([metrics.triggerScore, metrics.setupBaseScore])) },
+        { key: "downswing", label: "Downswing", weight: 28, score: Math.round(average([metrics.rotationScore, metrics.swingPlaneScore, metrics.headStabilityScore])) },
+        { key: "contact", label: "Contact Zone", weight: 12, score: Math.round(average([metrics.contactScore, metrics.headStabilityScore])) },
+        { key: "shot", label: "Shot Match", weight: 10, score: Math.round(scoreShotFit(context.shotType, metrics)) },
+      ];
 
   const baseWeightedScore = phaseScores.reduce((sum, phase) => sum + phase.score * (phase.weight / 100), 0);
   const reliabilityPenalty =
@@ -563,22 +578,22 @@ function buildReport(
 
   const issueIds = new Set<string>();
   if (metrics.headStabilityScore < 64) issueIds.add("head-falling-away");
-  if (metrics.setupBaseScore < 62) issueIds.add("open-stance");
+  if (!upperBodyOnlyRead && metrics.setupBaseScore < 62) issueIds.add("open-stance");
   if (metrics.backliftScore < 61 && context.cameraAngle !== "front-on") issueIds.add("backlift-low");
-  if (metrics.triggerScore < 61) issueIds.add("trigger-late");
+  if (!upperBodyOnlyRead && metrics.triggerScore < 61) issueIds.add("trigger-late");
   if (metrics.rotationScore < 61 && context.cameraAngle !== "side-on") issueIds.add("shoulder-misalignment");
   if (metrics.swingPlaneScore < 61 && context.cameraAngle !== "front-on") issueIds.add("bat-path-across");
   if (metrics.contactScore < 60) issueIds.add("hard-hands");
-  if (frontFootShots.includes(context.shotType) && metrics.frontFootIntentScore < 61) {
+  if (!upperBodyOnlyRead && frontFootShots.includes(context.shotType) && metrics.frontFootIntentScore < 61) {
     issueIds.add("front-foot-late");
     if (metrics.rotationScore < 60) issueIds.add("hip-open-early");
   }
 
-  if (backFootShots.includes(context.shotType) && metrics.backFootIntentScore < 61) {
+  if (!upperBodyOnlyRead && backFootShots.includes(context.shotType) && metrics.backFootIntentScore < 61) {
     issueIds.add("trigger-late");
   }
 
-  if (sweepShots.includes(context.shotType) && metrics.sweepIntentScore < 61) {
+  if (!upperBodyOnlyRead && sweepShots.includes(context.shotType) && metrics.sweepIntentScore < 61) {
     issueIds.add("contact-too-high");
   }
 
@@ -651,7 +666,9 @@ function buildReport(
         title: "Read quality",
         tag: "Guardrail",
         copy:
-          motionReadScore < 60
+          upperBodyOnlyRead
+            ? "This clip was read in upper-body mode, which lets streamed or cropped footage score without inventing lower-body advice."
+            : motionReadScore < 60
             ? "The clip showed limited full-shot movement, so the model held the score down and avoided speculative drills."
             : "The clip showed enough movement to support a fuller batting read.",
       },

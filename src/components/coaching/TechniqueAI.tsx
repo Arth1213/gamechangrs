@@ -497,7 +497,7 @@ function buildReport(
   const features = frames.map((frame) => buildFrameFeature(frame, context.handedness)).filter(Boolean) as FrameFeature[];
 
   if (features.length < 4) {
-    throw new Error("Not enough visible batting landmarks were detected.");
+    throw new Error("The clip did not keep the batter visible for long enough to produce a reliable batting read.");
   }
 
   const first = features[0];
@@ -764,7 +764,7 @@ export function TechniqueAI() {
 
       const validFrames = frames.filter((frame) => frame.joints.length > 0);
       if (validFrames.length < 4) {
-        throw new Error("The pose model could not read enough body landmarks from this clip.");
+        throw new Error("The clip did not show the batter clearly enough across enough frames to score the shot reliably.");
       }
 
       const durationLabel =
@@ -900,6 +900,8 @@ export function TechniqueAI() {
                     Record the batting clip front-on when possible and keep it around 15-20 seconds
                     so the model has enough movement to process. Once the video is uploaded, you can
                     re-run the analysis without uploading it again unless you want to switch clips.
+                    Direct clips of the batter work best; videos filmed off another screen are much
+                    harder for pose tracking.
                   </p>
                 </div>
               </div>

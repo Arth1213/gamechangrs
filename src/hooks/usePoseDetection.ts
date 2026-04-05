@@ -116,9 +116,9 @@ function landmarksToJoints(landmarks: Results['poseLandmarks']): Joint[] {
 function hasReliableCoreLandmarks(joints: Joint[]) {
   const visibleCore = REQUIRED_CORE_LANDMARKS
     .map((name) => joints.find((joint) => joint.name === name))
-    .filter((joint): joint is Joint => Boolean(joint) && joint.visibility >= 0.55);
+    .filter((joint): joint is Joint => Boolean(joint) && joint.visibility >= 0.5);
 
-  return visibleCore.length >= 8;
+  return visibleCore.length >= 7;
 }
 
 // Calculate cricket-relevant angles from joints
@@ -334,7 +334,11 @@ export function usePoseDetection() {
 
       const validFrames = frames.filter((frame) => frame.joints.length > 0);
       if (validFrames.length === 0) {
-        throw new Error('No valid pose landmarks were detected in this video');
+        const weakFrames = frames.filter((frame) => frame.joints.length > 0 || frame.angles.length > 0);
+        if (weakFrames.length > 0) {
+          throw new Error('The batter was only partially visible in this clip. Try a closer front-on view with the full body visible and avoid recording a video off another screen.');
+        }
+        throw new Error('The batter could not be isolated clearly enough from this clip. Try a front-on 15-20 second batting video with the whole body in frame.');
       }
       
       setPoseFrames(frames);

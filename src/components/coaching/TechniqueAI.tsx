@@ -107,6 +107,7 @@ interface FrameFeature {
   shoulderTilt: number;
   hipTilt: number;
   stanceRatio: number;
+  visibilityScore: number;
   trailWristLift: number;
   leadWristLift: number;
   wristSeparation: number;
@@ -334,6 +335,11 @@ function stdDev(values: number[]) {
   return Math.sqrt(average(values.map((value) => (value - mean) ** 2)));
 }
 
+function range(values: number[]) {
+  if (!values.length) return 0;
+  return Math.max(...values) - Math.min(...values);
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -427,6 +433,19 @@ function buildFrameFeature(frame: PoseFrame, handedness: Handedness): FrameFeatu
     shoulderTilt: Math.abs(leftShoulder.y - rightShoulder.y) / shoulderSpan,
     hipTilt: Math.abs(leftHip.y - rightHip.y) / hipSpan,
     stanceRatio: stanceWidth / shoulderSpan,
+    visibilityScore: average(
+      [
+        nose,
+        leftShoulder,
+        rightShoulder,
+        leftHip,
+        rightHip,
+        leftAnkle,
+        rightAnkle,
+        leadWrist,
+        trailWrist,
+      ].map((joint) => joint.visibility),
+    ),
     trailWristLift: (trailShoulder.y - trailWrist.y) / shoulderSpan,
     leadWristLift: (leadShoulder.y - leadWrist.y) / shoulderSpan,
     wristSeparation: distance(toPoint(leadWrist), toPoint(trailWrist)) / shoulderSpan,
@@ -470,6 +489,7 @@ function buildReport(
     shotType: ShotType;
     fileName: string;
     durationLabel: string;
+    totalFrames: number;
   },
 ): TrackerReport {
   const shotProfile = SHOT_PROFILES[context.shotType];
@@ -485,28 +505,41 @@ function buildReport(
   const headOffsets = features.map((feature) => feature.headOffset);
   const shoulderTilts = features.map((feature) => feature.shoulderTilt);
   const hipTilts = features.map((feature) => feature.hipTilt);
+  const visibilityScores = features.map((feature) => feature.visibilityScore);
   const handPath = pathDistance(features.map((feature) => feature.handMid)) / first.shoulderSpan;
   const hipShift = Math.abs(last.hipsMid.x - first.hipsMid.x) / Math.max(first.stanceRatio, 0.001);
+  const trailWristRange = range(features.map((feature) => feature.trailWristLift));
+  const leadKneeRange = range(features.map((feature) => feature.leadKneeAngle));
+  const shoulderRotationRange = range(features.map((feature) => feature.shoulderRotation));
+  const coverageRatio = features.length / Math.max(context.totalFrames, features.length);
+  const averageVisibility = average(visibilityScores);
+  const motionReadScore = clamp(
+    handPath * 34 + trailWristRange * 48 + leadKneeRange * 0.18 + shoulderRotationRange * 80 + 28,
+    30,
+    95,
+  );
 
   const metrics = {
-    headStabilityScore: clamp(100 - stdDev(headOffsets) * 210 - average(headOffsets) * 85, 35, 98),
-    setupBaseScore: clamp(100 - Math.abs(average(features.map((feature) => feature.stanceRatio)) - 1.45) * 55, 35, 96),
-    backliftScore: clamp((average(features.map((feature) => feature.trailWristLift)) + 0.35) * 110, 35, 96),
-    triggerScore: clamp(100 - Math.abs(first.leadKneeAngle - middle.leadKneeAngle) * 0.42, 35, 96),
-    rotationScore: clamp((average(features.map((feature) => feature.shoulderRotation + feature.hipRotation)) * 160) + 42, 35, 96),
-    swingPlaneScore: clamp(handPath * 32 + 42, 35, 96),
+    headStabilityScore: clamp(100 - stdDev(headOffsets) * 210 - average(headOffsets) * 92, 30, 94),
+    setupBaseScore: clamp(100 - Math.abs(average(features.map((feature) => feature.stanceRatio)) - 1.45) * 55, 30, 92),
+    backliftScore: clamp((average(features.map((feature) => feature.trailWristLift)) + 0.28) * 105, 30, 92),
+    triggerScore: clamp(100 - Math.abs(first.leadKneeAngle - middle.leadKneeAngle) * 0.48, 30, 92),
+    rotationScore: clamp((average(features.map((feature) => feature.shoulderRotation + feature.hipRotation)) * 150) + 38, 30, 92),
+    swingPlaneScore: clamp(handPath * 30 + 36, 30, 92),
     contactScore: clamp(
       100 -
         Math.abs(middle.wristSeparation - 1.05) * 50 -
-        Math.abs(middle.leadElbowAngle - 138) * 0.22,
-      35,
-      96,
+        Math.abs(middle.leadElbowAngle - 138) * 0.24,
+      30,
+      92,
     ),
-    finishBalanceScore: clamp(100 - (last.headOffset * 95 + average(shoulderTilts) * 90 + average(hipTilts) * 70), 35, 96),
-    transferScore: clamp(hipShift * 120 + 30, 35, 96),
-    frontFootIntentScore: clamp(100 - Math.abs(first.leadKneeAngle - middle.leadKneeAngle) * 0.45 + hipShift * 24, 35, 96),
-    backFootIntentScore: clamp(100 - Math.abs(first.trailKneeAngle - middle.trailKneeAngle) * 0.45 + (1 - Math.min(hipShift, 1)) * 26, 35, 96),
-    sweepIntentScore: clamp(100 - Math.abs(average(features.map((feature) => (feature.leadKneeAngle + feature.trailKneeAngle) / 2)) - 128) * 0.42, 35, 96),
+    finishBalanceScore: clamp(100 - (last.headOffset * 98 + average(shoulderTilts) * 95 + average(hipTilts) * 72), 30, 92),
+    transferScore: clamp(hipShift * 112 + 26, 30, 92),
+    frontFootIntentScore: clamp(100 - Math.abs(first.leadKneeAngle - middle.leadKneeAngle) * 0.48 + hipShift * 20, 30, 92),
+    backFootIntentScore: clamp(100 - Math.abs(first.trailKneeAngle - middle.trailKneeAngle) * 0.48 + (1 - Math.min(hipShift, 1)) * 20, 30, 92),
+    sweepIntentScore: clamp(100 - Math.abs(average(features.map((feature) => (feature.leadKneeAngle + feature.trailKneeAngle) / 2)) - 128) * 0.45, 30, 92),
+    clipReadScore: clamp(coverageRatio * 62 + averageVisibility * 38, 30, 95),
+    motionReadScore,
   };
 
   const phaseScores: PhaseScore[] = [
@@ -519,22 +552,39 @@ function buildReport(
     { key: "shot", label: "Shot Match", weight: 10, score: Math.round(scoreShotFit(context.shotType, metrics)) },
   ];
 
-  const weightedScore = Math.round(
-    phaseScores.reduce((sum, phase) => sum + phase.score * (phase.weight / 100), 0),
-  );
+  const baseWeightedScore = phaseScores.reduce((sum, phase) => sum + phase.score * (phase.weight / 100), 0);
+  const reliabilityPenalty =
+    (coverageRatio < 0.45 ? 12 : coverageRatio < 0.6 ? 7 : 0) +
+    (averageVisibility < 0.62 ? 8 : averageVisibility < 0.72 ? 4 : 0) +
+    (motionReadScore < 52 ? 10 : motionReadScore < 64 ? 5 : 0);
+  const weightedScore = Math.round(clamp(baseWeightedScore - reliabilityPenalty, 42, 92));
 
-  const issueIds = new Set<string>(shotProfile.biases);
-  if (metrics.headStabilityScore < 66) issueIds.add("head-falling-away");
-  if (metrics.setupBaseScore < 65) issueIds.add("open-stance");
-  if (metrics.backliftScore < 64) issueIds.add("backlift-low");
-  if (metrics.triggerScore < 63) issueIds.add("trigger-late");
-  if (metrics.rotationScore < 64 && context.cameraAngle !== "side-on") issueIds.add("shoulder-misalignment");
-  if (metrics.swingPlaneScore < 64) issueIds.add("bat-path-across");
-  if (metrics.contactScore < 63) issueIds.add("hard-hands");
-  if (metrics.transferScore < 64) issueIds.add("weight-transfer-holds");
-  if (metrics.finishBalanceScore < 62) issueIds.add("balance-finish");
-  if (["straight-drive", "cover-drive", "on-drive", "forward-defensive"].includes(context.shotType) && metrics.frontFootIntentScore < 62) {
+  const frontFootShots = ["straight-drive", "cover-drive", "on-drive", "forward-defensive"];
+  const backFootShots = ["pull", "hook", "square-cut", "late-cut", "backward-defensive", "back-foot-punch"];
+  const sweepShots = ["sweep", "slog-sweep-ramp-scoop"];
+
+  const issueIds = new Set<string>();
+  if (metrics.headStabilityScore < 64) issueIds.add("head-falling-away");
+  if (metrics.setupBaseScore < 62) issueIds.add("open-stance");
+  if (metrics.backliftScore < 61 && context.cameraAngle !== "front-on") issueIds.add("backlift-low");
+  if (metrics.triggerScore < 61) issueIds.add("trigger-late");
+  if (metrics.rotationScore < 61 && context.cameraAngle !== "side-on") issueIds.add("shoulder-misalignment");
+  if (metrics.swingPlaneScore < 61 && context.cameraAngle !== "front-on") issueIds.add("bat-path-across");
+  if (metrics.contactScore < 60) issueIds.add("hard-hands");
+  if (metrics.transferScore < 61) issueIds.add("weight-transfer-holds");
+  if (metrics.finishBalanceScore < 59) issueIds.add("balance-finish");
+
+  if (frontFootShots.includes(context.shotType) && metrics.frontFootIntentScore < 61) {
     issueIds.add("front-foot-late");
+    if (metrics.rotationScore < 60) issueIds.add("hip-open-early");
+  }
+
+  if (backFootShots.includes(context.shotType) && metrics.backFootIntentScore < 61) {
+    issueIds.add("trigger-late");
+  }
+
+  if (sweepShots.includes(context.shotType) && metrics.sweepIntentScore < 61) {
+    issueIds.add("contact-too-high");
   }
 
   const findings = Array.from(issueIds)
@@ -554,11 +604,14 @@ function buildReport(
     .sort((a, b) => severityWeight(b.severity) - severityWeight(a.severity))
     .slice(0, 5);
 
-  const drills = sortedFindings.slice(0, 3).map((finding, index) => ({
+  const drills = sortedFindings
+    .filter((finding) => finding.severity !== "minor")
+    .slice(0, 3)
+    .map((finding, index) => ({
     title: `${index + 1}. ${finding.drill}`,
     focus: PHASES.find((phase) => phase.key === finding.category)?.label ?? "Skill",
     description: `${finding.fix} Tip: ${finding.tip}`,
-  }));
+    }));
 
   const strengths = phaseScores
     .filter((phase) => phase.score >= 78)
@@ -569,7 +622,10 @@ function buildReport(
     score: weightedScore,
     band: getBand(weightedScore),
     heading: `${shotProfile.label} batting review complete`,
-    summary: `The tracker read ${features.length} strong pose frames from ${context.fileName}. Best current shape shows in ${strengths.length ? strengths[0].label.toLowerCase() : "setup"}, while the biggest gains will come from sharpening ${sortedFindings.slice(0, 3).map((finding) => finding.title.toLowerCase()).join(", ")}.`,
+    summary:
+      coverageRatio < 0.55 || motionReadScore < 60
+        ? `The tracker extracted ${features.length} reliable pose frames from ${context.fileName}, but the clip quality or shot sequence was only partially readable. The score is conservative, and only directly observed movement faults are included below.`
+        : `The tracker extracted ${features.length} reliable pose frames from ${context.fileName}. Best current shape shows in ${strengths.length ? strengths[0].label.toLowerCase() : "setup"}, while the clearest observed gains come from ${sortedFindings.length ? sortedFindings.slice(0, 3).map((finding) => finding.title.toLowerCase()).join(", ") : "maintaining the current movement sequence"}.`,
     phaseScores,
     findings: sortedFindings,
     drills,
@@ -582,7 +638,7 @@ function buildReport(
       {
         title: "Clip read",
         tag: "Pose",
-        copy: `${features.length} reliable pose frames extracted from a ${context.durationLabel} upload.`,
+        copy: `${features.length}/${context.totalFrames} frames were usable from a ${context.durationLabel} upload. Pose coverage ${Math.round(coverageRatio * 100)}% | landmark visibility ${Math.round(averageVisibility * 100)}%.`,
       },
       {
         title: "Top strengths",
@@ -595,6 +651,14 @@ function buildReport(
         title: "Model cues",
         tag: "Focus",
         copy: shotProfile.cues.join(" | "),
+      },
+      {
+        title: "Read quality",
+        tag: "Guardrail",
+        copy:
+          motionReadScore < 60
+            ? "The clip showed limited full-shot movement, so the model held the score down and avoided speculative drills."
+            : "The clip showed enough movement to support a fuller batting read.",
       },
     ],
   };
@@ -714,6 +778,7 @@ export function TechniqueAI() {
         shotType,
         fileName: selectedFile.name,
         durationLabel,
+        totalFrames: frames.length,
       });
 
       setAnalysis(nextReport);
@@ -1024,6 +1089,11 @@ export function TechniqueAI() {
                   Your highest-impact batting faults will appear here after analysis.
                 </p>
               )}
+              {analysis && analysis.findings.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No direct technical fault crossed the threshold strongly enough to justify a correction call.
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -1050,6 +1120,11 @@ export function TechniqueAI() {
                   Practice drills and coaching tips will appear here after the tracker scores the clip.
                 </p>
               )}
+              {analysis && analysis.drills.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No corrective drill is being suggested because the observed issues were not strong enough to justify one.
+                </p>
+              ) : null}
             </div>
           </div>
         </section>

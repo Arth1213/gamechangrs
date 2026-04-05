@@ -73,6 +73,18 @@ const LANDMARK_NAMES: Record<number, string> = {
   32: 'right_foot_index',
 };
 
+const REQUIRED_CORE_LANDMARKS = [
+  'nose',
+  'left_shoulder',
+  'right_shoulder',
+  'left_hip',
+  'right_hip',
+  'left_wrist',
+  'right_wrist',
+  'left_ankle',
+  'right_ankle',
+] as const;
+
 // Calculate angle between three points using law of cosines
 function calculateAngle(p1: Joint, p2: Joint, p3: Joint): number {
   const ab = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
@@ -99,6 +111,14 @@ function landmarksToJoints(landmarks: Results['poseLandmarks']): Joint[] {
     z: landmark.z || 0,
     visibility: landmark.visibility || 0,
   }));
+}
+
+function hasReliableCoreLandmarks(joints: Joint[]) {
+  const visibleCore = REQUIRED_CORE_LANDMARKS
+    .map((name) => joints.find((joint) => joint.name === name))
+    .filter((joint): joint is Joint => Boolean(joint) && joint.visibility >= 0.55);
+
+  return visibleCore.length >= 8;
 }
 
 // Calculate cricket-relevant angles from joints
@@ -207,12 +227,12 @@ export function usePoseDetection() {
         });
 
         pose.setOptions({
-          modelComplexity: 1,
+          modelComplexity: 2,
           smoothLandmarks: true,
           enableSegmentation: false,
           smoothSegmentation: false,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
+          minDetectionConfidence: 0.65,
+          minTrackingConfidence: 0.65,
         });
 
         await pose.initialize();
@@ -257,8 +277,8 @@ export function usePoseDetection() {
       });
 
       const duration = video.duration;
-      const frameInterval = duration / 30; // Sample 30 frames
-      const totalFrames = 30;
+      const totalFrames = Math.min(Math.max(Math.round(duration * 4), 24), 48);
+      const frameInterval = duration / totalFrames;
 
       // Create canvas for frame extraction
       const canvas = document.createElement('canvas');
@@ -293,8 +313,11 @@ export function usePoseDetection() {
           });
 
           if (results.poseLandmarks) {
-            joints = landmarksToJoints(results.poseLandmarks);
-            angles = calculateCricketAngles(joints);
+            const nextJoints = landmarksToJoints(results.poseLandmarks);
+            if (hasReliableCoreLandmarks(nextJoints)) {
+              joints = nextJoints;
+              angles = calculateCricketAngles(joints);
+            }
           }
         } catch (err) {
           console.warn('Pose detection failed for frame', i, err);

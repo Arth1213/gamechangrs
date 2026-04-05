@@ -4,6 +4,7 @@ import {
   Clipboard,
   Dumbbell,
   Eye,
+  Info,
   Play,
   Sparkles,
   Trash2,
@@ -888,6 +889,22 @@ export function TechniqueAI() {
           </div>
 
           <div className="mt-5">
+            <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 rounded-xl bg-primary/10 p-2">
+                  <Info className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Best results</p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Record the batting clip front-on when possible and keep it around 15-20 seconds
+                    so the model has enough movement to process. Once the video is uploaded, you can
+                    re-run the analysis without uploading it again unless you want to switch clips.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {!selectedFile ? (
               <label className="relative block cursor-pointer rounded-3xl border border-dashed border-primary/30 bg-primary/5 p-10 text-center transition-colors hover:border-primary/60 hover:bg-primary/10">
                 <input
@@ -903,7 +920,7 @@ export function TechniqueAI() {
                   Upload batting video
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  MP4, MOV, AVI. Side-on or front-on clips give the cleanest batting read.
+                  MP4, MOV, AVI. Front-on clips around 15-20 seconds give the cleanest batting read.
                 </p>
               </label>
             ) : (
@@ -935,6 +952,9 @@ export function TechniqueAI() {
                     {SHOT_PROFILES[shotType].label}
                   </span>
                   <span className="rounded-full border border-border px-3 py-1">{cameraAngle}</span>
+                  <span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-primary">
+                    Uploaded once - reuse for new analysis runs
+                  </span>
                 </div>
 
                 <div className="flex flex-wrap gap-3">

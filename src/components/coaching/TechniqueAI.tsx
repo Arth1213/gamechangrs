@@ -108,6 +108,7 @@ interface FrameFeature {
   hipTilt: number;
   stanceRatio: number;
   visibilityScore: number;
+  batControlVisibility: number;
   hasLowerBodyRead: boolean;
   trailWristLift: number;
   leadWristLift: number;
@@ -116,6 +117,9 @@ interface FrameFeature {
   trailKneeAngle: number;
   leadElbowAngle: number;
   trailElbowAngle: number;
+  trailGripCompactness: number;
+  leadGripCompactness: number;
+  trailControlSlot: number;
   shoulderRotation: number;
   hipRotation: number;
   handMid: Point;
@@ -356,6 +360,18 @@ function midpoint(a: Point, b: Point): Point {
   };
 }
 
+function averagePoint(points: Point[]): Point {
+  if (!points.length) {
+    return { x: 0, y: 0, z: 0 };
+  }
+
+  return {
+    x: average(points.map((point) => point.x)),
+    y: average(points.map((point) => point.y)),
+    z: average(points.map((point) => point.z)),
+  };
+}
+
 function pathDistance(points: Point[]) {
   let total = 0;
   for (let index = 1; index < points.length; index += 1) {
@@ -400,6 +416,14 @@ function buildFrameFeature(frame: PoseFrame, handedness: Handedness): FrameFeatu
   const trailWrist = getJoint(frame.joints, `${trailPrefix}_wrist`);
   const leadShoulder = getJoint(frame.joints, `${leadPrefix}_shoulder`);
   const trailShoulder = getJoint(frame.joints, `${trailPrefix}_shoulder`);
+  const leadElbow = getJoint(frame.joints, `${leadPrefix}_elbow`);
+  const trailElbow = getJoint(frame.joints, `${trailPrefix}_elbow`);
+  const leadThumb = getJoint(frame.joints, `${leadPrefix}_thumb`);
+  const trailThumb = getJoint(frame.joints, `${trailPrefix}_thumb`);
+  const leadIndex = getJoint(frame.joints, `${leadPrefix}_index`);
+  const trailIndex = getJoint(frame.joints, `${trailPrefix}_index`);
+  const leadPinky = getJoint(frame.joints, `${leadPrefix}_pinky`);
+  const trailPinky = getJoint(frame.joints, `${trailPrefix}_pinky`);
 
   if (
     !nose ||
@@ -424,6 +448,14 @@ function buildFrameFeature(frame: PoseFrame, handedness: Handedness): FrameFeatu
   }
 
   const getAngle = (name: string) => frame.angles.find((angle) => angle.name === name)?.value ?? 0;
+  const leadHandJoints = [leadWrist, leadThumb, leadIndex, leadPinky].filter(Boolean) as Joint[];
+  const trailHandJoints = [trailWrist, trailThumb, trailIndex, trailPinky].filter(Boolean) as Joint[];
+  const leadHandCenter = averagePoint(leadHandJoints.map((joint) => toPoint(joint)));
+  const trailHandCenter = averagePoint(trailHandJoints.map((joint) => toPoint(joint)));
+  const gripCompactness = (joints: Joint[], center: Point) =>
+    joints.length > 1 ? average(joints.map((joint) => distance(toPoint(joint), center))) / shoulderSpan : 0.055;
+  const trailControlSlot =
+    trailElbow ? distance(toPoint(trailElbow), trailHandCenter) / shoulderSpan : 0.34;
 
   return {
     headOffset: Math.abs(nose.x - hipsMid.x) / shoulderSpan,
@@ -445,17 +477,34 @@ function buildFrameFeature(frame: PoseFrame, handedness: Handedness): FrameFeatu
         .filter(Boolean)
         .map((joint) => (joint as Joint).visibility),
     ),
+    batControlVisibility: average(
+      [
+        leadWrist,
+        trailWrist,
+        leadElbow,
+        trailElbow,
+        leadThumb,
+        trailThumb,
+        leadIndex,
+        trailIndex,
+      ]
+        .filter(Boolean)
+        .map((joint) => (joint as Joint).visibility),
+    ),
     hasLowerBodyRead: Boolean(leftHip && rightHip && leftAnkle && rightAnkle),
     trailWristLift: (trailShoulder.y - trailWrist.y) / shoulderSpan,
     leadWristLift: (leadShoulder.y - leadWrist.y) / shoulderSpan,
-    wristSeparation: distance(toPoint(leadWrist), toPoint(trailWrist)) / shoulderSpan,
+    wristSeparation: distance(leadHandCenter, trailHandCenter) / shoulderSpan,
     leadKneeAngle: getAngle(`${leadPrefix}_knee`),
     trailKneeAngle: getAngle(`${trailPrefix}_knee`),
     leadElbowAngle: getAngle(`${leadPrefix}_elbow`),
     trailElbowAngle: getAngle(`${trailPrefix}_elbow`),
+    trailGripCompactness: gripCompactness(trailHandJoints, trailHandCenter),
+    leadGripCompactness: gripCompactness(leadHandJoints, leadHandCenter),
+    trailControlSlot,
     shoulderRotation: Math.abs(leftShoulder.z - rightShoulder.z) / shoulderSpan,
     hipRotation: Math.abs(leftHip.z - rightHip.z) / hipSpan,
-    handMid: midpoint(toPoint(leadWrist), toPoint(trailWrist)),
+    handMid: midpoint(leadHandCenter, trailHandCenter),
     leadWrist: toPoint(leadWrist),
     trailWrist: toPoint(trailWrist),
     shoulderSpan,
@@ -466,18 +515,38 @@ function buildFrameFeature(frame: PoseFrame, handedness: Handedness): FrameFeatu
 
 function scoreShotFit(shotType: ShotType, metrics: Record<string, number>) {
   if (["straight-drive", "cover-drive", "on-drive", "forward-defensive"].includes(shotType)) {
-    return average([metrics.frontFootIntentScore, metrics.headStabilityScore, metrics.contactScore]);
+    return average([
+      metrics.frontFootIntentScore,
+      metrics.headStabilityScore,
+      metrics.contactScore,
+      metrics.batControlScore,
+    ]);
   }
 
   if (["pull", "hook", "square-cut", "late-cut", "backward-defensive", "back-foot-punch"].includes(shotType)) {
-    return average([metrics.backFootIntentScore, metrics.rotationScore, metrics.contactScore]);
+    return average([
+      metrics.backFootIntentScore,
+      metrics.rotationScore,
+      metrics.contactScore,
+      metrics.batControlScore,
+    ]);
   }
 
   if (["sweep", "slog-sweep-ramp-scoop"].includes(shotType)) {
-    return average([metrics.sweepIntentScore, metrics.swingPlaneScore, metrics.contactScore]);
+    return average([
+      metrics.sweepIntentScore,
+      metrics.swingPlaneScore,
+      metrics.contactScore,
+      metrics.batControlScore,
+    ]);
   }
 
-  return average([metrics.contactScore, metrics.swingPlaneScore, metrics.headStabilityScore]);
+  return average([
+    metrics.contactScore,
+    metrics.swingPlaneScore,
+    metrics.headStabilityScore,
+    metrics.batControlScore,
+  ]);
 }
 
 function buildReport(
@@ -506,6 +575,7 @@ function buildReport(
   const shoulderTilts = features.map((feature) => feature.shoulderTilt);
   const hipTilts = features.map((feature) => feature.hipTilt);
   const visibilityScores = features.map((feature) => feature.visibilityScore);
+  const batControlVisibilityScores = features.map((feature) => feature.batControlVisibility);
   const lowerBodyCoverage = average(features.map((feature) => (feature.hasLowerBodyRead ? 1 : 0)));
   const upperBodyOnlyRead = lowerBodyCoverage < 0.45;
   const handPath = pathDistance(features.map((feature) => feature.handMid)) / first.shoulderSpan;
@@ -513,6 +583,11 @@ function buildReport(
   const trailWristRange = range(features.map((feature) => feature.trailWristLift));
   const leadKneeRange = range(features.map((feature) => feature.leadKneeAngle));
   const shoulderRotationRange = range(features.map((feature) => feature.shoulderRotation));
+  const averageGripCompactness = average(
+    features.map((feature) => feature.trailGripCompactness + feature.leadGripCompactness),
+  );
+  const trailControlSlotAverage = average(features.map((feature) => feature.trailControlSlot));
+  const trailControlSlotVariance = stdDev(features.map((feature) => feature.trailControlSlot));
   const coverageRatio = features.length / Math.max(context.totalFrames, features.length);
   const averageVisibility = average(visibilityScores);
   const motionReadScore = clamp(
@@ -526,16 +601,37 @@ function buildReport(
     setupBaseScore: upperBodyOnlyRead
       ? clamp(90 - average(shoulderTilts) * 140 - stdDev(headOffsets) * 75, 30, 86)
       : clamp(100 - Math.abs(average(features.map((feature) => feature.stanceRatio)) - 1.45) * 55, 30, 92),
-    backliftScore: clamp((average(features.map((feature) => feature.trailWristLift)) + 0.28) * 105, 30, 92),
+    batControlScore: clamp(
+      average([
+        clamp(average(batControlVisibilityScores) * 100, 35, 92),
+        clamp((average(features.map((feature) => feature.trailWristLift)) + 0.26) * 110, 30, 92),
+        clamp(100 - Math.abs(average(features.map((feature) => feature.trailElbowAngle)) - 132) * 0.24, 30, 92),
+        clamp(96 - averageGripCompactness * 220, 30, 92),
+        clamp(96 - Math.abs(trailControlSlotAverage - 0.34) * 90 - trailControlSlotVariance * 220, 30, 92),
+      ]),
+      30,
+      92,
+    ),
+    backliftScore: clamp(
+      average([
+        (average(features.map((feature) => feature.trailWristLift)) + 0.28) * 105,
+        100 - Math.abs(average(features.map((feature) => feature.trailElbowAngle)) - 132) * 0.24,
+        96 - Math.abs(trailControlSlotAverage - 0.34) * 90,
+      ]),
+      30,
+      92,
+    ),
     triggerScore: upperBodyOnlyRead
       ? clamp(78 - stdDev(features.map((feature) => feature.trailWristLift)) * 140, 30, 82)
       : clamp(100 - Math.abs(first.leadKneeAngle - middle.leadKneeAngle) * 0.48, 30, 92),
     rotationScore: clamp((average(features.map((feature) => feature.shoulderRotation + feature.hipRotation)) * 150) + 38, 30, 92),
     swingPlaneScore: clamp(handPath * 30 + 36, 30, 92),
     contactScore: clamp(
-      100 -
-        Math.abs(middle.wristSeparation - 1.05) * 50 -
-        Math.abs(middle.leadElbowAngle - 138) * 0.24,
+      average([
+        100 - Math.abs(middle.wristSeparation - 1.02) * 48 - Math.abs(middle.leadElbowAngle - 138) * 0.22,
+        100 - Math.abs(middle.trailElbowAngle - 132) * 0.22,
+        96 - (middle.trailGripCompactness + middle.leadGripCompactness) * 210,
+      ]),
       30,
       92,
     ),
@@ -551,17 +647,17 @@ function buildReport(
   const phaseScores: PhaseScore[] = upperBodyOnlyRead
     ? [
         { key: "setup", label: "Setup", weight: 24, score: Math.round(average([metrics.headStabilityScore, metrics.setupBaseScore])) },
-        { key: "backlift", label: "Backlift", weight: 22, score: Math.round(average([metrics.backliftScore, metrics.headStabilityScore])) },
-        { key: "downswing", label: "Downswing", weight: 28, score: Math.round(average([metrics.rotationScore, metrics.swingPlaneScore, metrics.headStabilityScore])) },
-        { key: "contact", label: "Contact Zone", weight: 16, score: Math.round(average([metrics.contactScore, metrics.headStabilityScore])) },
-        { key: "shot", label: "Shot Match", weight: 10, score: Math.round(average([metrics.contactScore, metrics.swingPlaneScore, metrics.headStabilityScore])) },
+        { key: "backlift", label: "Backlift", weight: 22, score: Math.round(average([metrics.backliftScore, metrics.batControlScore, metrics.headStabilityScore])) },
+        { key: "downswing", label: "Downswing", weight: 28, score: Math.round(average([metrics.rotationScore, metrics.swingPlaneScore, metrics.batControlScore, metrics.headStabilityScore])) },
+        { key: "contact", label: "Contact Zone", weight: 16, score: Math.round(average([metrics.contactScore, metrics.batControlScore, metrics.headStabilityScore])) },
+        { key: "shot", label: "Shot Match", weight: 10, score: Math.round(scoreShotFit(context.shotType, metrics)) },
       ]
     : [
         { key: "setup", label: "Setup", weight: 16, score: Math.round(average([metrics.headStabilityScore, metrics.setupBaseScore])) },
-        { key: "backlift", label: "Backlift", weight: 20, score: Math.round(average([metrics.backliftScore, metrics.headStabilityScore])) },
+        { key: "backlift", label: "Backlift", weight: 20, score: Math.round(average([metrics.backliftScore, metrics.batControlScore, metrics.headStabilityScore])) },
         { key: "trigger", label: "Trigger", weight: 14, score: Math.round(average([metrics.triggerScore, metrics.setupBaseScore])) },
-        { key: "downswing", label: "Downswing", weight: 28, score: Math.round(average([metrics.rotationScore, metrics.swingPlaneScore, metrics.headStabilityScore])) },
-        { key: "contact", label: "Contact Zone", weight: 12, score: Math.round(average([metrics.contactScore, metrics.headStabilityScore])) },
+        { key: "downswing", label: "Downswing", weight: 28, score: Math.round(average([metrics.rotationScore, metrics.swingPlaneScore, metrics.batControlScore, metrics.headStabilityScore])) },
+        { key: "contact", label: "Contact Zone", weight: 12, score: Math.round(average([metrics.contactScore, metrics.batControlScore, metrics.headStabilityScore])) },
         { key: "shot", label: "Shot Match", weight: 10, score: Math.round(scoreShotFit(context.shotType, metrics)) },
       ];
 
@@ -584,6 +680,10 @@ function buildReport(
   if (metrics.rotationScore < 61 && context.cameraAngle !== "side-on") issueIds.add("shoulder-misalignment");
   if (metrics.swingPlaneScore < 61 && context.cameraAngle !== "front-on") issueIds.add("bat-path-across");
   if (metrics.contactScore < 60) issueIds.add("hard-hands");
+  if (metrics.batControlScore < 60) {
+    issueIds.add("hard-hands");
+    if (context.cameraAngle !== "front-on") issueIds.add("bat-path-across");
+  }
   if (!upperBodyOnlyRead && frontFootShots.includes(context.shotType) && metrics.frontFootIntentScore < 61) {
     issueIds.add("front-foot-late");
     if (metrics.rotationScore < 60) issueIds.add("hip-open-early");
@@ -663,14 +763,19 @@ function buildReport(
         copy: shotProfile.cues.join(" | "),
       },
       {
+        title: "Bat-control read",
+        tag: "Focus",
+        copy: `The tracker prioritised wrists, elbows, and hand landmarks around the handle zone so the score stays anchored to the batter's control pattern instead of the whole frame.`,
+      },
+      {
         title: "Read quality",
         tag: "Guardrail",
         copy:
           upperBodyOnlyRead
-            ? "This clip was read in upper-body mode, which lets streamed or cropped footage score without inventing lower-body advice."
+            ? "This clip was read in upper-body mode, which lets streamed or cropped footage score without inventing lower-body advice. Hand and wrist control carried more of the scoring weight."
             : motionReadScore < 60
             ? "The clip showed limited full-shot movement, so the model held the score down and avoided speculative drills."
-            : "The clip showed enough movement to support a fuller batting read.",
+            : "The clip showed enough movement to support a fuller batting read, with extra weight placed on the batter's hand and bat-control zone.",
       },
     ],
   };

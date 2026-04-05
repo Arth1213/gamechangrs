@@ -60,7 +60,6 @@ type PhaseKey =
   | "trigger"
   | "downswing"
   | "contact"
-  | "followThrough"
   | "shot";
 
 interface PhaseScore {
@@ -133,12 +132,11 @@ interface Point {
 }
 
 const PHASES: Array<{ key: PhaseKey; label: string; weight: number }> = [
-  { key: "setup", label: "Setup", weight: 15 },
-  { key: "backlift", label: "Backlift", weight: 18 },
-  { key: "trigger", label: "Trigger", weight: 12 },
-  { key: "downswing", label: "Downswing", weight: 23 },
+  { key: "setup", label: "Setup", weight: 16 },
+  { key: "backlift", label: "Backlift", weight: 20 },
+  { key: "trigger", label: "Trigger", weight: 14 },
+  { key: "downswing", label: "Downswing", weight: 28 },
   { key: "contact", label: "Contact Zone", weight: 12 },
-  { key: "followThrough", label: "Follow-through", weight: 10 },
   { key: "shot", label: "Shot Match", weight: 10 },
 ];
 
@@ -255,7 +253,7 @@ const ISSUES: Record<string, IssueDefinition> = {
   },
   "weight-transfer-holds": {
     title: "Weight transfer stalls",
-    category: "followThrough",
+    category: "downswing",
     fix: "Finish with momentum through the shot instead of freezing on the back side.",
     drill: "Step-through drives focusing on the chest and belt buckle finishing forward.",
     tip: "Your finish should carry through target, not stop at contact.",
@@ -304,7 +302,7 @@ const ISSUES: Record<string, IssueDefinition> = {
   },
   "balance-finish": {
     title: "Finish loses balance",
-    category: "followThrough",
+    category: "downswing",
     fix: "Hold posture through the finish so the final frame still looks controlled.",
     drill: "Hit-and-hold finish drill with a 2-second balance freeze after every rep.",
     tip: "A stable finish usually means the earlier movement sequence was cleaner too.",
@@ -467,15 +465,15 @@ function buildFrameFeature(frame: PoseFrame, handedness: Handedness): FrameFeatu
 
 function scoreShotFit(shotType: ShotType, metrics: Record<string, number>) {
   if (["straight-drive", "cover-drive", "on-drive", "forward-defensive"].includes(shotType)) {
-    return average([metrics.frontFootIntentScore, metrics.headStabilityScore, metrics.transferScore]);
+    return average([metrics.frontFootIntentScore, metrics.headStabilityScore, metrics.contactScore]);
   }
 
   if (["pull", "hook", "square-cut", "late-cut", "backward-defensive", "back-foot-punch"].includes(shotType)) {
-    return average([metrics.backFootIntentScore, metrics.rotationScore, metrics.finishBalanceScore]);
+    return average([metrics.backFootIntentScore, metrics.rotationScore, metrics.contactScore]);
   }
 
   if (["sweep", "slog-sweep-ramp-scoop"].includes(shotType)) {
-    return average([metrics.sweepIntentScore, metrics.swingPlaneScore, metrics.finishBalanceScore]);
+    return average([metrics.sweepIntentScore, metrics.swingPlaneScore, metrics.contactScore]);
   }
 
   return average([metrics.contactScore, metrics.swingPlaneScore, metrics.headStabilityScore]);
@@ -544,12 +542,11 @@ function buildReport(
   };
 
   const phaseScores: PhaseScore[] = [
-    { key: "setup", label: "Setup", weight: 15, score: Math.round(average([metrics.headStabilityScore, metrics.setupBaseScore])) },
-    { key: "backlift", label: "Backlift", weight: 18, score: Math.round(average([metrics.backliftScore, metrics.headStabilityScore])) },
-    { key: "trigger", label: "Trigger", weight: 12, score: Math.round(average([metrics.triggerScore, metrics.setupBaseScore])) },
-    { key: "downswing", label: "Downswing", weight: 23, score: Math.round(average([metrics.rotationScore, metrics.swingPlaneScore, metrics.headStabilityScore])) },
+    { key: "setup", label: "Setup", weight: 16, score: Math.round(average([metrics.headStabilityScore, metrics.setupBaseScore])) },
+    { key: "backlift", label: "Backlift", weight: 20, score: Math.round(average([metrics.backliftScore, metrics.headStabilityScore])) },
+    { key: "trigger", label: "Trigger", weight: 14, score: Math.round(average([metrics.triggerScore, metrics.setupBaseScore])) },
+    { key: "downswing", label: "Downswing", weight: 28, score: Math.round(average([metrics.rotationScore, metrics.swingPlaneScore, metrics.headStabilityScore])) },
     { key: "contact", label: "Contact Zone", weight: 12, score: Math.round(average([metrics.contactScore, metrics.headStabilityScore])) },
-    { key: "followThrough", label: "Follow-through", weight: 10, score: Math.round(average([metrics.finishBalanceScore, metrics.transferScore])) },
     { key: "shot", label: "Shot Match", weight: 10, score: Math.round(scoreShotFit(context.shotType, metrics)) },
   ];
 
@@ -572,9 +569,6 @@ function buildReport(
   if (metrics.rotationScore < 61 && context.cameraAngle !== "side-on") issueIds.add("shoulder-misalignment");
   if (metrics.swingPlaneScore < 61 && context.cameraAngle !== "front-on") issueIds.add("bat-path-across");
   if (metrics.contactScore < 60) issueIds.add("hard-hands");
-  if (metrics.transferScore < 61) issueIds.add("weight-transfer-holds");
-  if (metrics.finishBalanceScore < 59) issueIds.add("balance-finish");
-
   if (frontFootShots.includes(context.shotType) && metrics.frontFootIntentScore < 61) {
     issueIds.add("front-foot-late");
     if (metrics.rotationScore < 60) issueIds.add("hip-open-early");
@@ -696,6 +690,7 @@ export function TechniqueAI() {
   const [videoDimensions, setVideoDimensions] = useState({ width: 960, height: 540 });
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const analysisCacheRef = useRef(new Map<string, TrackerReport>());
   const containerRef = useRef<HTMLDivElement>(null);
   const { isProcessing, progress, currentFrame, processVideo, reset, error } = usePoseDetection();
 
@@ -757,6 +752,25 @@ export function TechniqueAI() {
     }
 
     try {
+      const analysisCacheKey = [
+        selectedFile.name,
+        selectedFile.size,
+        selectedFile.lastModified,
+        selectedFile.type,
+        handedness,
+        cameraAngle,
+        bowlingType,
+        shotType,
+      ].join(":");
+
+      const cachedAnalysis = analysisCacheRef.current.get(analysisCacheKey);
+      if (cachedAnalysis) {
+        setAnalysis(cachedAnalysis);
+        setStage("complete");
+        toast.success("Batting analysis loaded from the saved clip read.");
+        return;
+      }
+
       setStage("pose");
       setAnalysis(null);
       const frames = await processVideo(selectedFile);
@@ -782,6 +796,7 @@ export function TechniqueAI() {
         totalFrames: frames.length,
       });
 
+      analysisCacheRef.current.set(analysisCacheKey, nextReport);
       setAnalysis(nextReport);
       setStage("complete");
       toast.success("Batting analysis complete.");

@@ -214,6 +214,8 @@ export function usePoseDetection() {
   const [currentFrame, setCurrentFrame] = useState<PoseFrame | null>(null);
   const [error, setError] = useState<string | null>(null);
   const poseRef = useRef<Pose | null>(null);
+  const resultResolverRef = useRef<((results: Results) => void) | null>(null);
+  const frameCacheRef = useRef(new Map<string, PoseFrame[]>());
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Initialize MediaPipe Pose
@@ -235,6 +237,13 @@ export function usePoseDetection() {
           minTrackingConfidence: 0.65,
         });
 
+        pose.onResults((result) => {
+          if (resultResolverRef.current) {
+            resultResolverRef.current(result);
+            resultResolverRef.current = null;
+          }
+        });
+
         await pose.initialize();
         poseRef.current = pose;
       } catch (err) {
@@ -253,6 +262,23 @@ export function usePoseDetection() {
   }, []);
 
   const processVideo = useCallback(async (videoFile: File): Promise<PoseFrame[]> => {
+    const cacheKey = [
+      videoFile.name,
+      videoFile.size,
+      videoFile.lastModified,
+      videoFile.type,
+    ].join(":");
+
+    const cachedFrames = frameCacheRef.current.get(cacheKey);
+    if (cachedFrames) {
+      setPoseFrames(cachedFrames);
+      setCurrentFrame(cachedFrames.find((frame) => frame.joints.length > 0) ?? cachedFrames[cachedFrames.length - 1] ?? null);
+      setProgress(100);
+      setIsProcessing(false);
+      setError(null);
+      return cachedFrames;
+    }
+
     setIsProcessing(true);
     setProgress(0);
     setPoseFrames([]);
@@ -307,9 +333,14 @@ export function usePoseDetection() {
         let angles: Angle[] = [];
 
         try {
-          const results = await new Promise<Results>((resolve) => {
-            poseRef.current!.onResults((result) => resolve(result));
-            poseRef.current!.send({ image: canvas });
+          const results = await new Promise<Results>((resolve, reject) => {
+            resultResolverRef.current = resolve;
+            poseRef.current!
+              .send({ image: canvas })
+              .catch((sendError) => {
+                resultResolverRef.current = null;
+                reject(sendError);
+              });
           });
 
           if (results.poseLandmarks) {
@@ -342,6 +373,7 @@ export function usePoseDetection() {
       }
       
       setPoseFrames(frames);
+      frameCacheRef.current.set(cacheKey, frames);
       setIsProcessing(false);
       return frames;
     } catch (err) {

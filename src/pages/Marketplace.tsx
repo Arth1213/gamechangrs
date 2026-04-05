@@ -4,7 +4,7 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { 
   ShoppingBag, Heart, Search, Filter, ChevronDown, 
-  Plus, Tag, MapPin, Package, Mail, AlertTriangle, CheckCircle
+  Plus, Tag, MapPin, Package, Mail, AlertTriangle, CheckCircle, ArrowUpRight, ShieldCheck
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +37,16 @@ interface Listing {
   is_owner: boolean | null;
   is_active: boolean;
 }
+
+const featuredRetailPartner = {
+  name: "East Bay Cricket Shop",
+  href: "https://eastbaycricshop.com/#new-bats",
+  eyebrow: "Featured Retail Partner",
+  title: "Need Fresh Cricket Gear?",
+  description:
+    "Browse a stronger retail option alongside community listings. We kept the marketplace focused on peer-to-peer gear, but added a clean route out to East Bay Cricket Shop for players who want new bats and retail-ready equipment.",
+  highlights: ["New bats", "Retail cricket gear", "Quick external checkout"],
+};
 
 const Marketplace = () => {
   const [category, setCategory] = useState("All");
@@ -142,6 +152,95 @@ const Marketplace = () => {
                 <p className="text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">Connection Platform Only:</span> We connect buyers and sellers directly. Arrange transactions via email safely.
                 </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Retail Partner */}
+      <section className="py-6 border-b border-border bg-background">
+        <div className="container mx-auto px-4">
+          <div className="overflow-hidden rounded-[28px] border border-border bg-[linear-gradient(135deg,rgba(14,19,28,0.98),rgba(18,30,26,0.94)_45%,rgba(24,16,10,0.94))]">
+            <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="relative p-6 md:p-8 lg:p-10">
+                <div className="absolute -left-16 top-10 h-40 w-40 rounded-full bg-primary/15 blur-3xl" />
+                <div className="absolute bottom-0 right-10 h-32 w-32 rounded-full bg-accent/10 blur-3xl" />
+
+                <div className="relative">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-primary">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    {featuredRetailPartner.eyebrow}
+                  </div>
+
+                  <div className="mt-5 max-w-2xl">
+                    <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground">
+                      {featuredRetailPartner.title}
+                    </h2>
+                    <p className="mt-3 max-w-xl text-sm md:text-base leading-relaxed text-muted-foreground">
+                      {featuredRetailPartner.description}
+                    </p>
+                  </div>
+
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    {featuredRetailPartner.highlights.map((highlight) => (
+                      <span
+                        key={highlight}
+                        className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-foreground/85"
+                      >
+                        {highlight}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="mt-7 flex flex-col sm:flex-row gap-3">
+                    <a
+                      href={featuredRetailPartner.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex"
+                    >
+                      <Button variant="hero" size="default">
+                        Shop East Bay
+                        <ArrowUpRight className="w-4 h-4" />
+                      </Button>
+                    </a>
+                    <a
+                      href={featuredRetailPartner.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex"
+                    >
+                      <Button variant="outline" size="default" className="border-white/15 bg-background/30">
+                        View New Bats
+                      </Button>
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative border-t border-border/70 lg:border-l lg:border-t-0">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_45%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))]" />
+                <div className="relative flex h-full min-h-[260px] items-center justify-center p-6">
+                  <div className="relative h-[210px] w-[210px]">
+                    <div className="absolute inset-0 rounded-full border border-primary/15" />
+                    <div className="absolute inset-[18%] rounded-full border border-accent/20" />
+                    <div className="absolute inset-[32%] rounded-full border border-white/10" />
+
+                    <div className="absolute left-1/2 top-1/2 h-[132px] w-[50px] -translate-x-1/2 -translate-y-1/2 rotate-[18deg]">
+                      <div className="absolute left-1/2 top-0 h-[90px] w-[28px] -translate-x-1/2 rounded-[999px] border border-[rgba(255,232,198,0.28)] bg-[linear-gradient(180deg,rgba(214,187,147,0.98),rgba(150,103,54,0.98))]" />
+                      <div className="absolute bottom-0 left-1/2 h-[54px] w-[12px] -translate-x-1/2 rounded-b-[999px] rounded-t-[12px] bg-[linear-gradient(180deg,rgba(111,69,35,0.98),rgba(62,35,18,1))]" />
+                    </div>
+
+                    <div className="absolute left-1/2 top-1/2 h-[178px] w-[178px] -translate-x-1/2 -translate-y-1/2 animate-orbit-spin">
+                      <div className="absolute left-1/2 top-0 h-[28px] w-[28px] -translate-x-1/2 rounded-full border border-[rgba(255,219,219,0.35)] bg-[radial-gradient(circle_at_32%_28%,rgba(255,235,235,0.9),rgba(210,54,54,0.95)_35%,rgba(112,13,13,1)_78%)] shadow-[0_0_22px_rgba(180,25,25,0.55)]" />
+                    </div>
+
+                    <div className="absolute inset-x-0 bottom-0 mx-auto w-fit rounded-full border border-white/10 bg-background/50 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-white/60">
+                      {featuredRetailPartner.name}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

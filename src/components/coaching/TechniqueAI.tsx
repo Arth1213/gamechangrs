@@ -4,6 +4,7 @@ import {
   Clipboard,
   Dumbbell,
   Eye,
+  FileDown,
   Info,
   Play,
   Sparkles,
@@ -800,6 +801,156 @@ function severityTone(severity: Severity) {
   return "bg-accent/10 text-accent border-accent/20";
 }
 
+function sanitizePdfText(value: string) {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)")
+    .replace(/[^\x20-\x7E]/g, "");
+}
+
+function wrapPdfText(text: string, maxChars = 88) {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (!words.length) return [""];
+
+  const lines: string[] = [];
+  let current = words[0];
+
+  for (let index = 1; index < words.length; index += 1) {
+    const next = `${current} ${words[index]}`;
+    if (next.length <= maxChars) {
+      current = next;
+    } else {
+      lines.push(current);
+      current = words[index];
+    }
+  }
+
+  lines.push(current);
+  return lines;
+}
+
+function buildPdfBytes(lines: string[]) {
+  const pageHeight = 792;
+  const topMargin = 752;
+  const bottomMargin = 52;
+  const lineHeight = 15;
+  const pages: string[][] = [[]];
+  let y = topMargin;
+
+  lines.forEach((line) => {
+    if (y < bottomMargin) {
+      pages.push([]);
+      y = topMargin;
+    }
+    pages[pages.length - 1].push(`1 0 0 1 50 ${y} Tm (${sanitizePdfText(line)}) Tj`);
+    y -= lineHeight;
+  });
+
+  const objects: string[] = [];
+  objects.push("<< /Type /Catalog /Pages 2 0 R >>");
+
+  const pageObjectNumbers = pages.map((_, index) => 4 + index * 2);
+  objects.push(
+    `<< /Type /Pages /Count ${pages.length} /Kids [${pageObjectNumbers.map((number) => `${number} 0 R`).join(" ")}] >>`,
+  );
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+
+  pages.forEach((pageLines, index) => {
+    const pageObjectNumber = 4 + index * 2;
+    const contentObjectNumber = pageObjectNumber + 1;
+    const contentStream = `BT\n/F1 11 Tf\n14 TL\n${pageLines.join("\n")}\nET`;
+    objects.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 ${pageHeight}] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`,
+    );
+    objects.push(`<< /Length ${contentStream.length} >>\nstream\n${contentStream}\nendstream`);
+  });
+
+  let pdf = "%PDF-1.4\n";
+  const offsets: number[] = [0];
+
+  objects.forEach((object, index) => {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += "0000000000 65535 f \n";
+  offsets.slice(1).forEach((offset) => {
+    pdf += `${offset.toString().padStart(10, "0")} 00000 n \n`;
+  });
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+  return new TextEncoder().encode(pdf);
+}
+
+function buildTechniquePdfLines(args: {
+  analysis: TrackerReport;
+  selectedFile: File | null;
+  handedness: Handedness;
+  cameraAngle: CameraAngle;
+  bowlingType: BowlingType;
+  shotType: ShotType;
+}) {
+  const { analysis, selectedFile, handedness, cameraAngle, bowlingType, shotType } = args;
+  const lines: string[] = [
+    "Game Changrs Technique AI Report",
+    "",
+    `Report generated: ${new Date().toLocaleString()}`,
+    `Video: ${selectedFile?.name ?? "Uploaded batting clip"}`,
+    `Overall score: ${analysis.score} (${analysis.band})`,
+    `Shot type: ${SHOT_PROFILES[shotType].label}`,
+    `Handedness: ${handedness}-handed batter`,
+    `Camera angle: ${cameraAngle}`,
+    `Bowling type: ${bowlingType}`,
+    "",
+    analysis.heading,
+    ...wrapPdfText(analysis.summary),
+    "",
+    "Phase scores",
+  ];
+
+  analysis.phaseScores.forEach((phase) => {
+    lines.push(`- ${phase.label}: ${phase.score}/100 (${scoreLabel(phase.score)})`);
+  });
+
+  lines.push("", "Technical feedback");
+  if (analysis.findings.length) {
+    analysis.findings.forEach((finding, index) => {
+      lines.push(`${index + 1}. ${finding.title} [${finding.severity}]`);
+      lines.push(...wrapPdfText(`Fix: ${finding.fix}`, 84));
+      lines.push(...wrapPdfText(`Tip: ${finding.tip}`, 84));
+      lines.push("");
+    });
+  } else {
+    lines.push("No correction crossed the threshold strongly enough to be called out.");
+    lines.push("");
+  }
+
+  lines.push("Recommended drills");
+  if (analysis.drills.length) {
+    analysis.drills.forEach((drill, index) => {
+      lines.push(`${index + 1}. ${drill.title}`);
+      lines.push(...wrapPdfText(`Focus: ${drill.focus}`, 84));
+      lines.push(...wrapPdfText(drill.description, 84));
+      lines.push("");
+    });
+  } else {
+    lines.push("No corrective drill was recommended for this clip.");
+    lines.push("");
+  }
+
+  lines.push("Snapshot");
+  analysis.snapshots.forEach((item) => {
+    lines.push(`${item.title} [${item.tag}]`);
+    lines.push(...wrapPdfText(item.copy, 84));
+    lines.push("");
+  });
+
+  return lines;
+}
+
 export function TechniqueAI() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -942,6 +1093,42 @@ export function TechniqueAI() {
 
     await navigator.clipboard.writeText(text);
     toast.success("Analysis summary copied.");
+  };
+
+  const exportPdfReport = () => {
+    if (!analysis) return;
+
+    try {
+      const pdfLines = buildTechniquePdfLines({
+        analysis,
+        selectedFile,
+        handedness,
+        cameraAngle,
+        bowlingType,
+        shotType,
+      });
+      const pdfBytes = buildPdfBytes(pdfLines);
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const safeFileName = (selectedFile?.name ?? "batting-report")
+        .replace(/\.[^.]+$/, "")
+        .replace(/[^a-z0-9-_]+/gi, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")
+        .toLowerCase();
+
+      link.href = blobUrl;
+      link.download = `${safeFileName || "batting-report"}-technique-report.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl);
+      toast.success("Technique report exported as PDF.");
+    } catch (error) {
+      console.error(error);
+      toast.error("The report could not be exported as a PDF.");
+    }
   };
 
   return (
@@ -1100,6 +1287,10 @@ export function TechniqueAI() {
                   <Button onClick={runAnalysis} disabled={isProcessing} variant="hero">
                     {isProcessing ? <Activity className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                     {isProcessing ? "Reading pose..." : "Analyze batting clip"}
+                  </Button>
+                  <Button onClick={exportPdfReport} disabled={!analysis} variant="outline">
+                    <FileDown className="h-4 w-4" />
+                    Export report as PDF
                   </Button>
                   <Button onClick={copySummary} disabled={!analysis} variant="outline">
                     <Clipboard className="h-4 w-4" />

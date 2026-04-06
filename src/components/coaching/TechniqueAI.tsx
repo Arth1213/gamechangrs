@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PoseOverlay } from "@/components/coaching/PoseOverlay";
@@ -864,20 +865,32 @@ function rgb(color: PdfColor = [34, 34, 34]) {
   return color.map((value) => (value / 255).toFixed(3)).join(" ");
 }
 
-function buildOverallAssessment(analysis: TrackerReport) {
+function getDisplayName(
+  user?: {
+    user_metadata?: Record<string, unknown>;
+    email?: string | null;
+  } | null,
+) {
+  const metadataName = typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name : null;
+  if (metadataName?.trim()) return metadataName.trim();
+  const emailName = user?.email?.split("@")[0]?.trim();
+  return emailName || "Athlete";
+}
+
+function buildOverallAssessment(analysis: TrackerReport, playerName = "The batter") {
   const strongest = [...analysis.phaseScores].sort((a, b) => b.score - a.score)[0];
   const secondary = [...analysis.phaseScores].sort((a, b) => b.score - a.score)[1];
   const mainImprovement = analysis.findings[0];
 
   if (!strongest) {
-    return `This batter produced a ${analysis.band.toLowerCase()} report, but the clip did not create enough stable phase data to support a fuller coaching summary.`;
+    return `${playerName} produced a ${analysis.band.toLowerCase()} report, but the clip did not create enough stable phase data to support a fuller coaching summary.`;
   }
 
   if (!mainImprovement) {
-    return `This batter was strongest in ${strongest.label.toLowerCase()}${secondary ? ` and ${secondary.label.toLowerCase()}` : ""}. The overall profile reads as ${analysis.band.toLowerCase()}, with no major correction crossing the intervention threshold on this clip.`;
+    return `${playerName} was strongest in ${strongest.label.toLowerCase()}${secondary ? ` and ${secondary.label.toLowerCase()}` : ""}. The overall profile reads as ${analysis.band.toLowerCase()}, with no major correction crossing the intervention threshold on this clip.`;
   }
 
-  return `This batter was strongest in ${strongest.label.toLowerCase()}${secondary ? ` and ${secondary.label.toLowerCase()}` : ""}, but could still improve ${mainImprovement.title.toLowerCase()} to raise the overall output beyond the current ${analysis.band.toLowerCase()} level.`;
+  return `${playerName} was strongest in ${strongest.label.toLowerCase()}${secondary ? ` and ${secondary.label.toLowerCase()}` : ""}, but could still improve ${mainImprovement.title.toLowerCase()} to raise the overall output beyond the current ${analysis.band.toLowerCase()} level.`;
 }
 
 function buildPdfBytes(elements: PdfElement[]) {
@@ -885,10 +898,17 @@ function buildPdfBytes(elements: PdfElement[]) {
   const pageWidth = 612;
   const leftMargin = 48;
   const rightMargin = 48;
-  const topMargin = 742;
+  const topMargin = 754;
   const bottomMargin = 54;
   const pages: string[][] = [[]];
   let y = topMargin;
+
+  const addPageChrome = (pageLines: string[]) => {
+    pageLines.unshift(
+      `${rgb([9, 13, 22])} rg 0 0 ${pageWidth} ${pageHeight} re f`,
+      `${rgb([46, 184, 129])} rg 0 ${pageHeight - 7} ${pageWidth} 7 re f`,
+    );
+  };
 
   const ensurePage = (requiredHeight: number) => {
     if (y - requiredHeight < bottomMargin) {
@@ -902,7 +922,7 @@ function buildPdfBytes(elements: PdfElement[]) {
       if (element.gapBefore) y -= element.gapBefore;
       ensurePage(16);
       pages[pages.length - 1].push(
-        `${rgb(element.color ?? [212, 31, 31])} RG 1 w ${leftMargin} ${y} m ${pageWidth - rightMargin} ${y} l S`,
+        `${rgb(element.color ?? [46, 184, 129])} RG 1 w ${leftMargin} ${y} m ${pageWidth - rightMargin} ${y} l S`,
       );
       y -= 14;
       return;
@@ -919,6 +939,8 @@ function buildPdfBytes(elements: PdfElement[]) {
     y -= element.size + 6;
   });
 
+  pages.forEach((pageLines) => addPageChrome(pageLines));
+
   const objects: string[] = [];
   objects.push("<< /Type /Catalog /Pages 2 0 R >>");
 
@@ -932,7 +954,7 @@ function buildPdfBytes(elements: PdfElement[]) {
   pages.forEach((pageLines, index) => {
     const pageObjectNumber = 5 + index * 2;
     const contentObjectNumber = pageObjectNumber + 1;
-    const footer = `BT ${rgb([107, 114, 128])} rg /F1 9 Tf 1 0 0 1 ${leftMargin} 28 Tm (Game Changrs Technique AI Report) Tj ET\nBT ${rgb([107, 114, 128])} rg /F1 9 Tf 1 0 0 1 ${pageWidth - rightMargin - 30} 28 Tm (${index + 1}) Tj ET`;
+    const footer = `BT ${rgb([119, 130, 149])} rg /F1 9 Tf 1 0 0 1 ${leftMargin} 28 Tm (GameChangrs Technique AI Report) Tj ET\nBT ${rgb([119, 130, 149])} rg /F1 9 Tf 1 0 0 1 ${pageWidth - rightMargin - 30} 28 Tm (${index + 1}) Tj ET`;
     const contentStream = `${pageLines.join("\n")}\n${footer}`;
     objects.push(
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`,
@@ -966,24 +988,27 @@ function buildTechniquePdfLines(args: {
   cameraAngle: CameraAngle;
   bowlingType: BowlingType;
   shotType: ShotType;
+  playerName: string;
 }) {
-  const { analysis, selectedFile, handedness, cameraAngle, bowlingType, shotType } = args;
+  const { analysis, selectedFile, handedness, cameraAngle, bowlingType, shotType, playerName } = args;
   const elements: PdfElement[] = [
-    { type: "text", text: "Game Changrs", font: "bold", size: 20, color: [212, 31, 31] },
-    { type: "text", text: "Technique AI Batting Report", font: "bold", size: 24, color: [17, 24, 39], gapBefore: 2 },
-    { type: "text", text: `Generated ${new Date().toLocaleString()}`, font: "regular", size: 10, color: [107, 114, 128], gapBefore: 4 },
-    { type: "rule", gapBefore: 10 },
-    { type: "text", text: `Overall Score: ${analysis.score} / 100`, font: "bold", size: 18, color: [17, 24, 39], gapBefore: 6 },
-    { type: "text", text: `Performance Band: ${analysis.band}`, font: "bold", size: 12, color: [212, 31, 31], gapBefore: 2 },
-    { type: "text", text: buildOverallAssessment(analysis), font: "regular", size: 11, color: [55, 65, 81], gapBefore: 8 },
+    { type: "text", text: "GAMECHANGRS", font: "bold", size: 12, color: [46, 184, 129] },
+    { type: "text", text: "Technique AI Batting Report", font: "bold", size: 24, color: [244, 247, 251], gapBefore: 4 },
+    { type: "text", text: `Prepared for ${playerName}`, font: "bold", size: 14, color: [244, 247, 251], gapBefore: 6 },
+    { type: "text", text: `Generated ${new Date().toLocaleString()}`, font: "regular", size: 10, color: [119, 130, 149], gapBefore: 4 },
+    { type: "rule", color: [46, 184, 129], gapBefore: 10 },
+    { type: "text", text: `Overall Score: ${analysis.score} / 100`, font: "bold", size: 18, color: [244, 247, 251], gapBefore: 8 },
+    { type: "text", text: `Performance Band: ${analysis.band}`, font: "bold", size: 12, color: [249, 167, 45], gapBefore: 2 },
+    { type: "text", text: buildOverallAssessment(analysis, playerName), font: "regular", size: 11, color: [203, 213, 225], gapBefore: 8 },
     { type: "rule", gapBefore: 12 },
-    { type: "text", text: "Clip Context", font: "bold", size: 14, color: [17, 24, 39], gapBefore: 4 },
-    { type: "text", text: `Video file: ${selectedFile?.name ?? "Uploaded batting clip"}`, font: "regular", size: 10.5, color: [55, 65, 81], gapBefore: 6 },
-    { type: "text", text: `Shot type: ${SHOT_PROFILES[shotType].label}`, font: "regular", size: 10.5, color: [55, 65, 81] },
-    { type: "text", text: `Handedness: ${handedness}-handed batter`, font: "regular", size: 10.5, color: [55, 65, 81] },
-    { type: "text", text: `Camera angle: ${cameraAngle}`, font: "regular", size: 10.5, color: [55, 65, 81] },
-    { type: "text", text: `Bowling type: ${bowlingType}`, font: "regular", size: 10.5, color: [55, 65, 81] },
-    { type: "text", text: analysis.heading, font: "bold", size: 13, color: [17, 24, 39], gapBefore: 10 },
+    { type: "text", text: "Clip Context", font: "bold", size: 14, color: [46, 184, 129], gapBefore: 4 },
+    { type: "text", text: `Player: ${playerName}`, font: "regular", size: 10.5, color: [203, 213, 225], gapBefore: 6 },
+    { type: "text", text: `Video file: ${selectedFile?.name ?? "Uploaded batting clip"}`, font: "regular", size: 10.5, color: [203, 213, 225] },
+    { type: "text", text: `Shot type: ${SHOT_PROFILES[shotType].label}`, font: "regular", size: 10.5, color: [203, 213, 225] },
+    { type: "text", text: `Handedness: ${handedness}-handed batter`, font: "regular", size: 10.5, color: [203, 213, 225] },
+    { type: "text", text: `Camera angle: ${cameraAngle}`, font: "regular", size: 10.5, color: [203, 213, 225] },
+    { type: "text", text: `Bowling type: ${bowlingType}`, font: "regular", size: 10.5, color: [203, 213, 225] },
+    { type: "text", text: analysis.heading, font: "bold", size: 13, color: [244, 247, 251], gapBefore: 10 },
   ];
 
   wrapPdfText(analysis.summary, 92).forEach((line, index) => {
@@ -992,27 +1017,27 @@ function buildTechniquePdfLines(args: {
       text: line,
       font: "regular",
       size: 10.5,
-      color: [55, 65, 81],
+      color: [203, 213, 225],
       gapBefore: index === 0 ? 5 : 0,
     });
   });
 
   elements.push({ type: "rule", gapBefore: 12 });
-  elements.push({ type: "text", text: "Phase Breakdown", font: "bold", size: 14, color: [17, 24, 39], gapBefore: 4 });
+  elements.push({ type: "text", text: "What Is Working", font: "bold", size: 14, color: [46, 184, 129], gapBefore: 4 });
   analysis.phaseScores.forEach((phase) => {
     elements.push({
       type: "text",
       text: `${phase.label}: ${phase.score}/100 (${scoreLabel(phase.score)})`,
       font: phase.score >= 75 ? "bold" : "regular",
       size: 10.5,
-      color: [55, 65, 81],
+      color: phase.score >= 75 ? [244, 247, 251] : [203, 213, 225],
       indent: 8,
       gapBefore: 4,
     });
   });
 
   elements.push({ type: "rule", gapBefore: 12 });
-  elements.push({ type: "text", text: "Mistakes and Corrections", font: "bold", size: 14, color: [17, 24, 39], gapBefore: 4 });
+  elements.push({ type: "text", text: "What To Tighten Up", font: "bold", size: 14, color: [46, 184, 129], gapBefore: 4 });
   if (analysis.findings.length) {
     analysis.findings.forEach((finding, index) => {
       elements.push({
@@ -1020,7 +1045,7 @@ function buildTechniquePdfLines(args: {
         text: `${index + 1}. ${finding.title} (${finding.severity})`,
         font: "bold",
         size: 11,
-        color: [31, 41, 55],
+        color: [244, 247, 251],
         gapBefore: 6,
       });
       wrapPdfText(`Fix: ${finding.fix}`, 88).forEach((line, lineIndex) => {
@@ -1029,7 +1054,7 @@ function buildTechniquePdfLines(args: {
           text: line,
           font: "regular",
           size: 10.5,
-          color: [75, 85, 99],
+          color: [203, 213, 225],
           indent: 12,
           gapBefore: lineIndex === 0 ? 3 : 0,
         });
@@ -1040,7 +1065,7 @@ function buildTechniquePdfLines(args: {
           text: line,
           font: "regular",
           size: 10.5,
-          color: [75, 85, 99],
+          color: [249, 167, 45],
           indent: 12,
           gapBefore: lineIndex === 0 ? 2 : 0,
         });
@@ -1052,13 +1077,13 @@ function buildTechniquePdfLines(args: {
       text: "No correction crossed the threshold strongly enough to be called out for this clip.",
       font: "regular",
       size: 10.5,
-      color: [75, 85, 99],
+      color: [203, 213, 225],
       gapBefore: 6,
     });
   }
 
   elements.push({ type: "rule", gapBefore: 12 });
-  elements.push({ type: "text", text: "Recommended Drills", font: "bold", size: 14, color: [17, 24, 39], gapBefore: 4 });
+  elements.push({ type: "text", text: "Training Plan", font: "bold", size: 14, color: [46, 184, 129], gapBefore: 4 });
   if (analysis.drills.length) {
     analysis.drills.forEach((drill, index) => {
       elements.push({
@@ -1066,7 +1091,7 @@ function buildTechniquePdfLines(args: {
         text: `${index + 1}. ${drill.title}`,
         font: "bold",
         size: 11,
-        color: [31, 41, 55],
+        color: [244, 247, 251],
         gapBefore: 6,
       });
       elements.push({
@@ -1074,7 +1099,7 @@ function buildTechniquePdfLines(args: {
         text: `Focus: ${drill.focus}`,
         font: "regular",
         size: 10.5,
-        color: [75, 85, 99],
+        color: [249, 167, 45],
         indent: 12,
         gapBefore: 3,
       });
@@ -1084,7 +1109,7 @@ function buildTechniquePdfLines(args: {
           text: line,
           font: "regular",
           size: 10.5,
-          color: [75, 85, 99],
+          color: [203, 213, 225],
           indent: 12,
         });
       });
@@ -1095,20 +1120,20 @@ function buildTechniquePdfLines(args: {
       text: "No corrective drill was recommended for this clip.",
       font: "regular",
       size: 10.5,
-      color: [75, 85, 99],
+      color: [203, 213, 225],
       gapBefore: 6,
     });
   }
 
   elements.push({ type: "rule", gapBefore: 12 });
-  elements.push({ type: "text", text: "Analysis Snapshot", font: "bold", size: 14, color: [17, 24, 39], gapBefore: 4 });
+  elements.push({ type: "text", text: "Quick Snapshot", font: "bold", size: 14, color: [46, 184, 129], gapBefore: 4 });
   analysis.snapshots.forEach((item) => {
     elements.push({
       type: "text",
       text: `${item.title} (${item.tag})`,
       font: "bold",
       size: 10.8,
-      color: [31, 41, 55],
+      color: [244, 247, 251],
       gapBefore: 6,
     });
     wrapPdfText(item.copy, 88).forEach((line, index) => {
@@ -1117,7 +1142,7 @@ function buildTechniquePdfLines(args: {
         text: line,
         font: "regular",
         size: 10.4,
-        color: [75, 85, 99],
+        color: [203, 213, 225],
         indent: 12,
         gapBefore: index === 0 ? 3 : 0,
       });
@@ -1128,6 +1153,7 @@ function buildTechniquePdfLines(args: {
 }
 
 export function TechniqueAI() {
+  const { user } = useAuth();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<TrackerReport | null>(null);
@@ -1142,6 +1168,7 @@ export function TechniqueAI() {
   const analysisCacheRef = useRef(new Map<string, TrackerReport>());
   const containerRef = useRef<HTMLDivElement>(null);
   const { isProcessing, progress, currentFrame, processVideo, reset, error } = usePoseDetection();
+  const playerName = getDisplayName(user);
 
   const getAnalysisCacheKey = () =>
     [
@@ -1314,11 +1341,17 @@ export function TechniqueAI() {
         cameraAngle,
         bowlingType,
         shotType,
+        playerName,
       });
       const pdfBytes = buildPdfBytes(pdfLines);
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
+      const safePlayerName = playerName
+        .replace(/[^a-z0-9-_]+/gi, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")
+        .toLowerCase();
       const safeFileName = (selectedFile?.name ?? "batting-report")
         .replace(/\.[^.]+$/, "")
         .replace(/[^a-z0-9-_]+/gi, "-")
@@ -1327,7 +1360,7 @@ export function TechniqueAI() {
         .toLowerCase();
 
       link.href = blobUrl;
-      link.download = `${safeFileName || "batting-report"}-technique-report.pdf`;
+      link.download = `${safePlayerName || "athlete"}-${safeFileName || "batting-report"}-technique-report.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -1351,6 +1384,9 @@ export function TechniqueAI() {
               <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">
                 AI batting analysis tracker
               </h2>
+              <p className="mt-2 inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                Reporting for {playerName}
+              </p>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
                 Replace the old analysis flow with a cleaner batting tracker that reads uploaded
                 cricket video, extracts pose landmarks, scores technique, and returns drills.

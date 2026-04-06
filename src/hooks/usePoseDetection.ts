@@ -243,14 +243,13 @@ export function usePoseDetection() {
         });
 
         pose.setOptions({
-          staticImageMode: true,
           modelComplexity: 2,
           smoothLandmarks: false,
           enableSegmentation: false,
           smoothSegmentation: false,
           minDetectionConfidence: 0.65,
           minTrackingConfidence: 0.65,
-        });
+        } as any);
 
         pose.onResults((result) => {
           if (resultResolverRef.current) {

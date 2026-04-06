@@ -190,6 +190,40 @@
     animation: coverDriveShimmer 3.8s ease-in-out infinite;
     transform-origin: 297px 171px;
   }
+
+  .animate-cricket-scene-float {
+    animation: cricketSceneFloat 6.8s ease-in-out infinite;
+  }
+
+  .animate-stadium-light-pulse {
+    animation: stadiumLightPulse 4.4s ease-in-out infinite;
+  }
+
+  .animate-bat-swing {
+    animation: batSwing 2.8s cubic-bezier(0.2, 0.82, 0.25, 1) infinite;
+    transform-origin: 118px 294px;
+  }
+
+  .animate-cover-ball {
+    animation: coverBall 2.8s cubic-bezier(0.18, 0.8, 0.22, 1) infinite;
+    transform-origin: 132px 275px;
+  }
+
+  .animate-cover-trail-wide {
+    animation: coverTrailWide 2.8s ease-out infinite;
+  }
+
+  .animate-cover-trail-mid {
+    animation: coverTrailMid 2.8s ease-out infinite;
+  }
+
+  .animate-cover-trail-core {
+    animation: coverTrailCore 2.8s ease-out infinite;
+  }
+
+  .animate-stumps-glint {
+    animation: stumpsGlint 3.8s ease-in-out infinite;
+  }
 }
 
 @keyframes float {
@@ -411,6 +445,115 @@
   }
   50% {
     filter: brightness(1.08);
+  }
+}
+
+@keyframes cricketSceneFloat {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.01);
+  }
+}
+
+@keyframes stadiumLightPulse {
+  0%, 100% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes batSwing {
+  0%, 100% {
+    transform: rotate(26deg);
+  }
+  18% {
+    transform: rotate(18deg);
+  }
+  38% {
+    transform: rotate(31deg);
+  }
+  55% {
+    transform: rotate(27deg);
+  }
+}
+
+@keyframes coverBall {
+  0% {
+    transform: translate(0px, 0px) scale(0.98);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  72% {
+    transform: translate(174px, -103px) scale(0.86);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(236px, -138px) scale(0.78);
+    opacity: 0;
+  }
+}
+
+@keyframes coverTrailWide {
+  0%, 10% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.65;
+  }
+  72% {
+    opacity: 0.34;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes coverTrailMid {
+  0%, 12% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.85;
+  }
+  72% {
+    opacity: 0.42;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes coverTrailCore {
+  0%, 14% {
+    opacity: 0;
+  }
+  22% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 0.56;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes stumpsGlint {
+  0%, 100% {
+    opacity: 0.82;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.18);
   }
 }
 

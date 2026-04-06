@@ -262,108 +262,113 @@ async function fetchPageText(url: string) {
   return stripHtml(html).slice(0, 16000);
 }
 
+function extractNumberAfterLabel(pageText: string, labels: string[]) {
+  for (const label of labels) {
+    const regex = new RegExp(`${label}\\s*[:\\-]?\\s*([0-9]+(?:\\.[0-9]+)?)`, "i");
+    const match = pageText.match(regex);
+    if (match) {
+      const value = Number(match[1]);
+      if (!Number.isNaN(value)) {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractTextAfterLabel(pageText: string, labels: string[], maxLength = 40) {
+  for (const label of labels) {
+    const regex = new RegExp(`${label}\\s*[:\\-]?\\s*([A-Za-z0-9/().,&\\-\\s]{1,${maxLength}})`, "i");
+    const match = pageText.match(regex);
+    if (match) {
+      return match[1].replace(/\s+/g, " ").trim();
+    }
+  }
+
+  return null;
+}
+
+function extractPlayerName(pageText: string, searchName: string) {
+  const exactRegex = new RegExp(`\\b(${searchName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})\\b`, "i");
+  const exactMatch = pageText.match(exactRegex);
+  if (exactMatch) {
+    return exactMatch[1].trim();
+  }
+
+  return searchName.trim();
+}
+
 async function extractPlayerDataFromText(
   searchName: string,
   url: string,
   pageText: string,
-  lovableApiKey: string,
 ): Promise<ExtractedPlayerData> {
-  const systemPrompt = `You extract cricket player data from a public CricClubs page.
+  const normalizedText = normalizeName(pageText);
+  const normalizedSearch = normalizeName(searchName);
+  const matchedPlayer = normalizedText.includes(normalizedSearch);
 
-Rules:
-- Return JSON only.
-- Extract facts only if they are explicitly supported by the supplied text.
-- Never invent dismissal tendencies, bowler-type strengths, or role labels.
-- If a field is not visible or is ambiguous, return null or an empty array.
-- "matchedPlayer" must only be true if the page appears to be for the searched player.
-- Keep groundingNotes short and factual.`;
+  const playerName = extractPlayerName(pageText, searchName);
+  const team =
+    extractTextAfterLabel(pageText, ["Current Team", "Team", "Club"], 60) ||
+    (url.includes("USACricketJunior") ? "USA Cricket Junior Pathway" : null);
+  const battingStyle = extractTextAfterLabel(pageText, ["Batting Style", "Batting"], 40);
+  const bowlingStyle = extractTextAfterLabel(pageText, ["Bowling Style", "Bowling"], 40);
+  const role = extractTextAfterLabel(pageText, ["Playing Role", "Role"], 32);
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${lovableApiKey}`,
-      "Content-Type": "application/json",
+  const stats = {
+    matches: extractNumberAfterLabel(pageText, ["Matches", "Match"]),
+    innings: extractNumberAfterLabel(pageText, ["Innings", "Inns"]),
+    runs: extractNumberAfterLabel(pageText, ["Runs"]),
+    battingAverage: extractNumberAfterLabel(pageText, ["Bat Avg", "Average", "Avg"]),
+    strikeRate: extractNumberAfterLabel(pageText, ["Strike Rate", "SR"]),
+    highestScore: extractTextAfterLabel(pageText, ["Highest Score", "High Score", "HS"], 12),
+    notOuts: extractNumberAfterLabel(pageText, ["Not Outs", "NO"]),
+    fours: extractNumberAfterLabel(pageText, ["Fours", "4s"]),
+    sixes: extractNumberAfterLabel(pageText, ["Sixes", "6s"]),
+    ducks: extractNumberAfterLabel(pageText, ["Ducks"]),
+    wickets: extractNumberAfterLabel(pageText, ["Wickets", "Wkts"]),
+    bowlingAverage: extractNumberAfterLabel(pageText, ["Bowl Avg", "Bowling Average"]),
+    economy: extractNumberAfterLabel(pageText, ["Economy", "Econ"]),
+    bowlingStrikeRate: extractNumberAfterLabel(pageText, ["Bowling Strike Rate", "Bowl SR"]),
+    bestBowling: extractTextAfterLabel(pageText, ["Best Bowling", "BBF"], 16),
+    maidens: extractNumberAfterLabel(pageText, ["Maidens"]),
+    catches: extractNumberAfterLabel(pageText, ["Catches"]),
+    stumpings: extractNumberAfterLabel(pageText, ["Stumpings"]),
+    runOuts: extractNumberAfterLabel(pageText, ["Run Outs", "Runouts"]),
+  };
+
+  const groundingNotes = [
+    `Public CricClubs page matched for ${playerName}.`,
+    url.includes("USACricketJunior")
+      ? "Source is inside the USA Cricket Junior Pathway CricClubs site."
+      : "Source is a public CricClubs page discovered through web search.",
+  ];
+
+  if (stats.runs !== null) {
+    groundingNotes.push(`Visible public batting output includes ${stats.runs} runs.`);
+  }
+  if (stats.matches !== null) {
+    groundingNotes.push(`Visible public sample includes ${stats.matches} matches.`);
+  }
+
+  return {
+    matchedPlayer,
+    player: {
+      name: playerName,
+      role,
+      team,
+      battingStyle,
+      bowlingStyle,
     },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: `Search name: ${searchName}
-Source URL: ${url}
-
-Extract this schema:
-{
-  "matchedPlayer": boolean,
-  "player": {
-    "name": string | null,
-    "role": string | null,
-    "team": string | null,
-    "battingStyle": string | null,
-    "bowlingStyle": string | null
-  },
-  "stats": {
-    "matches": number | null,
-    "innings": number | null,
-    "runs": number | null,
-    "battingAverage": number | null,
-    "strikeRate": number | null,
-    "highestScore": string | null,
-    "notOuts": number | null,
-    "fours": number | null,
-    "sixes": number | null,
-    "ducks": number | null,
-    "wickets": number | null,
-    "bowlingAverage": number | null,
-    "economy": number | null,
-    "bowlingStrikeRate": number | null,
-    "bestBowling": string | null,
-    "maidens": number | null,
-    "catches": number | null,
-    "stumpings": number | null,
-    "runOuts": number | null
-  },
-  "formatSplits": [
-    {
-      "format": string,
-      "matches": number | null,
-      "runs": number | null,
-      "battingAverage": number | null,
-      "strikeRate": number | null,
-      "wickets": number | null,
-      "economy": number | null
-    }
-  ],
-  "explicitInsights": {
-    "dismissalPatterns": string[],
-    "bowlerTypeNotes": string[],
-    "groundingNotes": string[]
-  }
-}
-
-Page text:
-${pageText}`,
-        },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("AI extraction failed:", response.status, errorText);
-    throw new Error(`AI extraction failed with ${response.status}`);
-  }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-
-  if (!content) {
-    throw new Error("No AI extraction payload returned");
-  }
-
-  return JSON.parse(content) as ExtractedPlayerData;
+    stats,
+    formatSplits: [],
+    explicitInsights: {
+      dismissalPatterns: [],
+      bowlerTypeNotes: [],
+      groundingNotes,
+    },
+  };
 }
 
 function formatMetric(value: number | null, digits = 1) {
@@ -616,11 +621,6 @@ serve(async (req) => {
       return jsonResponse({ error: "A player search query with at least 3 characters is required." }, 400);
     }
 
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableApiKey) {
-      return jsonResponse({ error: "LOVABLE_API_KEY is not configured." }, 500);
-    }
-
     const candidateUrls = await searchCricClubsProfiles(trimmedQuery, clubHint);
     if (candidateUrls.length === 0) {
       return jsonResponse(
@@ -648,7 +648,6 @@ serve(async (req) => {
           trimmedQuery,
           sourceUrl,
           pageText,
-          lovableApiKey,
         );
 
         const overlap = getNameOverlap(trimmedQuery, extracted.player.name);

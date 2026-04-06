@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 type Trend = "up" | "down" | "neutral";
+type SearchStatus = "idle" | "searching" | "remote-success" | "local-preview" | "no-result" | "error";
 
 interface SummaryCard {
   label: string;
@@ -232,6 +233,8 @@ const Analytics = () => {
   const [result, setResult] = useState<CricClubsAnalyticsResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchStatus, setSearchStatus] = useState<SearchStatus>("idle");
+  const [lastSearchedQuery, setLastSearchedQuery] = useState("");
 
   const handleSearch = async () => {
     const trimmedQuery = playerQuery.trim();
@@ -239,11 +242,15 @@ const Analytics = () => {
     if (trimmedQuery.length < 3) {
       setErrorMessage("Enter at least 3 characters for the player search.");
       setResult(null);
+      setSearchStatus("error");
       return;
     }
 
     setIsSearching(true);
     setErrorMessage(null);
+    setResult(null);
+    setLastSearchedQuery(trimmedQuery);
+    setSearchStatus("searching");
 
     try {
       const response = await fetch(
@@ -261,13 +268,14 @@ const Analytics = () => {
         },
       );
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
 
-      if (response.ok && data?.player) {
+      if (response.ok && data?.player && (data.player.name || data.searchQuery || data.sourceUrl)) {
         setResult({
           ...(data as CricClubsAnalyticsResponse),
           previewMode: data.previewMode ?? `${PUBLIC_SCOPE_LABEL} · public CricClubs search`,
         });
+        setSearchStatus("remote-success");
         return;
       }
 
@@ -278,13 +286,17 @@ const Analytics = () => {
           searchedAt: new Date().toISOString(),
           previewMode: `${PUBLIC_SCOPE_LABEL} · verified local preview`,
         });
+        setSearchStatus("local-preview");
         return;
       }
 
-      throw new Error(
+      setSearchStatus("no-result");
+      setErrorMessage(
         data?.error ||
-          `No Bay Area result came back for "${trimmedQuery}". Verified local coverage in this build: ${VERIFIED_PLAYER_NAMES.join(", ")}.`,
+          `No public CricClubs player result came back for "${trimmedQuery}". If the player has a public profile, the next thing to check is the Lovable Cloud logs for this search.`,
       );
+      setResult(null);
+      return;
     } catch (error) {
       const localPreview = getLocalPreviewPlayer(trimmedQuery);
       if (localPreview) {
@@ -294,6 +306,7 @@ const Analytics = () => {
           previewMode: `${PUBLIC_SCOPE_LABEL} · verified local preview`,
         });
         setErrorMessage(null);
+        setSearchStatus("local-preview");
         return;
       }
 
@@ -301,6 +314,7 @@ const Analytics = () => {
         error instanceof Error ? error.message : "Unable to fetch player analytics right now.";
       setErrorMessage(message);
       setResult(null);
+      setSearchStatus("error");
     } finally {
       setIsSearching(false);
     }
@@ -384,6 +398,51 @@ const Analytics = () => {
             area blank instead of inventing an answer.
           </div>
 
+          <div className="mt-4 rounded-2xl border border-border bg-background/80 p-4">
+            <div className="flex items-start gap-3 text-sm">
+              {searchStatus === "searching" ? (
+                <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-primary" />
+              ) : searchStatus === "remote-success" ? (
+                <BarChart3 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              ) : searchStatus === "local-preview" ? (
+                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              ) : searchStatus === "no-result" || searchStatus === "error" ? (
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              ) : (
+                <Search className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              )}
+
+              <div className="space-y-1">
+                <p className="font-medium text-foreground">
+                  {searchStatus === "searching"
+                    ? `Searching public CricClubs sources for "${lastSearchedQuery}"...`
+                    : searchStatus === "remote-success"
+                      ? `Live public stats loaded for "${lastSearchedQuery}".`
+                      : searchStatus === "local-preview"
+                        ? `Remote search did not return a usable profile, so a verified local preview was used for "${lastSearchedQuery}".`
+                        : searchStatus === "no-result"
+                          ? `No public player result was returned for "${lastSearchedQuery}".`
+                          : searchStatus === "error"
+                            ? "The analytics request failed before a usable result was returned."
+                            : "Search a player to check the live CricClubs lookup path."}
+                </p>
+                <p className="text-muted-foreground">
+                  {searchStatus === "searching"
+                    ? "The previous result is cleared while the new request runs so you can see when the latest query is still in flight."
+                    : searchStatus === "remote-success"
+                      ? "This card confirms the frontend received a usable response from the analytics backend."
+                      : searchStatus === "local-preview"
+                        ? "This is grounded fallback data already bundled into the app, not an invented player profile."
+                        : searchStatus === "no-result"
+                          ? "If this player has a public CricClubs profile, the likely next check is the edge function runtime logs for this exact search."
+                          : searchStatus === "error"
+                            ? "The backend may be unreachable, returning invalid JSON, or failing at runtime."
+                            : "Current local verified coverage in this build includes only the players listed below."}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-4 flex flex-wrap gap-2">
             {VERIFIED_PLAYER_NAMES.map((name) => (
               <button
@@ -415,12 +474,22 @@ const Analytics = () => {
             <div className="rounded-3xl border border-border bg-gradient-card p-8 md:p-10">
               <div className="max-w-2xl">
                 <h2 className="font-display text-2xl font-bold text-foreground mb-3">
-                  Search A Verified Bay Area Player
+                  {searchStatus === "searching"
+                    ? "Running Public Player Search"
+                    : searchStatus === "no-result"
+                      ? "No Public Player Result Found"
+                      : searchStatus === "error"
+                        ? "Analytics Request Failed"
+                        : "Search A Verified Bay Area Player"}
                 </h2>
                 <p className="text-muted-foreground mb-6">
-                  This section is now scoped to the Bay Area USA Cricket Junior Pathway Hub. It only
-                  shows verified public CricClubs profiles cached in this build, so the testing flow
-                  stays grounded and does not invent players or unsupported matchup reads.
+                  {searchStatus === "searching"
+                    ? `The app is actively checking the analytics backend for "${lastSearchedQuery}".`
+                    : searchStatus === "no-result"
+                      ? `No usable public CricClubs result was returned for "${lastSearchedQuery}". This UI now keeps that state visible instead of appearing blank.`
+                      : searchStatus === "error"
+                        ? "The search did not complete successfully. Use the error message above to distinguish backend failure from a true no-result."
+                        : "This section is now scoped to the Bay Area USA Cricket Junior Pathway Hub. It only shows verified public CricClubs profiles cached in this build, so the testing flow stays grounded and does not invent players or unsupported matchup reads."}
                 </p>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   {[

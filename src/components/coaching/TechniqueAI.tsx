@@ -830,38 +830,99 @@ function wrapPdfText(text: string, maxChars = 88) {
   return lines;
 }
 
-function buildPdfBytes(lines: string[]) {
+type PdfColor = [number, number, number];
+type PdfElement =
+  | {
+      type: "text";
+      text: string;
+      font: "regular" | "bold";
+      size: number;
+      color?: PdfColor;
+      indent?: number;
+      gapBefore?: number;
+    }
+  | {
+      type: "rule";
+      color?: PdfColor;
+      gapBefore?: number;
+    };
+
+function rgb(color: PdfColor = [34, 34, 34]) {
+  return color.map((value) => (value / 255).toFixed(3)).join(" ");
+}
+
+function buildOverallAssessment(analysis: TrackerReport) {
+  const strongest = [...analysis.phaseScores].sort((a, b) => b.score - a.score)[0];
+  const secondary = [...analysis.phaseScores].sort((a, b) => b.score - a.score)[1];
+  const mainImprovement = analysis.findings[0];
+
+  if (!strongest) {
+    return `This batter produced a ${analysis.band.toLowerCase()} report, but the clip did not create enough stable phase data to support a fuller coaching summary.`;
+  }
+
+  if (!mainImprovement) {
+    return `This batter was strongest in ${strongest.label.toLowerCase()}${secondary ? ` and ${secondary.label.toLowerCase()}` : ""}. The overall profile reads as ${analysis.band.toLowerCase()}, with no major correction crossing the intervention threshold on this clip.`;
+  }
+
+  return `This batter was strongest in ${strongest.label.toLowerCase()}${secondary ? ` and ${secondary.label.toLowerCase()}` : ""}, but could still improve ${mainImprovement.title.toLowerCase()} to raise the overall output beyond the current ${analysis.band.toLowerCase()} level.`;
+}
+
+function buildPdfBytes(elements: PdfElement[]) {
   const pageHeight = 792;
-  const topMargin = 752;
-  const bottomMargin = 52;
-  const lineHeight = 15;
+  const pageWidth = 612;
+  const leftMargin = 48;
+  const rightMargin = 48;
+  const topMargin = 742;
+  const bottomMargin = 54;
   const pages: string[][] = [[]];
   let y = topMargin;
 
-  lines.forEach((line) => {
-    if (y < bottomMargin) {
+  const ensurePage = (requiredHeight: number) => {
+    if (y - requiredHeight < bottomMargin) {
       pages.push([]);
       y = topMargin;
     }
-    pages[pages.length - 1].push(`1 0 0 1 50 ${y} Tm (${sanitizePdfText(line)}) Tj`);
-    y -= lineHeight;
+  };
+
+  elements.forEach((element) => {
+    if (element.type === "rule") {
+      if (element.gapBefore) y -= element.gapBefore;
+      ensurePage(16);
+      pages[pages.length - 1].push(
+        `${rgb(element.color ?? [212, 31, 31])} RG 1 w ${leftMargin} ${y} m ${pageWidth - rightMargin} ${y} l S`,
+      );
+      y -= 14;
+      return;
+    }
+
+    if (element.gapBefore) y -= element.gapBefore;
+    ensurePage(element.size + 8);
+    const x = leftMargin + (element.indent ?? 0);
+    const color = rgb(element.color ?? [31, 41, 55]);
+    const fontName = element.font === "bold" ? "F2" : "F1";
+    pages[pages.length - 1].push(
+      `BT ${color} rg /${fontName} ${element.size} Tf 1 0 0 1 ${x} ${y} Tm (${sanitizePdfText(element.text)}) Tj ET`,
+    );
+    y -= element.size + 6;
   });
 
   const objects: string[] = [];
   objects.push("<< /Type /Catalog /Pages 2 0 R >>");
 
-  const pageObjectNumbers = pages.map((_, index) => 4 + index * 2);
+  const pageObjectNumbers = pages.map((_, index) => 5 + index * 2);
   objects.push(
     `<< /Type /Pages /Count ${pages.length} /Kids [${pageObjectNumbers.map((number) => `${number} 0 R`).join(" ")}] >>`,
   );
   objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
 
   pages.forEach((pageLines, index) => {
-    const pageObjectNumber = 4 + index * 2;
+    const pageObjectNumber = 5 + index * 2;
     const contentObjectNumber = pageObjectNumber + 1;
-    const contentStream = `BT\n/F1 11 Tf\n14 TL\n${pageLines.join("\n")}\nET`;
+    const footer = `BT ${rgb([107, 114, 128])} rg /F1 9 Tf 1 0 0 1 ${leftMargin} 28 Tm (Game Changrs Technique AI Report) Tj ET\nBT ${rgb([107, 114, 128])} rg /F1 9 Tf 1 0 0 1 ${pageWidth - rightMargin - 30} 28 Tm (${index + 1}) Tj ET`;
+    const contentStream = `${pageLines.join("\n")}\n${footer}`;
     objects.push(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 ${pageHeight}] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`,
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`,
     );
     objects.push(`<< /Length ${contentStream.length} >>\nstream\n${contentStream}\nendstream`);
   });
@@ -894,61 +955,163 @@ function buildTechniquePdfLines(args: {
   shotType: ShotType;
 }) {
   const { analysis, selectedFile, handedness, cameraAngle, bowlingType, shotType } = args;
-  const lines: string[] = [
-    "Game Changrs Technique AI Report",
-    "",
-    `Report generated: ${new Date().toLocaleString()}`,
-    `Video: ${selectedFile?.name ?? "Uploaded batting clip"}`,
-    `Overall score: ${analysis.score} (${analysis.band})`,
-    `Shot type: ${SHOT_PROFILES[shotType].label}`,
-    `Handedness: ${handedness}-handed batter`,
-    `Camera angle: ${cameraAngle}`,
-    `Bowling type: ${bowlingType}`,
-    "",
-    analysis.heading,
-    ...wrapPdfText(analysis.summary),
-    "",
-    "Phase scores",
+  const elements: PdfElement[] = [
+    { type: "text", text: "Game Changrs", font: "bold", size: 20, color: [212, 31, 31] },
+    { type: "text", text: "Technique AI Batting Report", font: "bold", size: 24, color: [17, 24, 39], gapBefore: 2 },
+    { type: "text", text: `Generated ${new Date().toLocaleString()}`, font: "regular", size: 10, color: [107, 114, 128], gapBefore: 4 },
+    { type: "rule", gapBefore: 10 },
+    { type: "text", text: `Overall Score: ${analysis.score} / 100`, font: "bold", size: 18, color: [17, 24, 39], gapBefore: 6 },
+    { type: "text", text: `Performance Band: ${analysis.band}`, font: "bold", size: 12, color: [212, 31, 31], gapBefore: 2 },
+    { type: "text", text: buildOverallAssessment(analysis), font: "regular", size: 11, color: [55, 65, 81], gapBefore: 8 },
+    { type: "rule", gapBefore: 12 },
+    { type: "text", text: "Clip Context", font: "bold", size: 14, color: [17, 24, 39], gapBefore: 4 },
+    { type: "text", text: `Video file: ${selectedFile?.name ?? "Uploaded batting clip"}`, font: "regular", size: 10.5, color: [55, 65, 81], gapBefore: 6 },
+    { type: "text", text: `Shot type: ${SHOT_PROFILES[shotType].label}`, font: "regular", size: 10.5, color: [55, 65, 81] },
+    { type: "text", text: `Handedness: ${handedness}-handed batter`, font: "regular", size: 10.5, color: [55, 65, 81] },
+    { type: "text", text: `Camera angle: ${cameraAngle}`, font: "regular", size: 10.5, color: [55, 65, 81] },
+    { type: "text", text: `Bowling type: ${bowlingType}`, font: "regular", size: 10.5, color: [55, 65, 81] },
+    { type: "text", text: analysis.heading, font: "bold", size: 13, color: [17, 24, 39], gapBefore: 10 },
   ];
 
-  analysis.phaseScores.forEach((phase) => {
-    lines.push(`- ${phase.label}: ${phase.score}/100 (${scoreLabel(phase.score)})`);
+  wrapPdfText(analysis.summary, 92).forEach((line, index) => {
+    elements.push({
+      type: "text",
+      text: line,
+      font: "regular",
+      size: 10.5,
+      color: [55, 65, 81],
+      gapBefore: index === 0 ? 5 : 0,
+    });
   });
 
-  lines.push("", "Technical feedback");
+  elements.push({ type: "rule", gapBefore: 12 });
+  elements.push({ type: "text", text: "Phase Breakdown", font: "bold", size: 14, color: [17, 24, 39], gapBefore: 4 });
+  analysis.phaseScores.forEach((phase) => {
+    elements.push({
+      type: "text",
+      text: `${phase.label}: ${phase.score}/100 (${scoreLabel(phase.score)})`,
+      font: phase.score >= 75 ? "bold" : "regular",
+      size: 10.5,
+      color: [55, 65, 81],
+      indent: 8,
+      gapBefore: 4,
+    });
+  });
+
+  elements.push({ type: "rule", gapBefore: 12 });
+  elements.push({ type: "text", text: "Mistakes and Corrections", font: "bold", size: 14, color: [17, 24, 39], gapBefore: 4 });
   if (analysis.findings.length) {
     analysis.findings.forEach((finding, index) => {
-      lines.push(`${index + 1}. ${finding.title} [${finding.severity}]`);
-      lines.push(...wrapPdfText(`Fix: ${finding.fix}`, 84));
-      lines.push(...wrapPdfText(`Tip: ${finding.tip}`, 84));
-      lines.push("");
+      elements.push({
+        type: "text",
+        text: `${index + 1}. ${finding.title} (${finding.severity})`,
+        font: "bold",
+        size: 11,
+        color: [31, 41, 55],
+        gapBefore: 6,
+      });
+      wrapPdfText(`Fix: ${finding.fix}`, 88).forEach((line, lineIndex) => {
+        elements.push({
+          type: "text",
+          text: line,
+          font: "regular",
+          size: 10.5,
+          color: [75, 85, 99],
+          indent: 12,
+          gapBefore: lineIndex === 0 ? 3 : 0,
+        });
+      });
+      wrapPdfText(`Tip: ${finding.tip}`, 88).forEach((line, lineIndex) => {
+        elements.push({
+          type: "text",
+          text: line,
+          font: "regular",
+          size: 10.5,
+          color: [75, 85, 99],
+          indent: 12,
+          gapBefore: lineIndex === 0 ? 2 : 0,
+        });
+      });
     });
   } else {
-    lines.push("No correction crossed the threshold strongly enough to be called out.");
-    lines.push("");
+    elements.push({
+      type: "text",
+      text: "No correction crossed the threshold strongly enough to be called out for this clip.",
+      font: "regular",
+      size: 10.5,
+      color: [75, 85, 99],
+      gapBefore: 6,
+    });
   }
 
-  lines.push("Recommended drills");
+  elements.push({ type: "rule", gapBefore: 12 });
+  elements.push({ type: "text", text: "Recommended Drills", font: "bold", size: 14, color: [17, 24, 39], gapBefore: 4 });
   if (analysis.drills.length) {
     analysis.drills.forEach((drill, index) => {
-      lines.push(`${index + 1}. ${drill.title}`);
-      lines.push(...wrapPdfText(`Focus: ${drill.focus}`, 84));
-      lines.push(...wrapPdfText(drill.description, 84));
-      lines.push("");
+      elements.push({
+        type: "text",
+        text: `${index + 1}. ${drill.title}`,
+        font: "bold",
+        size: 11,
+        color: [31, 41, 55],
+        gapBefore: 6,
+      });
+      elements.push({
+        type: "text",
+        text: `Focus: ${drill.focus}`,
+        font: "regular",
+        size: 10.5,
+        color: [75, 85, 99],
+        indent: 12,
+        gapBefore: 3,
+      });
+      wrapPdfText(drill.description, 88).forEach((line) => {
+        elements.push({
+          type: "text",
+          text: line,
+          font: "regular",
+          size: 10.5,
+          color: [75, 85, 99],
+          indent: 12,
+        });
+      });
     });
   } else {
-    lines.push("No corrective drill was recommended for this clip.");
-    lines.push("");
+    elements.push({
+      type: "text",
+      text: "No corrective drill was recommended for this clip.",
+      font: "regular",
+      size: 10.5,
+      color: [75, 85, 99],
+      gapBefore: 6,
+    });
   }
 
-  lines.push("Snapshot");
+  elements.push({ type: "rule", gapBefore: 12 });
+  elements.push({ type: "text", text: "Analysis Snapshot", font: "bold", size: 14, color: [17, 24, 39], gapBefore: 4 });
   analysis.snapshots.forEach((item) => {
-    lines.push(`${item.title} [${item.tag}]`);
-    lines.push(...wrapPdfText(item.copy, 84));
-    lines.push("");
+    elements.push({
+      type: "text",
+      text: `${item.title} (${item.tag})`,
+      font: "bold",
+      size: 10.8,
+      color: [31, 41, 55],
+      gapBefore: 6,
+    });
+    wrapPdfText(item.copy, 88).forEach((line, index) => {
+      elements.push({
+        type: "text",
+        text: line,
+        font: "regular",
+        size: 10.4,
+        color: [75, 85, 99],
+        indent: 12,
+        gapBefore: index === 0 ? 3 : 0,
+      });
+    });
   });
 
-  return lines;
+  return elements;
 }
 
 export function TechniqueAI() {

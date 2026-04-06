@@ -15,186 +15,16 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
+import {
+  LOCAL_PREVIEW_PLAYERS,
+  type CricClubsAnalyticsResponse,
+  type Trend,
+} from "@/data/analyticsPlayers";
 
-type Trend = "up" | "down" | "neutral";
 type SearchStatus = "idle" | "searching" | "remote-success" | "local-preview" | "no-result" | "error";
-
-interface SummaryCard {
-  label: string;
-  value: string;
-  icon: "players" | "runs" | "batting" | "bowling";
-  changeLabel: string;
-  trend: Trend;
-}
-
-interface DerivedInsight {
-  title: string;
-  body: string;
-}
-
-interface FormatSplit {
-  format: string;
-  matches: number | null;
-  runs: number | null;
-  battingAverage: number | null;
-  strikeRate: number | null;
-  wickets: number | null;
-  economy: number | null;
-}
-
-interface CricClubsAnalyticsResponse {
-  searchQuery: string;
-  sourceUrl: string;
-  searchedAt: string;
-  previewMode?: string | null;
-  player: {
-    name: string | null;
-    role: string | null;
-    team: string | null;
-    battingStyle: string | null;
-    bowlingStyle: string | null;
-  };
-  stats: {
-    matches: number | null;
-    innings: number | null;
-    runs: number | null;
-    battingAverage: number | null;
-    strikeRate: number | null;
-    highestScore: string | null;
-    notOuts: number | null;
-    fours: number | null;
-    sixes: number | null;
-    ducks: number | null;
-    wickets: number | null;
-    bowlingAverage: number | null;
-    economy: number | null;
-    bowlingStrikeRate: number | null;
-    bestBowling: string | null;
-    maidens: number | null;
-    catches: number | null;
-    stumpings: number | null;
-    runOuts: number | null;
-  };
-  formatSplits: FormatSplit[];
-  explicitInsights: {
-    dismissalPatterns: string[];
-    bowlerTypeNotes: string[];
-    groundingNotes: string[];
-  };
-  derived: {
-    summaryCards: SummaryCard[];
-    strengths: DerivedInsight[];
-    concerns: DerivedInsight[];
-    selectionSummary: string;
-    battingProfile: string;
-    dismissalRisk: string;
-    matchupRead: string;
-    recommendation: string;
-    dataLimitations: string[];
-  };
-}
 
 const PUBLIC_SCOPE_LABEL = "USA Cricket Junior Pathway Hub - Bay Area public dataset";
 const REMOTE_SCOPE_HINT = "USA Cricket Junior Pathway Hub Bay Area U15";
-
-const LOCAL_PREVIEW_PLAYERS: CricClubsAnalyticsResponse[] = [
-  {
-    searchQuery: "Arth Arun",
-    sourceUrl: "https://cricclubs.com/USACricketJunior/viewTeam.do?clubId=40319&teamId=1688",
-    searchedAt: new Date().toISOString(),
-    previewMode: "Local verified preview data",
-    player: {
-      name: "Arth Arun",
-      role: "All Rounder",
-      team: "DSCA Rhinos U15",
-      battingStyle: null,
-      bowlingStyle: null,
-    },
-    stats: {
-      matches: 3,
-      innings: 1,
-      runs: 54,
-      battingAverage: 54,
-      strikeRate: 120,
-      highestScore: "54",
-      notOuts: 0,
-      fours: 5,
-      sixes: 2,
-      ducks: 0,
-      wickets: null,
-      bowlingAverage: null,
-      economy: null,
-      bowlingStrikeRate: null,
-      bestBowling: null,
-      maidens: null,
-      catches: null,
-      stumpings: null,
-      runOuts: null,
-    },
-    formatSplits: [
-      {
-        format: "U15 Phase 1",
-        matches: 3,
-        runs: 54,
-        battingAverage: 54,
-        strikeRate: 120,
-        wickets: null,
-        economy: null,
-      },
-      {
-        format: "U15 Preseason",
-        matches: 2,
-        runs: null,
-        battingAverage: null,
-        strikeRate: null,
-        wickets: null,
-        economy: null,
-      },
-    ],
-    explicitInsights: {
-      dismissalPatterns: [],
-      bowlerTypeNotes: [],
-      groundingNotes: [
-        "Verified public USA Cricket Junior Pathway player listed on the DSCA Rhinos U15 team page.",
-        "Public U15 batting table shows 54 runs with high score 54 at strike rate 120.00.",
-      ],
-    },
-    derived: {
-      summaryCards: [
-        { label: "Matches", value: "3", icon: "players", changeLabel: "Small sample", trend: "neutral" },
-        { label: "Runs", value: "54", icon: "runs", changeLabel: "HS 54", trend: "neutral" },
-        { label: "Bat Avg / SR", value: "54 / 120", icon: "batting", changeLabel: "Good start", trend: "up" },
-        { label: "Wickets / Econ", value: "Unavailable", icon: "bowling", changeLabel: "Need more data", trend: "neutral" },
-      ],
-      strengths: [
-        {
-          title: "Positive early batting return",
-          body: "The visible U15 Phase 1 public table shows a productive batting sample with 54 runs at 54.00 average and 120.00 strike rate.",
-        },
-      ],
-      concerns: [
-        {
-          title: "Sample size",
-          body: "The public stat sample is still small, so selection decisions should treat this as an early signal rather than a settled profile.",
-        },
-      ],
-      selectionSummary:
-        "The visible U15 Junior Pathway data supports treating Arth Arun as a real DSCA Rhinos U15 player with an encouraging early batting sample.",
-      battingProfile:
-        "The public U15 batting record shows a compact but positive batting profile so far, with one strong visible innings and healthy scoring tempo.",
-      dismissalRisk:
-        "This preview does not expose a dismissal-mode split for Arth Arun, so no grounded claim is made about how he gets out most often.",
-      matchupRead:
-        "This preview does not expose pace-vs-spin or bowler-arm matchup splits for Arth Arun.",
-      recommendation:
-        "Track as a developing U15 all-rounder with early batting upside, but wait for a larger public sample before making stronger matchup claims.",
-      dataLimitations: [
-        "This localhost preview uses verified public USA Cricket Junior Pathway data cached locally because the remote edge function has not been updated yet.",
-        "Current public U15 pages used here do not expose a full dismissal-type or bowler-type split for Arth Arun.",
-      ],
-    },
-  },
-];
 
 function normalizeQuery(value: string) {
   return value
@@ -209,12 +39,13 @@ function getLocalPreviewPlayer(query: string) {
 
   return (
     LOCAL_PREVIEW_PLAYERS.find((player) => {
-      const playerName = normalizeQuery(player.searchQuery);
-      return (
+      const names = [player.searchQuery, ...(player.aliases ?? [])].map(normalizeQuery);
+
+      return names.some((playerName) => (
         playerName === normalizedQuery ||
         playerName.includes(normalizedQuery) ||
         normalizedQuery.includes(playerName)
-      );
+      ));
     }) ?? null
   );
 }
@@ -253,6 +84,17 @@ const Analytics = () => {
     setSearchStatus("searching");
 
     try {
+      const localPreview = getLocalPreviewPlayer(trimmedQuery);
+      if (localPreview) {
+        setResult({
+          ...localPreview,
+          searchedAt: new Date().toISOString(),
+          previewMode: `${PUBLIC_SCOPE_LABEL} · verified local public profile cache`,
+        });
+        setSearchStatus("local-preview");
+        return;
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cricclubs-player-analytics`,
         {
@@ -279,17 +121,6 @@ const Analytics = () => {
         return;
       }
 
-      const localPreview = getLocalPreviewPlayer(trimmedQuery);
-      if (localPreview) {
-        setResult({
-          ...localPreview,
-          searchedAt: new Date().toISOString(),
-          previewMode: `${PUBLIC_SCOPE_LABEL} · verified local preview`,
-        });
-        setSearchStatus("local-preview");
-        return;
-      }
-
       setSearchStatus("no-result");
       setErrorMessage(
         data?.error ||
@@ -303,7 +134,7 @@ const Analytics = () => {
         setResult({
           ...localPreview,
           searchedAt: new Date().toISOString(),
-          previewMode: `${PUBLIC_SCOPE_LABEL} · verified local preview`,
+          previewMode: `${PUBLIC_SCOPE_LABEL} · verified local public profile cache`,
         });
         setErrorMessage(null);
         setSearchStatus("local-preview");
@@ -392,10 +223,10 @@ const Analytics = () => {
           </div>
 
           <div className="mt-4 rounded-2xl border border-border bg-background/60 p-4 text-sm text-muted-foreground">
-            This build first tries a public CricClubs search with a Bay Area Junior Pathway hint,
-            then falls back to verified local Bay Area profiles if the remote search does not return
-            a usable result. If CricClubs does not expose a stat split, the analysis leaves that
-            area blank instead of inventing an answer.
+            This build now checks a verified local cache of publicly indexed CricClubs player pages
+            and scorecards first, then falls back to remote public search only if the player is not
+            already covered locally. If CricClubs does not expose a stat split, the analysis leaves
+            that area blank instead of inventing an answer.
           </div>
 
           <div className="mt-4 rounded-2xl border border-border bg-background/80 p-4">

@@ -85,6 +85,16 @@ const REQUIRED_CORE_LANDMARKS = [
   'right_ankle',
 ] as const;
 
+const REQUIRED_UPPER_BODY_LANDMARKS = [
+  'nose',
+  'left_shoulder',
+  'right_shoulder',
+  'left_hip',
+  'right_hip',
+  'left_wrist',
+  'right_wrist',
+] as const;
+
 // Calculate angle between three points using law of cosines
 function calculateAngle(p1: Joint, p2: Joint, p3: Joint): number {
   const ab = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
@@ -116,9 +126,13 @@ function landmarksToJoints(landmarks: Results['poseLandmarks']): Joint[] {
 function hasReliableCoreLandmarks(joints: Joint[]) {
   const visibleCore = REQUIRED_CORE_LANDMARKS
     .map((name) => joints.find((joint) => joint.name === name))
-    .filter((joint): joint is Joint => Boolean(joint) && joint.visibility >= 0.5);
+    .filter((joint): joint is Joint => Boolean(joint) && joint.visibility >= 0.45);
 
-  return visibleCore.length >= 7;
+  const visibleUpperBody = REQUIRED_UPPER_BODY_LANDMARKS
+    .map((name) => joints.find((joint) => joint.name === name))
+    .filter((joint): joint is Joint => Boolean(joint) && joint.visibility >= 0.45);
+
+  return visibleCore.length >= 7 || visibleUpperBody.length >= REQUIRED_UPPER_BODY_LANDMARKS.length;
 }
 
 // Calculate cricket-relevant angles from joints
@@ -229,8 +243,9 @@ export function usePoseDetection() {
         });
 
         pose.setOptions({
+          staticImageMode: true,
           modelComplexity: 2,
-          smoothLandmarks: true,
+          smoothLandmarks: false,
           enableSegmentation: false,
           smoothSegmentation: false,
           minDetectionConfidence: 0.65,
@@ -303,7 +318,7 @@ export function usePoseDetection() {
       });
 
       const duration = video.duration;
-      const totalFrames = Math.min(Math.max(Math.round(duration * 4), 24), 48);
+      const totalFrames = Math.min(Math.max(Math.round(duration * 4.5), 28), 60);
       const frameInterval = duration / totalFrames;
 
       // Create canvas for frame extraction

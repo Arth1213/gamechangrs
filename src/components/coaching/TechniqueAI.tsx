@@ -334,6 +334,13 @@ function average(values: number[]) {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 }
 
+function median(values: number[]) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? average([sorted[middle - 1], sorted[middle]]) : sorted[middle];
+}
+
 function stdDev(values: number[]) {
   if (values.length < 2) return 0;
   const mean = average(values);
@@ -371,6 +378,12 @@ function averagePoint(points: Point[]): Point {
     y: average(points.map((point) => point.y)),
     z: average(points.map((point) => point.z)),
   };
+}
+
+function getFeatureAtRatio(features: FrameFeature[], ratio: number) {
+  if (!features.length) return null;
+  const safeRatio = clamp(ratio, 0, 1);
+  return features[Math.round((features.length - 1) * safeRatio)] ?? features[features.length - 1];
 }
 
 function pathDistance(points: Point[]) {
@@ -569,9 +582,9 @@ function buildReport(
     throw new Error("The clip did not keep the batter visible for long enough to produce a reliable batting read.");
   }
 
-  const first = features[0];
-  const middle = features[Math.floor(features.length / 2)];
-  const last = features[features.length - 1];
+  const first = getFeatureAtRatio(features, 0.18) ?? features[0];
+  const middle = getFeatureAtRatio(features, 0.58) ?? features[Math.floor(features.length / 2)];
+  const last = getFeatureAtRatio(features, 0.88) ?? features[features.length - 1];
   const headOffsets = features.map((feature) => feature.headOffset);
   const shoulderTilts = features.map((feature) => feature.shoulderTilt);
   const hipTilts = features.map((feature) => feature.hipTilt);
@@ -598,15 +611,15 @@ function buildReport(
   );
 
   const metrics = {
-    headStabilityScore: clamp(100 - stdDev(headOffsets) * 210 - average(headOffsets) * 92, 30, 94),
+    headStabilityScore: clamp(100 - stdDev(headOffsets) * 185 - median(headOffsets) * 92, 30, 94),
     setupBaseScore: upperBodyOnlyRead
-      ? clamp(90 - average(shoulderTilts) * 140 - stdDev(headOffsets) * 75, 30, 86)
-      : clamp(100 - Math.abs(average(features.map((feature) => feature.stanceRatio)) - 1.45) * 55, 30, 92),
+      ? clamp(90 - median(shoulderTilts) * 135 - stdDev(headOffsets) * 68, 30, 86)
+      : clamp(100 - Math.abs(median(features.map((feature) => feature.stanceRatio)) - 1.45) * 52, 30, 92),
     batControlScore: clamp(
       average([
-        clamp(average(batControlVisibilityScores) * 100, 35, 92),
-        clamp((average(features.map((feature) => feature.trailWristLift)) + 0.26) * 110, 30, 92),
-        clamp(100 - Math.abs(average(features.map((feature) => feature.trailElbowAngle)) - 132) * 0.24, 30, 92),
+        clamp(median(batControlVisibilityScores) * 100, 35, 92),
+        clamp((median(features.map((feature) => feature.trailWristLift)) + 0.26) * 110, 30, 92),
+        clamp(100 - Math.abs(median(features.map((feature) => feature.trailElbowAngle)) - 132) * 0.24, 30, 92),
         clamp(96 - averageGripCompactness * 220, 30, 92),
         clamp(96 - Math.abs(trailControlSlotAverage - 0.34) * 90 - trailControlSlotVariance * 220, 30, 92),
       ]),
@@ -615,8 +628,8 @@ function buildReport(
     ),
     backliftScore: clamp(
       average([
-        (average(features.map((feature) => feature.trailWristLift)) + 0.28) * 105,
-        100 - Math.abs(average(features.map((feature) => feature.trailElbowAngle)) - 132) * 0.24,
+        (median(features.map((feature) => feature.trailWristLift)) + 0.28) * 105,
+        100 - Math.abs(median(features.map((feature) => feature.trailElbowAngle)) - 132) * 0.24,
         96 - Math.abs(trailControlSlotAverage - 0.34) * 90,
       ]),
       30,
@@ -640,7 +653,7 @@ function buildReport(
     transferScore: upperBodyOnlyRead ? 58 : clamp(hipShift * 112 + 26, 30, 92),
     frontFootIntentScore: clamp(100 - Math.abs(first.leadKneeAngle - middle.leadKneeAngle) * 0.48 + hipShift * 20, 30, 92),
     backFootIntentScore: clamp(100 - Math.abs(first.trailKneeAngle - middle.trailKneeAngle) * 0.48 + (1 - Math.min(hipShift, 1)) * 20, 30, 92),
-    sweepIntentScore: clamp(100 - Math.abs(average(features.map((feature) => (feature.leadKneeAngle + feature.trailKneeAngle) / 2)) - 128) * 0.45, 30, 92),
+    sweepIntentScore: clamp(100 - Math.abs(median(features.map((feature) => (feature.leadKneeAngle + feature.trailKneeAngle) / 2)) - 128) * 0.45, 30, 92),
     clipReadScore: clamp(coverageRatio * 62 + averageVisibility * 38, 30, 95),
     motionReadScore,
   };
@@ -664,9 +677,9 @@ function buildReport(
 
   const baseWeightedScore = phaseScores.reduce((sum, phase) => sum + phase.score * (phase.weight / 100), 0);
   const reliabilityPenalty =
-    (coverageRatio < 0.45 ? 12 : coverageRatio < 0.6 ? 7 : 0) +
-    (averageVisibility < 0.62 ? 8 : averageVisibility < 0.72 ? 4 : 0) +
-    (motionReadScore < 52 ? 10 : motionReadScore < 64 ? 5 : 0);
+    clamp((0.62 - coverageRatio) * 24, 0, 8) +
+    clamp((0.72 - averageVisibility) * 22, 0, 6) +
+    clamp((60 - motionReadScore) * 0.24, 0, 6);
   const weightedScore = Math.round(clamp(baseWeightedScore - reliabilityPenalty, 42, 92));
 
   const frontFootShots = ["straight-drive", "cover-drive", "on-drive", "forward-defensive"];
@@ -1130,6 +1143,37 @@ export function TechniqueAI() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { isProcessing, progress, currentFrame, processVideo, reset, error } = usePoseDetection();
 
+  const getAnalysisCacheKey = () =>
+    [
+      "technique-ai-v2",
+      selectedFile?.name ?? "no-file",
+      selectedFile?.size ?? 0,
+      selectedFile?.lastModified ?? 0,
+      selectedFile?.type ?? "unknown",
+      handedness,
+      cameraAngle,
+      bowlingType,
+      shotType,
+    ].join(":");
+
+  const readPersistedAnalysis = (cacheKey: string) => {
+    try {
+      const raw = window.localStorage.getItem(cacheKey);
+      if (!raw) return null;
+      return JSON.parse(raw) as TrackerReport;
+    } catch {
+      return null;
+    }
+  };
+
+  const persistAnalysis = (cacheKey: string, report: TrackerReport) => {
+    try {
+      window.localStorage.setItem(cacheKey, JSON.stringify(report));
+    } catch {
+      // Ignore localStorage write failures.
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (videoUrl) {
@@ -1188,20 +1232,20 @@ export function TechniqueAI() {
     }
 
     try {
-      const analysisCacheKey = [
-        selectedFile.name,
-        selectedFile.size,
-        selectedFile.lastModified,
-        selectedFile.type,
-        handedness,
-        cameraAngle,
-        bowlingType,
-        shotType,
-      ].join(":");
+      const analysisCacheKey = getAnalysisCacheKey();
 
       const cachedAnalysis = analysisCacheRef.current.get(analysisCacheKey);
       if (cachedAnalysis) {
         setAnalysis(cachedAnalysis);
+        setStage("complete");
+        toast.success("Batting analysis loaded from the saved clip read.");
+        return;
+      }
+
+      const persistedAnalysis = readPersistedAnalysis(analysisCacheKey);
+      if (persistedAnalysis) {
+        analysisCacheRef.current.set(analysisCacheKey, persistedAnalysis);
+        setAnalysis(persistedAnalysis);
         setStage("complete");
         toast.success("Batting analysis loaded from the saved clip read.");
         return;
@@ -1233,6 +1277,7 @@ export function TechniqueAI() {
       });
 
       analysisCacheRef.current.set(analysisCacheKey, nextReport);
+      persistAnalysis(analysisCacheKey, nextReport);
       setAnalysis(nextReport);
       setStage("complete");
       toast.success("Batting analysis complete.");

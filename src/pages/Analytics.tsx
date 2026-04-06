@@ -94,6 +94,7 @@ interface CricClubsAnalyticsResponse {
 }
 
 const PUBLIC_SCOPE_LABEL = "USA Cricket Junior Pathway Hub - Bay Area public dataset";
+const REMOTE_SCOPE_HINT = "USA Cricket Junior Pathway Hub Bay Area U15";
 
 const LOCAL_PREVIEW_PLAYERS: CricClubsAnalyticsResponse[] = [
   {
@@ -245,20 +246,57 @@ const Analytics = () => {
     setErrorMessage(null);
 
     try {
-      const localPreview = getLocalPreviewPlayer(trimmedQuery);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cricclubs-player-analytics`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            query: trimmedQuery,
+            clubHint: REMOTE_SCOPE_HINT,
+          }),
+        },
+      );
 
-      if (!localPreview) {
-        throw new Error(
-          `No verified Bay Area Junior Pathway player is cached locally for "${trimmedQuery}" yet. Current test coverage: ${VERIFIED_PLAYER_NAMES.join(", ")}.`,
-        );
+      const data = await response.json();
+
+      if (response.ok && data?.player) {
+        setResult({
+          ...(data as CricClubsAnalyticsResponse),
+          previewMode: data.previewMode ?? `${PUBLIC_SCOPE_LABEL} · public CricClubs search`,
+        });
+        return;
       }
 
-      setResult({
-        ...localPreview,
-        searchedAt: new Date().toISOString(),
-        previewMode: `${PUBLIC_SCOPE_LABEL} · verified local preview`,
-      });
+      const localPreview = getLocalPreviewPlayer(trimmedQuery);
+      if (localPreview) {
+        setResult({
+          ...localPreview,
+          searchedAt: new Date().toISOString(),
+          previewMode: `${PUBLIC_SCOPE_LABEL} · verified local preview`,
+        });
+        return;
+      }
+
+      throw new Error(
+        data?.error ||
+          `No Bay Area result came back for "${trimmedQuery}". Verified local coverage in this build: ${VERIFIED_PLAYER_NAMES.join(", ")}.`,
+      );
     } catch (error) {
+      const localPreview = getLocalPreviewPlayer(trimmedQuery);
+      if (localPreview) {
+        setResult({
+          ...localPreview,
+          searchedAt: new Date().toISOString(),
+          previewMode: `${PUBLIC_SCOPE_LABEL} · verified local preview`,
+        });
+        setErrorMessage(null);
+        return;
+      }
+
       const message =
         error instanceof Error ? error.message : "Unable to fetch player analytics right now.";
       setErrorMessage(message);
@@ -299,6 +337,9 @@ const Analytics = () => {
             <span className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
               Verified players in this build: {VERIFIED_PLAYER_NAMES.length}
             </span>
+            <span className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
+              Remote public search: enabled
+            </span>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
@@ -337,8 +378,10 @@ const Analytics = () => {
           </div>
 
           <div className="mt-4 rounded-2xl border border-border bg-background/60 p-4 text-sm text-muted-foreground">
-            This build uses verified public CricClubs data only for Bay Area Junior Pathway testing.
-            If CricClubs does not expose a stat split, the analysis leaves that area blank instead of inventing an answer.
+            This build first tries a public CricClubs search with a Bay Area Junior Pathway hint,
+            then falls back to verified local Bay Area profiles if the remote search does not return
+            a usable result. If CricClubs does not expose a stat split, the analysis leaves that
+            area blank instead of inventing an answer.
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">

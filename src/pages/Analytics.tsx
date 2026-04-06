@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import {
   AlertCircle,
   ArrowUpRight,
@@ -46,6 +45,7 @@ interface CricClubsAnalyticsResponse {
   searchQuery: string;
   sourceUrl: string;
   searchedAt: string;
+  previewMode?: string | null;
   player: {
     name: string | null;
     role: string | null;
@@ -93,6 +93,130 @@ interface CricClubsAnalyticsResponse {
   };
 }
 
+const PUBLIC_SCOPE_LABEL = "USA Cricket Junior Pathway Hub - Bay Area public dataset";
+
+const LOCAL_PREVIEW_PLAYERS: CricClubsAnalyticsResponse[] = [
+  {
+    searchQuery: "Arth Arun",
+    sourceUrl: "https://cricclubs.com/USACricketJunior/viewTeam.do?clubId=40319&teamId=1688",
+    searchedAt: new Date().toISOString(),
+    previewMode: "Local verified preview data",
+    player: {
+      name: "Arth Arun",
+      role: "All Rounder",
+      team: "DSCA Rhinos U15",
+      battingStyle: null,
+      bowlingStyle: null,
+    },
+    stats: {
+      matches: 3,
+      innings: 1,
+      runs: 54,
+      battingAverage: 54,
+      strikeRate: 120,
+      highestScore: "54",
+      notOuts: 0,
+      fours: 5,
+      sixes: 2,
+      ducks: 0,
+      wickets: null,
+      bowlingAverage: null,
+      economy: null,
+      bowlingStrikeRate: null,
+      bestBowling: null,
+      maidens: null,
+      catches: null,
+      stumpings: null,
+      runOuts: null,
+    },
+    formatSplits: [
+      {
+        format: "U15 Phase 1",
+        matches: 3,
+        runs: 54,
+        battingAverage: 54,
+        strikeRate: 120,
+        wickets: null,
+        economy: null,
+      },
+      {
+        format: "U15 Preseason",
+        matches: 2,
+        runs: null,
+        battingAverage: null,
+        strikeRate: null,
+        wickets: null,
+        economy: null,
+      },
+    ],
+    explicitInsights: {
+      dismissalPatterns: [],
+      bowlerTypeNotes: [],
+      groundingNotes: [
+        "Verified public USA Cricket Junior Pathway player listed on the DSCA Rhinos U15 team page.",
+        "Public U15 batting table shows 54 runs with high score 54 at strike rate 120.00.",
+      ],
+    },
+    derived: {
+      summaryCards: [
+        { label: "Matches", value: "3", icon: "players", changeLabel: "Small sample", trend: "neutral" },
+        { label: "Runs", value: "54", icon: "runs", changeLabel: "HS 54", trend: "neutral" },
+        { label: "Bat Avg / SR", value: "54 / 120", icon: "batting", changeLabel: "Good start", trend: "up" },
+        { label: "Wickets / Econ", value: "Unavailable", icon: "bowling", changeLabel: "Need more data", trend: "neutral" },
+      ],
+      strengths: [
+        {
+          title: "Positive early batting return",
+          body: "The visible U15 Phase 1 public table shows a productive batting sample with 54 runs at 54.00 average and 120.00 strike rate.",
+        },
+      ],
+      concerns: [
+        {
+          title: "Sample size",
+          body: "The public stat sample is still small, so selection decisions should treat this as an early signal rather than a settled profile.",
+        },
+      ],
+      selectionSummary:
+        "The visible U15 Junior Pathway data supports treating Arth Arun as a real DSCA Rhinos U15 player with an encouraging early batting sample.",
+      battingProfile:
+        "The public U15 batting record shows a compact but positive batting profile so far, with one strong visible innings and healthy scoring tempo.",
+      dismissalRisk:
+        "This preview does not expose a dismissal-mode split for Arth Arun, so no grounded claim is made about how he gets out most often.",
+      matchupRead:
+        "This preview does not expose pace-vs-spin or bowler-arm matchup splits for Arth Arun.",
+      recommendation:
+        "Track as a developing U15 all-rounder with early batting upside, but wait for a larger public sample before making stronger matchup claims.",
+      dataLimitations: [
+        "This localhost preview uses verified public USA Cricket Junior Pathway data cached locally because the remote edge function has not been updated yet.",
+        "Current public U15 pages used here do not expose a full dismissal-type or bowler-type split for Arth Arun.",
+      ],
+    },
+  },
+];
+
+function normalizeQuery(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function getLocalPreviewPlayer(query: string) {
+  const normalizedQuery = normalizeQuery(query);
+
+  return (
+    LOCAL_PREVIEW_PLAYERS.find((player) => {
+      const playerName = normalizeQuery(player.searchQuery);
+      return (
+        playerName === normalizedQuery ||
+        playerName.includes(normalizedQuery) ||
+        normalizedQuery.includes(playerName)
+      );
+    }) ?? null
+  );
+}
+
 const statIconMap = {
   players: Users,
   runs: BarChart3,
@@ -100,16 +224,16 @@ const statIconMap = {
   bowling: Target,
 } as const;
 
+const VERIFIED_PLAYER_NAMES = LOCAL_PREVIEW_PLAYERS.map((player) => player.searchQuery);
+
 const Analytics = () => {
   const [playerQuery, setPlayerQuery] = useState("");
-  const [clubHint, setClubHint] = useState("");
   const [result, setResult] = useState<CricClubsAnalyticsResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
 
   const handleSearch = async () => {
     const trimmedQuery = playerQuery.trim();
-    const trimmedHint = clubHint.trim();
 
     if (trimmedQuery.length < 3) {
       setErrorMessage("Enter at least 3 characters for the player search.");
@@ -121,32 +245,19 @@ const Analytics = () => {
     setErrorMessage(null);
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cricclubs-player-analytics`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({
-            query: trimmedQuery,
-            clubHint: trimmedHint || null,
-          }),
-        },
-      );
+      const localPreview = getLocalPreviewPlayer(trimmedQuery);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.error || `Search failed (${response.status})`);
+      if (!localPreview) {
+        throw new Error(
+          `No verified Bay Area Junior Pathway player is cached locally for "${trimmedQuery}" yet. Current test coverage: ${VERIFIED_PLAYER_NAMES.join(", ")}.`,
+        );
       }
 
-      if (!data || !data.player) {
-        throw new Error("No player data came back from CricClubs.");
-      }
-
-      setResult(data as CricClubsAnalyticsResponse);
+      setResult({
+        ...localPreview,
+        searchedAt: new Date().toISOString(),
+        previewMode: `${PUBLIC_SCOPE_LABEL} · verified local preview`,
+      });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to fetch player analytics right now.";
@@ -166,14 +277,14 @@ const Analytics = () => {
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
               <BarChart3 className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">CricClubs Live Search</span>
+              <span className="text-sm font-medium text-primary">Bay Area CricClubs Analytics</span>
             </div>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
               Analytics <span className="text-gradient-primary">Engine</span>
             </h1>
             <p className="text-lg text-muted-foreground">
-              Search a real player name, pull the public CricClubs profile, and turn actual stats
-              into grounded scouting notes for selection and match planning.
+              Search a verified Bay Area USA Cricket Junior Pathway player and turn public CricClubs
+              stats into grounded scouting notes for selection and match planning.
             </p>
           </div>
         </div>
@@ -181,12 +292,21 @@ const Analytics = () => {
 
       <section className="py-8 border-b border-border bg-card">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr_auto] gap-4">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              Scope: {PUBLIC_SCOPE_LABEL}
+            </span>
+            <span className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
+              Verified players in this build: {VERIFIED_PLAYER_NAMES.length}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search CricClubs player name..."
+                placeholder="Search Bay Area player name..."
                 value={playerQuery}
                 onChange={(event) => setPlayerQuery(event.target.value)}
                 onKeyDown={(event) => {
@@ -198,23 +318,10 @@ const Analytics = () => {
               />
             </div>
 
-            <input
-              type="text"
-              placeholder="Optional club or league hint"
-              value={clubHint}
-              onChange={(event) => setClubHint(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  void handleSearch();
-                }
-              }}
-              className="w-full h-12 px-4 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
-
             <Button
               variant="hero"
               size="lg"
-              className="h-12"
+              className="h-12 w-full md:w-auto"
               disabled={isSearching}
               onClick={() => void handleSearch()}
             >
@@ -229,9 +336,25 @@ const Analytics = () => {
             </Button>
           </div>
 
-          <div className="mt-4 text-sm text-muted-foreground">
-            This uses public CricClubs pages only. If CricClubs does not expose a stat split, the
-            analysis leaves that area blank instead of inventing an answer.
+          <div className="mt-4 rounded-2xl border border-border bg-background/60 p-4 text-sm text-muted-foreground">
+            This build uses verified public CricClubs data only for Bay Area Junior Pathway testing.
+            If CricClubs does not expose a stat split, the analysis leaves that area blank instead of inventing an answer.
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {VERIFIED_PLAYER_NAMES.map((name) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => {
+                  setPlayerQuery(name);
+                  setErrorMessage(null);
+                }}
+                className="rounded-full border border-border bg-background px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                {name}
+              </button>
+            ))}
           </div>
 
           {errorMessage ? (
@@ -249,22 +372,22 @@ const Analytics = () => {
             <div className="rounded-3xl border border-border bg-gradient-card p-8 md:p-10">
               <div className="max-w-2xl">
                 <h2 className="font-display text-2xl font-bold text-foreground mb-3">
-                  Search A Player To Replace The Mock Analytics
+                  Search A Verified Bay Area Player
                 </h2>
                 <p className="text-muted-foreground mb-6">
-                  This section no longer depends on fake sample teams or demo players. It waits for
-                  a real CricClubs search, then shows only the stats and scouting notes grounded in
-                  that public player profile.
+                  This section is now scoped to the Bay Area USA Cricket Junior Pathway Hub. It only
+                  shows verified public CricClubs profiles cached in this build, so the testing flow
+                  stays grounded and does not invent players or unsupported matchup reads.
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   {[
                     {
-                      title: "Selection View",
-                      body: "Instant summary for coaches deciding whether a player is more anchor, enforcer, all-round cover, or matchup-specific.",
+                      title: "Bay Area Scope",
+                      body: "The search is intentionally limited to Bay Area Junior Pathway public data for cleaner verification.",
                     },
                     {
-                      title: "Batting Read",
-                      body: "Average, strike rate, boundary profile, and format splits are used to frame how the player scores.",
+                      title: "Grounded Reads",
+                      body: "Average, strike rate, boundary profile, and format splits are used only when they are publicly visible.",
                     },
                     {
                       title: "Honest Gaps",
@@ -282,12 +405,19 @@ const Analytics = () => {
           ) : (
             <>
               <div className="rounded-3xl border border-border bg-gradient-card p-8 mb-8">
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-4">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 mb-4">
                       <Trophy className="w-4 h-4 text-primary" />
-                      <span className="text-xs font-medium text-primary">Public CricClubs Profile</span>
+                      <span className="text-xs font-medium text-primary">Verified Bay Area CricClubs Profile</span>
                     </div>
+                    {result.previewMode ? (
+                      <div className="mb-4">
+                        <div className="inline-flex items-center gap-2 rounded-full bg-secondary border border-border px-3 py-1">
+                          <span className="text-xs font-medium text-foreground">{result.previewMode}</span>
+                        </div>
+                      </div>
+                    ) : null}
                     <h2 className="font-display text-3xl font-bold text-foreground mb-2">
                       {result.player.name || result.searchQuery}
                     </h2>
@@ -320,7 +450,7 @@ const Analytics = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-10">
                 {result.derived.summaryCards.map((card) => {
                   const Icon = statIconMap[card.icon];
 
@@ -359,7 +489,7 @@ const Analytics = () => {
                 })}
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-8 mb-10">
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr] mb-10">
                 <div className="rounded-3xl border border-border bg-gradient-card p-8">
                   <h3 className="font-display text-2xl font-bold text-foreground mb-4">
                     Tactical Read
@@ -388,7 +518,7 @@ const Analytics = () => {
                   <h3 className="font-display text-2xl font-bold text-foreground mb-4">
                     Raw Stat Snapshot
                   </h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     {[
                       { label: "Matches", value: result.stats.matches },
                       { label: "Innings", value: result.stats.innings },
@@ -414,7 +544,7 @@ const Analytics = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-10">
                 <div className="rounded-3xl border border-border bg-gradient-card p-8">
                   <h3 className="font-display text-2xl font-bold text-foreground mb-4">
                     Strength Signals
@@ -459,13 +589,40 @@ const Analytics = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 mb-10">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_0.9fr] mb-10">
                 <div className="rounded-3xl border border-border bg-gradient-card p-8">
                   <h3 className="font-display text-2xl font-bold text-foreground mb-4">
                     Format Splits
                   </h3>
                   {result.formatSplits.length > 0 ? (
-                    <div className="overflow-x-auto">
+                    <>
+                      <div className="space-y-3 md:hidden">
+                        {result.formatSplits.map((split) => (
+                          <div key={split.format} className="rounded-2xl border border-border bg-background/60 p-4">
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                              <p className="font-semibold text-foreground">{split.format}</p>
+                              <span className="text-xs text-muted-foreground">Public split</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              {[
+                                { label: "Matches", value: split.matches },
+                                { label: "Runs", value: split.runs },
+                                { label: "Avg", value: split.battingAverage },
+                                { label: "SR", value: split.strikeRate },
+                                { label: "Wkts", value: split.wickets },
+                                { label: "Econ", value: split.economy },
+                              ].map((item) => (
+                                <div key={`${split.format}-${item.label}`} className="rounded-xl border border-border/70 p-3">
+                                  <p className="mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                                  <p className="font-medium text-foreground">{item.value ?? "-"}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="hidden overflow-x-auto md:block">
                       <table className="w-full">
                         <thead>
                           <tr className="border-b border-border">
@@ -496,7 +653,8 @@ const Analytics = () => {
                           ))}
                         </tbody>
                       </table>
-                    </div>
+                      </div>
+                    </>
                   ) : (
                     <p className="text-muted-foreground">
                       This public CricClubs page did not expose a clean format split table.

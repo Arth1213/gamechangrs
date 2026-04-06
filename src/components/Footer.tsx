@@ -26,9 +26,10 @@ export const Footer = () => {
             <h4 className="font-display font-semibold text-foreground mb-4">Quick Links</h4>
             <div className="grid grid-cols-3 gap-x-8 gap-y-3">
               {[
-                { label: "AI Coaching", path: "/technique-ai" },
+                { label: "Technique AI", path: "/techniqueai" },
+                { label: "Coaching Marketplace", path: "/coaching-marketplace" },
                 { label: "Analytics", path: "/analytics" },
-                { label: "Marketplace", path: "/marketplace" },
+                { label: "Gear Marketplace", path: "/marketplace" },
                 { label: "About Us", path: "/about" },
                 { label: "Contact Us", path: "/contact" },
               ].map((item) => (

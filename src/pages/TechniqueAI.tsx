@@ -17,7 +17,7 @@ const TechniqueAI = () => {
               <span className="text-sm font-medium text-accent">Batting AI Tracker</span>
             </div>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-              <span className="text-gradient-primary">TechniqueAI</span> Batting Analysis
+              <span className="text-gradient-primary">Technique AI</span> Batting Analysis
             </h1>
             <p className="text-lg text-muted-foreground">
               Upload a cricket batting clip to get pose-driven scoring, phase-by-phase feedback,

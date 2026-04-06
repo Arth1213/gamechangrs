@@ -141,7 +141,7 @@ const Contact = () => {
                       className="w-full h-12 px-4 rounded-xl bg-secondary border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     >
                       <option value="">Select a topic</option>
-                      <option value="coaching">AI Coaching</option>
+                      <option value="coaching">Technique AI</option>
                       <option value="analytics">Analytics Platform</option>
                       <option value="marketplace">Gear Marketplace</option>
                       <option value="partnership">Partnership Inquiry</option>

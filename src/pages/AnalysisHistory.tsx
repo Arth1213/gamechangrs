@@ -92,7 +92,7 @@ export default function AnalysisHistory() {
                 Complete a video analysis and save it to see your history here.
               </p>
               <Button asChild>
-                <Link to="/techniqueai">Go to TechniqueAI</Link>
+                <Link to="/techniqueai">Go to Technique AI</Link>
               </Button>
             </div>
           ) : (

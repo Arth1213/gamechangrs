@@ -330,9 +330,9 @@ export const UserDashboard = () => {
   }, [coachProfile, playerProfile, toast]);
 
   const quickActions = [
-    { name: "AI Coaching", path: "/coaching", icon: Zap, color: "primary" },
-    { name: "TechniqueAI", path: "/techniqueai", icon: Brain, color: "accent" },
-    { name: "Smart Analytics", path: "/analytics", icon: BarChart3, color: "primary" },
+    { name: "Technique AI", path: "/techniqueai", icon: Zap, color: "primary" },
+    { name: "Coaching Marketplace", path: "/coaching-marketplace", icon: Brain, color: "accent" },
+    { name: "Analytics", path: "/analytics", icon: BarChart3, color: "primary" },
     { name: "Gear Marketplace", path: "/marketplace", icon: ShoppingBag, color: "primary" },
   ];
 

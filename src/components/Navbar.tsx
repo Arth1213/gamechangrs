@@ -12,11 +12,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const navLinks = [
-  { name: "Home", path: "/" },
-  { name: "TechniqueAI", path: "/techniqueai" },
+  { name: "Technique AI", path: "/techniqueai" },
+  { name: "Coaching Marketplace", path: "/coaching-marketplace" },
   { name: "Analytics", path: "/analytics" },
   { name: "Gear Marketplace", path: "/marketplace" },
-  { name: "Coaching Marketplace", path: "/coaching-marketplace" },
 ];
 
 export const Navbar = () => {

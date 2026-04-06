@@ -5,7 +5,7 @@ import { StatsSection } from "@/components/StatsSection";
 import { UserDashboard } from "@/components/dashboard/UserDashboard";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Target, TrendingUp, Users, Shield, Sparkles, ChevronRight, Zap, BarChart3, ShoppingBag, Brain } from "lucide-react";
+import { ArrowRight, Target, TrendingUp, Users, Shield, Sparkles, ChevronRight, Zap, BarChart3, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
@@ -45,17 +45,17 @@ const Index = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-                {/* AI Coaching */}
-                <Link to="/coaching" className="group">
+                {/* Technique AI */}
+                <Link to="/techniqueai" className="group">
                   <div className="h-full p-8 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-glow">
                     <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
                       <Zap className="w-7 h-7 text-primary" />
                     </div>
                     <h3 className="font-display font-bold text-2xl text-foreground mb-3">
-                      AI Coaching
+                      Technique AI
                     </h3>
                     <p className="text-muted-foreground mb-4 leading-relaxed">
-                      Upload your cricket videos and receive instant, professional-grade technique analysis with pose detection and personalized coaching feedback.
+                      Upload your cricket batting videos and receive scored technique analysis, direct feedback, and drills based on the observed movement.
                     </p>
                     <div className="flex items-center text-primary font-medium">
                       Start Analyzing
@@ -64,20 +64,20 @@ const Index = () => {
                   </div>
                 </Link>
 
-                {/* TechniqueAI */}
-                <Link to="/techniqueai" className="group">
+                {/* Coaching Marketplace */}
+                <Link to="/coaching-marketplace" className="group">
                   <div className="h-full p-8 rounded-2xl bg-card border border-border hover:border-accent/50 transition-all duration-300 hover:shadow-[0_0_40px_hsl(var(--accent)/0.3)]">
                     <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mb-6 group-hover:bg-accent/20 transition-colors">
-                      <Brain className="w-7 h-7 text-accent" />
+                      <Users className="w-7 h-7 text-accent" />
                     </div>
                     <h3 className="font-display font-bold text-2xl text-foreground mb-3">
-                      TechniqueAI
+                      Coaching Marketplace
                     </h3>
                     <p className="text-muted-foreground mb-4 leading-relaxed">
-                      Advanced pose detection with real-time biomechanical analysis. See exactly how your body moves and get instant feedback on angles and positions.
+                      Discover coaches, book sessions, and build a training setup around the areas your game needs most.
                     </p>
                     <div className="flex items-center text-accent font-medium">
-                      Try TechniqueAI
+                      Find Coaches
                       <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
@@ -90,7 +90,7 @@ const Index = () => {
                       <BarChart3 className="w-7 h-7 text-primary" />
                     </div>
                     <h3 className="font-display font-bold text-2xl text-foreground mb-3">
-                      Smart Analytics
+                      Analytics
                     </h3>
                     <p className="text-muted-foreground mb-4 leading-relaxed">
                       Track your progress over time with detailed performance metrics, trend analysis, and data-driven improvement recommendations.
@@ -109,7 +109,7 @@ const Index = () => {
                       <ShoppingBag className="w-7 h-7 text-primary" />
                     </div>
                     <h3 className="font-display font-bold text-2xl text-foreground mb-3">
-                      Gear Exchange
+                      Gear Marketplace
                     </h3>
                     <p className="text-muted-foreground mb-4 leading-relaxed">
                       Buy, sell, and trade quality cricket gear. Every purchase supports our mission to provide equipment to underprivileged young athletes.
@@ -199,7 +199,7 @@ const Index = () => {
                   Join thousands of athletes and coaches who are using AI to unlock their full potential.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Link to="/coaching">
+                  <Link to="/techniqueai">
                     <Button variant="hero" size="xl">
                       Get Started Free
                       <ArrowRight className="w-5 h-5" />

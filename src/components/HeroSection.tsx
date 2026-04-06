@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { ArrowRight, Play, BarChart3, Video, ShoppingBag, Brain } from "lucide-react";
+import { ArrowRight, Play, BarChart3, Video, ShoppingBag, Users } from "lucide-react";
 import { HomeHeroOrbit } from "@/components/HomeHeroOrbit";
 
 export const HeroSection = () => {
@@ -35,16 +35,16 @@ export const HeroSection = () => {
                 className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 mb-10 animate-slide-up"
                 style={{ animationDelay: "0.1s" }}
               >
-                Advanced AI coaching, real-time cricket & tennis analytics, and a marketplace dedicated to making sports accessible for every young athlete.
+                The AI platform powering youth cricket: analyze your game, train smarter with coaches curated for you, and ingest real-time match intelligence.
               </p>
 
               <div
                 className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-10 lg:mb-0 animate-slide-up"
                 style={{ animationDelay: "0.2s" }}
               >
-                <Link to="/coaching">
+                <Link to="/techniqueai">
                   <Button variant="hero" size="xl">
-                    Start AI Coaching
+                    Open Technique AI
                     <ArrowRight className="w-5 h-5" />
                   </Button>
                 </Link>
@@ -67,29 +67,29 @@ export const HeroSection = () => {
             {[
               {
                 icon: Video,
-                title: "AI Coaching",
-                description: "Upload videos and receive instant technique analysis",
-                link: "/coaching",
+                title: "Technique AI",
+                description: "Upload batting video and get scored technical feedback and drills",
+                link: "/techniqueai",
                 color: "primary",
               },
               {
-                icon: Brain,
-                title: "TechniqueAI",
-                description: "Real-time pose detection with biomechanical insights",
-                link: "/techniqueai",
+                icon: Users,
+                title: "Coaching Marketplace",
+                description: "Find coaches curated for your development goals",
+                link: "/coaching-marketplace",
                 color: "accent",
               },
               {
                 icon: BarChart3,
-                title: "Smart Analytics",
-                description: "Real-time insights from youth league data",
+                title: "Analytics",
+                description: "Real-time youth cricket insights and match intelligence",
                 link: "/analytics",
                 color: "primary",
               },
               {
                 icon: ShoppingBag,
-                title: "Gear Exchange",
-                description: "Quality equipment for underprivileged athletes",
+                title: "Gear Marketplace",
+                description: "Community gear listings plus trusted cricket retail access",
                 link: "/marketplace",
                 color: "primary",
               },

@@ -30,7 +30,7 @@ const FAQ = () => {
       ],
     },
     {
-      title: "AI Coaching",
+      title: "Technique AI",
       icon: "🤖",
       questions: [
         {
@@ -52,16 +52,16 @@ const FAQ = () => {
       ],
     },
     {
-      title: "TechniqueAI",
+      title: "Technique AI",
       icon: "🧠",
       questions: [
         {
-          q: "What is TechniqueAI?",
-          a: "TechniqueAI is our advanced real-time pose detection tool. It provides instant biomechanical analysis with angle measurements, helping you understand your body positioning during technique execution.",
+          q: "What is Technique AI?",
+          a: "Technique AI is our advanced real-time pose detection tool. It provides instant biomechanical analysis with angle measurements, helping you understand your body positioning during technique execution.",
         },
         {
           q: "Do I need special equipment?",
-          a: "No special equipment needed! Just use your phone or webcam. TechniqueAI works with any device that has a camera.",
+          a: "No special equipment needed. Just use your phone or webcam. Technique AI works with any device that has a camera.",
         },
         {
           q: "Is my video data stored?",
@@ -251,4 +251,3 @@ const FAQ = () => {
 };
 
 export default FAQ;
-

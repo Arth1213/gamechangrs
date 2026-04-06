@@ -153,11 +153,56 @@ function extractLinksFromDuckDuckGo(html: string) {
     const decoded = decodeDuckDuckGoHref(match[1]);
     if (!decoded) continue;
     if (!decoded.includes("cricclubs.com")) continue;
-    if (!/viewPlayer\.do|player|batting|bowling/i.test(decoded)) continue;
+    if (!/viewPlayer\.do|viewLeague\.do|viewTeams\.do|viewTeam\.do|ranking|player|batting|bowling/i.test(decoded)) continue;
     urls.add(decoded);
   }
 
   return Array.from(urls);
+}
+
+function isUsaJuniorPathwayHint(value: string | null | undefined) {
+  if (!value) return false;
+
+  return /usa|usac|junior|pathway|hub|u-?11|u-?13|u-?15|u-?19/i.test(value);
+}
+
+function isUsaJuniorPathwayU15Hint(value: string | null | undefined) {
+  if (!value) return false;
+
+  return /usa|usac|junior|pathway|hub|u-?15/i.test(value);
+}
+
+function buildSearchTerms(playerName: string, clubHint?: string | null) {
+  const trimmedHint = clubHint?.trim();
+  const terms = new Set<string>();
+
+  terms.add(`site:cricclubs.com/viewPlayer.do "${playerName}"`);
+  terms.add(`site:cricclubs.com "${playerName}" CricClubs player`);
+  terms.add(`site:cricclubs.com ${playerName} CricClubs cricket`);
+
+  if (trimmedHint) {
+    terms.add(`site:cricclubs.com/viewPlayer.do "${playerName}" "${trimmedHint}"`);
+    terms.add(`site:cricclubs.com "${playerName}" "${trimmedHint}" CricClubs`);
+    terms.add(`site:cricclubs.com ${playerName} ${trimmedHint} CricClubs cricket`);
+  }
+
+  if (isUsaJuniorPathwayHint(trimmedHint)) {
+    terms.add(`site:cricclubs.com/USACricketJunior "${playerName}"`);
+    terms.add(`site:cricclubs.com/USACricketJunior ${playerName} ${trimmedHint ?? ""}`);
+    terms.add(`site:cricclubs.com/USACricketJunior "${playerName}" "USA Cricket Junior Pathway"`);
+    terms.add(`site:cricclubs.com/USACricketJunior "${playerName}" U15`);
+    terms.add(`site:cricclubs.com/USACricketJunior "${playerName}" hub`);
+  }
+
+  if (isUsaJuniorPathwayU15Hint(trimmedHint)) {
+    terms.add(`site:cricclubs.com/USACricketJunior "${playerName}" "U15 Phase 1"`);
+    terms.add(`site:cricclubs.com/USACricketJunior "${playerName}" "U15 Phase 2"`);
+    terms.add(`site:cricclubs.com/USACricketJunior "${playerName}" "playerRankings"`);
+    terms.add(`site:cricclubs.com/USACricketJunior "${playerName}" "battingRecords"`);
+    terms.add(`site:cricclubs.com/USACricketJunior "${playerName}" "viewTeam.do"`);
+  }
+
+  return Array.from(terms);
 }
 
 async function fetchDuckDuckGoResults(query: string) {
@@ -172,13 +217,8 @@ async function fetchDuckDuckGoResults(query: string) {
 }
 
 async function searchCricClubsProfiles(playerName: string, clubHint?: string | null) {
-  const searchTerms = [
-    `site:cricclubs.com "${playerName}" ${clubHint ?? ""} cricket`,
-    `site:cricclubs.com/viewPlayer.do "${playerName}" ${clubHint ?? ""}`,
-    `site:cricclubs.com "${playerName}" CricClubs player`,
-  ];
-
   const found = new Set<string>();
+  const searchTerms = buildSearchTerms(playerName, clubHint);
 
   for (const term of searchTerms) {
     const html = await fetchDuckDuckGoResults(term.trim());
@@ -190,6 +230,21 @@ async function searchCricClubsProfiles(playerName: string, clubHint?: string | n
 
     if (found.size >= 5) {
       break;
+    }
+  }
+
+  if (found.size === 0 && clubHint) {
+    for (const term of buildSearchTerms(playerName, null)) {
+      const html = await fetchDuckDuckGoResults(term.trim());
+      const links = extractLinksFromDuckDuckGo(html);
+
+      for (const link of links) {
+        found.add(link);
+      }
+
+      if (found.size >= 5) {
+        break;
+      }
     }
   }
 
@@ -569,7 +624,7 @@ serve(async (req) => {
     const candidateUrls = await searchCricClubsProfiles(trimmedQuery, clubHint);
     if (candidateUrls.length === 0) {
       return jsonResponse(
-        { error: "No public CricClubs player pages were found for that search." },
+        { error: clubHint ? "No public CricClubs player pages were found for that league hint or query." : "No public CricClubs player pages were found for that search." },
         404,
       );
     }

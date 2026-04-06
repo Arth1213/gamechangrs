@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { ArrowRight, Play, BarChart3, Video, ShoppingBag, Users } from "lucide-react";
+import { ArrowRight, BarChart3, Video, ShoppingBag, Users } from "lucide-react";
 import { HomeHeroOrbit } from "@/components/HomeHeroOrbit";
 
 export const HeroSection = () => {
@@ -42,16 +42,10 @@ export const HeroSection = () => {
                 className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-10 lg:mb-0 animate-slide-up"
                 style={{ animationDelay: "0.2s" }}
               >
-                <Link to="/techniqueai">
+                <Link to="/auth">
                   <Button variant="hero" size="xl">
-                    Open Technique AI
+                    Sign In For Technique AI
                     <ArrowRight className="w-5 h-5" />
-                  </Button>
-                </Link>
-                <Link to="/techniqueai?demo=true">
-                  <Button variant="glass" size="xl">
-                    <Play className="w-5 h-5" />
-                    Watch Demo
                   </Button>
                 </Link>
               </div>

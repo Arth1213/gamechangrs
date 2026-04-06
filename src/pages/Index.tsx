@@ -46,7 +46,7 @@ const Index = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
                 {/* Technique AI */}
-                <Link to="/techniqueai" className="group">
+                <Link to="/auth" className="group">
                   <div className="h-full p-8 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-glow">
                     <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
                       <Zap className="w-7 h-7 text-primary" />
@@ -58,7 +58,7 @@ const Index = () => {
                       Upload your cricket batting videos and receive scored technique analysis, direct feedback, and drills based on the observed movement.
                     </p>
                     <div className="flex items-center text-primary font-medium">
-                      Start Analyzing
+                      Sign In To Analyze
                       <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
@@ -199,9 +199,9 @@ const Index = () => {
                   Join thousands of athletes and coaches who are using AI to unlock their full potential.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Link to="/techniqueai">
+                  <Link to="/auth">
                     <Button variant="hero" size="xl">
-                      Get Started Free
+                      Sign In For Technique AI
                       <ArrowRight className="w-5 h-5" />
                     </Button>
                   </Link>

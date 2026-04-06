@@ -378,22 +378,19 @@ const Marketplace = () => {
               <div className="relative border-t border-border/70 lg:border-l lg:border-t-0">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_45%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))]" />
                 <div className="relative flex h-full min-h-[260px] items-center justify-center p-6">
-                  <div className="relative h-[210px] w-[210px]">
-                    <div className="absolute inset-0 rounded-full border border-primary/15" />
-                    <div className="absolute inset-[18%] rounded-full border border-accent/20" />
-                    <div className="absolute inset-[32%] rounded-full border border-white/10" />
-
-                    <div className="absolute left-1/2 top-1/2 h-[132px] w-[50px] -translate-x-1/2 -translate-y-1/2 rotate-[18deg]">
-                      <div className="absolute left-1/2 top-0 h-[90px] w-[28px] -translate-x-1/2 rounded-[999px] border border-[rgba(255,232,198,0.28)] bg-[linear-gradient(180deg,rgba(214,187,147,0.98),rgba(150,103,54,0.98))]" />
-                      <div className="absolute bottom-0 left-1/2 h-[54px] w-[12px] -translate-x-1/2 rounded-b-[999px] rounded-t-[12px] bg-[linear-gradient(180deg,rgba(111,69,35,0.98),rgba(62,35,18,1))]" />
+                  <div className="relative w-full max-w-[280px]">
+                    <div className="absolute inset-6 rounded-[32px] bg-primary/10 blur-3xl" />
+                    <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-black/15 p-3 shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+                      <img
+                        src="/partners/east-bay-cricket-shop-logo.jpeg"
+                        alt="East Bay Cricket Shop logo"
+                        className="h-auto w-full rounded-[22px] object-cover"
+                      />
                     </div>
-
-                    <div className="absolute left-1/2 top-1/2 h-[178px] w-[178px] -translate-x-1/2 -translate-y-1/2 animate-orbit-spin">
-                      <div className="absolute left-1/2 top-0 h-[28px] w-[28px] -translate-x-1/2 rounded-full border border-[rgba(255,219,219,0.35)] bg-[radial-gradient(circle_at_32%_28%,rgba(255,235,235,0.9),rgba(210,54,54,0.95)_35%,rgba(112,13,13,1)_78%)] shadow-[0_0_22px_rgba(180,25,25,0.55)]" />
-                    </div>
-
-                    <div className="absolute inset-x-0 bottom-0 mx-auto w-fit rounded-full border border-white/10 bg-background/50 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-white/60">
-                      {featuredRetailPartner.name}
+                    <div className="mt-4 text-center">
+                      <span className="inline-flex rounded-full border border-white/10 bg-background/50 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-white/60">
+                        {featuredRetailPartner.name}
+                      </span>
                     </div>
                   </div>
                 </div>

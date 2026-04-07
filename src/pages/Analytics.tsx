@@ -2,11 +2,15 @@ import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertCircle,
   ArrowUpRight,
   BarChart3,
+  Database,
   ExternalLink,
+  Flag,
+  Gauge,
   Loader2,
   Search,
   ShieldAlert,
@@ -14,12 +18,18 @@ import {
   TrendingUp,
   Trophy,
   Users,
+  Workflow,
 } from "lucide-react";
 import {
   COMPLETE_LOCAL_PREVIEW_PLAYERS,
   type CricClubsAnalyticsResponse,
-  type Trend,
 } from "@/data/analyticsPlayers";
+import {
+  BAY_AREA_LEAGUES,
+  BAY_AREA_SOURCE_TABS,
+  BAY_AREA_WEIGHT_RULES,
+  getPlayerModelSnapshot,
+} from "@/lib/analyticsModel";
 
 type SearchStatus = "idle" | "searching" | "remote-success" | "local-preview" | "no-result" | "error";
 
@@ -301,6 +311,178 @@ const Analytics = () => {
 
       <section className="py-12">
         <div className="container mx-auto px-4">
+          <Tabs defaultValue="series" className="mb-10">
+            <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 rounded-2xl bg-secondary/60 p-2">
+              <TabsTrigger value="series">Series Map</TabsTrigger>
+              <TabsTrigger value="weights">Weighting Model</TabsTrigger>
+              <TabsTrigger value="outcomes">Report Outputs</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="series" className="mt-6">
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                  <div className="mb-5 flex items-start gap-3">
+                    <div className="rounded-2xl bg-primary/10 p-3">
+                      <Flag className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="font-display text-2xl font-bold text-foreground">
+                        Bay Area U15 League Coverage
+                      </h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        The analytics model is scoped to the four Bay Area Hub series pages you gave:
+                        `434`, `435`, `436`, and `437`.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {BAY_AREA_LEAGUES.map((league) => (
+                      <a
+                        key={league.id}
+                        href={league.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-2xl border border-border bg-background/60 p-5 transition-colors hover:border-primary/30"
+                      >
+                        <p className="text-xs uppercase tracking-[0.22em] text-primary">{league.label}</p>
+                        <p className="mt-2 font-semibold text-foreground">CricClubs League {league.id}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{league.focus}</p>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                  <div className="mb-5 flex items-start gap-3">
+                    <div className="rounded-2xl bg-primary/10 p-3">
+                      <Workflow className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="font-display text-2xl font-bold text-foreground">
+                        CricClubs Tabs Used
+                      </h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        The page is structured around the same tab flow you outlined from CricClubs.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {BAY_AREA_SOURCE_TABS.map((tab) => (
+                      <div key={tab.label} className="rounded-2xl border border-border bg-background/60 p-4">
+                        <p className="font-semibold text-foreground">{tab.label}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{tab.use}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="weights" className="mt-6">
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+                <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                  <div className="mb-5 flex items-start gap-3">
+                    <div className="rounded-2xl bg-primary/10 p-3">
+                      <Gauge className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="font-display text-2xl font-bold text-foreground">
+                        Weighting Rules
+                      </h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Div 1 gets a premium, strong teams get more weight, and high-leverage overs
+                        matter more than flat-scoreboard events.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {BAY_AREA_WEIGHT_RULES.map((rule) => (
+                      <div key={rule.label} className="rounded-2xl border border-border bg-background/60 p-5">
+                        <p className="text-xs uppercase tracking-[0.22em] text-primary">{rule.label}</p>
+                        <p className="mt-2 font-display text-3xl font-bold text-foreground">{rule.value}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{rule.note}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                  <div className="mb-5 flex items-start gap-3">
+                    <div className="rounded-2xl bg-primary/10 p-3">
+                      <Database className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="font-display text-2xl font-bold text-foreground">
+                        Intelligence Formula
+                      </h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        The target Bay Area U15 model is based on opposition quality, phase, and
+                        leverage. The current public-player build already exposes the exact report
+                        sections needed for that pipeline.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-background/70 p-5">
+                    <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Target event weighting</p>
+                    <pre className="mt-3 overflow-x-auto whitespace-pre-wrap font-mono text-sm text-foreground">
+{`event_weight =
+division_weight
+* team_strength_weight
+* opponent_player_weight
+* phase_weight
+* leverage_weight`}
+                    </pre>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {[
+                      "Team strength should come from Points Table win %, NRR, and standing.",
+                      "Top-opposition intelligence should come from Results + ball-by-ball commentary.",
+                      "Batting and bowling records are baseline only, not the final score.",
+                      "Fielding records must influence final impact, especially catches and run-outs.",
+                    ].map((item) => (
+                      <div key={item} className="rounded-2xl border border-border bg-background/60 p-4 text-sm text-muted-foreground">
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="outcomes" className="mt-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                  {
+                    title: "Career Totals",
+                    body: "Pull the first public CricClubs page and show the big Matches / Runs / Wickets totals first.",
+                  },
+                  {
+                    title: "Pathway Tabs",
+                    body: "Show USA Cricket Junior Pathway batting and bowling rows separately when that tab is publicly visible.",
+                  },
+                  {
+                    title: "Selection Lens",
+                    body: "Convert the public stat record into a clear selection summary, strengths, risks, and role fit.",
+                  },
+                  {
+                    title: "Peer Comparison",
+                    body: "Rank the player against the local supported Bay Area cohort rather than showing isolated raw totals only.",
+                  },
+                ].map((item) => (
+                  <div key={item.title} className="rounded-3xl border border-border bg-gradient-card p-6">
+                    <h3 className="font-display text-xl font-bold text-foreground">{item.title}</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">{item.body}</p>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+
           {!result ? (
             <div className="rounded-3xl border border-border bg-gradient-card p-8 md:p-10">
               <div className="max-w-2xl">
@@ -347,6 +529,29 @@ const Analytics = () => {
             </div>
           ) : (
             <>
+              {(() => {
+                const model = getPlayerModelSnapshot(result);
+
+                return (
+                  <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+                    {[
+                      { label: "Bay Area Score", value: model.overall, detail: "0-100 public model" },
+                      { label: "Peer Percentile", value: model.peerPercentile, detail: "supported cohort" },
+                      { label: "Production", value: model.production, detail: "runs, wickets, efficiency" },
+                      { label: "Consistency", value: model.consistency, detail: "matches + innings depth" },
+                      { label: "Versatility", value: model.versatility, detail: "multi-skill contribution" },
+                      { label: "Fielding", value: model.fielding, detail: "catching contribution" },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-2xl border border-border bg-gradient-card p-5">
+                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
+                        <p className="mt-2 font-display text-3xl font-bold text-foreground">{item.value}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
               <div className="rounded-3xl border border-border bg-gradient-card p-8 mb-8">
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                   <div>
@@ -595,6 +800,67 @@ const Analytics = () => {
                   )}
                 </div>
               </div>
+
+              {(() => {
+                const model = getPlayerModelSnapshot(result);
+
+                return (
+                  <div className="mb-10 grid grid-cols-1 gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+                    <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                      <h3 className="font-display text-2xl font-bold text-foreground mb-4">
+                        Bay Area U15 Model Read
+                      </h3>
+                      <div className="space-y-4">
+                        {[
+                          {
+                            title: "Current build",
+                            body: "This score is computed from the public player page, career totals, pathway batting row, pathway bowling row, and fielding signal already cached in this build.",
+                          },
+                          {
+                            title: "What it is good for",
+                            body: "It gives a clean Bay Area selection-facing snapshot, peer ranking, and report structure that lines up with the CricClubs pages you referenced.",
+                          },
+                          {
+                            title: "What still requires full scraping",
+                            body: "True opposition-adjusted scoring against top teams and top bowlers still depends on scraping Results, scorecards, and ball-by-ball commentary for leagues 434-437.",
+                          },
+                        ].map((item) => (
+                          <div key={item.title} className="rounded-2xl border border-border bg-background/60 p-5">
+                            <p className="font-semibold text-foreground">{item.title}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">{item.body}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                      <h3 className="font-display text-2xl font-bold text-foreground mb-4">
+                        Peer Comparison
+                      </h3>
+                      {model.peers.length > 0 ? (
+                        <div className="space-y-3">
+                          {model.peers.map((peer, index) => (
+                            <div key={peer.name} className="flex items-center justify-between rounded-2xl border border-border bg-background/60 p-4">
+                              <div>
+                                <p className="font-semibold text-foreground">{index + 1}. {peer.name}</p>
+                                <p className="text-sm text-muted-foreground">{peer.role || "Role unavailable"}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-display text-2xl font-bold text-foreground">{peer.score}</p>
+                                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Bay Area score</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground">
+                          There are not enough same-role players in the currently supported cohort to show a clean peer stack.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-10">
                 <div className="rounded-3xl border border-border bg-gradient-card p-8">

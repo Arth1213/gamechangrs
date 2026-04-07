@@ -393,6 +393,41 @@ const Analytics = () => {
                 </div>
               </div>
 
+              {result.careerTotals ? (
+                <div className="mb-10 rounded-3xl border border-border bg-gradient-card p-8">
+                  <div className="mb-6 flex items-center justify-between gap-4">
+                    <div>
+                      <h3 className="font-display text-2xl font-bold text-foreground">
+                        Career CricClubs Totals
+                      </h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Main player-profile totals from the first public CricClubs page.
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                      Profile totals
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    {[
+                      { label: "Matches", value: result.careerTotals.matches },
+                      { label: "Runs", value: result.careerTotals.runs },
+                      { label: "Wickets", value: result.careerTotals.wickets },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-2xl border border-primary/15 bg-background/60 p-6">
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                          {item.label}
+                        </p>
+                        <p className="mt-2 font-display text-4xl font-bold text-foreground">
+                          {item.value ?? "-"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-10">
                 {result.derived.summaryCards.map((card) => {
                   const Icon = statIconMap[card.icon];
@@ -484,6 +519,80 @@ const Analytics = () => {
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-10">
+                <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                  <h3 className="font-display text-2xl font-bold text-foreground mb-4">
+                    USA Cricket Junior Pathway Batting
+                  </h3>
+                  {result.pathwayBatting ? (
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {[
+                        { label: "Series", value: result.pathwayBatting.seriesType },
+                        { label: "Mat", value: result.pathwayBatting.matches },
+                        { label: "Inns", value: result.pathwayBatting.innings },
+                        { label: "NO", value: result.pathwayBatting.notOuts },
+                        { label: "Runs", value: result.pathwayBatting.runs },
+                        { label: "Balls", value: result.pathwayBatting.balls },
+                        { label: "Ave", value: result.pathwayBatting.average },
+                        { label: "SR", value: result.pathwayBatting.strikeRate },
+                        { label: "HS", value: result.pathwayBatting.highestScore },
+                        { label: "100s", value: result.pathwayBatting.hundreds },
+                        { label: "50s", value: result.pathwayBatting.fifties },
+                        { label: "25s", value: result.pathwayBatting.twentyFives },
+                        { label: "0s", value: result.pathwayBatting.ducks },
+                        { label: "4s", value: result.pathwayBatting.fours },
+                        { label: "6s", value: result.pathwayBatting.sixes },
+                      ].map((item) => (
+                        <div key={item.label} className="rounded-2xl border border-border bg-background/60 p-4">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">{item.label}</p>
+                          <p className="font-semibold text-foreground">{item.value ?? "Unavailable"}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      A full USA Cricket Junior Pathway batting tab was not publicly exposed in the indexed profile used for this player.
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                  <h3 className="font-display text-2xl font-bold text-foreground mb-4">
+                    USA Cricket Junior Pathway Bowling
+                  </h3>
+                  {result.pathwayBowling ? (
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {[
+                        { label: "Series", value: result.pathwayBowling.seriesType },
+                        { label: "Mat", value: result.pathwayBowling.matches },
+                        { label: "Inns", value: result.pathwayBowling.innings },
+                        { label: "Overs", value: result.pathwayBowling.overs },
+                        { label: "Runs", value: result.pathwayBowling.runs },
+                        { label: "Wkts", value: result.pathwayBowling.wickets },
+                        { label: "BBI", value: result.pathwayBowling.bestBowling },
+                        { label: "Maidens", value: result.pathwayBowling.maidens },
+                        { label: "Ave", value: result.pathwayBowling.average },
+                        { label: "Econ", value: result.pathwayBowling.economy },
+                        { label: "SR", value: result.pathwayBowling.strikeRate },
+                        { label: "4W", value: result.pathwayBowling.fourWickets },
+                        { label: "5W", value: result.pathwayBowling.fiveWickets },
+                        { label: "Wd", value: result.pathwayBowling.wides },
+                        { label: "Ct", value: result.pathwayBowling.catches },
+                      ].map((item) => (
+                        <div key={item.label} className="rounded-2xl border border-border bg-background/60 p-4">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">{item.label}</p>
+                          <p className="font-semibold text-foreground">{item.value ?? "Unavailable"}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      A full USA Cricket Junior Pathway bowling tab was not publicly exposed in the indexed profile used for this player.
+                    </p>
+                  )}
                 </div>
               </div>
 

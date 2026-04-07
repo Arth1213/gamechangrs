@@ -23,11 +23,56 @@ export interface FormatSplit {
   economy: number | null;
 }
 
+export interface CareerTotals {
+  matches: number | null;
+  runs: number | null;
+  wickets: number | null;
+}
+
+export interface PathwayBattingLine {
+  seriesType: string;
+  matches: number | null;
+  innings: number | null;
+  notOuts: number | null;
+  runs: number | null;
+  balls: number | null;
+  average: number | null;
+  strikeRate: number | null;
+  highestScore: string | null;
+  hundreds: number | null;
+  fifties: number | null;
+  twentyFives: number | null;
+  ducks: number | null;
+  fours: number | null;
+  sixes: number | null;
+}
+
+export interface PathwayBowlingLine {
+  seriesType: string;
+  matches: number | null;
+  innings: number | null;
+  overs: string | null;
+  runs: number | null;
+  wickets: number | null;
+  bestBowling: string | null;
+  maidens: number | null;
+  average: number | null;
+  economy: number | null;
+  strikeRate: number | null;
+  fourWickets: number | null;
+  fiveWickets: number | null;
+  wides: number | null;
+  catches: number | null;
+}
+
 export interface CricClubsAnalyticsResponse {
   searchQuery: string;
   sourceUrl: string;
   searchedAt: string;
   previewMode?: string | null;
+  careerTotals?: CareerTotals | null;
+  pathwayBatting?: PathwayBattingLine | null;
+  pathwayBowling?: PathwayBowlingLine | null;
   player: {
     name: string | null;
     role: string | null;
@@ -84,15 +129,38 @@ const searchedAt = new Date().toISOString();
 export const LOCAL_PREVIEW_PLAYERS: LocalPreviewPlayer[] = [
   {
     searchQuery: "Arth Arun",
-    sourceUrl: "https://cricclubs.com/USACricketJunior/viewTeam.do?clubId=40319&teamId=1688",
+    sourceUrl: "https://cricclubs.com/ASCE/viewPlayer.do?playerId=2262444&clubId=22142",
     searchedAt,
-    previewMode: "Local verified preview data",
+    previewMode: "Local verified public CricClubs profile",
+    careerTotals: {
+      matches: 312,
+      runs: 3439,
+      wickets: 338,
+    },
+    pathwayBatting: {
+      seriesType: "1 DAY",
+      matches: 32,
+      innings: 23,
+      notOuts: 7,
+      runs: 400,
+      balls: 752,
+      average: 25,
+      strikeRate: 53.19,
+      highestScore: "54",
+      hundreds: 0,
+      fifties: 2,
+      twentyFives: 4,
+      ducks: 0,
+      fours: 30,
+      sixes: 13,
+    },
+    pathwayBowling: null,
     player: {
       name: "Arth Arun",
       role: "All Rounder",
-      team: "DSCA Rhinos U15",
-      battingStyle: null,
-      bowlingStyle: null,
+      team: "DSCA",
+      battingStyle: "Right Handed Batter",
+      bowlingStyle: "Right Arm Leg Spin",
     },
     stats: {
       matches: 3,
@@ -123,8 +191,8 @@ export const LOCAL_PREVIEW_PLAYERS: LocalPreviewPlayer[] = [
       dismissalPatterns: [],
       bowlerTypeNotes: [],
       groundingNotes: [
-        "Verified public USA Cricket Junior Pathway player listed on the DSCA Rhinos U15 team page.",
-        "Public U15 batting table shows 54 runs with high score 54 at strike rate 120.00.",
+        "The public CricClubs player profile page shows career totals of 312 matches, 3,439 runs, and 338 wickets.",
+        "The USA Cricket Junior Pathway batting tab visible in the indexed player page shows a 1 Day line of 32 matches, 400 runs, 25.00 average, and 53.19 strike rate.",
       ],
     },
     derived: {
@@ -156,6 +224,45 @@ export const LOCAL_PREVIEW_PLAYERS: LocalPreviewPlayer[] = [
     sourceUrl: "https://cricclubs.com/USACricketJunior/viewPlayer.do?clubId=40319&playerId=1460404",
     searchedAt,
     previewMode: "Local verified public CricClubs profile",
+    careerTotals: {
+      matches: 245,
+      runs: 5074,
+      wickets: 232,
+    },
+    pathwayBatting: {
+      seriesType: "1 DAY",
+      matches: 37,
+      innings: 32,
+      notOuts: 10,
+      runs: 1003,
+      balls: null,
+      average: 45.59,
+      strikeRate: 104.81,
+      highestScore: "173",
+      hundreds: null,
+      fifties: null,
+      twentyFives: null,
+      ducks: 1,
+      fours: 62,
+      sixes: 61,
+    },
+    pathwayBowling: {
+      seriesType: "1 DAY",
+      matches: 37,
+      innings: null,
+      overs: null,
+      runs: null,
+      wickets: 43,
+      bestBowling: "34/4",
+      maidens: 17,
+      average: 16.19,
+      economy: 3.76,
+      strikeRate: 25.9,
+      fourWickets: null,
+      fiveWickets: null,
+      wides: 136,
+      catches: 17,
+    },
     player: {
       name: "Naman Patil",
       role: "All Rounder",
@@ -191,8 +298,8 @@ export const LOCAL_PREVIEW_PLAYERS: LocalPreviewPlayer[] = [
       dismissalPatterns: [],
       bowlerTypeNotes: [],
       groundingNotes: [
-        "Public USA Cricket Junior Pathway profile lists Naman Patil as a verified Bay Area - Warriors all rounder.",
-        "The indexed 1 Day pathway table shows 1,003 runs at 45.59 average and 104.81 strike rate, plus 43 wickets at 3.76 economy.",
+        "The public CricClubs player profile page shows career totals of 245 matches, 5,074 runs, and 232 wickets.",
+        "The USA Cricket Junior Pathway tab shows a 1 Day line of 1,003 runs at 45.59 average and 104.81 strike rate, plus 43 wickets at 3.76 economy.",
       ],
     },
     derived: {
@@ -225,6 +332,45 @@ export const LOCAL_PREVIEW_PLAYERS: LocalPreviewPlayer[] = [
     sourceUrl: "https://cricclubs.com/USACricketJunior/viewPlayer.do?clubId=40319&playerId=1641657",
     searchedAt,
     previewMode: "Local verified public CricClubs profile",
+    careerTotals: {
+      matches: 202,
+      runs: 2421,
+      wickets: 122,
+    },
+    pathwayBatting: {
+      seriesType: "1 DAY",
+      matches: 26,
+      innings: 25,
+      notOuts: 3,
+      runs: 435,
+      balls: 587,
+      average: 19.77,
+      strikeRate: 74.11,
+      highestScore: "146",
+      hundreds: 1,
+      fifties: 0,
+      twentyFives: null,
+      ducks: 2,
+      fours: 38,
+      sixes: 6,
+    },
+    pathwayBowling: {
+      seriesType: "1 DAY",
+      matches: 26,
+      innings: 18,
+      overs: "88.0",
+      runs: 295,
+      wickets: 19,
+      bestBowling: "6/2",
+      maidens: 3,
+      average: 15.53,
+      economy: 3.35,
+      strikeRate: 27.79,
+      fourWickets: 0,
+      fiveWickets: 0,
+      wides: 25,
+      catches: 9,
+    },
     player: {
       name: "Arjun Shah",
       role: "All Rounder",
@@ -260,8 +406,8 @@ export const LOCAL_PREVIEW_PLAYERS: LocalPreviewPlayer[] = [
       dismissalPatterns: [],
       bowlerTypeNotes: [],
       groundingNotes: [
-        "Public USA Cricket Junior Pathway profile lists Arjun Shah as a verified DSCA Rhinos all rounder.",
-        "The indexed 1 Day pathway table shows 435 runs with a highest score of 146, alongside 19 wickets at 3.35 economy.",
+        "The public CricClubs player profile page shows career totals of 202 matches, 2,421 runs, and 122 wickets.",
+        "The USA Cricket Junior Pathway tab shows a 1 Day batting line of 435 runs at 74.11 strike rate and a bowling line of 19 wickets at 3.35 economy.",
       ],
     },
     derived: {
@@ -294,6 +440,13 @@ export const LOCAL_PREVIEW_PLAYERS: LocalPreviewPlayer[] = [
     sourceUrl: "https://cricclubs.com/CCF/viewPlayer.do?clubId=4617&playerId=1615806",
     searchedAt,
     previewMode: "Local verified public CricClubs profile",
+    careerTotals: {
+      matches: 236,
+      runs: 2275,
+      wickets: 205,
+    },
+    pathwayBatting: null,
+    pathwayBowling: null,
     player: {
       name: "Sharvik Shah",
       role: "All Rounder",
@@ -364,6 +517,13 @@ export const LOCAL_PREVIEW_PLAYERS: LocalPreviewPlayer[] = [
     sourceUrl: "https://cricclubs.com/viewPlayer.do?clubId=3833&playerId=994074",
     searchedAt,
     previewMode: "Local verified public CricClubs profile",
+    careerTotals: {
+      matches: 199,
+      runs: 3788,
+      wickets: 174,
+    },
+    pathwayBatting: null,
+    pathwayBowling: null,
     player: {
       name: "Shreyak Porecha",
       role: "All Rounder",
@@ -701,6 +861,215 @@ export const LOCAL_PREVIEW_PLAYERS: LocalPreviewPlayer[] = [
       dataLimitations: [
         "A clean indexed Ahan Behera player profile page was not available through search, so this local cache uses publicly visible team pages and scorecards only.",
         "The search also commonly surfaces the misspelling 'Ahan Behra', which this local lookup now supports as an alias.",
+      ],
+    },
+  },
+  {
+    searchQuery: "Vidit Kwatra",
+    sourceUrl: "https://cricclubs.com/CCA/viewPlayer.do?clubId=1146&playerId=2581673",
+    searchedAt,
+    previewMode: "Local verified public CricClubs profile",
+    careerTotals: {
+      matches: 336,
+      runs: 5408,
+      wickets: 270,
+    },
+    pathwayBatting: null,
+    pathwayBowling: null,
+    player: {
+      name: "Vidit Kwatra",
+      role: "Batsman",
+      team: "CCA",
+      battingStyle: "Right Handed Batter",
+      bowlingStyle: null,
+    },
+    stats: {
+      matches: 336,
+      innings: null,
+      runs: 5408,
+      battingAverage: null,
+      strikeRate: null,
+      highestScore: null,
+      notOuts: null,
+      fours: null,
+      sixes: null,
+      ducks: null,
+      wickets: 270,
+      bowlingAverage: null,
+      economy: null,
+      bowlingStrikeRate: null,
+      bestBowling: null,
+      maidens: null,
+      catches: null,
+      stumpings: null,
+      runOuts: null,
+    },
+    formatSplits: [],
+    explicitInsights: {
+      dismissalPatterns: [],
+      bowlerTypeNotes: [],
+      groundingNotes: [
+        "The public CricClubs player profile page shows career totals of 336 matches, 5,408 runs, and 270 wickets.",
+        "A complete USA Cricket Junior Pathway tab was not exposed in the indexed public snippet used for this cache.",
+      ],
+    },
+    derived: {
+      summaryCards: [
+        { label: "Matches", value: "336", icon: "players", changeLabel: "Career total", trend: "up" },
+        { label: "Runs", value: "5408", icon: "runs", changeLabel: "Public profile total", trend: "up" },
+        { label: "Bat Avg / SR", value: "Unavailable", icon: "batting", changeLabel: "Need full tab", trend: "neutral" },
+        { label: "Wickets / Econ", value: "270 / Unavailable", icon: "bowling", changeLabel: "Career wicket total", trend: "up" },
+      ],
+      strengths: [{ title: "Heavy public body of work", body: "The indexed profile already shows a large overall sample, so the main signal here is broad career volume rather than one short competition slice." }],
+      concerns: [{ title: "Junior pathway detail missing", body: "The indexed public snippet did not expose the exact USA Cricket Junior Pathway batting and bowling tables for this player." }],
+      selectionSummary: "The public CricClubs profile confirms Vidit Kwatra has a large career record, but the junior pathway tab detail is not fully indexed in this cache.",
+      battingProfile: "Overall run volume is clearly strong, but the exact pathway-format split is not exposed here.",
+      dismissalRisk: "No public dismissal split was exposed in the indexed profile snippet.",
+      matchupRead: "The overall profile confirms deep match experience, but matchup detail should wait for the exact pathway tab.",
+      recommendation: "Use the public career totals as the grounding layer and add the direct player-profile tab later if you want exact pathway batting and bowling lines.",
+      dataLimitations: [
+        "This entry is grounded by a full public CricClubs player profile page.",
+        "The USA Cricket Junior Pathway batting and bowling tab rows were not fully exposed in the indexed snippet available here.",
+      ],
+    },
+  },
+  {
+    searchQuery: "Vivaan Jagtiani",
+    aliases: ["Vivaan Jagtyanni"],
+    sourceUrl: "https://cricclubs.com/SPSCA/viewPlayer.do?clubId=5232&playerId=1514601",
+    searchedAt,
+    previewMode: "Local verified public CricClubs profile",
+    careerTotals: {
+      matches: 372,
+      runs: 5370,
+      wickets: 340,
+    },
+    pathwayBatting: null,
+    pathwayBowling: null,
+    player: {
+      name: "Vivaan Jagtiani",
+      role: "All Rounder",
+      team: "SPSCA",
+      battingStyle: "Right Handed Batter",
+      bowlingStyle: "Right Arm Medium",
+    },
+    stats: {
+      matches: 372,
+      innings: null,
+      runs: 5370,
+      battingAverage: null,
+      strikeRate: null,
+      highestScore: null,
+      notOuts: null,
+      fours: null,
+      sixes: null,
+      ducks: null,
+      wickets: 340,
+      bowlingAverage: null,
+      economy: null,
+      bowlingStrikeRate: null,
+      bestBowling: null,
+      maidens: null,
+      catches: null,
+      stumpings: null,
+      runOuts: null,
+    },
+    formatSplits: [],
+    explicitInsights: {
+      dismissalPatterns: [],
+      bowlerTypeNotes: [],
+      groundingNotes: [
+        "The public CricClubs player profile page shows career totals of 372 matches, 5,370 runs, and 340 wickets.",
+        "A complete USA Cricket Junior Pathway tab was not exposed in the indexed public snippet used for this cache.",
+      ],
+    },
+    derived: {
+      summaryCards: [
+        { label: "Matches", value: "372", icon: "players", changeLabel: "Career total", trend: "up" },
+        { label: "Runs", value: "5370", icon: "runs", changeLabel: "Public profile total", trend: "up" },
+        { label: "Bat Avg / SR", value: "Unavailable", icon: "batting", changeLabel: "Need full tab", trend: "neutral" },
+        { label: "Wickets / Econ", value: "340 / Unavailable", icon: "bowling", changeLabel: "Career wicket total", trend: "up" },
+      ],
+      strengths: [{ title: "Massive career footprint", body: "The indexed profile shows both large run volume and large wicket volume, which is the clearest usable signal from the public page." }],
+      concerns: [{ title: "Pathway detail still missing", body: "The exact USA Cricket Junior Pathway batting and bowling tables are not available in the indexed snippet used here." }],
+      selectionSummary: "The public CricClubs profile confirms Vivaan Jagtiani as a deep-sample all-round record, but the exact junior pathway tab still needs the direct profile view.",
+      battingProfile: "The overall profile supports a genuine all-round career record rather than a short sample.",
+      dismissalRisk: "No public dismissal split was exposed in the indexed profile snippet.",
+      matchupRead: "The public signal is broad all-round production, not a specific pathway matchup split.",
+      recommendation: "Use the full career totals now and add pathway tab extraction later if you need the exact junior-only line.",
+      dataLimitations: [
+        "This entry is grounded by a full public CricClubs player profile page.",
+        "The USA Cricket Junior Pathway batting and bowling tab rows were not fully exposed in the indexed snippet available here.",
+      ],
+    },
+  },
+  {
+    searchQuery: "Krishang Naikar",
+    aliases: ["Krishaang Naikar"],
+    sourceUrl: "https://cricclubs.com/CCA/viewPlayer.do?clubId=1146&playerId=822265",
+    searchedAt,
+    previewMode: "Local verified public CricClubs profile",
+    careerTotals: {
+      matches: 204,
+      runs: 3305,
+      wickets: 9,
+    },
+    pathwayBatting: null,
+    pathwayBowling: null,
+    player: {
+      name: "Krishang Naikar",
+      role: "Batsman",
+      team: "CCA",
+      battingStyle: "Right Handed Batter",
+      bowlingStyle: null,
+    },
+    stats: {
+      matches: 204,
+      innings: null,
+      runs: 3305,
+      battingAverage: null,
+      strikeRate: null,
+      highestScore: null,
+      notOuts: null,
+      fours: null,
+      sixes: null,
+      ducks: null,
+      wickets: 9,
+      bowlingAverage: null,
+      economy: null,
+      bowlingStrikeRate: null,
+      bestBowling: null,
+      maidens: null,
+      catches: null,
+      stumpings: null,
+      runOuts: null,
+    },
+    formatSplits: [],
+    explicitInsights: {
+      dismissalPatterns: [],
+      bowlerTypeNotes: [],
+      groundingNotes: [
+        "The public CricClubs player profile page shows career totals of 204 matches, 3,305 runs, and 9 wickets.",
+        "A complete USA Cricket Junior Pathway tab was not exposed in the indexed public snippet used for this cache.",
+      ],
+    },
+    derived: {
+      summaryCards: [
+        { label: "Matches", value: "204", icon: "players", changeLabel: "Career total", trend: "up" },
+        { label: "Runs", value: "3305", icon: "runs", changeLabel: "Public profile total", trend: "up" },
+        { label: "Bat Avg / SR", value: "Unavailable", icon: "batting", changeLabel: "Need full tab", trend: "neutral" },
+        { label: "Wickets / Econ", value: "9 / Unavailable", icon: "bowling", changeLabel: "Secondary skill only", trend: "neutral" },
+      ],
+      strengths: [{ title: "Career batting volume", body: "The strongest public signal is overall batting volume across more than 200 recorded matches." }],
+      concerns: [{ title: "Limited pathway exposure in cache", body: "The public indexed snippet does not include the exact USA Cricket Junior Pathway batting and bowling rows for this player." }],
+      selectionSummary: "The public CricClubs profile confirms Krishang Naikar as a high-volume batting record, but the exact pathway tab is not yet captured here.",
+      battingProfile: "The overall record leans batting-first based on the public totals currently exposed.",
+      dismissalRisk: "No public dismissal split was exposed in the indexed profile snippet.",
+      matchupRead: "The available public record is better for broad batting volume than detailed junior-pathway matchup work.",
+      recommendation: "Use the public career totals for identification and wait for the direct pathway tab if you need junior-only precision.",
+      dataLimitations: [
+        "This entry is grounded by a full public CricClubs player profile page.",
+        "The USA Cricket Junior Pathway batting and bowling tab rows were not fully exposed in the indexed snippet available here.",
       ],
     },
   },

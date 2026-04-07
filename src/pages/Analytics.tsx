@@ -44,20 +44,58 @@ function normalizeQuery(value: string) {
     .replace(/\s+/g, " ");
 }
 
-function getLocalPreviewPlayer(query: string) {
+function getPlayerSearchScore(query: string, candidate: string) {
   const normalizedQuery = normalizeQuery(query);
+  const normalizedCandidate = normalizeQuery(candidate);
 
-  return (
-    COMPLETE_LOCAL_PREVIEW_PLAYERS.find((player) => {
-      const names = [player.searchQuery, ...(player.aliases ?? [])].map(normalizeQuery);
+  if (!normalizedQuery || !normalizedCandidate) {
+    return 0;
+  }
 
-      return names.some((playerName) => (
-        playerName === normalizedQuery ||
-        playerName.includes(normalizedQuery) ||
-        normalizedQuery.includes(playerName)
-      ));
-    }) ?? null
+  if (normalizedQuery === normalizedCandidate) {
+    return 1;
+  }
+
+  if (normalizedCandidate.startsWith(normalizedQuery) || normalizedQuery.startsWith(normalizedCandidate)) {
+    return 0.94;
+  }
+
+  if (normalizedCandidate.includes(normalizedQuery) || normalizedQuery.includes(normalizedCandidate)) {
+    return 0.9;
+  }
+
+  const queryTokens = normalizedQuery.split(" ").filter(Boolean);
+  const candidateTokens = normalizedCandidate.split(" ").filter(Boolean);
+  const exactTokenMatches = queryTokens.filter((token) => candidateTokens.includes(token)).length;
+  const prefixTokenMatches = queryTokens.filter((token) =>
+    candidateTokens.some((candidateToken) => candidateToken.startsWith(token) || token.startsWith(candidateToken)),
+  ).length;
+
+  if (queryTokens.length === 0) {
+    return 0;
+  }
+
+  return Math.max(
+    exactTokenMatches / queryTokens.length * 0.84,
+    prefixTokenMatches / queryTokens.length * 0.78,
   );
+}
+
+function getLocalPreviewPlayer(query: string) {
+  let bestMatch: CricClubsAnalyticsResponse | null = null;
+  let bestScore = 0;
+
+  for (const player of COMPLETE_LOCAL_PREVIEW_PLAYERS) {
+    const names = [player.searchQuery, ...(player.aliases ?? [])];
+    const playerScore = Math.max(...names.map((name) => getPlayerSearchScore(query, name)));
+
+    if (playerScore > bestScore) {
+      bestScore = playerScore;
+      bestMatch = player;
+    }
+  }
+
+  return bestScore >= 0.52 ? bestMatch : null;
 }
 
 const statIconMap = {

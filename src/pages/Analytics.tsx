@@ -16,7 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import {
-  LOCAL_PREVIEW_PLAYERS,
+  COMPLETE_LOCAL_PREVIEW_PLAYERS,
   type CricClubsAnalyticsResponse,
   type Trend,
 } from "@/data/analyticsPlayers";
@@ -38,7 +38,7 @@ function getLocalPreviewPlayer(query: string) {
   const normalizedQuery = normalizeQuery(query);
 
   return (
-    LOCAL_PREVIEW_PLAYERS.find((player) => {
+    COMPLETE_LOCAL_PREVIEW_PLAYERS.find((player) => {
       const names = [player.searchQuery, ...(player.aliases ?? [])].map(normalizeQuery);
 
       return names.some((playerName) => (
@@ -57,7 +57,7 @@ const statIconMap = {
   bowling: Target,
 } as const;
 
-const VERIFIED_PLAYER_NAMES = LOCAL_PREVIEW_PLAYERS.map((player) => player.searchQuery);
+const VERIFIED_PLAYER_NAMES = COMPLETE_LOCAL_PREVIEW_PLAYERS.map((player) => player.searchQuery);
 
 const Analytics = () => {
   const [playerQuery, setPlayerQuery] = useState("");
@@ -223,10 +223,10 @@ const Analytics = () => {
           </div>
 
           <div className="mt-4 rounded-2xl border border-border bg-background/60 p-4 text-sm text-muted-foreground">
-            This build now checks a verified local cache of publicly indexed CricClubs player pages
-            and scorecards first, then falls back to remote public search only if the player is not
-            already covered locally. If CricClubs does not expose a stat split, the analysis leaves
-            that area blank instead of inventing an answer.
+            This build now checks a verified local cache of publicly indexed full CricClubs player
+            profiles first, then falls back to remote public search only if the player is not
+            already covered locally. Partial scorecard-only samples are not shown as complete player
+            analytics.
           </div>
 
           <div className="mt-4 rounded-2xl border border-border bg-background/80 p-4">
@@ -263,9 +263,9 @@ const Analytics = () => {
                     : searchStatus === "remote-success"
                       ? "This card confirms the frontend received a usable response from the analytics backend."
                       : searchStatus === "local-preview"
-                        ? "This is grounded fallback data already bundled into the app, not an invented player profile."
+                        ? "This is a bundled cache of a full publicly indexed CricClubs player profile, not an invented or partial record."
                         : searchStatus === "no-result"
-                          ? "If this player has a public CricClubs profile, the likely next check is the edge function runtime logs for this exact search."
+                          ? "If this player has a public full-profile CricClubs page, the likely next check is the edge function runtime logs or adding that exact profile to the local cache."
                           : searchStatus === "error"
                             ? "The backend may be unreachable, returning invalid JSON, or failing at runtime."
                             : "Current local verified coverage in this build includes only the players listed below."}
@@ -317,10 +317,10 @@ const Analytics = () => {
                   {searchStatus === "searching"
                     ? `The app is actively checking the analytics backend for "${lastSearchedQuery}".`
                     : searchStatus === "no-result"
-                      ? `No usable public CricClubs result was returned for "${lastSearchedQuery}". This UI now keeps that state visible instead of appearing blank.`
+                      ? `No usable full-profile public CricClubs result was returned for "${lastSearchedQuery}". This UI now keeps that state visible instead of appearing blank.`
                       : searchStatus === "error"
                         ? "The search did not complete successfully. Use the error message above to distinguish backend failure from a true no-result."
-                        : "This section is now scoped to the Bay Area USA Cricket Junior Pathway Hub. It only shows verified public CricClubs profiles cached in this build, so the testing flow stays grounded and does not invent players or unsupported matchup reads."}
+                        : "This section now prefers verified full public CricClubs player profiles cached in this build, so the testing flow stays grounded and does not invent players or treat scorecard fragments as complete career records."}
                 </p>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   {[
@@ -330,11 +330,11 @@ const Analytics = () => {
                     },
                     {
                       title: "Grounded Reads",
-                      body: "Average, strike rate, boundary profile, and format splits are used only when they are publicly visible.",
+                      body: "Average, strike rate, boundary profile, and format splits are used only when they are publicly visible on a full player profile.",
                     },
                     {
                       title: "Honest Gaps",
-                      body: "If dismissal patterns or bowler-type splits are not present on the public page, the UI says that clearly.",
+                      body: "If a full public player profile is not indexed, the UI leaves the player unsupported instead of filling from partial scorecards.",
                     },
                   ].map((item) => (
                     <div key={item.title} className="rounded-2xl border border-border bg-background/60 p-5">

@@ -1158,7 +1158,7 @@ export function TechniqueAI() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const analysisCacheRef = useRef(new Map<string, TrackerReport>());
   const containerRef = useRef<HTMLDivElement>(null);
-  const { isProcessing, progress, currentFrame, processVideo, reset, error } = usePoseDetection();
+  const { isProcessing, isModelReady, progress, currentFrame, processVideo, reset, error } = usePoseDetection();
   const playerName = getDisplayName(user);
 
   const getAnalysisCacheKey = () =>
@@ -1519,9 +1519,9 @@ export function TechniqueAI() {
                 </div>
 
                 <div className="flex flex-wrap gap-3">
-                  <Button onClick={runAnalysis} disabled={isProcessing} variant="hero">
+                  <Button onClick={runAnalysis} disabled={isProcessing || !isModelReady} variant="hero">
                     {isProcessing ? <Activity className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                    {isProcessing ? "Reading pose..." : "Analyze batting clip"}
+                    {isProcessing ? "Reading pose..." : isModelReady ? "Analyze batting clip" : "Loading pose model..."}
                   </Button>
                   <Button onClick={exportPdfReport} disabled={!analysis} variant="outline">
                     <FileDown className="h-4 w-4" />
@@ -1550,6 +1550,12 @@ export function TechniqueAI() {
                     <Progress value={stage === "scoring" ? Math.max(progress, 78) : progress} className="h-2" />
                   </div>
                 )}
+
+                {!isModelReady && !error ? (
+                  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
+                    Preparing the pose model. The analysis button will unlock automatically when it is ready.
+                  </div>
+                ) : null}
 
                 {error ? (
                   <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">

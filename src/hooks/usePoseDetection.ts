@@ -223,17 +223,21 @@ function calculateCricketAngles(joints: Joint[]): Angle[] {
 
 export function usePoseDetection() {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isModelReady, setIsModelReady] = useState(false);
   const [progress, setProgress] = useState(0);
   const [poseFrames, setPoseFrames] = useState<PoseFrame[]>([]);
   const [currentFrame, setCurrentFrame] = useState<PoseFrame | null>(null);
   const [error, setError] = useState<string | null>(null);
   const poseRef = useRef<Pose | null>(null);
+  const initPromiseRef = useRef<Promise<void> | null>(null);
   const resultResolverRef = useRef<((results: Results) => void) | null>(null);
   const frameCacheRef = useRef(new Map<string, PoseFrame[]>());
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Initialize MediaPipe Pose
   useEffect(() => {
+    let isMounted = true;
+
     const initPose = async () => {
       try {
         const pose = new Pose({
@@ -259,16 +263,26 @@ export function usePoseDetection() {
         });
 
         await pose.initialize();
+        if (!isMounted) {
+          pose.close();
+          return;
+        }
+
         poseRef.current = pose;
+        setIsModelReady(true);
       } catch (err) {
         console.error('Failed to initialize MediaPipe Pose:', err);
-        setError('Failed to initialize pose detection.');
+        if (isMounted) {
+          setError('Failed to initialize pose detection.');
+          setIsModelReady(false);
+        }
       }
     };
 
-    initPose();
+    initPromiseRef.current = initPose();
 
     return () => {
+      isMounted = false;
       if (poseRef.current) {
         poseRef.current.close();
       }
@@ -302,7 +316,13 @@ export function usePoseDetection() {
 
     try {
       if (!poseRef.current) {
-        throw new Error('Pose model is not ready yet');
+        if (initPromiseRef.current) {
+          await initPromiseRef.current;
+        }
+      }
+
+      if (!poseRef.current) {
+        throw new Error('Failed to initialize pose detection.');
       }
 
       // Create video element for processing
@@ -408,6 +428,7 @@ export function usePoseDetection() {
 
   return {
     isProcessing,
+    isModelReady,
     progress,
     poseFrames,
     currentFrame,

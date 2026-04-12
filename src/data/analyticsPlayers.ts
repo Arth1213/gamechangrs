@@ -1078,3 +1078,5 @@ export const LOCAL_PREVIEW_PLAYERS: LocalPreviewPlayer[] = [
 export const COMPLETE_LOCAL_PREVIEW_PLAYERS = LOCAL_PREVIEW_PLAYERS.filter(
   (player) => player.previewMode?.includes("public CricClubs profile") ?? false,
 );
+
+export const SUPPORTED_ANALYTICS_PLAYERS = LOCAL_PREVIEW_PLAYERS;

@@ -1,5 +1,5 @@
 import {
-  COMPLETE_LOCAL_PREVIEW_PLAYERS,
+  SUPPORTED_ANALYTICS_PLAYERS,
   type CricClubsAnalyticsResponse,
 } from "@/data/analyticsPlayers";
 
@@ -230,10 +230,21 @@ function getOverall(player: CricClubsAnalyticsResponse) {
   );
 }
 
+function getSupportedCohort() {
+  return SUPPORTED_ANALYTICS_PLAYERS.filter((candidate) => {
+    const hasRuns =
+      (candidate.pathwayBatting?.runs ?? candidate.stats.runs ?? candidate.careerTotals?.runs ?? 0) > 0;
+    const hasWickets =
+      (candidate.pathwayBowling?.wickets ?? candidate.stats.wickets ?? candidate.careerTotals?.wickets ?? 0) > 0;
+
+    return hasRuns || hasWickets;
+  });
+}
+
 function getRolePeers(player: CricClubsAnalyticsResponse) {
   const roleBucket = getRoleBucket(player);
 
-  return COMPLETE_LOCAL_PREVIEW_PLAYERS.filter((candidate) => {
+  return getSupportedCohort().filter((candidate) => {
     if (candidate.searchQuery === player.searchQuery) return false;
     return getRoleBucket(candidate) === roleBucket;
   });
@@ -247,7 +258,7 @@ export function getPlayerModelSnapshot(player: CricClubsAnalyticsResponse): Play
   const careerVolume = clamp(getCareerVolume(player));
   const overall = getOverall(player);
 
-  const cohort = COMPLETE_LOCAL_PREVIEW_PLAYERS.map((candidate) => ({
+  const cohort = getSupportedCohort().map((candidate) => ({
     player: candidate,
     score: getOverall(candidate),
   })).sort((a, b) => b.score - a.score);

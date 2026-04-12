@@ -12,6 +12,11 @@ interface SearchRequest {
 
 interface ExtractedPlayerData {
   matchedPlayer: boolean;
+  careerTotals?: {
+    matches: number | null;
+    runs: number | null;
+    wickets: number | null;
+  } | null;
   player: {
     name: string | null;
     role: string | null;
@@ -152,7 +157,6 @@ function extractLinksFromDuckDuckGo(html: string) {
   for (const match of html.matchAll(linkRegex)) {
     const decoded = decodeDuckDuckGoHref(match[1]);
     if (!decoded) continue;
-    if (!decoded.includes("cricclubs.com")) continue;
     if (!/viewPlayer\.do|viewLeague\.do|viewTeams\.do|viewTeam\.do|ranking|player|batting|bowling/i.test(decoded)) continue;
     urls.add(decoded);
   }
@@ -179,11 +183,16 @@ function buildSearchTerms(playerName: string, clubHint?: string | null) {
   terms.add(`site:cricclubs.com/viewPlayer.do "${playerName}"`);
   terms.add(`site:cricclubs.com "${playerName}" CricClubs player`);
   terms.add(`site:cricclubs.com ${playerName} CricClubs cricket`);
+  terms.add(`"${playerName}" "viewPlayer.do" cricket`);
+  terms.add(`"${playerName}" "Powered by CricClubs"`);
+  terms.add(`"${playerName}" "CC Player ID"`);
 
   if (trimmedHint) {
     terms.add(`site:cricclubs.com/viewPlayer.do "${playerName}" "${trimmedHint}"`);
     terms.add(`site:cricclubs.com "${playerName}" "${trimmedHint}" CricClubs`);
     terms.add(`site:cricclubs.com ${playerName} ${trimmedHint} CricClubs cricket`);
+    terms.add(`"${playerName}" "${trimmedHint}" "viewPlayer.do"`);
+    terms.add(`"${playerName}" "${trimmedHint}" "Powered by CricClubs"`);
   }
 
   if (isUsaJuniorPathwayHint(trimmedHint)) {
@@ -354,6 +363,11 @@ async function extractPlayerDataFromText(
 
   return {
     matchedPlayer,
+    careerTotals: {
+      matches: stats.matches,
+      runs: stats.runs,
+      wickets: stats.wickets,
+    },
     player: {
       name: playerName,
       role,
@@ -650,7 +664,9 @@ serve(async (req) => {
           pageText,
         );
 
-        const overlap = getNameOverlap(trimmedQuery, extracted.player.name);
+        const overlap =
+          getNameOverlap(trimmedQuery, extracted.player.name) +
+          (sourceUrl.includes("viewPlayer.do") ? 0.15 : 0);
         if (!bestResult || overlap > bestResult.overlap) {
           bestResult = { sourceUrl, extracted, overlap };
         }

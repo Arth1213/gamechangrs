@@ -34,6 +34,7 @@ import {
 type SearchStatus = "idle" | "searching" | "success" | "no-result" | "error";
 
 const PUBLIC_SCOPE_LABEL = "USA Cricket Junior Pathway Hub - Bay Area public dataset";
+const REMOTE_SCOPE_HINT = "USA Cricket Junior Pathway Hub Bay Area U15";
 
 function normalizeQuery(value: string) {
   return value
@@ -150,6 +151,32 @@ const Analytics = () => {
     setSearchStatus("searching");
 
     try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cricclubs-player-analytics`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            query: trimmedQuery,
+            clubHint: REMOTE_SCOPE_HINT,
+          }),
+        },
+      );
+
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data?.player && (data.player.name || data.searchQuery || data.sourceUrl)) {
+        setResult({
+          ...(data as CricClubsAnalyticsResponse),
+          previewMode: data.previewMode ?? `${PUBLIC_SCOPE_LABEL} · live public CricClubs profile`,
+        });
+        setSearchStatus("success");
+        return;
+      }
+
       const localPreview = getLocalPreviewPlayer(trimmedQuery);
       if (localPreview) {
         setResult({
@@ -163,13 +190,26 @@ const Analytics = () => {
 
       setSearchStatus("no-result");
       setErrorMessage(
-        `No verified CricClubs record is bundled for "${trimmedQuery}" in this build yet. Search one of the supported players below or add that player to the local analytics registry.`,
+        data?.error ||
+          `No usable public CricClubs player profile was found for "${trimmedQuery}". Search one of the supported players below or add a verified profile record for that player.`,
       );
       setResult(null);
       return;
     } catch (error) {
+      const localPreview = getLocalPreviewPlayer(trimmedQuery);
+      if (localPreview) {
+        setResult({
+          ...localPreview,
+          searchedAt: new Date().toISOString(),
+          previewMode: `${PUBLIC_SCOPE_LABEL} · verified local CricClubs record`,
+        });
+        setErrorMessage(null);
+        setSearchStatus("success");
+        return;
+      }
+
       const message =
-        error instanceof Error ? error.message : "Unable to search the local player analytics registry right now.";
+        error instanceof Error ? error.message : "Unable to search the public CricClubs profile lookup right now.";
       setErrorMessage(message);
       setResult(null);
       setSearchStatus("error");
@@ -250,9 +290,10 @@ const Analytics = () => {
           </div>
 
           <div className="mt-4 rounded-2xl border border-border bg-background/60 p-4 text-sm text-muted-foreground">
-            This analytics search now uses only the verified CricClubs records bundled in this
-            build. That removes the unstable remote lookup path, so a supported player name will
-            always resolve to a link and a stat card instead of failing on network/runtime issues.
+            This analytics search now tries the live public CricClubs player-profile lookup first,
+            then falls back to the verified bundled registry if the public lookup does not return a
+            usable result. When a full public player page is found, the headline totals are shown
+            first.
           </div>
 
           <div className="mt-4 rounded-2xl border border-border bg-background/80 p-4">
@@ -281,14 +322,14 @@ const Analytics = () => {
                 </p>
                 <p className="text-muted-foreground">
                   {searchStatus === "searching"
-                    ? "The previous result is cleared while the current local registry lookup runs."
+                    ? "The previous result is cleared while the public player-profile lookup runs."
                     : searchStatus === "success"
-                      ? "This result comes from the bundled verified player registry, not from a live backend fetch."
+                      ? "This result comes either from a live public player page or, if that failed, from the bundled verified registry."
                         : searchStatus === "no-result"
-                          ? "The current build can only return players that already have a verified CricClubs record bundled locally."
+                          ? "No public player page or bundled verified registry match was available for that search."
                           : searchStatus === "error"
-                            ? "The local registry lookup hit an unexpected error."
-                            : "Current verified coverage in this build includes the players listed below."}
+                            ? "The public lookup and local fallback both failed."
+                            : "Current verified fallback coverage in this build includes the players listed below."}
                 </p>
               </div>
             </div>
@@ -521,33 +562,33 @@ division_weight
                   {searchStatus === "searching"
                     ? "Running Public Player Search"
                     : searchStatus === "no-result"
-                      ? "Player Not In Local Registry"
+                      ? "No Public Player Result Found"
                       : searchStatus === "error"
                         ? "Analytics Search Failed"
                         : "Search A Verified Bay Area Player"}
                 </h2>
                 <p className="text-muted-foreground mb-6">
                   {searchStatus === "searching"
-                    ? `The app is checking the bundled CricClubs registry for "${lastSearchedQuery}".`
+                    ? `The app is checking live public CricClubs player pages for "${lastSearchedQuery}".`
                     : searchStatus === "no-result"
-                      ? `No bundled verified CricClubs record matched "${lastSearchedQuery}". This UI now keeps that state visible instead of appearing blank.`
+                      ? `No usable public CricClubs player page or bundled verified record matched "${lastSearchedQuery}". This UI now keeps that state visible instead of appearing blank.`
                       : searchStatus === "error"
                         ? "The search did not complete successfully. Use the error message above to distinguish an unexpected lookup issue from a true no-result."
-                        : "This section now uses the bundled verified CricClubs registry only, so supported players resolve consistently without any backend dependency."}
+                        : "This section now prioritizes a live public player page when possible, then falls back to the bundled verified registry if needed."}
                 </p>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   {[
                     {
                       title: "Bay Area Scope",
-                      body: "The search is intentionally limited to the verified Bay Area-focused CricClubs records bundled into this build.",
+                      body: "The search is biased toward Bay Area and USA Cricket Junior Pathway public player pages, with a verified local fallback registry behind it.",
                     },
                     {
                       title: "Grounded Reads",
-                      body: "Average, strike rate, boundary profile, and format splits are shown only when they are already grounded by the stored CricClubs source.",
+                      body: "Average, strike rate, boundary profile, and totals are shown only when they are grounded by a live public player page or a verified stored CricClubs source.",
                     },
                     {
-                      title: "Deterministic Search",
-                      body: "If a player is supported in the local registry, the page will always return the same link and stats for that name.",
+                      title: "Headline Totals First",
+                      body: "Matches, runs, and wickets from the public player profile are surfaced at the top of the result before the deeper scouting notes.",
                     },
                   ].map((item) => (
                     <div key={item.title} className="rounded-2xl border border-border bg-background/60 p-5">
@@ -640,6 +681,23 @@ division_weight
                       </Button>
                     </a>
                   </div>
+                </div>
+
+                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {[
+                    { label: "Matches", value: result.careerTotals?.matches ?? result.stats.matches },
+                    { label: "Runs", value: result.careerTotals?.runs ?? result.stats.runs },
+                    { label: "Wickets", value: result.careerTotals?.wickets ?? result.stats.wickets },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-2xl border border-primary/15 bg-background/60 p-6">
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        {item.label}
+                      </p>
+                      <p className="mt-2 font-display text-4xl font-bold text-foreground">
+                        {item.value ?? "-"}
+                      </p>
+                    </div>
+                  ))}
                 </div>
 
                 <div className="mt-6 rounded-2xl border border-border bg-background/60 p-5">

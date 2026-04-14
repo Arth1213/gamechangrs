@@ -151,17 +151,28 @@ function decodeDuckDuckGoHref(href: string) {
 }
 
 function extractLinksFromDuckDuckGo(html: string) {
-  const urls = new Set<string>();
+  const profileUrls: string[] = [];
+  const otherUrls: string[] = [];
+  const seen = new Set<string>();
   const linkRegex = /<a[^>]+href="([^"]+)"[^>]*class="[^"]*result__a[^"]*"[^>]*>/gi;
 
   for (const match of html.matchAll(linkRegex)) {
     const decoded = decodeDuckDuckGoHref(match[1]);
-    if (!decoded) continue;
-    if (!/viewPlayer\.do|viewLeague\.do|viewTeams\.do|viewTeam\.do|ranking|player|batting|bowling/i.test(decoded)) continue;
-    urls.add(decoded);
+    if (!decoded || seen.has(decoded)) continue;
+    // Accept viewPlayer.do on ANY domain (cricclubs.com, bayareacricket.org, etc.)
+    if (/viewPlayer\.do/i.test(decoded)) {
+      seen.add(decoded);
+      profileUrls.push(decoded);
+      continue;
+    }
+    if (/viewLeague\.do|viewTeams\.do|viewTeam\.do|ranking|player|batting|bowling/i.test(decoded)) {
+      seen.add(decoded);
+      otherUrls.push(decoded);
+    }
   }
 
-  return Array.from(urls);
+  // Prefer full player profile pages over scorecards / team pages
+  return [...profileUrls, ...otherUrls];
 }
 
 function isUsaJuniorPathwayHint(value: string | null | undefined) {
@@ -180,12 +191,16 @@ function buildSearchTerms(playerName: string, clubHint?: string | null) {
   const trimmedHint = clubHint?.trim();
   const terms = new Set<string>();
 
+  // CricClubs.com direct
   terms.add(`site:cricclubs.com/viewPlayer.do "${playerName}"`);
   terms.add(`site:cricclubs.com "${playerName}" CricClubs player`);
   terms.add(`site:cricclubs.com ${playerName} CricClubs cricket`);
+
+  // CricClubs-powered domains (bayareacricket.org, etc.)
   terms.add(`"${playerName}" "viewPlayer.do" cricket`);
   terms.add(`"${playerName}" "Powered by CricClubs"`);
   terms.add(`"${playerName}" "CC Player ID"`);
+  terms.add(`"${playerName}" inurl:viewPlayer.do`);
 
   if (trimmedHint) {
     terms.add(`site:cricclubs.com/viewPlayer.do "${playerName}" "${trimmedHint}"`);
@@ -193,6 +208,11 @@ function buildSearchTerms(playerName: string, clubHint?: string | null) {
     terms.add(`site:cricclubs.com ${playerName} ${trimmedHint} CricClubs cricket`);
     terms.add(`"${playerName}" "${trimmedHint}" "viewPlayer.do"`);
     terms.add(`"${playerName}" "${trimmedHint}" "Powered by CricClubs"`);
+    // Search the hint domain directly if it looks like a domain
+    if (/\.[a-z]{2,}$/i.test(trimmedHint)) {
+      terms.add(`site:${trimmedHint} "${playerName}" viewPlayer.do`);
+      terms.add(`site:${trimmedHint} "${playerName}"`);
+    }
   }
 
   if (isUsaJuniorPathwayHint(trimmedHint)) {

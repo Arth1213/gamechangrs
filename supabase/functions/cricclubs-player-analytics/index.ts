@@ -485,7 +485,7 @@ function parseBowlingRows(pageText: string) {
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
-    if (!/Series Type\s*\|\s*Mat\s*\|\s*Inns\s*\|\s*Overs\s*\|\s*Runs\s*\|\s*Wkts\s*\|\s*BBF/i.test(line)) {
+    if (!/Series\s*Type[^|]*\|[^|]*Mat[^|]*\|[^|]*Inns[^|]*\|[^|]*Overs[^|]*\|[^|]*Runs[^|]*\|[^|]*Wkts[^|]*\|[^|]*BBF/i.test(line)) {
       continue;
     }
 

@@ -407,7 +407,13 @@ function normalizeCell(value: string | undefined) {
 function parseNullableNumber(value: string | undefined) {
   const normalized = normalizeCell(value).replace(/,/g, "");
   if (!normalized) return null;
-  const parsed = Number(normalized);
+  // Try direct parse first
+  const direct = Number(normalized);
+  if (Number.isFinite(direct)) return direct;
+  // Fallback: extract first usable number from mixed text (e.g. "12 (3)" or "abc 4.50")
+  const match = normalized.match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const parsed = Number(match[0]);
   return Number.isFinite(parsed) ? parsed : null;
 }
 

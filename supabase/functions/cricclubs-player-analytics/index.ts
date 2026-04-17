@@ -211,103 +211,95 @@ function buildSearchQueries(playerName: string, clubHint?: string | null): strin
   return queries;
 }
 
-// Try Google search
-async function searchGoogle(query: string): Promise<string> {
-  const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=10`;
-  const resp = await fetch(url, {
+// Firecrawl search - returns array of result URLs
+async function firecrawlSearch(query: string, apiKey: string): Promise<string[]> {
+  const resp = await fetch("https://api.firecrawl.dev/v1/search", {
+    method: "POST",
     headers: {
-      ...BOT_HEADERS,
-      Referer: "https://www.google.com/",
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({ query, limit: 10 }),
   });
-  if (!resp.ok) throw new Error(`Google search returned ${resp.status}`);
-  return await resp.text();
-}
 
-// Try Bing search  
-async function searchBing(query: string): Promise<string> {
-  const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
-  const resp = await fetch(url, {
-    headers: {
-      ...BOT_HEADERS,
-      Referer: "https://www.bing.com/",
-    },
-  });
-  if (!resp.ok) throw new Error(`Bing search returned ${resp.status}`);
-  return await resp.text();
-}
-
-// Try DuckDuckGo search
-async function searchDuckDuckGo(query: string): Promise<string> {
-  const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-  try {
-    const resp = await fetch(url, {
-      headers: { ...BOT_HEADERS, Referer: "https://duckduckgo.com/" },
-      signal: controller.signal,
-    });
-    if (!resp.ok) throw new Error(`DDG returned ${resp.status}`);
-    return await resp.text();
-  } finally {
-    clearTimeout(timeout);
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Firecrawl search returned ${resp.status}: ${text.slice(0, 200)}`);
   }
-}
 
-// Multi-engine search with fallback
-async function webSearch(query: string): Promise<string> {
-  // Try Google first, then Bing, then DDG
-  const engines = [
-    { name: "Google", fn: searchGoogle },
-    { name: "Bing", fn: searchBing },
-    { name: "DuckDuckGo", fn: searchDuckDuckGo },
-  ];
-  
-  for (const engine of engines) {
-    try {
-      const html = await engine.fn(query);
-      if (html.length > 500) return html;
-    } catch (err) {
-      console.warn(`${engine.name} failed for query "${query}":`, err instanceof Error ? err.message : err);
-    }
-  }
-  return "";
+  const data = await resp.json();
+  const results = data?.data ?? [];
+  return results.map((r: { url?: string }) => r.url).filter((u: unknown): u is string => typeof u === "string");
 }
 
 async function searchCricClubsProfiles(playerName: string, clubHint?: string | null): Promise<{ urls: string[]; triedQueries: string[] }> {
   const found = new Set<string>();
+  const playerProfileUrls = new Set<string>();
   const triedQueries: string[] = [];
   const queries = buildSearchQueries(playerName, clubHint);
+
+  const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+  if (!FIRECRAWL_API_KEY) {
+    throw new Error("FIRECRAWL_API_KEY is not configured");
+  }
 
   for (const query of queries) {
     triedQueries.push(query);
     try {
-      const html = await webSearch(query);
-      
-      // First priority: viewPlayer.do links
-      const playerLinks = extractViewPlayerLinks(html);
-      for (const link of playerLinks) found.add(link);
-      
-      // Second priority: any cricclubs links
-      if (found.size === 0) {
-        const ccLinks = extractCricClubsLinks(html);
-        for (const link of ccLinks) found.add(link);
+      const urls = await firecrawlSearch(query, FIRECRAWL_API_KEY);
+      for (const url of urls) {
+        if (/viewPlayer\.do/i.test(url)) {
+          playerProfileUrls.add(url);
+        } else if (/cricclubs/i.test(url)) {
+          found.add(url);
+        }
       }
-      
-      if (found.size >= 3) break;
+      if (playerProfileUrls.size >= 3) break;
     } catch (err) {
-      console.warn(`Search failed for "${query}":`, err instanceof Error ? err.message : err);
+      console.warn(`Firecrawl search failed for "${query}":`, err instanceof Error ? err.message : err);
     }
   }
 
-  return { urls: Array.from(found).slice(0, 8), triedQueries };
+  // Prioritize viewPlayer.do URLs
+  const ordered = [...playerProfileUrls, ...found].slice(0, 8);
+  return { urls: ordered, triedQueries };
 }
 
 async function fetchPageText(url: string) {
-  const response = await fetch(url, { headers: BOT_HEADERS });
-  if (!response.ok) throw new Error(`Profile fetch failed with ${response.status}`);
-  const html = await response.text();
-  return stripHtml(html).slice(0, 16000);
+  // Try direct fetch first
+  try {
+    const response = await fetch(url, { headers: BOT_HEADERS });
+    if (response.ok) {
+      const html = await response.text();
+      return stripHtml(html).slice(0, 16000);
+    }
+    console.warn(`Direct fetch returned ${response.status} for ${url}, falling back to Firecrawl scrape`);
+  } catch (err) {
+    console.warn(`Direct fetch threw for ${url}, falling back to Firecrawl scrape:`, err instanceof Error ? err.message : err);
+  }
+
+  // Fallback: use Firecrawl to scrape (bypasses bot blocks)
+  const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+  if (!FIRECRAWL_API_KEY) throw new Error("Profile fetch failed and FIRECRAWL_API_KEY not set");
+
+  const resp = await fetch("https://api.firecrawl.dev/v1/scrape", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: false }),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Firecrawl scrape failed ${resp.status}: ${text.slice(0, 200)}`);
+  }
+
+  const data = await resp.json();
+  const content = data?.data?.markdown ?? data?.markdown ?? data?.data?.html ?? "";
+  if (!content) throw new Error("Firecrawl returned empty content");
+  return stripHtml(content).slice(0, 16000);
 }
 
 function extractNumberAfterLabel(pageText: string, labels: string[]) {

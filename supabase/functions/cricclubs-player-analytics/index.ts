@@ -305,20 +305,43 @@ async function searchCricClubsProfiles(playerName: string, clubHint?: string | n
   return { urls: ordered, triedQueries };
 }
 
+// Convert HTML <table> rows into markdown pipe rows so table parsers can read them
+function htmlTablesToMarkdown(html: string) {
+  return html.replace(/<tr[^>]*>([\s\S]*?)<\/tr>/gi, (_match, inner) => {
+    const cells: string[] = [];
+    const cellRegex = /<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi;
+    for (const cellMatch of inner.matchAll(cellRegex)) {
+      const cellText = cellMatch[1]
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      cells.push(cellText);
+    }
+    if (cells.length === 0) return "\n";
+    return `\n| ${cells.join(" | ")} |\n`;
+  });
+}
+
+function stripHtmlPreservingTables(html: string) {
+  const withMdTables = htmlTablesToMarkdown(html);
+  return stripHtml(withMdTables);
+}
+
 async function fetchPageText(url: string) {
   // Try direct fetch first
   try {
     const response = await fetch(url, { headers: BOT_HEADERS });
     if (response.ok) {
       const html = await response.text();
-      return stripHtml(html).slice(0, 16000);
+      return stripHtmlPreservingTables(html).slice(0, 24000);
     }
     console.warn(`Direct fetch returned ${response.status} for ${url}, falling back to Firecrawl scrape`);
   } catch (err) {
     console.warn(`Direct fetch threw for ${url}, falling back to Firecrawl scrape:`, err instanceof Error ? err.message : err);
   }
 
-  // Fallback: use Firecrawl to scrape (bypasses bot blocks)
+  // Fallback: use Firecrawl to scrape (bypasses bot blocks). Request both markdown and html.
   const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
   if (!FIRECRAWL_API_KEY) throw new Error("Profile fetch failed and FIRECRAWL_API_KEY not set");
 
@@ -328,7 +351,7 @@ async function fetchPageText(url: string) {
       Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: false }),
+    body: JSON.stringify({ url, formats: ["markdown", "html"], onlyMainContent: false }),
   });
 
   if (!resp.ok) {
@@ -337,9 +360,15 @@ async function fetchPageText(url: string) {
   }
 
   const data = await resp.json();
-  const content = data?.data?.markdown ?? data?.markdown ?? data?.data?.html ?? "";
-  if (!content) throw new Error("Firecrawl returned empty content");
-  return stripHtml(content).slice(0, 16000);
+  const markdown: string = data?.data?.markdown ?? data?.markdown ?? "";
+  const html: string = data?.data?.html ?? data?.html ?? "";
+
+  // Prefer markdown (Firecrawl preserves table pipes); supplement with HTML-derived
+  // table rows so we never lose the row/cell structure the parsers depend on.
+  const fromHtml = html ? stripHtmlPreservingTables(html) : "";
+  const combined = [markdown, fromHtml].filter(Boolean).join("\n\n");
+  if (!combined) throw new Error("Firecrawl returned empty content");
+  return combined.slice(0, 24000);
 }
 
 function extractNumberAfterLabel(pageText: string, labels: string[]) {

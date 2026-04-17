@@ -805,7 +805,111 @@ function buildDerivedAnalytics(extracted: ExtractedPlayerData) {
   if (formatSplits.length === 0) dataLimitations.push("Format split tables were not visible or were too incomplete.");
   if (explicitInsights.groundingNotes.length === 0) dataLimitations.push("Grounding notes are empty because the profile text did not surface extra detail.");
 
-  return { summaryCards, strengths, concerns, selectionSummary, battingProfile, dismissalRisk, matchupRead, recommendation, dataLimitations };
+}
+
+// ----- Pathway runs/wickets fallback derivation (mirrors src/lib/analyticsNormalize.ts) -----
+
+function parseOversToBalls(overs: string | number | null | undefined): number | null {
+  if (overs === null || overs === undefined || overs === "") return null;
+  const str = String(overs).trim();
+  const match = str.match(/^(\d+)(?:\.(\d+))?$/);
+  if (!match) {
+    const num = Number(str);
+    if (!Number.isFinite(num)) return null;
+    const whole = Math.trunc(num);
+    const frac = Math.round((num - whole) * 10);
+    if (frac > 5 || frac < 0) return null;
+    return whole * 6 + frac;
+  }
+  const wholeOvers = Number(match[1]);
+  const balls = match[2] ? Number(match[2]) : 0;
+  if (!Number.isFinite(wholeOvers) || !Number.isFinite(balls)) return null;
+  if (balls > 5) return null;
+  return wholeOvers * 6 + balls;
+}
+
+function valuesAgree(values: number[], tolerance: number): boolean {
+  if (values.length === 0) return false;
+  if (values.length === 1) return true;
+  return Math.max(...values) - Math.min(...values) <= tolerance;
+}
+
+function deriveBattingRuns(pb: NonNullable<ExtractedPlayerData["pathwayBatting"]>): number | null {
+  if (pb.runs !== null && pb.runs !== undefined) return pb.runs;
+  const candidates: number[] = [];
+  if (pb.balls != null && pb.strikeRate != null) {
+    const v = (pb.balls * pb.strikeRate) / 100;
+    if (Number.isFinite(v) && v >= 0) candidates.push(v);
+  }
+  if (pb.average != null && pb.innings != null) {
+    const dismissals = pb.innings - (pb.notOuts ?? 0);
+    if (dismissals > 0) {
+      const v = pb.average * dismissals;
+      if (Number.isFinite(v) && v >= 0) candidates.push(v);
+    }
+  }
+  if (candidates.length === 0 || !valuesAgree(candidates, 2)) return null;
+  return Math.round(candidates.reduce((a, b) => a + b, 0) / candidates.length);
+}
+
+function deriveBowlingWickets(pb: NonNullable<ExtractedPlayerData["pathwayBowling"]>): number | null {
+  if (pb.wickets !== null && pb.wickets !== undefined) return pb.wickets;
+  const candidates: number[] = [];
+  if (pb.runs != null && pb.average != null && pb.average > 0) {
+    const v = pb.runs / pb.average;
+    if (Number.isFinite(v) && v >= 0) candidates.push(v);
+  }
+  const totalBalls = parseOversToBalls(pb.overs);
+  if (totalBalls !== null && pb.strikeRate != null && pb.strikeRate > 0) {
+    const v = totalBalls / pb.strikeRate;
+    if (Number.isFinite(v) && v >= 0) candidates.push(v);
+  }
+  if (candidates.length === 0 || !valuesAgree(candidates, 2)) return null;
+  return Math.round(candidates.reduce((a, b) => a + b, 0) / candidates.length);
+}
+
+function normalizeExtracted(extracted: ExtractedPlayerData): ExtractedPlayerData {
+  if (extracted.pathwayBatting) {
+    const d = deriveBattingRuns(extracted.pathwayBatting);
+    if (d !== null && extracted.pathwayBatting.runs == null) {
+      extracted.pathwayBatting.runs = d;
+    }
+  }
+  if (extracted.pathwayBowling) {
+    const d = deriveBowlingWickets(extracted.pathwayBowling);
+    if (d !== null && extracted.pathwayBowling.wickets == null) {
+      extracted.pathwayBowling.wickets = d;
+    }
+  }
+  if (extracted.careerTotals) {
+    if (extracted.careerTotals.runs == null && extracted.pathwayBatting?.runs != null) {
+      extracted.careerTotals.runs = extracted.pathwayBatting.runs;
+    }
+    if (extracted.careerTotals.wickets == null && extracted.pathwayBowling?.wickets != null) {
+      extracted.careerTotals.wickets = extracted.pathwayBowling.wickets;
+    }
+  }
+  if (extracted.stats.runs == null && extracted.pathwayBatting?.runs != null) {
+    extracted.stats.runs = extracted.pathwayBatting.runs;
+  }
+  if (extracted.stats.wickets == null && extracted.pathwayBowling?.wickets != null) {
+    extracted.stats.wickets = extracted.pathwayBowling.wickets;
+  }
+  if (extracted.formatSplits && extracted.pathwayBatting?.runs != null) {
+    for (const row of extracted.formatSplits) {
+      if (row.format === extracted.pathwayBatting.seriesType && row.runs == null) {
+        row.runs = extracted.pathwayBatting.runs;
+      }
+    }
+  }
+  if (extracted.formatSplits && extracted.pathwayBowling?.wickets != null) {
+    for (const row of extracted.formatSplits) {
+      if (row.format === extracted.pathwayBowling.seriesType && row.wickets == null) {
+        row.wickets = extracted.pathwayBowling.wickets;
+      }
+    }
+  }
+  return extracted;
 }
 
 serve(async (req) => {

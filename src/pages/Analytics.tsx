@@ -31,6 +31,7 @@ import {
   PATHWAY_SERIES_LEVELS,
   getPlayerModelSnapshot,
 } from "@/lib/analyticsModel";
+import { normalizeAnalyticsResult } from "@/lib/analyticsNormalize";
 
 type SearchStatus = "idle" | "searching" | "success" | "no-result" | "error";
 
@@ -178,10 +179,10 @@ const Analytics = () => {
       const data = await response.json().catch(() => null);
 
       if (response.ok && data?.player && (data.player.name || data.searchQuery || data.sourceUrl)) {
-        setResult({
+        setResult(normalizeAnalyticsResult({
           ...(data as CricClubsAnalyticsResponse),
           previewMode: data.previewMode ?? `${PUBLIC_SCOPE_LABEL} · live public CricClubs profile`,
-        });
+        }));
         setSearchStatus("success");
         return;
       }

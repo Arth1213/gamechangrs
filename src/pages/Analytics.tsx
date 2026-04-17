@@ -744,8 +744,28 @@ division_weight
                 </div>
 
                 {result.pathwayBatting || result.pathwayBowling ? (
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <div className="rounded-2xl border border-border bg-background/60 p-5">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+                      {[
+                        { label: "Pathway Matches", value: result.pathwayBatting?.matches ?? result.pathwayBowling?.matches },
+                        { label: "Pathway Runs", value: result.pathwayBatting?.runs },
+                        { label: "Pathway Wickets", value: result.pathwayBowling?.wickets },
+                        { label: "Pathway Avg", value: result.pathwayBatting?.average },
+                        { label: "Pathway SR", value: result.pathwayBatting?.strikeRate },
+                      ].map((item) => (
+                        <div key={item.label} className="rounded-2xl border border-primary/15 bg-background/60 p-5">
+                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                            {item.label}
+                          </p>
+                          <p className="mt-2 font-display text-3xl font-bold text-foreground">
+                            {renderMetric(item.value)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                      <div className="rounded-2xl border border-border bg-background/60 p-5">
                       <p className="text-xs uppercase tracking-[0.2em] text-primary">Batting row</p>
                       <p className="mt-2 font-semibold text-foreground">
                         {result.pathwayBatting?.seriesType ?? "No public batting row found"}
@@ -765,27 +785,28 @@ division_weight
                           </div>
                         ))}
                       </div>
-                    </div>
+                      </div>
 
-                    <div className="rounded-2xl border border-border bg-background/60 p-5">
-                      <p className="text-xs uppercase tracking-[0.2em] text-primary">Bowling row</p>
-                      <p className="mt-2 font-semibold text-foreground">
-                        {result.pathwayBowling?.seriesType ?? "No public bowling row found"}
-                      </p>
-                      <div className="mt-4 grid grid-cols-2 gap-3">
-                        {[
-                          { label: "Matches", value: result.pathwayBowling?.matches },
-                          { label: "Wickets", value: result.pathwayBowling?.wickets },
-                          { label: "Economy", value: result.pathwayBowling?.economy },
-                          { label: "Average", value: result.pathwayBowling?.average },
-                        ].map((item) => (
-                          <div key={item.label} className="rounded-xl border border-border/70 p-3">
-                            <p className="mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-                              {item.label}
-                            </p>
-                            <p className="font-medium text-foreground">{renderMetric(item.value)}</p>
-                          </div>
-                        ))}
+                      <div className="rounded-2xl border border-border bg-background/60 p-5">
+                        <p className="text-xs uppercase tracking-[0.2em] text-primary">Bowling row</p>
+                        <p className="mt-2 font-semibold text-foreground">
+                          {result.pathwayBowling?.seriesType ?? "No public bowling row found"}
+                        </p>
+                        <div className="mt-4 grid grid-cols-2 gap-3">
+                          {[
+                            { label: "Matches", value: result.pathwayBowling?.matches },
+                            { label: "Wickets", value: result.pathwayBowling?.wickets },
+                            { label: "Economy", value: result.pathwayBowling?.economy },
+                            { label: "Average", value: result.pathwayBowling?.average },
+                          ].map((item) => (
+                            <div key={item.label} className="rounded-xl border border-border/70 p-3">
+                              <p className="mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+                                {item.label}
+                              </p>
+                              <p className="font-medium text-foreground">{renderMetric(item.value)}</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>

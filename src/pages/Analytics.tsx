@@ -189,11 +189,11 @@ const Analytics = () => {
 
       const localPreview = getLocalPreviewPlayer(trimmedQuery);
       if (localPreview) {
-        setResult({
+        setResult(normalizeAnalyticsResult({
           ...localPreview,
           searchedAt: new Date().toISOString(),
           previewMode: `${PUBLIC_SCOPE_LABEL} · verified local CricClubs record`,
-        });
+        }));
         setSearchStatus("success");
         return;
       }
@@ -208,11 +208,11 @@ const Analytics = () => {
     } catch (error) {
       const localPreview = getLocalPreviewPlayer(trimmedQuery);
       if (localPreview) {
-        setResult({
+        setResult(normalizeAnalyticsResult({
           ...localPreview,
           searchedAt: new Date().toISOString(),
           previewMode: `${PUBLIC_SCOPE_LABEL} · verified local CricClubs record`,
-        });
+        }));
         setErrorMessage(null);
         setSearchStatus("success");
         return;

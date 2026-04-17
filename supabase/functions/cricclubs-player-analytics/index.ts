@@ -434,7 +434,7 @@ function parseBattingRows(pageText: string) {
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
-    if (!/Series Type\s*\|\s*Mat\s*\|\s*Inns\s*\|\s*NO\s*\|\s*Runs\s*\|\s*Balls\s*\|\s*Ave\s*\|\s*SR\s*\|\s*HS/i.test(line)) {
+    if (!/Series\s*Type[^|]*\|[^|]*Mat[^|]*\|[^|]*Inns[^|]*\|[^|]*NO[^|]*\|[^|]*Runs[^|]*\|[^|]*Balls[^|]*\|[^|]*Ave[^|]*\|[^|]*SR[^|]*\|[^|]*HS/i.test(line)) {
       continue;
     }
 

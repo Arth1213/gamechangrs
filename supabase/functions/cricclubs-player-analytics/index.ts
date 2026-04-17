@@ -17,6 +17,40 @@ interface ExtractedPlayerData {
     runs: number | null;
     wickets: number | null;
   } | null;
+  pathwayBatting?: {
+    seriesType: string;
+    matches: number | null;
+    innings: number | null;
+    notOuts: number | null;
+    runs: number | null;
+    balls: number | null;
+    average: number | null;
+    strikeRate: number | null;
+    highestScore: string | null;
+    hundreds: number | null;
+    fifties: number | null;
+    twentyFives: number | null;
+    ducks: number | null;
+    fours: number | null;
+    sixes: number | null;
+  } | null;
+  pathwayBowling?: {
+    seriesType: string;
+    matches: number | null;
+    innings: number | null;
+    overs: string | null;
+    runs: number | null;
+    wickets: number | null;
+    bestBowling: string | null;
+    maidens: number | null;
+    average: number | null;
+    economy: number | null;
+    strikeRate: number | null;
+    fourWickets: number | null;
+    fiveWickets: number | null;
+    wides: number | null;
+    catches: number | null;
+  } | null;
   player: {
     name: string | null;
     role: string | null;
@@ -114,10 +148,16 @@ function stripHtml(html: string) {
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
     .replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|section|article|tr|li|h[1-6])>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
@@ -330,6 +370,222 @@ function extractPlayerName(pageText: string, searchName: string) {
   return searchName.trim();
 }
 
+function normalizeCell(value: string | undefined) {
+  const normalized = value?.replace(/\*\*/g, "").replace(/`/g, "").trim() ?? "";
+  return normalized === "-" ? "" : normalized;
+}
+
+function parseNullableNumber(value: string | undefined) {
+  const normalized = normalizeCell(value).replace(/,/g, "");
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseNullableText(value: string | undefined) {
+  const normalized = normalizeCell(value);
+  return normalized || null;
+}
+
+function splitMarkdownCells(line: string) {
+  return line
+    .split("|")
+    .map((cell) => cell.trim())
+    .filter((cell, index, arr) => !(index === 0 && cell === "") && !(index === arr.length - 1 && cell === ""));
+}
+
+function isMarkdownSeparator(line: string) {
+  const normalized = line.replace(/\|/g, "").trim();
+  return normalized.length > 0 && /^[-:\s]+$/.test(normalized);
+}
+
+function parseBattingRows(pageText: string) {
+  const lines = pageText.split("\n").map((line) => line.trim()).filter(Boolean);
+  const rows: NonNullable<ExtractedPlayerData["pathwayBatting"]>[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!/Series Type\s*\|\s*Mat\s*\|\s*Inns\s*\|\s*NO\s*\|\s*Runs\s*\|\s*Balls\s*\|\s*Ave\s*\|\s*SR\s*\|\s*HS/i.test(line)) {
+      continue;
+    }
+
+    let cursor = index + 1;
+    while (cursor < lines.length && (isMarkdownSeparator(lines[cursor]) || !lines[cursor].includes("|"))) {
+      cursor += 1;
+    }
+
+    while (cursor < lines.length && lines[cursor].includes("|")) {
+      if (isMarkdownSeparator(lines[cursor])) {
+        cursor += 1;
+        continue;
+      }
+
+      const cells = splitMarkdownCells(lines[cursor]);
+      if (cells.length < 15) {
+        break;
+      }
+
+      rows.push({
+        seriesType: normalizeCell(cells[0]),
+        matches: parseNullableNumber(cells[1]),
+        innings: parseNullableNumber(cells[2]),
+        notOuts: parseNullableNumber(cells[3]),
+        runs: parseNullableNumber(cells[4]),
+        balls: parseNullableNumber(cells[5]),
+        average: parseNullableNumber(cells[6]),
+        strikeRate: parseNullableNumber(cells[7]),
+        highestScore: parseNullableText(cells[8]),
+        hundreds: parseNullableNumber(cells[9]),
+        fifties: parseNullableNumber(cells[10]),
+        twentyFives: parseNullableNumber(cells[11]),
+        ducks: parseNullableNumber(cells[12]),
+        fours: parseNullableNumber(cells[13]),
+        sixes: parseNullableNumber(cells[14]),
+      });
+
+      cursor += 1;
+    }
+  }
+
+  return rows.filter((row) => row.seriesType);
+}
+
+function parseBowlingRows(pageText: string) {
+  const lines = pageText.split("\n").map((line) => line.trim()).filter(Boolean);
+  const rows: NonNullable<ExtractedPlayerData["pathwayBowling"]>[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!/Series Type\s*\|\s*Mat\s*\|\s*Inns\s*\|\s*Overs\s*\|\s*Runs\s*\|\s*Wkts\s*\|\s*BBF/i.test(line)) {
+      continue;
+    }
+
+    let cursor = index + 1;
+    while (cursor < lines.length && (isMarkdownSeparator(lines[cursor]) || !lines[cursor].includes("|"))) {
+      cursor += 1;
+    }
+
+    while (cursor < lines.length && lines[cursor].includes("|")) {
+      if (isMarkdownSeparator(lines[cursor])) {
+        cursor += 1;
+        continue;
+      }
+
+      const cells = splitMarkdownCells(lines[cursor]);
+      if (cells.length < 15) {
+        break;
+      }
+
+      rows.push({
+        seriesType: normalizeCell(cells[0]),
+        matches: parseNullableNumber(cells[1]),
+        innings: parseNullableNumber(cells[2]),
+        overs: parseNullableText(cells[3]),
+        runs: parseNullableNumber(cells[4]),
+        wickets: parseNullableNumber(cells[5]),
+        bestBowling: parseNullableText(cells[6]),
+        maidens: parseNullableNumber(cells[7]),
+        average: parseNullableNumber(cells[8]),
+        economy: parseNullableNumber(cells[9]),
+        strikeRate: parseNullableNumber(cells[10]),
+        fourWickets: parseNullableNumber(cells[11]),
+        fiveWickets: parseNullableNumber(cells[12]),
+        wides: parseNullableNumber(cells[13]),
+        catches: parseNullableNumber(cells[14]),
+      });
+
+      cursor += 1;
+    }
+  }
+
+  return rows.filter((row) => row.seriesType);
+}
+
+function buildFormatSplits(
+  battingRows: ReturnType<typeof parseBattingRows>,
+  bowlingRows: ReturnType<typeof parseBowlingRows>,
+) {
+  const map = new Map<string, ExtractedPlayerData["formatSplits"][number]>();
+
+  for (const row of battingRows) {
+    map.set(row.seriesType, {
+      format: row.seriesType,
+      matches: row.matches,
+      runs: row.runs,
+      battingAverage: row.average,
+      strikeRate: row.strikeRate,
+      wickets: map.get(row.seriesType)?.wickets ?? null,
+      economy: map.get(row.seriesType)?.economy ?? null,
+    });
+  }
+
+  for (const row of bowlingRows) {
+    map.set(row.seriesType, {
+      format: row.seriesType,
+      matches: map.get(row.seriesType)?.matches ?? row.matches,
+      runs: map.get(row.seriesType)?.runs ?? row.runs,
+      battingAverage: map.get(row.seriesType)?.battingAverage ?? null,
+      strikeRate: map.get(row.seriesType)?.strikeRate ?? null,
+      wickets: row.wickets,
+      economy: row.economy,
+    });
+  }
+
+  return Array.from(map.values());
+}
+
+function pickPreferredPathwayBatting(
+  battingRows: ReturnType<typeof parseBattingRows>,
+  pageText: string,
+  url: string,
+) {
+  if (battingRows.length === 0) return null;
+
+  const preferredOrder = ["1 DAY", "YOUTH", "T20", "OTHER"];
+  const sorted = battingRows.slice().sort((left, right) => {
+    const leftIndex = preferredOrder.indexOf(left.seriesType.toUpperCase());
+    const rightIndex = preferredOrder.indexOf(right.seriesType.toUpperCase());
+    const leftRank = leftIndex === -1 ? preferredOrder.length : leftIndex;
+    const rightRank = rightIndex === -1 ? preferredOrder.length : rightIndex;
+    if (leftRank !== rightRank) return leftRank - rightRank;
+    return (right.matches ?? 0) - (left.matches ?? 0);
+  });
+
+  const best = sorted[0];
+  const isPathwaySource = url.includes("USACricketJunior") || /USA Cricket Junior Pathway/i.test(pageText);
+
+  return {
+    ...best,
+    seriesType: isPathwaySource ? `USA Cricket Junior Pathway ${best.seriesType}` : best.seriesType,
+  };
+}
+
+function pickPreferredPathwayBowling(
+  bowlingRows: ReturnType<typeof parseBowlingRows>,
+  pageText: string,
+  url: string,
+) {
+  if (bowlingRows.length === 0) return null;
+
+  const preferredOrder = ["1 DAY", "YOUTH", "T20", "OTHER"];
+  const sorted = bowlingRows.slice().sort((left, right) => {
+    const leftIndex = preferredOrder.indexOf(left.seriesType.toUpperCase());
+    const rightIndex = preferredOrder.indexOf(right.seriesType.toUpperCase());
+    const leftRank = leftIndex === -1 ? preferredOrder.length : leftIndex;
+    const rightRank = rightIndex === -1 ? preferredOrder.length : rightIndex;
+    if (leftRank !== rightRank) return leftRank - rightRank;
+    return (right.matches ?? 0) - (left.matches ?? 0);
+  });
+
+  const best = sorted[0];
+  const isPathwaySource = url.includes("USACricketJunior") || /USA Cricket Junior Pathway/i.test(pageText);
+
+  return {
+    ...best,
+    seriesType: isPathwaySource ? `USA Cricket Junior Pathway ${best.seriesType}` : best.seriesType,
+  };
+}
+
 async function extractPlayerDataFromText(
   searchName: string,
   url: string,
@@ -345,6 +601,11 @@ async function extractPlayerDataFromText(
   const battingStyle = extractTextAfterLabel(pageText, ["Batting Style", "Batting"], 40);
   const bowlingStyle = extractTextAfterLabel(pageText, ["Bowling Style", "Bowling"], 40);
   const role = extractTextAfterLabel(pageText, ["Playing Role", "Role"], 32);
+  const battingRows = parseBattingRows(pageText);
+  const bowlingRows = parseBowlingRows(pageText);
+  const pathwayBatting = pickPreferredPathwayBatting(battingRows, pageText, url);
+  const pathwayBowling = pickPreferredPathwayBowling(bowlingRows, pageText, url);
+  const formatSplits = buildFormatSplits(battingRows, bowlingRows);
 
   const stats = {
     matches: extractNumberAfterLabel(pageText, ["Matches", "Match"]),
@@ -376,13 +637,17 @@ async function extractPlayerDataFromText(
   ];
   if (stats.runs !== null) groundingNotes.push(`Visible public batting output includes ${stats.runs} runs.`);
   if (stats.matches !== null) groundingNotes.push(`Visible public sample includes ${stats.matches} matches.`);
+  if (pathwayBatting) groundingNotes.push(`A public pathway batting row was parsed for ${pathwayBatting.seriesType}.`);
+  if (pathwayBowling) groundingNotes.push(`A public pathway bowling row was parsed for ${pathwayBowling.seriesType}.`);
 
   return {
     matchedPlayer,
     careerTotals: { matches: stats.matches, runs: stats.runs, wickets: stats.wickets },
+    pathwayBatting,
+    pathwayBowling,
     player: { name: playerName, role, team, battingStyle, bowlingStyle },
     stats,
-    formatSplits: [],
+    formatSplits,
     explicitInsights: { dismissalPatterns: [], bowlerTypeNotes: [], groundingNotes },
   };
 }

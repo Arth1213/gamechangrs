@@ -126,6 +126,14 @@ const statIconMap = {
 
 const VERIFIED_PLAYER_NAMES = SUPPORTED_ANALYTICS_PLAYERS.map((player) => player.searchQuery);
 
+function renderMetric(value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+
+  return value;
+}
+
 const Analytics = () => {
   const [playerQuery, setPlayerQuery] = useState("");
   const [result, setResult] = useState<CricClubsAnalyticsResponse | null>(null);
@@ -694,18 +702,20 @@ division_weight
                   </div>
                 </div>
 
-                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
                   {[
                     { label: "Matches", value: result.careerTotals?.matches ?? result.stats.matches },
                     { label: "Runs", value: result.careerTotals?.runs ?? result.stats.runs },
                     { label: "Wickets", value: result.careerTotals?.wickets ?? result.stats.wickets },
+                    { label: "Bat Avg", value: result.pathwayBatting?.average ?? result.stats.battingAverage },
+                    { label: "Strike Rate", value: result.pathwayBatting?.strikeRate ?? result.stats.strikeRate },
                   ].map((item) => (
                     <div key={item.label} className="rounded-2xl border border-primary/15 bg-background/60 p-6">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                         {item.label}
                       </p>
                       <p className="mt-2 font-display text-4xl font-bold text-foreground">
-                        {item.value ?? "-"}
+                        {renderMetric(item.value)}
                       </p>
                     </div>
                   ))}
@@ -715,6 +725,76 @@ division_weight
                   <p className="text-sm font-medium text-foreground mb-2">Selection Summary</p>
                   <p className="text-muted-foreground">{result.derived.selectionSummary}</p>
                 </div>
+              </div>
+
+              <div className="mb-10 rounded-3xl border border-border bg-gradient-card p-8">
+                <div className="mb-6 flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-display text-2xl font-bold text-foreground">
+                      Junior Hub / Pathway Snapshot
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Public Junior Pathway batting and bowling rows are highlighted here when they
+                      are exposed on the source profile.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                    Hub record
+                  </span>
+                </div>
+
+                {result.pathwayBatting || result.pathwayBowling ? (
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div className="rounded-2xl border border-border bg-background/60 p-5">
+                      <p className="text-xs uppercase tracking-[0.2em] text-primary">Batting row</p>
+                      <p className="mt-2 font-semibold text-foreground">
+                        {result.pathwayBatting?.seriesType ?? "No public batting row found"}
+                      </p>
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        {[
+                          { label: "Matches", value: result.pathwayBatting?.matches },
+                          { label: "Runs", value: result.pathwayBatting?.runs },
+                          { label: "Average", value: result.pathwayBatting?.average },
+                          { label: "Strike Rate", value: result.pathwayBatting?.strikeRate },
+                        ].map((item) => (
+                          <div key={item.label} className="rounded-xl border border-border/70 p-3">
+                            <p className="mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+                              {item.label}
+                            </p>
+                            <p className="font-medium text-foreground">{renderMetric(item.value)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-border bg-background/60 p-5">
+                      <p className="text-xs uppercase tracking-[0.2em] text-primary">Bowling row</p>
+                      <p className="mt-2 font-semibold text-foreground">
+                        {result.pathwayBowling?.seriesType ?? "No public bowling row found"}
+                      </p>
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        {[
+                          { label: "Matches", value: result.pathwayBowling?.matches },
+                          { label: "Wickets", value: result.pathwayBowling?.wickets },
+                          { label: "Economy", value: result.pathwayBowling?.economy },
+                          { label: "Average", value: result.pathwayBowling?.average },
+                        ].map((item) => (
+                          <div key={item.label} className="rounded-xl border border-border/70 p-3">
+                            <p className="mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+                              {item.label}
+                            </p>
+                            <p className="font-medium text-foreground">{renderMetric(item.value)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">
+                    No public USA Cricket Junior Hub / Pathway row was parsed from the source page
+                    for this player, even though the overall CricClubs profile totals may still be available.
+                  </p>
+                )}
               </div>
 
               {result.careerTotals ? (

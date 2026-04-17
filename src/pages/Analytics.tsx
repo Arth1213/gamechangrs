@@ -28,13 +28,14 @@ import {
   BAY_AREA_LEAGUES,
   BAY_AREA_SOURCE_TABS,
   BAY_AREA_WEIGHT_RULES,
+  PATHWAY_SERIES_LEVELS,
   getPlayerModelSnapshot,
 } from "@/lib/analyticsModel";
 
 type SearchStatus = "idle" | "searching" | "success" | "no-result" | "error";
 
-const PUBLIC_SCOPE_LABEL = "USA Cricket Junior Pathway Hub - Bay Area public dataset";
-const REMOTE_SCOPE_HINT = "USA Cricket Junior Pathway Hub Bay Area U15";
+const PUBLIC_SCOPE_LABEL = "USA Cricket Junior Hub / Pathway public dataset";
+const REMOTE_SCOPE_HINT = "USA Cricket Junior Hub Pathway regional national international";
 
 function normalizeQuery(value: string) {
   return value
@@ -227,14 +228,14 @@ const Analytics = () => {
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
               <BarChart3 className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Bay Area CricClubs Analytics</span>
+              <span className="text-sm font-medium text-primary">USA Junior Pathway Analytics</span>
             </div>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
               Analytics <span className="text-gradient-primary">Engine</span>
             </h1>
             <p className="text-lg text-muted-foreground">
-              Search a verified Bay Area USA Cricket Junior Pathway player and turn public CricClubs
-              stats into grounded scouting notes for selection and match planning.
+              Search public USA Cricket Junior Hub / Pathway players and turn CricClubs profile
+              totals, pathway rows, and competition context into grounded scouting notes.
             </p>
           </div>
         </div>
@@ -259,7 +260,7 @@ const Analytics = () => {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search Bay Area player name..."
+                placeholder="Search Junior Hub / Pathway player name..."
                 value={playerQuery}
                 onChange={(event) => setPlayerQuery(event.target.value)}
                 onKeyDown={(event) => {
@@ -399,13 +400,23 @@ const Analytics = () => {
                     </div>
                     <div>
                       <h2 className="font-display text-2xl font-bold text-foreground">
-                        Bay Area U15 League Coverage
+                        USA Junior Hub / Pathway Coverage
                       </h2>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        The analytics model is scoped to the four Bay Area Hub series pages you gave:
-                        `434`, `435`, `436`, and `437`.
+                        This build is centered on USA Cricket Junior Hub / Pathway player profiles,
+                        with the Bay Area Hub leagues below acting as the current regional series layer.
                       </p>
                     </div>
+                  </div>
+
+                  <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-3">
+                    {PATHWAY_SERIES_LEVELS.map((level) => (
+                      <div key={level.label} className="rounded-2xl border border-border bg-background/60 p-5">
+                        <p className="text-xs uppercase tracking-[0.22em] text-primary">{level.label}</p>
+                        <p className="mt-2 font-semibold text-foreground">{level.value}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{level.note}</p>
+                      </div>
+                    ))}
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -491,9 +502,9 @@ const Analytics = () => {
                         Intelligence Formula
                       </h2>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        The target Bay Area U15 model is based on opposition quality, phase, and
-                        leverage. The current public-player build already exposes the exact report
-                        sections needed for that pipeline.
+                        The target Junior Hub / Pathway model is still based on opposition quality,
+                        phase, and leverage. The current public-player build already exposes the
+                        exact report sections needed for that pipeline.
                       </p>
                     </div>
                   </div>
@@ -543,7 +554,7 @@ division_weight
                   },
                   {
                     title: "Peer Comparison",
-                    body: "Rank the player against the local supported Bay Area cohort rather than showing isolated raw totals only.",
+                    body: "Rank the player against the supported Junior Hub / Pathway cohort rather than showing isolated raw totals only.",
                   },
                 ].map((item) => (
                   <div key={item.title} className="rounded-3xl border border-border bg-gradient-card p-6">
@@ -565,7 +576,7 @@ division_weight
                       ? "No Public Player Result Found"
                       : searchStatus === "error"
                         ? "Analytics Search Failed"
-                        : "Search A Verified Bay Area Player"}
+                        : "Search A Junior Hub / Pathway Player"}
                 </h2>
                 <p className="text-muted-foreground mb-6">
                   {searchStatus === "searching"
@@ -579,8 +590,8 @@ division_weight
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   {[
                     {
-                      title: "Bay Area Scope",
-                      body: "The search is biased toward Bay Area and USA Cricket Junior Pathway public player pages, with a verified local fallback registry behind it.",
+                      title: "Pathway Scope",
+                      body: "The search is biased toward USA Cricket Junior Hub / Pathway public player pages, with Bay Area regional series pages and a verified local fallback registry behind it.",
                     },
                     {
                       title: "Grounded Reads",
@@ -626,7 +637,7 @@ division_weight
                 return (
                   <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
                     {[
-                      { label: "Bay Area Score", value: model.overall, detail: "0-100 public model" },
+                      { label: "Pathway Score", value: model.overall, detail: "0-100 public model" },
                       { label: "Peer Percentile", value: model.peerPercentile, detail: "supported cohort" },
                       { label: "Production", value: model.production, detail: "runs, wickets, efficiency" },
                       { label: "Consistency", value: model.consistency, detail: "matches + innings depth" },
@@ -648,7 +659,7 @@ division_weight
                   <div>
                     <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 mb-4">
                       <Trophy className="w-4 h-4 text-primary" />
-                      <span className="text-xs font-medium text-primary">Verified Bay Area CricClubs Record</span>
+                      <span className="text-xs font-medium text-primary">Verified Junior Pathway CricClubs Record</span>
                     </div>
                     {result.previewMode ? (
                       <div className="mb-4">
@@ -916,7 +927,7 @@ division_weight
                   <div className="mb-10 grid grid-cols-1 gap-6 xl:grid-cols-[1.05fr_0.95fr]">
                     <div className="rounded-3xl border border-border bg-gradient-card p-8">
                       <h3 className="font-display text-2xl font-bold text-foreground mb-4">
-                        Bay Area U15 Model Read
+                        Junior Hub / Pathway Model Read
                       </h3>
                       <div className="space-y-4">
                         {[
@@ -926,7 +937,7 @@ division_weight
                           },
                           {
                             title: "What it is good for",
-                            body: "It gives a clean Bay Area selection-facing snapshot, peer ranking, and report structure that lines up with the CricClubs pages you referenced.",
+                            body: "It gives a clean Junior Hub / Pathway selection-facing snapshot, peer ranking, and report structure that lines up with the CricClubs pages you referenced.",
                           },
                           {
                             title: "What still requires full scraping",
@@ -955,7 +966,7 @@ division_weight
                               </div>
                               <div className="text-right">
                                 <p className="font-display text-2xl font-bold text-foreground">{peer.score}</p>
-                                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Bay Area score</p>
+                                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Pathway score</p>
                               </div>
                             </div>
                           ))}

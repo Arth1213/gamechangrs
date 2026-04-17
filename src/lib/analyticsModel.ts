@@ -30,6 +30,24 @@ export const BAY_AREA_LEAGUES = [
   },
 ] as const;
 
+export const PATHWAY_SERIES_LEVELS = [
+  {
+    label: "Regional Hub",
+    value: "Bay Area U15 Hub",
+    note: "Regional series pages such as leagues 434-437 are the current grounded competition layer in this build.",
+  },
+  {
+    label: "National Pathway",
+    value: "USA Cricket Junior Pathway",
+    note: "When public player tabs expose pathway rows, the analytics page surfaces those national-development stats separately.",
+  },
+  {
+    label: "International Track",
+    value: "Public profile scouting",
+    note: "Career totals and public player-profile data are kept visible so selectors can compare broader pathway and international-track volume.",
+  },
+] as const;
+
 export const BAY_AREA_SOURCE_TABS = [
   {
     label: "Overview",

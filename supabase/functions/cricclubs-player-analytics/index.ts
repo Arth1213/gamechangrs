@@ -266,10 +266,40 @@ async function searchCricClubsProfiles(playerName: string, clubHint?: string | n
 }
 
 async function fetchPageText(url: string) {
-  const response = await fetch(url, { headers: BOT_HEADERS });
-  if (!response.ok) throw new Error(`Profile fetch failed with ${response.status}`);
-  const html = await response.text();
-  return stripHtml(html).slice(0, 16000);
+  // Try direct fetch first
+  try {
+    const response = await fetch(url, { headers: BOT_HEADERS });
+    if (response.ok) {
+      const html = await response.text();
+      return stripHtml(html).slice(0, 16000);
+    }
+    console.warn(`Direct fetch returned ${response.status} for ${url}, falling back to Firecrawl scrape`);
+  } catch (err) {
+    console.warn(`Direct fetch threw for ${url}, falling back to Firecrawl scrape:`, err instanceof Error ? err.message : err);
+  }
+
+  // Fallback: use Firecrawl to scrape (bypasses bot blocks)
+  const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+  if (!FIRECRAWL_API_KEY) throw new Error("Profile fetch failed and FIRECRAWL_API_KEY not set");
+
+  const resp = await fetch("https://api.firecrawl.dev/v1/scrape", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: false }),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Firecrawl scrape failed ${resp.status}: ${text.slice(0, 200)}`);
+  }
+
+  const data = await resp.json();
+  const content = data?.data?.markdown ?? data?.markdown ?? data?.data?.html ?? "";
+  if (!content) throw new Error("Firecrawl returned empty content");
+  return stripHtml(content).slice(0, 16000);
 }
 
 function extractNumberAfterLabel(pageText: string, labels: string[]) {

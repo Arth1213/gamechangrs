@@ -968,13 +968,14 @@ serve(async (req) => {
       return jsonResponse({ error: "A CricClubs result was found, but the player profile could not be verified." }, 404);
     }
 
-    const derived = buildDerivedAnalytics(bestResult.extracted);
+    const normalized = normalizeExtracted(bestResult.extracted);
+    const derived = buildDerivedAnalytics(normalized);
 
     return jsonResponse({
       searchQuery: trimmedQuery,
       sourceUrl: bestResult.sourceUrl,
       searchedAt: new Date().toISOString(),
-      ...bestResult.extracted,
+      ...normalized,
       derived,
     });
   } catch (error) {

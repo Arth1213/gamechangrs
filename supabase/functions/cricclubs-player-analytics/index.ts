@@ -775,10 +775,13 @@ async function extractPlayerDataFromText(
   const pathwayBowling = pickPreferredPathwayBowling(bowlingRows, pageText, url);
   const formatSplits = buildFormatSplits(battingRows, bowlingRows);
 
+  // Authoritative top-of-page totals block (e.g. "- Matches\n\n297\n- Runs\n\n2265\n- Wickets\n\n250")
+  const careerListTotals = extractCareerTotalsFromList(pageText);
+
   const stats = {
-    matches: extractNumberAfterLabel(pageText, ["Matches", "Match"]),
+    matches: careerListTotals?.matches ?? extractNumberAfterLabel(pageText, ["Matches", "Match"]),
     innings: extractNumberAfterLabel(pageText, ["Innings", "Inns"]),
-    runs: extractNumberAfterLabel(pageText, ["Runs"]),
+    runs: careerListTotals?.runs ?? extractNumberAfterLabel(pageText, ["Runs"]),
     battingAverage: extractNumberAfterLabel(pageText, ["Bat Avg", "Average", "Avg"]),
     strikeRate: extractNumberAfterLabel(pageText, ["Strike Rate", "SR"]),
     highestScore: extractTextAfterLabel(pageText, ["Highest Score", "High Score", "HS"], 12),
@@ -786,7 +789,7 @@ async function extractPlayerDataFromText(
     fours: extractNumberAfterLabel(pageText, ["Fours", "4s"]),
     sixes: extractNumberAfterLabel(pageText, ["Sixes", "6s"]),
     ducks: extractNumberAfterLabel(pageText, ["Ducks"]),
-    wickets: extractNumberAfterLabel(pageText, ["Wickets", "Wkts"]),
+    wickets: careerListTotals?.wickets ?? extractNumberAfterLabel(pageText, ["Wickets", "Wkts"]),
     bowlingAverage: extractNumberAfterLabel(pageText, ["Bowl Avg", "Bowling Average"]),
     economy: extractNumberAfterLabel(pageText, ["Economy", "Econ"]),
     bowlingStrikeRate: extractNumberAfterLabel(pageText, ["Bowling Strike Rate", "Bowl SR"]),
@@ -810,7 +813,7 @@ async function extractPlayerDataFromText(
 
   return {
     matchedPlayer,
-    careerTotals: { matches: stats.matches, runs: stats.runs, wickets: stats.wickets },
+    careerTotals: careerListTotals ?? { matches: stats.matches, runs: stats.runs, wickets: stats.wickets },
     pathwayBatting,
     pathwayBowling,
     player: { name: playerName, role, team, battingStyle, bowlingStyle },

@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "worker:discover": "node apps/worker/src/index.js discover --config config/leagues.yaml --series bay-area-usac-hub-2026",
+    "worker:inventory": "node apps/worker/src/index.js inventory --config config/leagues.yaml --series bay-area-usac-hub-2026",
+    "worker:run": "node apps/worker/src/index.js run --config config/leagues.yaml --series bay-area-usac-hub-2026"
+  },
+  "dependencies": {
+    "playwright": "^1.59.1",
+    "yaml": "^2.8.1"
+  }
+}

@@ -329,21 +329,23 @@ async function searchCricClubsProfiles(playerName: string, clubHint?: string | n
     triedQueries.push(query);
     try {
       const urls = await firecrawlSearch(query, FIRECRAWL_API_KEY);
-      for (const url of urls) {
+    for (const url of urls) {
         if (/viewPlayer\.do/i.test(url)) {
           playerProfileUrls.add(url);
         } else if (/cricclubs/i.test(url)) {
           found.add(url);
         }
       }
-      if (playerProfileUrls.size >= 3) break;
+      // Run a few more queries even after we have hits so we can pick the best
+      // (e.g. a player with multiple sub-club profiles vs the main career profile).
+      if (playerProfileUrls.size >= 6) break;
     } catch (err) {
       console.warn(`Firecrawl search failed for "${query}":`, err instanceof Error ? err.message : err);
     }
   }
 
   // Prioritize viewPlayer.do URLs
-  const ordered = [...playerProfileUrls, ...found].slice(0, 8);
+  const ordered = [...playerProfileUrls, ...found].slice(0, 10);
   return { urls: ordered, triedQueries };
 }
 
@@ -411,6 +413,55 @@ async function fetchPageText(url: string) {
   const combined = [markdown, fromHtml].filter(Boolean).join("\n\n");
   if (!combined) throw new Error("Firecrawl returned empty content");
   return combined.slice(0, 24000);
+}
+
+// Parse the CricClubs viewPlayer.do "career totals" list which appears as
+//   - Matches
+//   <blank>
+//   297
+//   - Runs
+//   <blank>
+//   2265
+//   - Wickets
+//   <blank>
+//   250
+// This is the authoritative top-of-page totals block and must be preferred
+// over any per-format table cell that also says "Matches".
+function extractCareerTotalsFromList(pageText: string): { matches: number | null; runs: number | null; wickets: number | null } | null {
+  const lines = pageText.split("\n").map((line) => line.trim());
+  const labelRegex = /^[-*]?\s*(Matches|Runs|Wickets)\s*:?\s*$/i;
+  const numberRegex = /^([0-9][0-9,]*)$/;
+  const found: Record<string, number> = {};
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const labelMatch = lines[i].match(labelRegex);
+    if (!labelMatch) continue;
+    const label = labelMatch[1].toLowerCase();
+    // Look ahead a few lines (skipping blanks) for a bare number
+    for (let j = i + 1; j < Math.min(lines.length, i + 5); j += 1) {
+      if (!lines[j]) continue;
+      const numMatch = lines[j].match(numberRegex);
+      if (numMatch) {
+        const value = Number(numMatch[1].replace(/,/g, ""));
+        if (Number.isFinite(value) && !(label in found)) {
+          found[label] = value;
+        }
+        break;
+      }
+      // If we hit something that's not a number and not blank, stop scanning
+      // for this label so we don't grab a stat from an unrelated section.
+      break;
+    }
+  }
+
+  if (!("matches" in found) && !("runs" in found) && !("wickets" in found)) {
+    return null;
+  }
+  return {
+    matches: found.matches ?? null,
+    runs: found.runs ?? null,
+    wickets: found.wickets ?? null,
+  };
 }
 
 function extractNumberAfterLabel(pageText: string, labels: string[]) {

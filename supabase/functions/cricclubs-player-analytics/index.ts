@@ -1078,7 +1078,17 @@ serve(async (req) => {
       }, 404);
     }
 
-    let bestResult: { sourceUrl: string; extracted: ExtractedPlayerData; overlap: number; nameScore: number } | null = null;
+    // Score each name-matching candidate by career sample size so we prefer the
+    // player's main aggregated profile over a sub-club page that happens to share
+    // the same name but only shows 1 match.
+    type Candidate = {
+      sourceUrl: string;
+      extracted: ExtractedPlayerData;
+      overlap: number;
+      nameScore: number;
+      sampleSize: number;
+    };
+    let bestResult: Candidate | null = null;
 
     for (const sourceUrl of candidateUrls) {
       try {
@@ -1089,13 +1099,15 @@ serve(async (req) => {
         const nameScore = getCandidateNameScore(trimmedQuery, extracted.player.name);
         if (nameScore === 0) continue;
         const overlap = getNameOverlap(trimmedQuery, extracted.player.name) + (sourceUrl.includes("viewPlayer.do") ? 0.15 : 0);
-        
-        if (!bestResult || nameScore > bestResult.nameScore || (nameScore === bestResult.nameScore && overlap > bestResult.overlap)) {
-          bestResult = { sourceUrl, extracted, overlap, nameScore };
-        }
-        if (extracted.matchedPlayer && nameScore >= 0.9) {
-          bestResult = { sourceUrl, extracted, overlap, nameScore };
-          break;
+        const sampleSize = (extracted.careerTotals?.matches ?? 0) + (extracted.careerTotals?.runs ?? 0) / 10 + (extracted.careerTotals?.wickets ?? 0);
+
+        const isBetter = !bestResult
+          || nameScore > bestResult.nameScore
+          || (nameScore === bestResult.nameScore && sampleSize > bestResult.sampleSize)
+          || (nameScore === bestResult.nameScore && sampleSize === bestResult.sampleSize && overlap > bestResult.overlap);
+
+        if (isBetter) {
+          bestResult = { sourceUrl, extracted, overlap, nameScore, sampleSize };
         }
       } catch (candidateError) {
         console.error("Candidate analysis failed:", sourceUrl, candidateError);

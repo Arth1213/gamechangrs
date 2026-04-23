@@ -4,7 +4,6 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import {
   AlertCircle,
-  ArrowUpRight,
   BarChart3,
   ExternalLink,
   Loader2,
@@ -334,46 +333,6 @@ function buildQuickReadBars(
   ];
 }
 
-function buildTrendCards(
-  result: CricClubsAnalyticsResponse,
-  model: ReturnType<typeof getPlayerModelSnapshot>,
-) {
-  const current = buildCurrentSnapshot(result);
-  const overall = buildOverallSnapshot(result);
-  const currentRuns = Number(current.batting.runs ?? 0);
-  const overallRuns = Number(overall.batting.runs ?? 0);
-  const currentWickets = Number(current.bowling.wickets ?? 0);
-  const overallWickets = Number(overall.bowling.wickets ?? 0);
-  const matches = Number(overall.matches ?? 0);
-
-  return [
-    {
-      title: "Current Pathway Output",
-      value: model.production >= 75 ? "Strong" : model.production >= 55 ? "Building" : "Early",
-      note: "Shows how the current USA Junior Cricket Pathway sample compares with the broader public record.",
-      points: [
-        { label: "Runs", value: currentRuns, height: currentRuns && overallRuns ? (currentRuns / overallRuns) * 100 : 18 },
-        { label: "Avg", value: Number(current.batting.average ?? 0), height: (Number(current.batting.average ?? 0) / 50) * 100 },
-        { label: "SR", value: Number(current.batting.strikeRate ?? 0), height: (Number(current.batting.strikeRate ?? 0) / 140) * 100 },
-        { label: "Wkts", value: currentWickets, height: currentWickets && overallWickets ? (currentWickets / overallWickets) * 100 : 18 },
-        { label: "Econ", value: Number(current.bowling.economy ?? 0), height: current.bowling.economy ? Math.max(18, ((9 - Number(current.bowling.economy)) / 9) * 100) : 18 },
-      ],
-    },
-    {
-      title: "Career Backing",
-      value: matches >= 120 ? "Established" : matches >= 50 ? "Growing" : "Limited",
-      note: "Keeps the career volume and overall public CricClubs production visible next to the pathway sample.",
-      points: [
-        { label: "Matches", value: matches, height: (matches / 320) * 100 },
-        { label: "Runs", value: overallRuns, height: (overallRuns / 5500) * 100 },
-        { label: "Wkts", value: overallWickets, height: (overallWickets / 350) * 100 },
-        { label: "Pct", value: model.peerPercentile, height: model.peerPercentile },
-        { label: "Score", value: model.overall, height: model.overall },
-      ],
-    },
-  ];
-}
-
 function buildSelectorNarrative(
   result: CricClubsAnalyticsResponse,
   model: ReturnType<typeof getPlayerModelSnapshot>,
@@ -412,61 +371,48 @@ function getRoleCohort(result: CricClubsAnalyticsResponse) {
   );
 }
 
-function getBenchmarkRows(result: CricClubsAnalyticsResponse) {
-  const current = buildCurrentSnapshot(result);
-  const overall = buildOverallSnapshot(result);
+function getBenchmarkRows(
+  result: CricClubsAnalyticsResponse,
+  model: ReturnType<typeof getPlayerModelSnapshot>,
+) {
   const cohort = getRoleCohort(result);
+  const cohortModels = cohort.map((player) => getPlayerModelSnapshot(player));
 
   const metrics = [
     {
-      label: "Overall Runs",
-      value: overall.batting.runs,
+      label: "Production",
+      value: model.production,
       formatter: (value: number) => formatCompactMetric(value),
-      getValue: (player: CricClubsAnalyticsResponse) => Number(buildOverallSnapshot(player).batting.runs ?? 0),
+      getValue: (_player: CricClubsAnalyticsResponse, index: number) => cohortModels[index]?.production ?? 0,
       higherBetter: true,
     },
     {
-      label: "Overall Wickets",
-      value: overall.bowling.wickets,
+      label: "Consistency",
+      value: model.consistency,
       formatter: (value: number) => formatCompactMetric(value),
-      getValue: (player: CricClubsAnalyticsResponse) => Number(buildOverallSnapshot(player).bowling.wickets ?? 0),
+      getValue: (_player: CricClubsAnalyticsResponse, index: number) => cohortModels[index]?.consistency ?? 0,
       higherBetter: true,
     },
     {
-      label: "Pathway Runs",
-      value: current.batting.runs,
+      label: "Versatility",
+      value: model.versatility,
       formatter: (value: number) => formatCompactMetric(value),
-      getValue: (player: CricClubsAnalyticsResponse) => Number(buildCurrentSnapshot(player).batting.runs ?? 0),
+      getValue: (_player: CricClubsAnalyticsResponse, index: number) => cohortModels[index]?.versatility ?? 0,
       higherBetter: true,
     },
     {
-      label: "Pathway Wickets",
-      value: current.bowling.wickets,
+      label: "Fielding",
+      value: model.fielding,
       formatter: (value: number) => formatCompactMetric(value),
-      getValue: (player: CricClubsAnalyticsResponse) => Number(buildCurrentSnapshot(player).bowling.wickets ?? 0),
+      getValue: (_player: CricClubsAnalyticsResponse, index: number) => cohortModels[index]?.fielding ?? 0,
       higherBetter: true,
     },
     {
-      label: "Batting Average",
-      value: current.batting.average ?? overall.batting.average,
-      formatter: (value: number) => formatMetric(value, 1),
-      getValue: (player: CricClubsAnalyticsResponse) => {
-        const snapshot = buildCurrentSnapshot(player);
-        const overallSnapshot = buildOverallSnapshot(player);
-        return Number(snapshot.batting.average ?? overallSnapshot.batting.average ?? 0);
-      },
+      label: "Career Volume",
+      value: model.careerVolume,
+      formatter: (value: number) => formatCompactMetric(value),
+      getValue: (_player: CricClubsAnalyticsResponse, index: number) => cohortModels[index]?.careerVolume ?? 0,
       higherBetter: true,
-    },
-    {
-      label: "Economy",
-      value: current.bowling.economy ?? overall.bowling.economy,
-      formatter: (value: number) => formatMetric(value, 2),
-      getValue: (player: CricClubsAnalyticsResponse) => {
-        const snapshot = buildCurrentSnapshot(player);
-        const overallSnapshot = buildOverallSnapshot(player);
-        return Number(snapshot.bowling.economy ?? overallSnapshot.bowling.economy ?? 0);
-      },
-      higherBetter: false,
     },
   ];
 
@@ -477,7 +423,7 @@ function getBenchmarkRows(result: CricClubsAnalyticsResponse) {
       if (!Number.isFinite(playerValue) || playerValue <= 0) return null;
 
       const cohortValues = cohort
-        .map(metric.getValue)
+        .map((player, index) => metric.getValue(player, index))
         .filter((value) => Number.isFinite(value) && value > 0);
 
       if (cohortValues.length < 2) return null;
@@ -545,9 +491,9 @@ function buildScoutingCards(
             ? `${result.player.name || result.searchQuery} has ${formatCompactMetric(overall.batting.runs)} confirmed overall CricClubs runs. The current public export is stronger on volume than on batting-rate detail.`
             : "Public batting detail is too thin to support a selector-grade batting read yet.",
       metrics: [
-        `Overall runs: ${formatCompactMetric(overall.batting.runs)}`,
-        `Pathway runs: ${formatCompactMetric(current.batting.runs)}`,
+        `Role: ${role}`,
         pathwayShareRuns !== null ? `Pathway share of overall runs: ${pathwayShareRuns}%` : "Pathway share unavailable",
+        current.batting.average ? `Pathway batting average: ${formatMetric(current.batting.average, 1)}` : "Pathway batting average unavailable",
       ],
     },
     {
@@ -560,9 +506,9 @@ function buildScoutingCards(
             ? `${formatCompactMetric(overall.bowling.wickets)} overall wickets is the strongest confirmed signal in this profile, which points to real bowling contribution even when matchup detail is missing.`
             : "Public bowling detail is too thin to support a selector-grade bowling read yet.",
       metrics: [
-        `Overall wickets: ${formatCompactMetric(overall.bowling.wickets)}`,
-        `Pathway wickets: ${formatCompactMetric(current.bowling.wickets)}`,
+        `Peer percentile: ${formatCompactMetric(model.peerPercentile)}`,
         pathwayShareWickets !== null ? `Pathway share of overall wickets: ${pathwayShareWickets}%` : "Pathway wicket share unavailable",
+        current.bowling.economy ? `Pathway economy: ${formatMetric(current.bowling.economy, 2)}` : "Pathway economy unavailable",
       ],
     },
     {
@@ -592,8 +538,37 @@ function buildScoutingCards(
   return cards;
 }
 
-function barHeight(value: number) {
-  return `${Math.max(12, Math.min(100, Math.round(value)))}%`;
+function buildCoverageCards(result: CricClubsAnalyticsResponse) {
+  const scorecardBacked = /scorecard/i.test(result.previewMode || "") || /viewScorecard/i.test(result.sourceUrl || "");
+  const hasPathwayRows = Boolean(result.pathwayBatting || result.pathwayBowling);
+  const hasMeaningfulMatchup = result.derived.matchupRead && !/not included|not exposed|not available|does not expose|could not/i.test(result.derived.matchupRead);
+  const hasDismissalProfile = result.derived.dismissalRisk && !/not expose|not available|omitted|limited/i.test(result.derived.dismissalRisk);
+
+  return [
+    {
+      title: "Opposition Coverage",
+      confidence: hasPathwayRows ? "Medium" : scorecardBacked ? "Partial" : "Low",
+      body: hasPathwayRows
+        ? "The public record supports pathway-vs-overall comparison, but not yet a verified good-team vs weak-team split from scorecards/commentary."
+        : scorecardBacked
+          ? "This profile has some public scorecard-backed evidence, which is enough for directional reading but not strong-opposition grading."
+          : "This profile is currently grounded by header/profile totals, not verified match-by-match opposition data.",
+    },
+    {
+      title: "Bowler-Type / Matchup Coverage",
+      confidence: hasMeaningfulMatchup ? "Medium" : "Low",
+      body: hasMeaningfulMatchup
+        ? result.derived.matchupRead
+        : "Public player pages still do not expose a reliable pace-vs-spin or bowler-type split here, so those matchup claims are intentionally withheld.",
+    },
+    {
+      title: "Dismissal Pattern Coverage",
+      confidence: hasDismissalProfile ? "Medium" : "Low",
+      body: hasDismissalProfile
+        ? result.derived.dismissalRisk
+        : "Dismissal-mode patterns are not safely available from the current public profile response.",
+    },
+  ];
 }
 
 const Analytics = () => {
@@ -897,9 +872,9 @@ const Analytics = () => {
               const currentSnapshot = buildCurrentSnapshot(result);
               const overallSnapshot = buildOverallSnapshot(result);
               const quickReadBars = buildQuickReadBars(result, model);
-              const trendCards = buildTrendCards(result, model);
               const scoutingCards = buildScoutingCards(result, model);
-              const benchmarkRows = getBenchmarkRows(result);
+              const benchmarkRows = getBenchmarkRows(result, model);
+              const coverageCards = buildCoverageCards(result);
               const selectorNarrative = buildSelectorNarrative(result, model);
               const peerCards = model.peers.slice(0, 3);
 
@@ -947,53 +922,6 @@ const Analytics = () => {
                         </div>
                       </div>
 
-                      <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                        <div className="rounded-2xl border border-primary/15 bg-background/60 p-5">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Overall CricClubs</p>
-                            <span className="rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent">
-                              Career record
-                            </span>
-                          </div>
-                          <div className="mt-4 grid grid-cols-3 gap-4">
-                            {[
-                              { label: "Matches", value: overallSnapshot.matches },
-                              { label: "Runs", value: overallSnapshot.batting.runs },
-                              { label: "Wickets", value: overallSnapshot.bowling.wickets },
-                            ].map((item) => (
-                              <div key={item.label}>
-                                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
-                                <p className="mt-2 font-display text-3xl font-bold text-foreground">
-                                  {formatCompactMetric(item.value)}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-primary/15 bg-background/60 p-5">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">USA Junior Pathway</p>
-                            <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
-                              Current pathway
-                            </span>
-                          </div>
-                          <div className="mt-4 grid grid-cols-3 gap-4">
-                            {[
-                              { label: "Matches", value: currentSnapshot.matches },
-                              { label: "Runs", value: currentSnapshot.batting.runs },
-                              { label: "Wickets", value: currentSnapshot.bowling.wickets },
-                            ].map((item) => (
-                              <div key={item.label}>
-                                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
-                                <p className="mt-2 font-display text-3xl font-bold text-foreground">
-                                  {formatCompactMetric(item.value)}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
                     </div>
 
                     <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">
@@ -1027,6 +955,100 @@ const Analytics = () => {
                   </div>
 
                   <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                    <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">
+                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Standard CricClubs Stats Snapshot</p>
+                      <h3 className="mt-2 font-display text-2xl font-bold text-foreground">Overall vs USA Junior Pathway</h3>
+
+                      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+                        {[
+                          {
+                            title: "Overall CricClubs Career",
+                            accent: "text-accent",
+                            snapshot: overallSnapshot,
+                          },
+                          {
+                            title: "USA Junior Pathway",
+                            accent: "text-primary",
+                            snapshot: currentSnapshot,
+                          },
+                        ].map((section) => (
+                          <div key={section.title} className="rounded-3xl border border-border bg-background/60 p-6">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <h4 className="font-display text-xl font-bold text-foreground">{section.title}</h4>
+                                <p className={`mt-1 text-sm ${section.accent}`}>{section.snapshot.label}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Matches</p>
+                                <p className="font-display text-3xl font-bold text-foreground">
+                                  {formatCompactMetric(section.snapshot.matches)}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                              <div className="rounded-2xl border border-border bg-card p-5">
+                                <div className="flex items-center gap-2 text-primary">
+                                  <BarChart3 className="h-4 w-4" />
+                                  <p className="text-sm font-medium">Batting</p>
+                                </div>
+                                <p className="mt-4 font-display text-3xl font-bold text-foreground">
+                                  {formatCompactMetric(section.snapshot.batting.runs)}
+                                </p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  Runs from {formatCompactMetric(section.snapshot.batting.innings)} innings
+                                </p>
+                                <p className="mt-3 text-sm text-muted-foreground">
+                                  HS {formatMetric(section.snapshot.batting.high)}
+                                </p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  Avg {formatMetric(section.snapshot.batting.average, 1)} | SR {formatMetric(section.snapshot.batting.strikeRate, 1)}
+                                </p>
+                              </div>
+
+                              <div className="rounded-2xl border border-border bg-card p-5">
+                                <div className="flex items-center gap-2 text-accent">
+                                  <Target className="h-4 w-4" />
+                                  <p className="text-sm font-medium">Bowling</p>
+                                </div>
+                                <p className="mt-4 font-display text-3xl font-bold text-foreground">
+                                  {formatCompactMetric(section.snapshot.bowling.wickets)}
+                                </p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  Wickets in {formatCompactMetric(section.snapshot.bowling.innings)} innings
+                                </p>
+                                <p className="mt-3 text-sm text-muted-foreground">
+                                  {section.snapshot.bowling.overs ? `${section.snapshot.bowling.overs} overs` : "Overs unavailable"}
+                                </p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  Econ {formatMetric(section.snapshot.bowling.economy, 2)} | BBF {formatMetric(section.snapshot.bowling.best)}
+                                </p>
+                              </div>
+
+                              <div className="rounded-2xl border border-border bg-card p-5">
+                                <div className="flex items-center gap-2 text-primary">
+                                  <Users className="h-4 w-4" />
+                                  <p className="text-sm font-medium">Fielding</p>
+                                </div>
+                                <p className="mt-4 font-display text-3xl font-bold text-foreground">
+                                  {formatCompactMetric(section.snapshot.fielding.total)}
+                                </p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  Total public dismissals or involvements
+                                </p>
+                                <p className="mt-3 text-sm text-muted-foreground">
+                                  {formatCompactMetric(section.snapshot.fielding.catches)} catches
+                                </p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  {formatCompactMetric(section.snapshot.fielding.directRunOuts)} run outs | {formatCompactMetric(section.snapshot.fielding.stumpings)} stumpings
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">
                       <div className="flex items-center justify-between gap-4">
                         <div>
@@ -1074,49 +1096,6 @@ const Analytics = () => {
                         )}
                       </div>
                     </div>
-
-                    <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">
-                      <div className="flex items-center gap-3">
-                        <div className="rounded-2xl bg-accent/10 p-3 text-accent">
-                          <ArrowUpRight className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Trend Graphics</p>
-                          <h3 className="font-display text-2xl font-bold text-foreground">Current vs career context</h3>
-                        </div>
-                      </div>
-
-                      <div className="mt-6 grid grid-cols-1 gap-4">
-                        {trendCards.map((card) => (
-                          <div key={card.title} className="rounded-2xl border border-border bg-background/60 p-5">
-                            <div className="flex items-start justify-between gap-4">
-                              <div>
-                                <p className="font-semibold text-foreground">{card.title}</p>
-                                <p className="mt-1 text-sm text-muted-foreground">{card.note}</p>
-                              </div>
-                              <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                                {card.value}
-                              </span>
-                            </div>
-
-                            <div className="mt-5 grid h-36 grid-cols-5 items-end gap-3">
-                              {card.points.map((point) => (
-                                <div key={`${card.title}-${point.label}`} className="flex h-full flex-col items-center justify-end gap-2">
-                                  <div className="flex h-24 w-full items-end justify-center rounded-xl bg-secondary/80 px-2 py-2">
-                                    <div
-                                      className="w-full rounded-lg bg-gradient-primary"
-                                      style={{ height: barHeight(point.height) }}
-                                    />
-                                  </div>
-                                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{point.label}</p>
-                                  <p className="text-xs font-medium text-foreground">{formatCompactMetric(point.value)}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.05fr_0.95fr]">
@@ -1146,138 +1125,69 @@ const Analytics = () => {
                     </div>
 
                     <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">
-                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Role Benchmarks</p>
-                      <h3 className="mt-2 font-display text-2xl font-bold text-foreground">Player vs same-role public cohort</h3>
+                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Public Matchup Coverage</p>
+                      <h3 className="mt-2 font-display text-2xl font-bold text-foreground">What comparison depth is actually supported</h3>
 
-                      <div className="mt-6 space-y-5">
-                        {benchmarkRows.length > 0 ? (
-                          benchmarkRows.map((row) => (
-                            <div key={row.label}>
-                              <div className="mb-2 flex items-center justify-between gap-3">
-                                <p className="text-sm font-medium text-foreground">{row.label}</p>
-                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                  <span>Player {row.playerValue}</span>
-                                  <span>Median {row.medianValue}</span>
-                                  <span>Best {row.bestValue}</span>
-                                </div>
-                              </div>
-                              <div className="relative h-3 rounded-full bg-secondary">
-                                <div
-                                  className="h-3 rounded-full bg-gradient-primary"
-                                  style={{ width: `${Math.max(8, Math.min(100, row.playerPct))}%` }}
-                                />
-                                <div
-                                  className="absolute top-1/2 h-5 w-0.5 -translate-y-1/2 bg-accent"
-                                  style={{ left: `${Math.max(4, Math.min(96, row.medianPct))}%` }}
-                                />
-                              </div>
+                      <div className="mt-6 space-y-4">
+                        {coverageCards.map((card) => (
+                          <div key={card.title} className="rounded-2xl border border-border bg-background/60 p-5">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="font-semibold text-foreground">{card.title}</p>
+                              <span className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-[11px] font-medium text-accent">
+                                {card.confidence}
+                              </span>
                             </div>
-                          ))
-                        ) : (
-                          <div className="rounded-2xl border border-border bg-background/60 p-5 text-sm text-muted-foreground">
-                            Same-role public benchmarks are only shown when the returned profile and the current supported cohort expose enough comparable numbers.
+                            <p className="mt-3 text-sm leading-6 text-muted-foreground">{card.body}</p>
                           </div>
-                        )}
+                        ))}
                       </div>
 
-                      <div className="mt-6 rounded-2xl border border-accent/20 bg-accent/10 p-5">
-                        <p className="font-medium text-foreground">Advanced matchup note</p>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                          Opponent-quality, team-strength, and bowler-type comparisons are only safe when verified match-level tables or commentary are available. This profile view is now cleaner and more grounded, but it will not invent those splits from incomplete public data.
-                        </p>
+                      <div className="mt-6 rounded-2xl border border-border bg-background/60 p-5">
+                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Role Benchmarks</p>
+                        <h4 className="mt-2 font-semibold text-foreground">Player vs same-role public cohort</h4>
+
+                        <div className="mt-5 space-y-5">
+                          {benchmarkRows.length > 0 ? (
+                            benchmarkRows.map((row) => (
+                              <div key={row.label}>
+                                <div className="mb-2 flex items-center justify-between gap-3">
+                                  <p className="text-sm font-medium text-foreground">{row.label}</p>
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                    <span>Player {row.playerValue}</span>
+                                    <span>Median {row.medianValue}</span>
+                                    <span>Best {row.bestValue}</span>
+                                  </div>
+                                </div>
+                                <div className="relative h-3 rounded-full bg-secondary">
+                                  <div
+                                    className="h-3 rounded-full bg-gradient-primary"
+                                    style={{ width: `${Math.max(8, Math.min(100, row.playerPct))}%` }}
+                                  />
+                                  <div
+                                    className="absolute top-1/2 h-5 w-0.5 -translate-y-1/2 bg-accent"
+                                    style={{ left: `${Math.max(4, Math.min(96, row.medianPct))}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
+                              Same-role public benchmarks are only shown when the returned profile and the current supported cohort expose enough comparable numbers.
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">
-                    <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Standard CricClubs Stats Snapshot</p>
-                    <h3 className="mt-2 font-display text-2xl font-bold text-foreground">Current pathway and overall public record</h3>
+                    <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Grounded Public Notes</p>
+                    <h3 className="mt-2 font-display text-2xl font-bold text-foreground">Public record currently in use</h3>
 
-                    <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-                      {[
-                        {
-                          title: "Current USA Junior Cricket Pathway",
-                          accent: "text-primary",
-                          snapshot: currentSnapshot,
-                        },
-                        {
-                          title: "Overall CricClubs Career",
-                          accent: "text-accent",
-                          snapshot: overallSnapshot,
-                        },
-                      ].map((section) => (
-                        <div key={section.title} className="rounded-3xl border border-border bg-background/60 p-6">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <h4 className="font-display text-xl font-bold text-foreground">{section.title}</h4>
-                              <p className={`mt-1 text-sm ${section.accent}`}>{section.snapshot.label}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Matches</p>
-                              <p className="font-display text-3xl font-bold text-foreground">
-                                {formatCompactMetric(section.snapshot.matches)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-                            <div className="rounded-2xl border border-border bg-card p-5">
-                              <div className="flex items-center gap-2 text-primary">
-                                <BarChart3 className="h-4 w-4" />
-                                <p className="text-sm font-medium">Batting</p>
-                              </div>
-                              <p className="mt-4 font-display text-3xl font-bold text-foreground">
-                                {formatCompactMetric(section.snapshot.batting.runs)}
-                              </p>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                Runs from {formatCompactMetric(section.snapshot.batting.innings)} innings
-                              </p>
-                              <p className="mt-3 text-sm text-muted-foreground">
-                                HS {formatMetric(section.snapshot.batting.high)}
-                              </p>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                Avg {formatMetric(section.snapshot.batting.average, 1)} | SR {formatMetric(section.snapshot.batting.strikeRate, 1)}
-                              </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-border bg-card p-5">
-                              <div className="flex items-center gap-2 text-accent">
-                                <Target className="h-4 w-4" />
-                                <p className="text-sm font-medium">Bowling</p>
-                              </div>
-                              <p className="mt-4 font-display text-3xl font-bold text-foreground">
-                                {formatCompactMetric(section.snapshot.bowling.wickets)}
-                              </p>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                Wickets in {formatCompactMetric(section.snapshot.bowling.innings)} innings
-                              </p>
-                              <p className="mt-3 text-sm text-muted-foreground">
-                                {section.snapshot.bowling.overs ? `${section.snapshot.bowling.overs} overs` : "Overs unavailable"}
-                              </p>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                Econ {formatMetric(section.snapshot.bowling.economy, 2)} | BBF {formatMetric(section.snapshot.bowling.best)}
-                              </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-border bg-card p-5">
-                              <div className="flex items-center gap-2 text-primary">
-                                <Users className="h-4 w-4" />
-                                <p className="text-sm font-medium">Fielding</p>
-                              </div>
-                              <p className="mt-4 font-display text-3xl font-bold text-foreground">
-                                {formatCompactMetric(section.snapshot.fielding.total)}
-                              </p>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                Total public dismissals or involvements
-                              </p>
-                              <p className="mt-3 text-sm text-muted-foreground">
-                                {formatCompactMetric(section.snapshot.fielding.catches)} catches
-                              </p>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                {formatCompactMetric(section.snapshot.fielding.directRunOuts)} run outs | {formatCompactMetric(section.snapshot.fielding.stumpings)} stumpings
-                              </p>
-                            </div>
-                          </div>
+                    <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                      {result.explicitInsights.groundingNotes.slice(0, 4).map((item) => (
+                        <div key={item} className="rounded-2xl border border-border bg-background/60 p-4">
+                          <p className="text-sm leading-6 text-muted-foreground">{item}</p>
                         </div>
                       ))}
                     </div>

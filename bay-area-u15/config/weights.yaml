@@ -1,0 +1,76 @@
+version: v1
+
+team_strength:
+  base_score: 1.0
+  division_premium:
+    default: 1.00
+    U15 Phase 1 Div 1: 1.15
+    U15 Phase 1 Div 2: 1.00
+    U15 Phase 2 Div 1: 1.22
+    U15 Phase 2 Div 2: 1.03
+  points_table_inputs:
+    wins_weight: 0.45
+    nrr_weight: 0.30
+    rank_weight: 0.25
+  normalization:
+    min_weight: 0.85
+    max_weight: 1.30
+
+player_strength:
+  tiers:
+    elite:
+      percentile_min: 0.80
+      weight: 1.25
+    strong:
+      percentile_min: 0.60
+      weight: 1.10
+    developing:
+      percentile_min: 0.00
+      weight: 0.85
+  sources:
+    batting: true
+    bowling: true
+    fielding: true
+
+phase_weighting:
+  batting:
+    powerplay: 1.00
+    middle: 1.05
+    death: 1.12
+  bowling:
+    powerplay: 1.04
+    middle: 1.00
+    death: 1.10
+
+leverage_weighting:
+  base: 1.00
+  chasing_high_required_rate: 1.10
+  defending_low_margin: 1.08
+  top_order_wicket: 1.10
+  collapse_context: 1.07
+  new_batter_window: 1.03
+
+composite_score:
+  batting:
+    opponent_adjusted_efficiency: 0.40
+    leverage: 0.25
+    consistency: 0.20
+    versatility: 0.10
+    fielding: 0.05
+  bowling:
+    opponent_adjusted_efficiency: 0.40
+    leverage: 0.25
+    consistency: 0.20
+    versatility: 0.10
+    fielding: 0.05
+
+quality_flags:
+  min_matches_for_confident_ranking: 3
+  min_balls_for_batting_confidence: 40
+  min_balls_for_bowling_confidence: 36
+  min_commentary_reconciliation_rate: 0.95
+
+parsing:
+  default_parse_confidence: 0.90
+  unmatched_alias_confidence: 0.50
+  strict_reconciliation_for_publish: true

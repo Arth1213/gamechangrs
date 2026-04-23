@@ -131,10 +131,52 @@ function normalizeName(value: string) {
     .trim();
 }
 
+function getNameTokens(value: string) {
+  return normalizeName(value).split(" ").filter((token) => token.length > 1);
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function getCandidateNameScore(searchName: string, candidateName: string | null) {
+  if (!candidateName) return 0;
+
+  const searchTokens = getNameTokens(searchName);
+  const candidateTokens = getNameTokens(candidateName);
+  if (searchTokens.length === 0 || candidateTokens.length === 0) return 0;
+
+  const firstCandidate = candidateTokens[0] ?? "";
+  const lastCandidate = candidateTokens[candidateTokens.length - 1] ?? "";
+
+  if (searchTokens.length === 1) {
+    const token = searchTokens[0];
+    return token === firstCandidate || token === lastCandidate ? 0.92 : 0;
+  }
+
+  const firstQuery = searchTokens[0] ?? "";
+  const lastQuery = searchTokens[searchTokens.length - 1] ?? "";
+  const firstMatches = firstCandidate === firstQuery || firstCandidate.startsWith(firstQuery) || firstQuery.startsWith(firstCandidate);
+  const lastMatches = lastCandidate === lastQuery || lastCandidate.startsWith(lastQuery) || lastQuery.startsWith(lastCandidate);
+  const prefixTokenMatches = searchTokens.filter((token) =>
+    candidateTokens.some((candidateToken) => candidateToken.startsWith(token) || token.startsWith(candidateToken))
+  ).length;
+  const exactTokenMatches = searchTokens.filter((token) => candidateTokens.includes(token)).length;
+
+  if (!firstMatches || !lastMatches || prefixTokenMatches !== searchTokens.length) {
+    return 0;
+  }
+
+  return Math.max(
+    0.84 + (exactTokenMatches / searchTokens.length) * 0.14,
+    0.82 + (prefixTokenMatches / searchTokens.length) * 0.12,
+  );
+}
+
 function getNameOverlap(searchName: string, candidateName: string | null) {
   if (!candidateName) return 0;
-  const searchTokens = new Set(normalizeName(searchName).split(" ").filter((t) => t.length > 1));
-  const candidateTokens = new Set(normalizeName(candidateName).split(" ").filter((t) => t.length > 1));
+  const searchTokens = new Set(getNameTokens(searchName));
+  const candidateTokens = new Set(getNameTokens(candidateName));
   if (searchTokens.size === 0 || candidateTokens.size === 0) return 0;
   let matches = 0;
   for (const token of searchTokens) {
@@ -393,10 +435,27 @@ function extractTextAfterLabel(pageText: string, labels: string[], maxLength = 4
 }
 
 function extractPlayerName(pageText: string, searchName: string) {
-  const exactRegex = new RegExp(`\\b(${searchName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})\\b`, "i");
-  const exactMatch = pageText.match(exactRegex);
-  if (exactMatch) return exactMatch[1].trim();
-  return searchName.trim();
+  const normalizedSearch = normalizeName(searchName);
+  const rawRegex = new RegExp(`\\b(${escapeRegExp(searchName)})\\b`, "i");
+  const rawMatch = pageText.match(rawRegex);
+  if (rawMatch) return rawMatch[1].trim();
+
+  const normalizedLines = pageText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (const line of normalizedLines.slice(0, 80)) {
+    const normalizedLine = normalizeName(line);
+    if (!normalizedLine.includes(normalizedSearch)) continue;
+
+    if (line.length <= 80) {
+      return line;
+    }
+  }
+
+  const labeledName = extractTextAfterLabel(pageText, ["Player Name", "Name"], 60);
+  return labeledName;
 }
 
 function normalizeCell(value: string | undefined) {
@@ -626,11 +685,8 @@ async function extractPlayerDataFromText(
   url: string,
   pageText: string,
 ): Promise<ExtractedPlayerData> {
-  const normalizedText = normalizeName(pageText);
-  const normalizedSearch = normalizeName(searchName);
-  const matchedPlayer = normalizedText.includes(normalizedSearch);
-
   const playerName = extractPlayerName(pageText, searchName);
+  const matchedPlayer = getCandidateNameScore(searchName, playerName) >= 0.84;
   const team = extractTextAfterLabel(pageText, ["Current Team", "Team", "Club"], 60) ||
     (url.includes("USACricketJunior") ? "USA Cricket Junior Pathway" : null);
   const battingStyle = extractTextAfterLabel(pageText, ["Batting Style", "Batting"], 40);
@@ -665,7 +721,7 @@ async function extractPlayerDataFromText(
   };
 
   const groundingNotes = [
-    `Public CricClubs page matched for ${playerName}.`,
+    `Public CricClubs page matched for ${playerName ?? "the searched player"}.`,
     url.includes("USACricketJunior")
       ? "Source is inside the USA Cricket Junior Pathway CricClubs site."
       : "Source is a public CricClubs page discovered through web search.",
@@ -942,7 +998,7 @@ serve(async (req) => {
       }, 404);
     }
 
-    let bestResult: { sourceUrl: string; extracted: ExtractedPlayerData; overlap: number } | null = null;
+    let bestResult: { sourceUrl: string; extracted: ExtractedPlayerData; overlap: number; nameScore: number } | null = null;
 
     for (const sourceUrl of candidateUrls) {
       try {
@@ -950,13 +1006,15 @@ serve(async (req) => {
         if (pageText.length < 400) continue;
 
         const extracted = await extractPlayerDataFromText(trimmedQuery, sourceUrl, pageText);
+        const nameScore = getCandidateNameScore(trimmedQuery, extracted.player.name);
+        if (nameScore === 0) continue;
         const overlap = getNameOverlap(trimmedQuery, extracted.player.name) + (sourceUrl.includes("viewPlayer.do") ? 0.15 : 0);
         
-        if (!bestResult || overlap > bestResult.overlap) {
-          bestResult = { sourceUrl, extracted, overlap };
+        if (!bestResult || nameScore > bestResult.nameScore || (nameScore === bestResult.nameScore && overlap > bestResult.overlap)) {
+          bestResult = { sourceUrl, extracted, overlap, nameScore };
         }
-        if (extracted.matchedPlayer && overlap >= 0.5) {
-          bestResult = { sourceUrl, extracted, overlap };
+        if (extracted.matchedPlayer && nameScore >= 0.9) {
+          bestResult = { sourceUrl, extracted, overlap, nameScore };
           break;
         }
       } catch (candidateError) {
@@ -964,8 +1022,10 @@ serve(async (req) => {
       }
     }
 
-    if (!bestResult || !bestResult.extracted.player.name) {
-      return jsonResponse({ error: "A CricClubs result was found, but the player profile could not be verified." }, 404);
+    if (!bestResult || !bestResult.extracted.player.name || bestResult.nameScore < 0.84) {
+      return jsonResponse({
+        error: "A CricClubs result was found, but the player name did not directly match the search well enough to verify the real profile.",
+      }, 404);
     }
 
     const normalized = normalizeExtracted(bestResult.extracted);

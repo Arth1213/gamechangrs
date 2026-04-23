@@ -34,6 +34,49 @@ function normalizeQuery(value: string) {
     .replace(/\s+/g, " ");
 }
 
+function getNameTokens(value: string) {
+  return normalizeQuery(value).split(" ").filter(Boolean);
+}
+
+function getStructuredNameScore(query: string, candidate: string) {
+  const queryTokens = getNameTokens(query);
+  const candidateTokens = getNameTokens(candidate);
+
+  if (queryTokens.length === 0 || candidateTokens.length === 0) {
+    return 0;
+  }
+
+  const firstCandidate = candidateTokens[0] ?? "";
+  const lastCandidate = candidateTokens[candidateTokens.length - 1] ?? "";
+
+  if (queryTokens.length === 1) {
+    const token = queryTokens[0];
+    if (token === firstCandidate || token === lastCandidate) {
+      return 0.91;
+    }
+    return 0;
+  }
+
+  const firstQuery = queryTokens[0] ?? "";
+  const lastQuery = queryTokens[queryTokens.length - 1] ?? "";
+  const firstMatches = firstCandidate === firstQuery || firstCandidate.startsWith(firstQuery) || firstQuery.startsWith(firstCandidate);
+  const lastMatches = lastCandidate === lastQuery || lastCandidate.startsWith(lastQuery) || lastQuery.startsWith(lastCandidate);
+  const exactTokenMatches = queryTokens.filter((token) => candidateTokens.includes(token)).length;
+  const prefixTokenMatches = queryTokens.filter((token) =>
+    candidateTokens.some((candidateToken) => candidateToken.startsWith(token) || token.startsWith(candidateToken)),
+  ).length;
+  const allTokensCovered = prefixTokenMatches === queryTokens.length;
+
+  if (!firstMatches || !lastMatches || !allTokensCovered) {
+    return 0;
+  }
+
+  return Math.max(
+    0.82 + (exactTokenMatches / queryTokens.length) * 0.16,
+    0.8 + (prefixTokenMatches / queryTokens.length) * 0.14,
+  );
+}
+
 function getPlayerSearchScore(query: string, candidate: string) {
   const normalizedQuery = normalizeQuery(query);
   const normalizedCandidate = normalizeQuery(candidate);
@@ -46,11 +89,16 @@ function getPlayerSearchScore(query: string, candidate: string) {
     return 1;
   }
 
-  if (normalizedCandidate.startsWith(normalizedQuery) || normalizedQuery.startsWith(normalizedCandidate)) {
+  const structuredScore = getStructuredNameScore(query, candidate);
+  if (structuredScore > 0) {
+    return structuredScore;
+  }
+
+  if (getNameTokens(query).length > 1 && (normalizedCandidate.startsWith(normalizedQuery) || normalizedQuery.startsWith(normalizedCandidate))) {
     return 0.94;
   }
 
-  if (normalizedCandidate.includes(normalizedQuery) || normalizedQuery.includes(normalizedCandidate)) {
+  if (getNameTokens(query).length > 1 && (normalizedCandidate.includes(normalizedQuery) || normalizedQuery.includes(normalizedCandidate))) {
     return 0.9;
   }
 
@@ -72,17 +120,26 @@ function getPlayerSearchScore(query: string, candidate: string) {
 }
 
 function getLocalPreviewPlayer(query: string) {
+  const normalizedTokens = getNameTokens(query);
   let bestMatch: CricClubsAnalyticsResponse | null = null;
   let bestScore = 0;
+  let secondBestScore = 0;
 
   for (const player of SUPPORTED_ANALYTICS_PLAYERS) {
     const names = [player.searchQuery, ...(player.aliases ?? [])];
     const playerScore = Math.max(...names.map((name) => getPlayerSearchScore(query, name)));
 
     if (playerScore > bestScore) {
+      secondBestScore = bestScore;
       bestScore = playerScore;
       bestMatch = player;
+    } else if (playerScore > secondBestScore) {
+      secondBestScore = playerScore;
     }
+  }
+
+  if (normalizedTokens.length === 1 && secondBestScore >= bestScore - 0.03) {
+    return null;
   }
 
   return bestScore >= 0.52 ? bestMatch : null;

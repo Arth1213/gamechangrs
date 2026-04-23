@@ -9,7 +9,6 @@ import {
   ExternalLink,
   Loader2,
   Search,
-  ShieldAlert,
   Target,
   Trophy,
   Users,
@@ -375,74 +374,6 @@ function buildTrendCards(
   ];
 }
 
-function buildSnapshotCards(
-  result: CricClubsAnalyticsResponse,
-  model: ReturnType<typeof getPlayerModelSnapshot>,
-) {
-  const role = getRoleLabel(result.player.role);
-
-  return [
-    {
-      label: "Batting Skill",
-      value: Math.round(Math.max(model.production, Number(result.pathwayBatting?.strikeRate ?? 0) / 1.5)),
-      copy: result.derived.battingProfile,
-      chip: role === "Batter" ? "Primary role" : null,
-    },
-    {
-      label: "Bowling Skill",
-      value: Math.round(
-        Math.max(
-          Number(result.pathwayBowling?.wickets ?? result.stats.wickets ?? 0) > 0 ? model.production : model.consistency,
-          model.consistency,
-        ),
-      ),
-      copy: result.derived.matchupRead,
-      chip: role === "Bowler" ? "Primary role" : null,
-    },
-    {
-      label: "Fielding Skill",
-      value: model.fielding,
-      copy:
-        result.derived.strengths[0]?.body ||
-        "Fielding influence is estimated from public catches and support involvements available in the profile.",
-      chip: null,
-    },
-    {
-      label: "Wicketkeeping Skill",
-      value: role === "Keeper" ? Math.max(model.fielding, 55) : 12,
-      copy:
-        role === "Keeper"
-          ? "Wicketkeeping value is kept visible because the role itself changes how selectors read the profile."
-          : "Minimal relevance for this player, included to keep the skill profile complete.",
-      chip: role === "Keeper" ? "Primary role" : null,
-    },
-  ];
-}
-
-function buildInterpretationCards(result: CricClubsAnalyticsResponse) {
-  const strengths = result.derived.strengths.slice(0, 3).map((item) => ({
-    title: item.title,
-    badge: "Strong",
-    body: item.body,
-  }));
-
-  const concerns = result.derived.concerns.slice(0, 2).map((item) => ({
-    title: item.title,
-    badge: "Watch",
-    body: item.body,
-  }));
-
-  return [
-    ...strengths,
-    ...concerns,
-    {
-      title: "Overall Selector View",
-      badge: "Track",
-      body: result.derived.recommendation,
-    },
-  ].slice(0, 6);
-}
-
 function buildSelectorNarrative(
   result: CricClubsAnalyticsResponse,
   model: ReturnType<typeof getPlayerModelSnapshot>,
@@ -467,13 +398,198 @@ function buildSelectorNarrative(
   return `${result.player.name || result.searchQuery} profiles as a ${role.toLowerCase()} whose ${primary} ${percentilePhrase}. ${result.derived.selectionSummary} ${result.derived.recommendation}`;
 }
 
-function buildReportUtilityPoints(result: CricClubsAnalyticsResponse) {
-  return [
-    "Current USA Junior Cricket Pathway output stays separate from overall CricClubs career volume.",
-    "Selector scoring keeps role fit, consistency, versatility, and fielding influence visible together.",
-    "Career totals remain on screen so a small pathway sample is not mistaken for the full public record.",
-    result.explicitInsights.groundingNotes[0] || "Grounding notes are preserved whenever the source profile exposes them clearly.",
+function median(values: number[]) {
+  if (values.length === 0) return null;
+  const sorted = values.slice().sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+}
+
+function getRoleCohort(result: CricClubsAnalyticsResponse) {
+  const targetRole = getRoleLabel(result.player.role);
+  return SUPPORTED_ANALYTICS_PLAYERS.filter((candidate) =>
+    candidate.searchQuery !== result.searchQuery && getRoleLabel(candidate.player.role) === targetRole,
+  );
+}
+
+function getBenchmarkRows(result: CricClubsAnalyticsResponse) {
+  const current = buildCurrentSnapshot(result);
+  const overall = buildOverallSnapshot(result);
+  const cohort = getRoleCohort(result);
+
+  const metrics = [
+    {
+      label: "Overall Runs",
+      value: overall.batting.runs,
+      formatter: (value: number) => formatCompactMetric(value),
+      getValue: (player: CricClubsAnalyticsResponse) => Number(buildOverallSnapshot(player).batting.runs ?? 0),
+      higherBetter: true,
+    },
+    {
+      label: "Overall Wickets",
+      value: overall.bowling.wickets,
+      formatter: (value: number) => formatCompactMetric(value),
+      getValue: (player: CricClubsAnalyticsResponse) => Number(buildOverallSnapshot(player).bowling.wickets ?? 0),
+      higherBetter: true,
+    },
+    {
+      label: "Pathway Runs",
+      value: current.batting.runs,
+      formatter: (value: number) => formatCompactMetric(value),
+      getValue: (player: CricClubsAnalyticsResponse) => Number(buildCurrentSnapshot(player).batting.runs ?? 0),
+      higherBetter: true,
+    },
+    {
+      label: "Pathway Wickets",
+      value: current.bowling.wickets,
+      formatter: (value: number) => formatCompactMetric(value),
+      getValue: (player: CricClubsAnalyticsResponse) => Number(buildCurrentSnapshot(player).bowling.wickets ?? 0),
+      higherBetter: true,
+    },
+    {
+      label: "Batting Average",
+      value: current.batting.average ?? overall.batting.average,
+      formatter: (value: number) => formatMetric(value, 1),
+      getValue: (player: CricClubsAnalyticsResponse) => {
+        const snapshot = buildCurrentSnapshot(player);
+        const overallSnapshot = buildOverallSnapshot(player);
+        return Number(snapshot.batting.average ?? overallSnapshot.batting.average ?? 0);
+      },
+      higherBetter: true,
+    },
+    {
+      label: "Economy",
+      value: current.bowling.economy ?? overall.bowling.economy,
+      formatter: (value: number) => formatMetric(value, 2),
+      getValue: (player: CricClubsAnalyticsResponse) => {
+        const snapshot = buildCurrentSnapshot(player);
+        const overallSnapshot = buildOverallSnapshot(player);
+        return Number(snapshot.bowling.economy ?? overallSnapshot.bowling.economy ?? 0);
+      },
+      higherBetter: false,
+    },
   ];
+
+  return metrics
+    .map((metric) => {
+      if (metric.value === null || metric.value === undefined || metric.value === "") return null;
+      const playerValue = Number(metric.value);
+      if (!Number.isFinite(playerValue) || playerValue <= 0) return null;
+
+      const cohortValues = cohort
+        .map(metric.getValue)
+        .filter((value) => Number.isFinite(value) && value > 0);
+
+      if (cohortValues.length < 2) return null;
+
+      const medianValue = median(cohortValues);
+      if (medianValue === null) return null;
+
+      const bestValue = metric.higherBetter ? Math.max(...cohortValues) : Math.min(...cohortValues);
+      const maxTrack = metric.higherBetter
+        ? Math.max(bestValue, playerValue)
+        : Math.max(...cohortValues, playerValue);
+      const playerPct = metric.higherBetter
+        ? Math.min(100, (playerValue / maxTrack) * 100)
+        : Math.min(100, ((maxTrack - playerValue) / maxTrack) * 100);
+      const medianPct = metric.higherBetter
+        ? Math.min(100, (medianValue / maxTrack) * 100)
+        : Math.min(100, ((maxTrack - medianValue) / maxTrack) * 100);
+
+      return {
+        label: metric.label,
+        playerValue: metric.formatter(playerValue),
+        medianValue: metric.formatter(medianValue),
+        bestValue: metric.formatter(bestValue),
+        playerPct,
+        medianPct,
+        higherBetter: metric.higherBetter,
+      };
+    })
+    .filter((row): row is {
+      label: string;
+      playerValue: string;
+      medianValue: string;
+      bestValue: string;
+      playerPct: number;
+      medianPct: number;
+      higherBetter: boolean;
+    } => Boolean(row))
+    .slice(0, 5);
+}
+
+function buildScoutingCards(
+  result: CricClubsAnalyticsResponse,
+  model: ReturnType<typeof getPlayerModelSnapshot>,
+) {
+  const current = buildCurrentSnapshot(result);
+  const overall = buildOverallSnapshot(result);
+  const role = getRoleLabel(result.player.role);
+  const pathwayRuns = Number(current.batting.runs ?? 0);
+  const overallRuns = Number(overall.batting.runs ?? 0);
+  const pathwayWickets = Number(current.bowling.wickets ?? 0);
+  const overallWickets = Number(overall.bowling.wickets ?? 0);
+  const pathwayShareRuns = overallRuns > 0 && pathwayRuns > 0 ? Math.round((pathwayRuns / overallRuns) * 100) : null;
+  const pathwayShareWickets = overallWickets > 0 && pathwayWickets > 0 ? Math.round((pathwayWickets / overallWickets) * 100) : null;
+  const cohort = getRoleCohort(result);
+  const roleRank = cohort.length + 1 - Math.round((model.peerPercentile / 100) * cohort.length);
+
+  const cards = [
+    {
+      title: "Batting Read",
+      eyebrow: current.batting.runs || overall.batting.runs ? "Grounded by public batting record" : "Limited batting evidence",
+      body:
+        current.batting.runs || current.batting.average || current.batting.strikeRate
+          ? `${result.player.name || result.searchQuery} has ${formatCompactMetric(current.batting.runs)} confirmed USA Junior Pathway runs, with average ${formatMetric(current.batting.average, 1)} and strike rate ${formatMetric(current.batting.strikeRate, 1)} in the returned public data.`
+          : overall.batting.runs
+            ? `${result.player.name || result.searchQuery} has ${formatCompactMetric(overall.batting.runs)} confirmed overall CricClubs runs. The current public export is stronger on volume than on batting-rate detail.`
+            : "Public batting detail is too thin to support a selector-grade batting read yet.",
+      metrics: [
+        `Overall runs: ${formatCompactMetric(overall.batting.runs)}`,
+        `Pathway runs: ${formatCompactMetric(current.batting.runs)}`,
+        pathwayShareRuns !== null ? `Pathway share of overall runs: ${pathwayShareRuns}%` : "Pathway share unavailable",
+      ],
+    },
+    {
+      title: "Bowling Read",
+      eyebrow: current.bowling.wickets || overall.bowling.wickets ? "Grounded by public bowling record" : "Limited bowling evidence",
+      body:
+        current.bowling.wickets || current.bowling.economy
+          ? `${result.player.name || result.searchQuery} has ${formatCompactMetric(current.bowling.wickets)} confirmed USA Junior Pathway wickets with economy ${formatMetric(current.bowling.economy, 2)} in the currently returned profile.`
+          : overall.bowling.wickets
+            ? `${formatCompactMetric(overall.bowling.wickets)} overall wickets is the strongest confirmed signal in this profile, which points to real bowling contribution even when matchup detail is missing.`
+            : "Public bowling detail is too thin to support a selector-grade bowling read yet.",
+      metrics: [
+        `Overall wickets: ${formatCompactMetric(overall.bowling.wickets)}`,
+        `Pathway wickets: ${formatCompactMetric(current.bowling.wickets)}`,
+        pathwayShareWickets !== null ? `Pathway share of overall wickets: ${pathwayShareWickets}%` : "Pathway wicket share unavailable",
+      ],
+    },
+    {
+      title: "Role And Cohort Position",
+      eyebrow: "Same-role public cohort comparison",
+      body: `${result.player.name || result.searchQuery} currently profiles as a ${role.toLowerCase()} with peer percentile ${formatCompactMetric(model.peerPercentile)}. Against the supported same-role cohort, this reads more like a rank around ${Math.max(1, roleRank)} of ${cohort.length + 1} than an isolated stat line.`,
+      metrics: [
+        `Selector score: ${formatCompactMetric(model.overall)}`,
+        `Peer percentile: ${formatCompactMetric(model.peerPercentile)}`,
+        `Career volume score: ${formatCompactMetric(model.careerVolume)}`,
+      ],
+    },
+  ];
+
+  const meaningfulMatchup = result.derived.matchupRead && !/not included|not exposed|not available|does not expose|could not/i.test(result.derived.matchupRead);
+  if (meaningfulMatchup) {
+    cards.push({
+      title: "Matchup Read",
+      eyebrow: "Only shown when public evidence supports it",
+      body: result.derived.matchupRead,
+      metrics: [
+        result.derived.battingProfile,
+      ],
+    });
+  }
+
+  return cards;
 }
 
 function barHeight(value: number) {
@@ -782,25 +898,10 @@ const Analytics = () => {
               const overallSnapshot = buildOverallSnapshot(result);
               const quickReadBars = buildQuickReadBars(result, model);
               const trendCards = buildTrendCards(result, model);
-              const snapshotCards = buildSnapshotCards(result, model);
-              const interpretationCards = buildInterpretationCards(result);
-              const utilityPoints = buildReportUtilityPoints(result);
+              const scoutingCards = buildScoutingCards(result, model);
+              const benchmarkRows = getBenchmarkRows(result);
               const selectorNarrative = buildSelectorNarrative(result, model);
               const peerCards = model.peers.slice(0, 3);
-              const visualReadout = [
-                {
-                  value: quickReadBars[0]?.value ?? model.production,
-                  copy: `${quickReadBars[0]?.label || "Primary impact"} remains the clearest selection strength.`,
-                },
-                {
-                  value: model.peerPercentile,
-                  copy: "Peer standing helps separate a good public stat line from a genuinely strong selector profile.",
-                },
-                {
-                  value: model.consistency,
-                  copy: "Consistency keeps the current sample from being judged by one innings or spell alone.",
-                },
-              ];
 
               return (
                 <div className="space-y-8">
@@ -846,20 +947,52 @@ const Analytics = () => {
                         </div>
                       </div>
 
-                      <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-                        {[
-                          { label: "Composite Selector Score", value: model.overall, tone: "text-primary" },
-                          { label: "Current Pathway Matches", value: currentSnapshot.matches, tone: "text-foreground" },
-                          { label: "Overall CricClubs Matches", value: overallSnapshot.matches, tone: "text-foreground" },
-                          { label: "Career Volume", value: model.careerVolume, tone: "text-accent" },
-                        ].map((item) => (
-                          <div key={item.label} className="rounded-2xl border border-primary/15 bg-background/60 p-5">
-                            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
-                            <p className={`mt-3 font-display text-4xl font-bold ${item.tone}`}>
-                              {formatCompactMetric(item.value)}
-                            </p>
+                      <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <div className="rounded-2xl border border-primary/15 bg-background/60 p-5">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Overall CricClubs</p>
+                            <span className="rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent">
+                              Career record
+                            </span>
                           </div>
-                        ))}
+                          <div className="mt-4 grid grid-cols-3 gap-4">
+                            {[
+                              { label: "Matches", value: overallSnapshot.matches },
+                              { label: "Runs", value: overallSnapshot.batting.runs },
+                              { label: "Wickets", value: overallSnapshot.bowling.wickets },
+                            ].map((item) => (
+                              <div key={item.label}>
+                                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
+                                <p className="mt-2 font-display text-3xl font-bold text-foreground">
+                                  {formatCompactMetric(item.value)}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-primary/15 bg-background/60 p-5">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">USA Junior Pathway</p>
+                            <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+                              Current pathway
+                            </span>
+                          </div>
+                          <div className="mt-4 grid grid-cols-3 gap-4">
+                            {[
+                              { label: "Matches", value: currentSnapshot.matches },
+                              { label: "Runs", value: currentSnapshot.batting.runs },
+                              { label: "Wickets", value: currentSnapshot.bowling.wickets },
+                            ].map((item) => (
+                              <div key={item.label}>
+                                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
+                                <p className="mt-2 font-display text-3xl font-bold text-foreground">
+                                  {formatCompactMetric(item.value)}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -988,87 +1121,70 @@ const Analytics = () => {
 
                   <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.05fr_0.95fr]">
                     <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">
-                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Assessment Snapshot</p>
-                      <h3 className="mt-2 font-display text-2xl font-bold text-foreground">Skill profile</h3>
-
-                      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                        {snapshotCards.map((item) => (
-                          <div key={item.label} className="rounded-2xl border border-border bg-background/60 p-5">
-                            <div className="flex items-start justify-between gap-4">
-                              <div>
-                                <p className="text-sm font-medium text-foreground">{item.label}</p>
-                                {item.chip ? (
-                                  <span className="mt-2 inline-flex rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent">
-                                    {item.chip}
-                                  </span>
-                                ) : null}
-                              </div>
-                              <p className="font-display text-3xl font-bold text-foreground">{formatCompactMetric(item.value)}</p>
-                            </div>
-                            <p className="mt-4 text-sm leading-6 text-muted-foreground">{item.copy}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">
-                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Visual Selector Readout</p>
-                      <h3 className="mt-2 font-display text-2xl font-bold text-foreground">What stands out fastest</h3>
+                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Detailed Scouting Breakdown</p>
+                      <h3 className="mt-2 font-display text-2xl font-bold text-foreground">What the public record supports right now</h3>
 
                       <div className="mt-6 space-y-4">
-                        {visualReadout.map((item, index) => (
-                          <div key={`${item.copy}-${index}`} className="rounded-2xl border border-border bg-background/60 p-5">
-                            <p className="font-display text-4xl font-bold text-primary">{formatCompactMetric(item.value)}</p>
-                            <p className="mt-2 text-sm text-muted-foreground">{item.copy}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_1fr]">
-                    <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">
-                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Selector Interpretation</p>
-                      <h3 className="mt-2 font-display text-2xl font-bold text-foreground">Strengths, concerns, and track call</h3>
-
-                      <div className="mt-6 space-y-4">
-                        {interpretationCards.map((item) => (
-                          <div key={`${item.badge}-${item.title}`} className="rounded-2xl border border-border bg-background/60 p-5">
-                            <div className="flex items-center justify-between gap-3">
-                              <p className="font-semibold text-foreground">{item.title}</p>
-                              <span
-                                className={`rounded-full px-3 py-1 text-[11px] font-medium ${
-                                  item.badge === "Strong"
-                                    ? "border border-primary/30 bg-primary/10 text-primary"
-                                    : item.badge === "Watch"
-                                      ? "border border-accent/30 bg-accent/10 text-accent"
-                                      : "border border-border bg-secondary text-muted-foreground"
-                                }`}
-                              >
-                                {item.badge}
-                              </span>
-                            </div>
+                        {scoutingCards.map((item) => (
+                          <div key={item.title} className="rounded-2xl border border-border bg-background/60 p-5">
+                            <p className="text-[11px] uppercase tracking-[0.2em] text-primary">{item.eyebrow}</p>
+                            <h4 className="mt-2 font-semibold text-foreground">{item.title}</h4>
                             <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.body}</p>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              {item.metrics.map((metric) => (
+                                <span
+                                  key={`${item.title}-${metric}`}
+                                  className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground"
+                                >
+                                  {metric}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         ))}
                       </div>
                     </div>
 
                     <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">
-                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">What Makes This Report Useful</p>
-                      <h3 className="mt-2 font-display text-2xl font-bold text-foreground">Why this is better than one stat line</h3>
+                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Role Benchmarks</p>
+                      <h3 className="mt-2 font-display text-2xl font-bold text-foreground">Player vs same-role public cohort</h3>
 
-                      <div className="mt-6 space-y-3">
-                        {utilityPoints.map((item) => (
-                          <div key={item} className="rounded-2xl border border-border bg-background/60 p-4">
-                            <p className="text-sm leading-6 text-muted-foreground">{item}</p>
+                      <div className="mt-6 space-y-5">
+                        {benchmarkRows.length > 0 ? (
+                          benchmarkRows.map((row) => (
+                            <div key={row.label}>
+                              <div className="mb-2 flex items-center justify-between gap-3">
+                                <p className="text-sm font-medium text-foreground">{row.label}</p>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                  <span>Player {row.playerValue}</span>
+                                  <span>Median {row.medianValue}</span>
+                                  <span>Best {row.bestValue}</span>
+                                </div>
+                              </div>
+                              <div className="relative h-3 rounded-full bg-secondary">
+                                <div
+                                  className="h-3 rounded-full bg-gradient-primary"
+                                  style={{ width: `${Math.max(8, Math.min(100, row.playerPct))}%` }}
+                                />
+                                <div
+                                  className="absolute top-1/2 h-5 w-0.5 -translate-y-1/2 bg-accent"
+                                  style={{ left: `${Math.max(4, Math.min(96, row.medianPct))}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="rounded-2xl border border-border bg-background/60 p-5 text-sm text-muted-foreground">
+                            Same-role public benchmarks are only shown when the returned profile and the current supported cohort expose enough comparable numbers.
                           </div>
-                        ))}
+                        )}
                       </div>
 
-                      <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 p-5">
-                        <p className="font-medium text-foreground">Final selector takeaway</p>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">{result.derived.recommendation}</p>
+                      <div className="mt-6 rounded-2xl border border-accent/20 bg-accent/10 p-5">
+                        <p className="font-medium text-foreground">Advanced matchup note</p>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          Opponent-quality, team-strength, and bowler-type comparisons are only safe when verified match-level tables or commentary are available. This profile view is now cleaner and more grounded, but it will not invent those splits from incomplete public data.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1162,31 +1278,6 @@ const Analytics = () => {
                               </p>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-2xl bg-accent/10 p-3 text-accent">
-                        <ShieldAlert className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Grounding Notes</p>
-                        <h3 className="mt-2 font-display text-2xl font-bold text-foreground">Source limitations still shown</h3>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
-                      {result.derived.dataLimitations.map((item) => (
-                        <div key={item} className="rounded-2xl border border-border bg-background/60 p-4">
-                          <p className="text-sm leading-6 text-muted-foreground">{item}</p>
-                        </div>
-                      ))}
-                      {result.explicitInsights.groundingNotes.map((item) => (
-                        <div key={item} className="rounded-2xl border border-border bg-background/60 p-4">
-                          <p className="text-sm leading-6 text-muted-foreground">{item}</p>
                         </div>
                       ))}
                     </div>

@@ -310,6 +310,119 @@ function buildOverallSnapshot(result: CricClubsAnalyticsResponse) {
   };
 }
 
+type DivisionSplitSnapshot = {
+  key: "div1" | "div2";
+  title: string;
+  matches: number | null;
+  runs: number | null;
+  wickets: number | null;
+  battingAverage: number | null;
+  strikeRate: number | null;
+  economy: number | null;
+  formats: string[];
+};
+
+function weightedAverage(
+  rows: FormatSplitRow[],
+  key: "battingAverage" | "strikeRate" | "economy",
+) {
+  const weighted = rows
+    .filter((row) => typeof row[key] === "number" && Number.isFinite(row[key] as number))
+    .map((row) => ({
+      weight: Math.max(1, Number(row.matches ?? 0)),
+      value: Number(row[key]),
+    }));
+
+  if (weighted.length === 0) {
+    return null;
+  }
+
+  const totalWeight = weighted.reduce((sum, item) => sum + item.weight, 0);
+  if (totalWeight <= 0) {
+    return null;
+  }
+
+  return weighted.reduce((sum, item) => sum + item.value * item.weight, 0) / totalWeight;
+}
+
+type FormatSplitRow = CricClubsAnalyticsResponse["formatSplits"][number];
+
+function getDivisionSplitKey(format: string) {
+  if (/div\s*1/i.test(format)) return "div1";
+  if (/div\s*2/i.test(format)) return "div2";
+  return null;
+}
+
+function buildDivisionSplitSnapshots(result: CricClubsAnalyticsResponse): DivisionSplitSnapshot[] {
+  const grouped = new Map<"div1" | "div2", FormatSplitRow[]>();
+
+  for (const row of result.formatSplits) {
+    const key = getDivisionSplitKey(row.format);
+    if (!key) continue;
+    const bucket = grouped.get(key) ?? [];
+    bucket.push(row);
+    grouped.set(key, bucket);
+  }
+
+  return (["div1", "div2"] as const)
+    .map((key) => {
+      const rows = grouped.get(key);
+      if (!rows || rows.length === 0) return null;
+
+      return {
+        key,
+        title: key === "div1" ? "USA Junior Pathway Div 1" : "USA Junior Pathway Div 2",
+        matches: rows.reduce((sum, row) => sum + (Number(row.matches ?? 0) || 0), 0) || null,
+        runs: rows.reduce((sum, row) => sum + (Number(row.runs ?? 0) || 0), 0) || null,
+        wickets: rows.reduce((sum, row) => sum + (Number(row.wickets ?? 0) || 0), 0) || null,
+        battingAverage: weightedAverage(rows, "battingAverage"),
+        strikeRate: weightedAverage(rows, "strikeRate"),
+        economy: weightedAverage(rows, "economy"),
+        formats: rows.map((row) => row.format),
+      } satisfies DivisionSplitSnapshot;
+    })
+    .filter((entry): entry is DivisionSplitSnapshot => Boolean(entry));
+}
+
+function buildPathwayDivisionRead(result: CricClubsAnalyticsResponse) {
+  const divisionSplits = buildDivisionSplitSnapshots(result);
+  if (divisionSplits.length === 0) {
+    return null;
+  }
+
+  const div1 = divisionSplits.find((entry) => entry.key === "div1") ?? null;
+  const div2 = divisionSplits.find((entry) => entry.key === "div2") ?? null;
+
+  if (!div1 && !div2) {
+    return null;
+  }
+
+  const notes: string[] = [];
+
+  if (div1?.runs !== null || div2?.runs !== null) {
+    notes.push(
+      `Batting volume is ${formatCompactMetric(div1?.runs)} in Div 1 versus ${formatCompactMetric(div2?.runs)} in Div 2.`,
+    );
+  }
+
+  if (div1?.wickets !== null || div2?.wickets !== null) {
+    notes.push(
+      `Bowling return is ${formatCompactMetric(div1?.wickets)} wickets in Div 1 versus ${formatCompactMetric(div2?.wickets)} in Div 2.`,
+    );
+  }
+
+  if (div1?.economy !== null || div2?.economy !== null) {
+    notes.push(
+      `Public pathway economy reads ${formatMetric(div1?.economy, 2)} in Div 1 and ${formatMetric(div2?.economy, 2)} in Div 2.`,
+    );
+  }
+
+  return {
+    splits: divisionSplits,
+    summary: notes.join(" "),
+  };
+}
+
 function buildQuickReadBars(
   result: CricClubsAnalyticsResponse,
   model: ReturnType<typeof getPlayerModelSnapshot>,
@@ -479,6 +592,7 @@ function buildScoutingCards(
   const pathwayShareWickets = overallWickets > 0 && pathwayWickets > 0 ? Math.round((pathwayWickets / overallWickets) * 100) : null;
   const cohort = getRoleCohort(result);
   const roleRank = cohort.length + 1 - Math.round((model.peerPercentile / 100) * cohort.length);
+  const divisionRead = buildPathwayDivisionRead(result);
 
   const cards = [
     {
@@ -523,6 +637,17 @@ function buildScoutingCards(
     },
   ];
 
+  if (divisionRead) {
+    cards.push({
+      title: "Pathway Division Split",
+      eyebrow: "USA Junior Pathway Div 1 vs Div 2",
+      body: divisionRead.summary,
+      metrics: divisionRead.splits.map((split) =>
+        `${split.title}: ${formatCompactMetric(split.matches)} matches, ${formatCompactMetric(split.runs)} runs, ${formatCompactMetric(split.wickets)} wickets`,
+      ),
+    });
+  }
+
   const meaningfulMatchup = result.derived.matchupRead && !/not included|not exposed|not available|does not expose|could not/i.test(result.derived.matchupRead);
   if (meaningfulMatchup) {
     cards.push({
@@ -541,18 +666,21 @@ function buildScoutingCards(
 function buildCoverageCards(result: CricClubsAnalyticsResponse) {
   const scorecardBacked = /scorecard/i.test(result.previewMode || "") || /viewScorecard/i.test(result.sourceUrl || "");
   const hasPathwayRows = Boolean(result.pathwayBatting || result.pathwayBowling);
+  const hasDivisionRows = buildDivisionSplitSnapshots(result).length > 0;
   const hasMeaningfulMatchup = result.derived.matchupRead && !/not included|not exposed|not available|does not expose|could not/i.test(result.derived.matchupRead);
   const hasDismissalProfile = result.derived.dismissalRisk && !/not expose|not available|omitted|limited/i.test(result.derived.dismissalRisk);
 
   return [
     {
-      title: "Opposition Coverage",
-      confidence: hasPathwayRows ? "Medium" : scorecardBacked ? "Partial" : "Low",
-      body: hasPathwayRows
-        ? "The public record supports pathway-vs-overall comparison, but not yet a verified good-team vs weak-team split from scorecards/commentary."
+      title: "Division Coverage",
+      confidence: hasDivisionRows ? "High" : hasPathwayRows ? "Medium" : scorecardBacked ? "Partial" : "Low",
+      body: hasDivisionRows
+        ? "The public record exposes explicit USA Junior Pathway division rows, so this report can separate Div 1 and Div 2 instead of using vague strong-team or weak-team language."
+        : hasPathwayRows
+        ? "The public record supports pathway-vs-overall comparison, but this profile did not expose separate Div 1 and Div 2 rows."
         : scorecardBacked
-          ? "This profile has some public scorecard-backed evidence, which is enough for directional reading but not strong-opposition grading."
-          : "This profile is currently grounded by header/profile totals, not verified match-by-match opposition data.",
+          ? "This profile has some public scorecard-backed evidence, but not a clean Div 1 vs Div 2 pathway split."
+          : "This profile is currently grounded by header/profile totals, not a detailed USA Junior Pathway division split.",
     },
     {
       title: "Bowler-Type / Matchup Coverage",
@@ -877,6 +1005,7 @@ const Analytics = () => {
               const coverageCards = buildCoverageCards(result);
               const selectorNarrative = buildSelectorNarrative(result, model);
               const peerCards = model.peers.slice(0, 3);
+              const divisionSplitRead = buildPathwayDivisionRead(result);
 
               return (
                 <div className="space-y-8">
@@ -957,95 +1086,159 @@ const Analytics = () => {
                   <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
                     <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">
                       <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Standard CricClubs Stats Snapshot</p>
-                      <h3 className="mt-2 font-display text-2xl font-bold text-foreground">Overall vs USA Junior Pathway</h3>
+                      <h3 className="mt-2 font-display text-2xl font-bold text-foreground">Overall, pathway, and division context</h3>
 
-                      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-                        {[
-                          {
-                            title: "Overall CricClubs Career",
-                            accent: "text-accent",
-                            snapshot: overallSnapshot,
-                          },
-                          {
-                            title: "USA Junior Pathway",
-                            accent: "text-primary",
-                            snapshot: currentSnapshot,
-                          },
-                        ].map((section) => (
-                          <div key={section.title} className="rounded-3xl border border-border bg-background/60 p-6">
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <h4 className="font-display text-xl font-bold text-foreground">{section.title}</h4>
-                                <p className={`mt-1 text-sm ${section.accent}`}>{section.snapshot.label}</p>
+                      <div className="mt-6 grid grid-cols-1 gap-6 2xl:grid-cols-[1.06fr_0.94fr]">
+                        <div className="rounded-3xl border border-border bg-background/60 p-6">
+                          <div className="flex flex-wrap items-end justify-between gap-4">
+                            <div>
+                              <h4 className="font-display text-2xl font-bold text-foreground">Overall CricClubs Career</h4>
+                              <p className="mt-1 text-sm text-accent">Full public career totals</p>
+                            </div>
+                            <div className="rounded-2xl border border-border bg-card px-4 py-3 text-right">
+                              <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Matches</p>
+                              <p className="font-display text-3xl font-bold text-foreground">
+                                {formatCompactMetric(overallSnapshot.matches)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+                            <div className="rounded-2xl border border-border bg-card p-5">
+                              <div className="flex items-center gap-2 text-primary">
+                                <BarChart3 className="h-4 w-4" />
+                                <p className="text-sm font-medium">Batting</p>
                               </div>
-                              <div className="text-right">
-                                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Matches</p>
-                                <p className="font-display text-3xl font-bold text-foreground">
-                                  {formatCompactMetric(section.snapshot.matches)}
-                                </p>
+                              <p className="mt-4 font-display text-4xl font-bold text-foreground">
+                                {formatCompactMetric(overallSnapshot.batting.runs)}
+                              </p>
+                              <div className="mt-4 space-y-1 text-sm text-muted-foreground">
+                                <p>{formatCompactMetric(overallSnapshot.batting.innings)} innings</p>
+                                <p>HS {formatMetric(overallSnapshot.batting.high)}</p>
+                                <p>Avg {formatMetric(overallSnapshot.batting.average, 1)}</p>
+                                <p>SR {formatMetric(overallSnapshot.batting.strikeRate, 1)}</p>
                               </div>
                             </div>
 
-                            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-                              <div className="rounded-2xl border border-border bg-card p-5">
-                                <div className="flex items-center gap-2 text-primary">
-                                  <BarChart3 className="h-4 w-4" />
-                                  <p className="text-sm font-medium">Batting</p>
-                                </div>
-                                <p className="mt-4 font-display text-3xl font-bold text-foreground">
-                                  {formatCompactMetric(section.snapshot.batting.runs)}
-                                </p>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                  Runs from {formatCompactMetric(section.snapshot.batting.innings)} innings
-                                </p>
-                                <p className="mt-3 text-sm text-muted-foreground">
-                                  HS {formatMetric(section.snapshot.batting.high)}
-                                </p>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                  Avg {formatMetric(section.snapshot.batting.average, 1)} | SR {formatMetric(section.snapshot.batting.strikeRate, 1)}
-                                </p>
+                            <div className="rounded-2xl border border-border bg-card p-5">
+                              <div className="flex items-center gap-2 text-accent">
+                                <Target className="h-4 w-4" />
+                                <p className="text-sm font-medium">Bowling</p>
                               </div>
-
-                              <div className="rounded-2xl border border-border bg-card p-5">
-                                <div className="flex items-center gap-2 text-accent">
-                                  <Target className="h-4 w-4" />
-                                  <p className="text-sm font-medium">Bowling</p>
-                                </div>
-                                <p className="mt-4 font-display text-3xl font-bold text-foreground">
-                                  {formatCompactMetric(section.snapshot.bowling.wickets)}
-                                </p>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                  Wickets in {formatCompactMetric(section.snapshot.bowling.innings)} innings
-                                </p>
-                                <p className="mt-3 text-sm text-muted-foreground">
-                                  {section.snapshot.bowling.overs ? `${section.snapshot.bowling.overs} overs` : "Overs unavailable"}
-                                </p>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                  Econ {formatMetric(section.snapshot.bowling.economy, 2)} | BBF {formatMetric(section.snapshot.bowling.best)}
-                                </p>
+                              <p className="mt-4 font-display text-4xl font-bold text-foreground">
+                                {formatCompactMetric(overallSnapshot.bowling.wickets)}
+                              </p>
+                              <div className="mt-4 space-y-1 text-sm text-muted-foreground">
+                                <p>{formatCompactMetric(overallSnapshot.bowling.innings)} innings</p>
+                                <p>BBF {formatMetric(overallSnapshot.bowling.best)}</p>
+                                <p>Econ {formatMetric(overallSnapshot.bowling.economy, 2)}</p>
                               </div>
+                            </div>
 
-                              <div className="rounded-2xl border border-border bg-card p-5">
-                                <div className="flex items-center gap-2 text-primary">
-                                  <Users className="h-4 w-4" />
-                                  <p className="text-sm font-medium">Fielding</p>
-                                </div>
-                                <p className="mt-4 font-display text-3xl font-bold text-foreground">
-                                  {formatCompactMetric(section.snapshot.fielding.total)}
-                                </p>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                  Total public dismissals or involvements
-                                </p>
-                                <p className="mt-3 text-sm text-muted-foreground">
-                                  {formatCompactMetric(section.snapshot.fielding.catches)} catches
-                                </p>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                  {formatCompactMetric(section.snapshot.fielding.directRunOuts)} run outs | {formatCompactMetric(section.snapshot.fielding.stumpings)} stumpings
-                                </p>
+                            <div className="rounded-2xl border border-border bg-card p-5">
+                              <div className="flex items-center gap-2 text-primary">
+                                <Users className="h-4 w-4" />
+                                <p className="text-sm font-medium">Fielding</p>
+                              </div>
+                              <p className="mt-4 font-display text-4xl font-bold text-foreground">
+                                {formatCompactMetric(overallSnapshot.fielding.total)}
+                              </p>
+                              <div className="mt-4 space-y-1 text-sm text-muted-foreground">
+                                <p>{formatCompactMetric(overallSnapshot.fielding.catches)} catches</p>
+                                <p>{formatCompactMetric(overallSnapshot.fielding.directRunOuts)} run outs</p>
+                                <p>{formatCompactMetric(overallSnapshot.fielding.stumpings)} stumpings</p>
                               </div>
                             </div>
                           </div>
-                        ))}
+                        </div>
+
+                        <div className="space-y-6">
+                          <div className="rounded-3xl border border-border bg-background/60 p-6">
+                            <div className="flex flex-wrap items-end justify-between gap-4">
+                              <div>
+                                <h4 className="font-display text-2xl font-bold text-foreground">USA Junior Pathway</h4>
+                                <p className="mt-1 text-sm text-primary">{currentSnapshot.label}</p>
+                              </div>
+                              <div className="rounded-2xl border border-border bg-card px-4 py-3 text-right">
+                                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Matches</p>
+                                <p className="font-display text-3xl font-bold text-foreground">
+                                  {formatCompactMetric(currentSnapshot.matches)}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="mt-5 grid grid-cols-2 gap-3">
+                              <div className="rounded-2xl border border-border bg-card p-4">
+                                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Runs</p>
+                                <p className="mt-2 font-display text-3xl font-bold text-foreground">{formatCompactMetric(currentSnapshot.batting.runs)}</p>
+                                <p className="mt-2 text-sm text-muted-foreground">Avg {formatMetric(currentSnapshot.batting.average, 1)} | SR {formatMetric(currentSnapshot.batting.strikeRate, 1)}</p>
+                              </div>
+                              <div className="rounded-2xl border border-border bg-card p-4">
+                                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Wickets</p>
+                                <p className="mt-2 font-display text-3xl font-bold text-foreground">{formatCompactMetric(currentSnapshot.bowling.wickets)}</p>
+                                <p className="mt-2 text-sm text-muted-foreground">Econ {formatMetric(currentSnapshot.bowling.economy, 2)} | BBF {formatMetric(currentSnapshot.bowling.best)}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="rounded-3xl border border-border bg-background/60 p-6">
+                            <div className="flex items-center justify-between gap-4">
+                              <div>
+                                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Division Split</p>
+                                <h4 className="mt-1 font-display text-xl font-bold text-foreground">Div 1 vs Div 2 in USA Junior Pathway</h4>
+                              </div>
+                              <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
+                                {divisionSplitRead ? "Public division rows found" : "Waiting on public division rows"}
+                              </span>
+                            </div>
+
+                            {divisionSplitRead ? (
+                              <>
+                                <p className="mt-4 text-sm leading-6 text-muted-foreground">{divisionSplitRead.summary}</p>
+                                <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                                  {divisionSplitRead.splits.map((split) => (
+                                    <div key={split.key} className="rounded-2xl border border-border bg-card p-5">
+                                      <p className="font-semibold text-foreground">{split.title}</p>
+                                      <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                                        {split.formats.join(" • ")}
+                                      </p>
+                                      <div className="mt-4 grid grid-cols-2 gap-3">
+                                        <div>
+                                          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Matches</p>
+                                          <p className="mt-1 font-display text-2xl font-bold text-foreground">{formatCompactMetric(split.matches)}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Runs</p>
+                                          <p className="mt-1 font-display text-2xl font-bold text-foreground">{formatCompactMetric(split.runs)}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Wickets</p>
+                                          <p className="mt-1 font-display text-2xl font-bold text-foreground">{formatCompactMetric(split.wickets)}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Economy</p>
+                                          <p className="mt-1 font-display text-2xl font-bold text-foreground">{formatMetric(split.economy, 2)}</p>
+                                        </div>
+                                      </div>
+                                      <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                        <span className="rounded-full border border-border px-2.5 py-1">
+                                          Bat Avg {formatMetric(split.battingAverage, 1)}
+                                        </span>
+                                        <span className="rounded-full border border-border px-2.5 py-1">
+                                          SR {formatMetric(split.strikeRate, 1)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="mt-5 rounded-2xl border border-border bg-card p-5 text-sm leading-6 text-muted-foreground">
+                                This player result does not currently expose separate Div 1 and Div 2 pathway rows. When the public player page returns those rows, they will appear here instead of any vague strong-team or weak-team framing.
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
 

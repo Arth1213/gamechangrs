@@ -414,23 +414,49 @@ async function fetchPageText(url: string) {
 }
 
 function extractNumberAfterLabel(pageText: string, labels: string[]) {
-  for (const label of labels) {
-    const regex = new RegExp(`${label}\\s*[:\\-]?\\s*([0-9]+(?:\\.[0-9]+)?)`, "i");
-    const match = pageText.match(regex);
-    if (match) {
-      const value = Number(match[1]);
-      if (!Number.isNaN(value)) return value;
+  const searchScopes = [
+    pageText.slice(0, 6000),
+    pageText.slice(0, 12000),
+    pageText,
+  ];
+
+  for (const scope of searchScopes) {
+    for (const label of labels) {
+      const escaped = escapeRegExp(label);
+      const labelBeforeNumber = new RegExp(`${escaped}\\s*[:\\-]?\\s*([0-9]+(?:\\.[0-9]+)?)`, "i");
+      const numberBeforeLabel = new RegExp(`([0-9]+(?:\\.[0-9]+)?)\\s*${escaped}`, "i");
+
+      const directMatch = scope.match(labelBeforeNumber);
+      if (directMatch) {
+        const value = Number(directMatch[1]);
+        if (!Number.isNaN(value)) return value;
+      }
+
+      const reverseMatch = scope.match(numberBeforeLabel);
+      if (reverseMatch) {
+        const value = Number(reverseMatch[1]);
+        if (!Number.isNaN(value)) return value;
+      }
     }
   }
+
   return null;
 }
 
 function extractTextAfterLabel(pageText: string, labels: string[], maxLength = 40) {
-  for (const label of labels) {
-    const regex = new RegExp(`${label}\\s*[:\\-]?\\s*([A-Za-z0-9/().,&\\-\\s]{1,${maxLength}})`, "i");
-    const match = pageText.match(regex);
-    if (match) return match[1].replace(/\s+/g, " ").trim();
+  const searchScopes = [
+    pageText.slice(0, 8000),
+    pageText,
+  ];
+
+  for (const scope of searchScopes) {
+    for (const label of labels) {
+      const regex = new RegExp(`${escapeRegExp(label)}\\s*[:\\-]?\\s*([A-Za-z0-9/().,&\\-\\s]{1,${maxLength}})`, "i");
+      const match = scope.match(regex);
+      if (match) return match[1].replace(/\s+/g, " ").trim();
+    }
   }
+
   return null;
 }
 

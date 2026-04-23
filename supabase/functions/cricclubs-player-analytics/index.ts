@@ -329,21 +329,23 @@ async function searchCricClubsProfiles(playerName: string, clubHint?: string | n
     triedQueries.push(query);
     try {
       const urls = await firecrawlSearch(query, FIRECRAWL_API_KEY);
-      for (const url of urls) {
+    for (const url of urls) {
         if (/viewPlayer\.do/i.test(url)) {
           playerProfileUrls.add(url);
         } else if (/cricclubs/i.test(url)) {
           found.add(url);
         }
       }
-      if (playerProfileUrls.size >= 3) break;
+      // Run a few more queries even after we have hits so we can pick the best
+      // (e.g. a player with multiple sub-club profiles vs the main career profile).
+      if (playerProfileUrls.size >= 6) break;
     } catch (err) {
       console.warn(`Firecrawl search failed for "${query}":`, err instanceof Error ? err.message : err);
     }
   }
 
   // Prioritize viewPlayer.do URLs
-  const ordered = [...playerProfileUrls, ...found].slice(0, 8);
+  const ordered = [...playerProfileUrls, ...found].slice(0, 10);
   return { urls: ordered, triedQueries };
 }
 
@@ -411,6 +413,55 @@ async function fetchPageText(url: string) {
   const combined = [markdown, fromHtml].filter(Boolean).join("\n\n");
   if (!combined) throw new Error("Firecrawl returned empty content");
   return combined.slice(0, 24000);
+}
+
+// Parse the CricClubs viewPlayer.do "career totals" list which appears as
+//   - Matches
+//   <blank>
+//   297
+//   - Runs
+//   <blank>
+//   2265
+//   - Wickets
+//   <blank>
+//   250
+// This is the authoritative top-of-page totals block and must be preferred
+// over any per-format table cell that also says "Matches".
+function extractCareerTotalsFromList(pageText: string): { matches: number | null; runs: number | null; wickets: number | null } | null {
+  const lines = pageText.split("\n").map((line) => line.trim());
+  const labelRegex = /^[-*]?\s*(Matches|Runs|Wickets)\s*:?\s*$/i;
+  const numberRegex = /^([0-9][0-9,]*)$/;
+  const found: Record<string, number> = {};
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const labelMatch = lines[i].match(labelRegex);
+    if (!labelMatch) continue;
+    const label = labelMatch[1].toLowerCase();
+    // Look ahead a few lines (skipping blanks) for a bare number
+    for (let j = i + 1; j < Math.min(lines.length, i + 5); j += 1) {
+      if (!lines[j]) continue;
+      const numMatch = lines[j].match(numberRegex);
+      if (numMatch) {
+        const value = Number(numMatch[1].replace(/,/g, ""));
+        if (Number.isFinite(value) && !(label in found)) {
+          found[label] = value;
+        }
+        break;
+      }
+      // If we hit something that's not a number and not blank, stop scanning
+      // for this label so we don't grab a stat from an unrelated section.
+      break;
+    }
+  }
+
+  if (!("matches" in found) && !("runs" in found) && !("wickets" in found)) {
+    return null;
+  }
+  return {
+    matches: found.matches ?? null,
+    runs: found.runs ?? null,
+    wickets: found.wickets ?? null,
+  };
 }
 
 function extractNumberAfterLabel(pageText: string, labels: string[]) {
@@ -724,10 +775,13 @@ async function extractPlayerDataFromText(
   const pathwayBowling = pickPreferredPathwayBowling(bowlingRows, pageText, url);
   const formatSplits = buildFormatSplits(battingRows, bowlingRows);
 
+  // Authoritative top-of-page totals block (e.g. "- Matches\n\n297\n- Runs\n\n2265\n- Wickets\n\n250")
+  const careerListTotals = extractCareerTotalsFromList(pageText);
+
   const stats = {
-    matches: extractNumberAfterLabel(pageText, ["Matches", "Match"]),
+    matches: careerListTotals?.matches ?? extractNumberAfterLabel(pageText, ["Matches", "Match"]),
     innings: extractNumberAfterLabel(pageText, ["Innings", "Inns"]),
-    runs: extractNumberAfterLabel(pageText, ["Runs"]),
+    runs: careerListTotals?.runs ?? extractNumberAfterLabel(pageText, ["Runs"]),
     battingAverage: extractNumberAfterLabel(pageText, ["Bat Avg", "Average", "Avg"]),
     strikeRate: extractNumberAfterLabel(pageText, ["Strike Rate", "SR"]),
     highestScore: extractTextAfterLabel(pageText, ["Highest Score", "High Score", "HS"], 12),
@@ -735,7 +789,7 @@ async function extractPlayerDataFromText(
     fours: extractNumberAfterLabel(pageText, ["Fours", "4s"]),
     sixes: extractNumberAfterLabel(pageText, ["Sixes", "6s"]),
     ducks: extractNumberAfterLabel(pageText, ["Ducks"]),
-    wickets: extractNumberAfterLabel(pageText, ["Wickets", "Wkts"]),
+    wickets: careerListTotals?.wickets ?? extractNumberAfterLabel(pageText, ["Wickets", "Wkts"]),
     bowlingAverage: extractNumberAfterLabel(pageText, ["Bowl Avg", "Bowling Average"]),
     economy: extractNumberAfterLabel(pageText, ["Economy", "Econ"]),
     bowlingStrikeRate: extractNumberAfterLabel(pageText, ["Bowling Strike Rate", "Bowl SR"]),
@@ -759,7 +813,7 @@ async function extractPlayerDataFromText(
 
   return {
     matchedPlayer,
-    careerTotals: { matches: stats.matches, runs: stats.runs, wickets: stats.wickets },
+    careerTotals: careerListTotals ?? { matches: stats.matches, runs: stats.runs, wickets: stats.wickets },
     pathwayBatting,
     pathwayBowling,
     player: { name: playerName, role, team, battingStyle, bowlingStyle },
@@ -1024,24 +1078,51 @@ serve(async (req) => {
       }, 404);
     }
 
-    let bestResult: { sourceUrl: string; extracted: ExtractedPlayerData; overlap: number; nameScore: number } | null = null;
+    // Score each name-matching candidate by career sample size so we prefer the
+    // player's main aggregated profile over a sub-club page that happens to share
+    // the same name but only shows 1 match.
+    type Candidate = {
+      sourceUrl: string;
+      extracted: ExtractedPlayerData;
+      overlap: number;
+      nameScore: number;
+      sampleSize: number;
+    };
+    let bestResult: Candidate | null = null;
 
     for (const sourceUrl of candidateUrls) {
       try {
+        // Only accept actual player profile pages. Other CricClubs pages
+        // (fielding/batting/bowling records, scorecards, team pages) can echo
+        // the search query back and produce junk matches.
+        if (!/viewPlayer\.do/i.test(sourceUrl)) continue;
+
         const pageText = await fetchPageText(sourceUrl);
         if (pageText.length < 400) continue;
 
         const extracted = await extractPlayerDataFromText(trimmedQuery, sourceUrl, pageText);
         const nameScore = getCandidateNameScore(trimmedQuery, extracted.player.name);
         if (nameScore === 0) continue;
+
+        // A real CricClubs player profile must expose at least one of:
+        //  - the "- Matches / - Runs / - Wickets" career-totals list, OR
+        //  - a parsed batting or bowling row from a Series Type table.
+        const hasRealProfileSignal =
+          extracted.careerTotals !== null &&
+          (extracted.careerTotals.matches !== null || extracted.careerTotals.runs !== null || extracted.careerTotals.wickets !== null);
+        const hasParsedRows = extracted.pathwayBatting !== null || extracted.pathwayBowling !== null;
+        if (!hasRealProfileSignal && !hasParsedRows) continue;
+
         const overlap = getNameOverlap(trimmedQuery, extracted.player.name) + (sourceUrl.includes("viewPlayer.do") ? 0.15 : 0);
-        
-        if (!bestResult || nameScore > bestResult.nameScore || (nameScore === bestResult.nameScore && overlap > bestResult.overlap)) {
-          bestResult = { sourceUrl, extracted, overlap, nameScore };
-        }
-        if (extracted.matchedPlayer && nameScore >= 0.9) {
-          bestResult = { sourceUrl, extracted, overlap, nameScore };
-          break;
+        const sampleSize = (extracted.careerTotals?.matches ?? 0) + (extracted.careerTotals?.runs ?? 0) / 10 + (extracted.careerTotals?.wickets ?? 0);
+
+        const isBetter = !bestResult
+          || nameScore > bestResult.nameScore
+          || (nameScore === bestResult.nameScore && sampleSize > bestResult.sampleSize)
+          || (nameScore === bestResult.nameScore && sampleSize === bestResult.sampleSize && overlap > bestResult.overlap);
+
+        if (isBetter) {
+          bestResult = { sourceUrl, extracted, overlap, nameScore, sampleSize };
         }
       } catch (candidateError) {
         console.error("Candidate analysis failed:", sourceUrl, candidateError);

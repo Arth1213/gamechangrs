@@ -1092,12 +1092,27 @@ serve(async (req) => {
 
     for (const sourceUrl of candidateUrls) {
       try {
+        // Only accept actual player profile pages. Other CricClubs pages
+        // (fielding/batting/bowling records, scorecards, team pages) can echo
+        // the search query back and produce junk matches.
+        if (!/viewPlayer\.do/i.test(sourceUrl)) continue;
+
         const pageText = await fetchPageText(sourceUrl);
         if (pageText.length < 400) continue;
 
         const extracted = await extractPlayerDataFromText(trimmedQuery, sourceUrl, pageText);
         const nameScore = getCandidateNameScore(trimmedQuery, extracted.player.name);
         if (nameScore === 0) continue;
+
+        // A real CricClubs player profile must expose at least one of:
+        //  - the "- Matches / - Runs / - Wickets" career-totals list, OR
+        //  - a parsed batting or bowling row from a Series Type table.
+        const hasRealProfileSignal =
+          extracted.careerTotals !== null &&
+          (extracted.careerTotals.matches !== null || extracted.careerTotals.runs !== null || extracted.careerTotals.wickets !== null);
+        const hasParsedRows = extracted.pathwayBatting !== null || extracted.pathwayBowling !== null;
+        if (!hasRealProfileSignal && !hasParsedRows) continue;
+
         const overlap = getNameOverlap(trimmedQuery, extracted.player.name) + (sourceUrl.includes("viewPlayer.do") ? 0.15 : 0);
         const sampleSize = (extracted.careerTotals?.matches ?? 0) + (extracted.careerTotals?.runs ?? 0) / 10 + (extracted.careerTotals?.wickets ?? 0);
 

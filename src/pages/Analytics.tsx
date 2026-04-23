@@ -163,6 +163,27 @@ function getLocalPreviewMatches(query: string, limit = 6) {
     .map((entry) => entry.player);
 }
 
+function getPrimaryMatchCount(result: CricClubsAnalyticsResponse) {
+  return result.careerTotals?.matches ?? result.stats.matches ?? result.pathwayBatting?.matches ?? result.pathwayBowling?.matches ?? null;
+}
+
+function getPrimaryRuns(result: CricClubsAnalyticsResponse) {
+  return result.careerTotals?.runs ?? result.stats.runs ?? result.pathwayBatting?.runs ?? null;
+}
+
+function getPrimaryWickets(result: CricClubsAnalyticsResponse) {
+  return result.careerTotals?.wickets ?? result.stats.wickets ?? result.pathwayBowling?.wickets ?? null;
+}
+
+function isThinAnalyticsResult(result: CricClubsAnalyticsResponse) {
+  const matches = Number(getPrimaryMatchCount(result) ?? 0);
+  const runs = Number(getPrimaryRuns(result) ?? 0);
+  const wickets = Number(getPrimaryWickets(result) ?? 0);
+  const hasIdentity = Boolean(result.player.team || result.player.battingStyle || result.player.bowlingStyle);
+
+  return (!hasIdentity && matches <= 1 && runs <= 1 && wickets <= 1) || matches <= 1;
+}
+
 function formatMetric(value: string | number | null | undefined, digits = 0) {
   if (value === null || value === undefined || value === "") {
     return "-";
@@ -504,10 +525,20 @@ const Analytics = () => {
       const data = await response.json().catch(() => null);
 
       if (response.ok && data?.player && (data.player.name || data.searchQuery || data.sourceUrl)) {
-        setResult(normalizeAnalyticsResult({
+        const liveResult = normalizeAnalyticsResult({
           ...(data as CricClubsAnalyticsResponse),
           previewMode: data.previewMode ?? `${PUBLIC_SCOPE_LABEL} · live public CricClubs profile`,
-        }));
+        });
+        const localPreview = getLocalPreviewPlayer(trimmedQuery);
+        const resolvedResult = localPreview && isThinAnalyticsResult(liveResult)
+          ? normalizeAnalyticsResult({
+              ...localPreview,
+              searchedAt: new Date().toISOString(),
+              previewMode: `${PUBLIC_SCOPE_LABEL} · verified local CricClubs record`,
+            })
+          : liveResult;
+
+        setResult(resolvedResult);
         setSearchStatus("success");
         return;
       }

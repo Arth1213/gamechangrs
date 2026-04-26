@@ -669,8 +669,7 @@ function buildCoverageCards(result: CricClubsAnalyticsResponse) {
   const hasDivisionRows = buildDivisionSplitSnapshots(result).length > 0;
   const hasMeaningfulMatchup = result.derived.matchupRead && !/not included|not exposed|not available|does not expose|could not/i.test(result.derived.matchupRead);
   const hasDismissalProfile = result.derived.dismissalRisk && !/not expose|not available|omitted|limited/i.test(result.derived.dismissalRisk);
-
-  return [
+  const cards = [
     {
       title: "Division Coverage",
       confidence: hasDivisionRows ? "High" : hasPathwayRows ? "Medium" : scorecardBacked ? "Partial" : "Low",
@@ -682,21 +681,23 @@ function buildCoverageCards(result: CricClubsAnalyticsResponse) {
           ? "This profile has some public scorecard-backed evidence, but not a clean Div 1 vs Div 2 pathway split."
           : "This profile is currently grounded by header/profile totals, not a detailed USA Junior Pathway division split.",
     },
-    {
+    hasMeaningfulMatchup ? {
       title: "Bowler-Type / Matchup Coverage",
       confidence: hasMeaningfulMatchup ? "Medium" : "Low",
       body: hasMeaningfulMatchup
         ? result.derived.matchupRead
         : "Public player pages still do not expose a reliable pace-vs-spin or bowler-type split here, so those matchup claims are intentionally withheld.",
-    },
-    {
+    } : null,
+    hasDismissalProfile ? {
       title: "Dismissal Pattern Coverage",
       confidence: hasDismissalProfile ? "Medium" : "Low",
       body: hasDismissalProfile
         ? result.derived.dismissalRisk
         : "Dismissal-mode patterns are not safely available from the current public profile response.",
-    },
+    } : null,
   ];
+
+  return cards.filter((card): card is { title: string; confidence: string; body: string } => Boolean(card));
 }
 
 const Analytics = () => {
@@ -1317,60 +1318,62 @@ const Analytics = () => {
                       </div>
                     </div>
 
-                    <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">
-                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Public Matchup Coverage</p>
-                      <h3 className="mt-2 font-display text-2xl font-bold text-foreground">What comparison depth is actually supported</h3>
+                    {(coverageCards.length > 0 || benchmarkRows.length > 0) ? (
+                      <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">
+                        {coverageCards.length > 0 ? (
+                          <>
+                            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Public Matchup Coverage</p>
+                            <h3 className="mt-2 font-display text-2xl font-bold text-foreground">What comparison depth is actually supported</h3>
 
-                      <div className="mt-6 space-y-4">
-                        {coverageCards.map((card) => (
-                          <div key={card.title} className="rounded-2xl border border-border bg-background/60 p-5">
-                            <div className="flex items-center justify-between gap-3">
-                              <p className="font-semibold text-foreground">{card.title}</p>
-                              <span className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-[11px] font-medium text-accent">
-                                {card.confidence}
-                              </span>
+                            <div className="mt-6 space-y-4">
+                              {coverageCards.map((card) => (
+                                <div key={card.title} className="rounded-2xl border border-border bg-background/60 p-5">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <p className="font-semibold text-foreground">{card.title}</p>
+                                    <span className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-[11px] font-medium text-accent">
+                                      {card.confidence}
+                                    </span>
+                                  </div>
+                                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{card.body}</p>
+                                </div>
+                              ))}
                             </div>
-                            <p className="mt-3 text-sm leading-6 text-muted-foreground">{card.body}</p>
-                          </div>
-                        ))}
-                      </div>
+                          </>
+                        ) : null}
 
-                      <div className="mt-6 rounded-2xl border border-border bg-background/60 p-5">
-                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Role Benchmarks</p>
-                        <h4 className="mt-2 font-semibold text-foreground">Player vs same-role public cohort</h4>
+                        {benchmarkRows.length > 0 ? (
+                          <div className={`${coverageCards.length > 0 ? "mt-6" : ""} rounded-2xl border border-border bg-background/60 p-5`}>
+                            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Role Benchmarks</p>
+                            <h4 className="mt-2 font-semibold text-foreground">Player vs same-role public cohort</h4>
 
-                        <div className="mt-5 space-y-5">
-                          {benchmarkRows.length > 0 ? (
-                            benchmarkRows.map((row) => (
-                              <div key={row.label}>
-                                <div className="mb-2 flex items-center justify-between gap-3">
-                                  <p className="text-sm font-medium text-foreground">{row.label}</p>
-                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                    <span>Player {row.playerValue}</span>
-                                    <span>Median {row.medianValue}</span>
-                                    <span>Best {row.bestValue}</span>
+                            <div className="mt-5 space-y-5">
+                              {benchmarkRows.map((row) => (
+                                <div key={row.label}>
+                                  <div className="mb-2 flex items-center justify-between gap-3">
+                                    <p className="text-sm font-medium text-foreground">{row.label}</p>
+                                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                      <span>Player {row.playerValue}</span>
+                                      <span>Median {row.medianValue}</span>
+                                      <span>Best {row.bestValue}</span>
+                                    </div>
+                                  </div>
+                                  <div className="relative h-3 rounded-full bg-secondary">
+                                    <div
+                                      className="h-3 rounded-full bg-gradient-primary"
+                                      style={{ width: `${Math.max(8, Math.min(100, row.playerPct))}%` }}
+                                    />
+                                    <div
+                                      className="absolute top-1/2 h-5 w-0.5 -translate-y-1/2 bg-accent"
+                                      style={{ left: `${Math.max(4, Math.min(96, row.medianPct))}%` }}
+                                    />
                                   </div>
                                 </div>
-                                <div className="relative h-3 rounded-full bg-secondary">
-                                  <div
-                                    className="h-3 rounded-full bg-gradient-primary"
-                                    style={{ width: `${Math.max(8, Math.min(100, row.playerPct))}%` }}
-                                  />
-                                  <div
-                                    className="absolute top-1/2 h-5 w-0.5 -translate-y-1/2 bg-accent"
-                                    style={{ left: `${Math.max(4, Math.min(96, row.medianPct))}%` }}
-                                  />
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
-                              Same-role public benchmarks are only shown when the returned profile and the current supported cohort expose enough comparable numbers.
+                              ))}
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        ) : null}
                       </div>
-                    </div>
+                    ) : null}
                   </div>
 
                   <div className="rounded-[30px] border border-border bg-gradient-card p-8 shadow-card">

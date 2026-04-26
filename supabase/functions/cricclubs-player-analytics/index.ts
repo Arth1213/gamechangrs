@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.56/deno-dom-wasm.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -329,23 +330,21 @@ async function searchCricClubsProfiles(playerName: string, clubHint?: string | n
     triedQueries.push(query);
     try {
       const urls = await firecrawlSearch(query, FIRECRAWL_API_KEY);
-    for (const url of urls) {
+      for (const url of urls) {
         if (/viewPlayer\.do/i.test(url)) {
           playerProfileUrls.add(url);
         } else if (/cricclubs/i.test(url)) {
           found.add(url);
         }
       }
-      // Run a few more queries even after we have hits so we can pick the best
-      // (e.g. a player with multiple sub-club profiles vs the main career profile).
-      if (playerProfileUrls.size >= 6) break;
+      if (playerProfileUrls.size >= 3) break;
     } catch (err) {
       console.warn(`Firecrawl search failed for "${query}":`, err instanceof Error ? err.message : err);
     }
   }
 
   // Prioritize viewPlayer.do URLs
-  const ordered = [...playerProfileUrls, ...found].slice(0, 10);
+  const ordered = [...playerProfileUrls, ...found].slice(0, 8);
   return { urls: ordered, triedQueries };
 }
 
@@ -373,12 +372,21 @@ function stripHtmlPreservingTables(html: string) {
 }
 
 async function fetchPageText(url: string) {
+  const content = await fetchPageContent(url);
+  return content.text;
+}
+
+async function fetchPageContent(url: string): Promise<{ text: string; html: string; markdown: string }> {
   // Try direct fetch first
   try {
     const response = await fetch(url, { headers: BOT_HEADERS });
     if (response.ok) {
       const html = await response.text();
-      return stripHtmlPreservingTables(html).slice(0, 24000);
+      return {
+        text: stripHtmlPreservingTables(html).slice(0, 24000),
+        html,
+        markdown: "",
+      };
     }
     console.warn(`Direct fetch returned ${response.status} for ${url}, falling back to Firecrawl scrape`);
   } catch (err) {
@@ -412,55 +420,10 @@ async function fetchPageText(url: string) {
   const fromHtml = html ? stripHtmlPreservingTables(html) : "";
   const combined = [markdown, fromHtml].filter(Boolean).join("\n\n");
   if (!combined) throw new Error("Firecrawl returned empty content");
-  return combined.slice(0, 24000);
-}
-
-// Parse the CricClubs viewPlayer.do "career totals" list which appears as
-//   - Matches
-//   <blank>
-//   297
-//   - Runs
-//   <blank>
-//   2265
-//   - Wickets
-//   <blank>
-//   250
-// This is the authoritative top-of-page totals block and must be preferred
-// over any per-format table cell that also says "Matches".
-function extractCareerTotalsFromList(pageText: string): { matches: number | null; runs: number | null; wickets: number | null } | null {
-  const lines = pageText.split("\n").map((line) => line.trim());
-  const labelRegex = /^[-*]?\s*(Matches|Runs|Wickets)\s*:?\s*$/i;
-  const numberRegex = /^([0-9][0-9,]*)$/;
-  const found: Record<string, number> = {};
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const labelMatch = lines[i].match(labelRegex);
-    if (!labelMatch) continue;
-    const label = labelMatch[1].toLowerCase();
-    // Look ahead a few lines (skipping blanks) for a bare number
-    for (let j = i + 1; j < Math.min(lines.length, i + 5); j += 1) {
-      if (!lines[j]) continue;
-      const numMatch = lines[j].match(numberRegex);
-      if (numMatch) {
-        const value = Number(numMatch[1].replace(/,/g, ""));
-        if (Number.isFinite(value) && !(label in found)) {
-          found[label] = value;
-        }
-        break;
-      }
-      // If we hit something that's not a number and not blank, stop scanning
-      // for this label so we don't grab a stat from an unrelated section.
-      break;
-    }
-  }
-
-  if (!("matches" in found) && !("runs" in found) && !("wickets" in found)) {
-    return null;
-  }
   return {
-    matches: found.matches ?? null,
-    runs: found.runs ?? null,
-    wickets: found.wickets ?? null,
+    text: combined.slice(0, 24000),
+    html,
+    markdown,
   };
 }
 
@@ -705,6 +668,331 @@ function buildFormatSplits(
   return Array.from(map.values());
 }
 
+function parseDismissalSummary(pageText: string, sectionLabel: "BATTING" | "BOWLING") {
+  const nextSectionLabel = sectionLabel === "BATTING" ? "BOWLING:" : "© Copyright";
+  const regex = new RegExp(`${sectionLabel}:\\s*DISMISSAL TYPE[\\s\\S]*?Out type\\s+Count([\\s\\S]*?)(?:${nextSectionLabel}|$)`, "i");
+  const block = pageText.match(regex)?.[1] ?? "";
+  if (!block) return [];
+
+  const lines = block
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const rows: { type: string; count: number }[] = [];
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const type = lines[index];
+    const count = Number(lines[index + 1]);
+    if (!type || !Number.isFinite(count)) continue;
+    rows.push({ type, count });
+    index += 1;
+  }
+
+  return rows;
+}
+
+function buildDismissalNotes(
+  battingDismissals: ReturnType<typeof parseDismissalSummary>,
+  bowlingDismissals: ReturnType<typeof parseDismissalSummary>,
+) {
+  const notes: string[] = [];
+
+  if (battingDismissals.length > 0) {
+    const topBatting = battingDismissals
+      .filter((entry) => entry.type.toLowerCase() !== "not out")
+      .sort((left, right) => right.count - left.count)
+      .slice(0, 3)
+      .map((entry) => `${entry.type.toLowerCase()} ${entry.count}`);
+    const notOuts = battingDismissals.find((entry) => entry.type.toLowerCase() === "not out")?.count ?? 0;
+
+    if (topBatting.length > 0) {
+      notes.push(`Public batting dismissal chart shows ${topBatting.join(", ")}${notOuts > 0 ? `, with ${notOuts} not outs.` : "."}`);
+    }
+  }
+
+  if (bowlingDismissals.length > 0) {
+    const topBowling = bowlingDismissals
+      .sort((left, right) => right.count - left.count)
+      .slice(0, 3)
+      .map((entry) => `${entry.type.toLowerCase()} ${entry.count}`);
+
+    if (topBowling.length > 0) {
+      notes.push(`Public bowling dismissal chart credits wickets through ${topBowling.join(", ")}.`);
+    }
+  }
+
+  return notes;
+}
+
+function safeDocument(html: string) {
+  if (!html) return null;
+  try {
+    return new DOMParser().parseFromString(html, "text/html");
+  } catch {
+    return null;
+  }
+}
+
+function absoluteUrl(href: string | null | undefined, base = "https://cricclubs.com/") {
+  if (!href) return null;
+  try {
+    return new URL(href, base).toString();
+  } catch {
+    return null;
+  }
+}
+
+function normalizeScorecardUrl(url: string | null | undefined) {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const matchId = parsed.searchParams.get("matchId");
+    const clubId = parsed.searchParams.get("clubId");
+    if (!matchId) return parsed.toString();
+    return `https://cricclubs.com${parsed.pathname}?matchId=${matchId}${clubId ? `&clubId=${clubId}` : ""}`;
+  } catch {
+    return url;
+  }
+}
+
+function extractRecordLinksFromProfile(html: string, baseUrl: string) {
+  const doc = safeDocument(html);
+  if (!doc) {
+    return { battingUrl: null, bowlingUrl: null };
+  }
+
+  let battingUrl: string | null = null;
+  let bowlingUrl: string | null = null;
+
+  for (const link of [...doc.querySelectorAll("a[href]")]) {
+    const href = absoluteUrl(link.getAttribute("href"), baseUrl);
+    if (!href) continue;
+
+    if (!battingUrl && /playerAllBattingRecords\.do/i.test(href)) {
+      battingUrl = href;
+    }
+
+    if (!bowlingUrl && /playerAllBowlingRecords\.do/i.test(href)) {
+      bowlingUrl = href;
+    }
+  }
+
+  return { battingUrl, bowlingUrl };
+}
+
+function parseInteger(value: string | null | undefined) {
+  if (!value) return null;
+  const match = value.match(/-?\d+/);
+  return match ? Number(match[0]) : null;
+}
+
+function parseFloatValue(value: string | null | undefined) {
+  if (!value) return null;
+  const match = value.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : null;
+}
+
+function parseRunsValue(value: string | null | undefined) {
+  if (!value) return { runs: null, notOut: false, didBat: false };
+  const normalized = value.trim();
+  if (/^dnb$/i.test(normalized)) return { runs: null, notOut: false, didBat: false };
+  return {
+    runs: parseInteger(normalized),
+    notOut: normalized.includes("*"),
+    didBat: true,
+  };
+}
+
+function extractTableRows(html: string, baseUrl: string) {
+  const doc = safeDocument(html);
+  if (!doc) return [];
+
+  return [...doc.querySelectorAll("tr")]
+    .map((row) => {
+      const cells = [...row.querySelectorAll("th, td")].map((cell) => (cell.textContent || "").replace(/\s+/g, " ").trim());
+      const scorecardLink = absoluteUrl(row.querySelector('a[href*="viewScorecard.do"]')?.getAttribute("href"), baseUrl);
+      return { cells, scorecardUrl: normalizeScorecardUrl(scorecardLink) };
+    })
+    .filter((row) => row.cells.length > 4);
+}
+
+function parsePlayerBattingMatchLog(html: string, baseUrl: string) {
+  return extractTableRows(html, baseUrl)
+    .map((row) => {
+      const cells = row.cells;
+      if (cells[0] === "No." || cells[0] === "No") return null;
+      if (cells.length < 12) return null;
+
+      return {
+        matchDate: cells[1] || null,
+        team: cells[2] || null,
+        against: cells[3] || null,
+        winner: cells[4] || null,
+        battingPosition: parseInteger(cells[5]),
+        ...parseRunsValue(cells[6]),
+        balls: parseInteger(cells[7]),
+        strikeRate: parseFloatValue(cells[8]),
+        scorecardUrl: row.scorecardUrl,
+      };
+    })
+    .filter((row): row is {
+      matchDate: string | null;
+      team: string | null;
+      against: string | null;
+      winner: string | null;
+      battingPosition: number | null;
+      runs: number | null;
+      notOut: boolean;
+      didBat: boolean;
+      balls: number | null;
+      strikeRate: number | null;
+      scorecardUrl: string | null;
+    } => Boolean(row));
+}
+
+function parsePlayerBowlingMatchLog(html: string, baseUrl: string) {
+  return extractTableRows(html, baseUrl)
+    .map((row) => {
+      const cells = row.cells;
+      if (cells[0] === "No." || cells[0] === "No") return null;
+      if (cells.length < 11) return null;
+
+      return {
+        matchDate: cells[1] || null,
+        team: cells[2] || null,
+        against: cells[3] || null,
+        winner: cells[4] || null,
+        overs: cells[5] || null,
+        runsConceded: parseInteger(cells[6]),
+        wickets: parseInteger(cells[7]),
+        economy: parseFloatValue(cells[8]),
+        strikeRate: parseFloatValue(cells[9]),
+        wides: parseInteger(cells[10]),
+        scorecardUrl: row.scorecardUrl,
+      };
+    })
+    .filter((row): row is {
+      matchDate: string | null;
+      team: string | null;
+      against: string | null;
+      winner: string | null;
+      overs: string | null;
+      runsConceded: number | null;
+      wickets: number | null;
+      economy: number | null;
+      strikeRate: number | null;
+      wides: number | null;
+      scorecardUrl: string | null;
+    } => Boolean(row));
+}
+
+const BAY_AREA_DIVISION_ROUTES = [
+  { label: "U15 Phase 1 Div 1", leagueId: "434" },
+  { label: "U15 Phase 1 Div 2", leagueId: "435" },
+  { label: "U15 Phase 2 Div 1", leagueId: "436" },
+  { label: "U15 Phase 2 Div 2", leagueId: "437" },
+];
+
+let bayAreaDivisionIndexPromise: Promise<Map<string, string>> | null = null;
+
+async function fetchBayAreaDivisionIndex() {
+  if (bayAreaDivisionIndexPromise) return bayAreaDivisionIndexPromise;
+
+  bayAreaDivisionIndexPromise = (async () => {
+  const index = new Map<string, string>();
+
+  for (const route of BAY_AREA_DIVISION_ROUTES) {
+    const url = `https://cricclubs.com/USACricketJunior/listMatches.do?league=${route.leagueId}&clubId=40319`;
+    try {
+      const { html } = await fetchPageContent(url);
+      const doc = safeDocument(html);
+      if (!doc) continue;
+
+      for (const card of [...doc.querySelectorAll(".row.team-data")]) {
+        const heading = (card.querySelector(".schedule-text h4")?.textContent || "").replace(/\s+/g, " ").trim();
+        const link = normalizeScorecardUrl(absoluteUrl(card.querySelector('a[href*="viewScorecard.do"]')?.getAttribute("href"), url));
+        if (heading && link) {
+          index.set(link, heading);
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to fetch Bay Area division index for ${route.label}:`, error instanceof Error ? error.message : error);
+    }
+  }
+
+  return index;
+  })();
+
+  return bayAreaDivisionIndexPromise;
+}
+
+function buildDivisionFormatSplits(
+  battingLog: ReturnType<typeof parsePlayerBattingMatchLog>,
+  bowlingLog: ReturnType<typeof parsePlayerBowlingMatchLog>,
+  divisionIndex: Map<string, string>,
+) {
+  const groups = new Map<string, {
+    matchIds: Set<string>;
+    battingMatches: number;
+    battingRuns: number;
+    battingBalls: number;
+    dismissals: number;
+    wickets: number;
+    bowlingRuns: number;
+    bowlingBalls: number;
+  }>();
+
+  const ensureGroup = (label: string) => {
+    const group = groups.get(label);
+    if (group) return group;
+    const created = {
+      matchIds: new Set<string>(),
+      battingMatches: 0,
+      battingRuns: 0,
+      battingBalls: 0,
+      dismissals: 0,
+      wickets: 0,
+      bowlingRuns: 0,
+      bowlingBalls: 0,
+    };
+    groups.set(label, created);
+    return created;
+  };
+
+  for (const entry of battingLog) {
+    const division = divisionIndex.get(normalizeScorecardUrl(entry.scorecardUrl) || "");
+    if (!division || !entry.didBat) continue;
+    const group = ensureGroup(division);
+    if (entry.scorecardUrl) group.matchIds.add(entry.scorecardUrl);
+    group.battingMatches += 1;
+    group.battingRuns += entry.runs ?? 0;
+    group.battingBalls += entry.balls ?? 0;
+    if (!entry.notOut && entry.runs !== null) {
+      group.dismissals += 1;
+    }
+  }
+
+  for (const entry of bowlingLog) {
+    const division = divisionIndex.get(normalizeScorecardUrl(entry.scorecardUrl) || "");
+    if (!division) continue;
+    const group = ensureGroup(division);
+    if (entry.scorecardUrl) group.matchIds.add(entry.scorecardUrl);
+    group.wickets += entry.wickets ?? 0;
+    group.bowlingRuns += entry.runsConceded ?? 0;
+    group.bowlingBalls += parseOversToBalls(entry.overs) ?? 0;
+  }
+
+  return [...groups.entries()].map(([format, group]) => ({
+    format,
+    matches: group.matchIds.size || group.battingMatches || null,
+    runs: group.battingRuns || null,
+    battingAverage: group.dismissals > 0 ? group.battingRuns / group.dismissals : group.battingRuns > 0 ? group.battingRuns : null,
+    strikeRate: group.battingBalls > 0 ? (group.battingRuns / group.battingBalls) * 100 : null,
+    wickets: group.wickets || null,
+    economy: group.bowlingBalls > 0 ? (group.bowlingRuns / group.bowlingBalls) * 6 : null,
+  }));
+}
+
 function pickPreferredPathwayBatting(
   battingRows: ReturnType<typeof parseBattingRows>,
   pageText: string,
@@ -761,6 +1049,7 @@ async function extractPlayerDataFromText(
   searchName: string,
   url: string,
   pageText: string,
+  pageHtml: string,
 ): Promise<ExtractedPlayerData> {
   const playerName = extractPlayerName(pageText, searchName);
   const matchedPlayer = getCandidateNameScore(searchName, playerName) >= 0.84;
@@ -771,17 +1060,18 @@ async function extractPlayerDataFromText(
   const role = extractTextAfterLabel(pageText, ["Playing Role", "Role"], 32);
   const battingRows = parseBattingRows(pageText);
   const bowlingRows = parseBowlingRows(pageText);
+  const battingDismissals = parseDismissalSummary(pageText, "BATTING");
+  const bowlingDismissals = parseDismissalSummary(pageText, "BOWLING");
+  const dismissalNotes = buildDismissalNotes(battingDismissals, bowlingDismissals);
+  const recordLinks = extractRecordLinksFromProfile(pageHtml, url);
+  let formatSplits = buildFormatSplits(battingRows, bowlingRows);
   const pathwayBatting = pickPreferredPathwayBatting(battingRows, pageText, url);
   const pathwayBowling = pickPreferredPathwayBowling(bowlingRows, pageText, url);
-  const formatSplits = buildFormatSplits(battingRows, bowlingRows);
-
-  // Authoritative top-of-page totals block (e.g. "- Matches\n\n297\n- Runs\n\n2265\n- Wickets\n\n250")
-  const careerListTotals = extractCareerTotalsFromList(pageText);
 
   const stats = {
-    matches: careerListTotals?.matches ?? extractNumberAfterLabel(pageText, ["Matches", "Match"]),
+    matches: extractNumberAfterLabel(pageText, ["Matches", "Match"]),
     innings: extractNumberAfterLabel(pageText, ["Innings", "Inns"]),
-    runs: careerListTotals?.runs ?? extractNumberAfterLabel(pageText, ["Runs"]),
+    runs: extractNumberAfterLabel(pageText, ["Runs"]),
     battingAverage: extractNumberAfterLabel(pageText, ["Bat Avg", "Average", "Avg"]),
     strikeRate: extractNumberAfterLabel(pageText, ["Strike Rate", "SR"]),
     highestScore: extractTextAfterLabel(pageText, ["Highest Score", "High Score", "HS"], 12),
@@ -789,7 +1079,7 @@ async function extractPlayerDataFromText(
     fours: extractNumberAfterLabel(pageText, ["Fours", "4s"]),
     sixes: extractNumberAfterLabel(pageText, ["Sixes", "6s"]),
     ducks: extractNumberAfterLabel(pageText, ["Ducks"]),
-    wickets: careerListTotals?.wickets ?? extractNumberAfterLabel(pageText, ["Wickets", "Wkts"]),
+    wickets: extractNumberAfterLabel(pageText, ["Wickets", "Wkts"]),
     bowlingAverage: extractNumberAfterLabel(pageText, ["Bowl Avg", "Bowling Average"]),
     economy: extractNumberAfterLabel(pageText, ["Economy", "Econ"]),
     bowlingStrikeRate: extractNumberAfterLabel(pageText, ["Bowling Strike Rate", "Bowl SR"]),
@@ -810,16 +1100,43 @@ async function extractPlayerDataFromText(
   if (stats.matches !== null) groundingNotes.push(`Visible public sample includes ${stats.matches} matches.`);
   if (pathwayBatting) groundingNotes.push(`A public pathway batting row was parsed for ${pathwayBatting.seriesType}.`);
   if (pathwayBowling) groundingNotes.push(`A public pathway bowling row was parsed for ${pathwayBowling.seriesType}.`);
+  if (recordLinks.battingUrl) groundingNotes.push("A public player all-batting log page was discovered for this profile.");
+  if (recordLinks.bowlingUrl) groundingNotes.push("A public player all-bowling log page was discovered for this profile.");
+
+  try {
+    const [battingLogContent, bowlingLogContent] = await Promise.all([
+      recordLinks.battingUrl ? fetchPageContent(recordLinks.battingUrl) : Promise.resolve(null),
+      recordLinks.bowlingUrl ? fetchPageContent(recordLinks.bowlingUrl) : Promise.resolve(null),
+    ]);
+
+    const battingLog = battingLogContent?.html && recordLinks.battingUrl
+      ? parsePlayerBattingMatchLog(battingLogContent.html, recordLinks.battingUrl)
+      : [];
+    const bowlingLog = bowlingLogContent?.html && recordLinks.bowlingUrl
+      ? parsePlayerBowlingMatchLog(bowlingLogContent.html, recordLinks.bowlingUrl)
+      : [];
+
+    if (battingLog.length > 0 || bowlingLog.length > 0) {
+      const divisionIndex = await fetchBayAreaDivisionIndex();
+      const divisionFormatSplits = buildDivisionFormatSplits(battingLog, bowlingLog, divisionIndex);
+      if (divisionFormatSplits.length > 0) {
+        formatSplits = [...formatSplits, ...divisionFormatSplits];
+        groundingNotes.push(`Matched ${divisionFormatSplits.length} public Bay Area division split rows from player match logs and scorecard links.`);
+      }
+    }
+  } catch (error) {
+    console.warn(`Extended public log scrape failed for ${url}:`, error instanceof Error ? error.message : error);
+  }
 
   return {
     matchedPlayer,
-    careerTotals: careerListTotals ?? { matches: stats.matches, runs: stats.runs, wickets: stats.wickets },
+    careerTotals: { matches: stats.matches, runs: stats.runs, wickets: stats.wickets },
     pathwayBatting,
     pathwayBowling,
     player: { name: playerName, role, team, battingStyle, bowlingStyle },
     stats,
     formatSplits,
-    explicitInsights: { dismissalPatterns: [], bowlerTypeNotes: [], groundingNotes },
+    explicitInsights: { dismissalPatterns: dismissalNotes, bowlerTypeNotes: [], groundingNotes },
   };
 }
 
@@ -940,7 +1257,24 @@ function buildDerivedAnalytics(extracted: ExtractedPlayerData) {
   if (explicitInsights.bowlerTypeNotes.length === 0) dataLimitations.push("Bowler-type matchup insight is unavailable.");
   if (formatSplits.length === 0) dataLimitations.push("Format split tables were not visible or were too incomplete.");
   if (explicitInsights.groundingNotes.length === 0) dataLimitations.push("Grounding notes are empty because the profile text did not surface extra detail.");
+  if (formatSplits.some((item) => /div\s*[12]/i.test(item.format))) {
+    strengths.push({
+      title: "Division Context",
+      body: "Public Bay Area scorecard-linked match logs exposed a usable Div 1 / Div 2 split for this pathway profile.",
+    });
+  }
 
+  return {
+    summaryCards,
+    strengths,
+    concerns,
+    selectionSummary,
+    battingProfile,
+    dismissalRisk,
+    matchupRead,
+    recommendation,
+    dataLimitations,
+  };
 }
 
 // ----- Pathway runs/wickets fallback derivation (mirrors src/lib/analyticsNormalize.ts) -----
@@ -1078,51 +1412,25 @@ serve(async (req) => {
       }, 404);
     }
 
-    // Score each name-matching candidate by career sample size so we prefer the
-    // player's main aggregated profile over a sub-club page that happens to share
-    // the same name but only shows 1 match.
-    type Candidate = {
-      sourceUrl: string;
-      extracted: ExtractedPlayerData;
-      overlap: number;
-      nameScore: number;
-      sampleSize: number;
-    };
-    let bestResult: Candidate | null = null;
+    let bestResult: { sourceUrl: string; extracted: ExtractedPlayerData; overlap: number; nameScore: number } | null = null;
 
     for (const sourceUrl of candidateUrls) {
       try {
-        // Only accept actual player profile pages. Other CricClubs pages
-        // (fielding/batting/bowling records, scorecards, team pages) can echo
-        // the search query back and produce junk matches.
-        if (!/viewPlayer\.do/i.test(sourceUrl)) continue;
-
-        const pageText = await fetchPageText(sourceUrl);
+        const pageContent = await fetchPageContent(sourceUrl);
+        const pageText = pageContent.text;
         if (pageText.length < 400) continue;
 
-        const extracted = await extractPlayerDataFromText(trimmedQuery, sourceUrl, pageText);
+        const extracted = await extractPlayerDataFromText(trimmedQuery, sourceUrl, pageText, pageContent.html);
         const nameScore = getCandidateNameScore(trimmedQuery, extracted.player.name);
         if (nameScore === 0) continue;
-
-        // A real CricClubs player profile must expose at least one of:
-        //  - the "- Matches / - Runs / - Wickets" career-totals list, OR
-        //  - a parsed batting or bowling row from a Series Type table.
-        const hasRealProfileSignal =
-          extracted.careerTotals !== null &&
-          (extracted.careerTotals.matches !== null || extracted.careerTotals.runs !== null || extracted.careerTotals.wickets !== null);
-        const hasParsedRows = extracted.pathwayBatting !== null || extracted.pathwayBowling !== null;
-        if (!hasRealProfileSignal && !hasParsedRows) continue;
-
         const overlap = getNameOverlap(trimmedQuery, extracted.player.name) + (sourceUrl.includes("viewPlayer.do") ? 0.15 : 0);
-        const sampleSize = (extracted.careerTotals?.matches ?? 0) + (extracted.careerTotals?.runs ?? 0) / 10 + (extracted.careerTotals?.wickets ?? 0);
 
-        const isBetter = !bestResult
-          || nameScore > bestResult.nameScore
-          || (nameScore === bestResult.nameScore && sampleSize > bestResult.sampleSize)
-          || (nameScore === bestResult.nameScore && sampleSize === bestResult.sampleSize && overlap > bestResult.overlap);
-
-        if (isBetter) {
-          bestResult = { sourceUrl, extracted, overlap, nameScore, sampleSize };
+        if (!bestResult || nameScore > bestResult.nameScore || (nameScore === bestResult.nameScore && overlap > bestResult.overlap)) {
+          bestResult = { sourceUrl, extracted, overlap, nameScore };
+        }
+        if (extracted.matchedPlayer && nameScore >= 0.9) {
+          bestResult = { sourceUrl, extracted, overlap, nameScore };
+          break;
         }
       } catch (candidateError) {
         console.error("Candidate analysis failed:", sourceUrl, candidateError);

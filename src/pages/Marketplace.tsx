@@ -377,14 +377,14 @@ const Marketplace = () => {
 
               <div className="relative border-t border-border/70 lg:border-l lg:border-t-0">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_45%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))]" />
-                <div className="relative flex h-full min-h-[320px] items-center justify-center p-0">
-                  <div className="relative h-full w-full">
+                <div className="relative flex h-full items-center justify-center p-6 md:p-8 lg:p-10">
+                  <div className="relative w-full max-w-[340px]">
                     <div className="absolute inset-10 rounded-[40px] bg-primary/10 blur-3xl" />
-                    <div className="relative h-full overflow-hidden border-l border-white/10 bg-black/10 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
+                    <div className="relative flex items-center justify-center overflow-hidden rounded-[30px] border border-white/10 bg-black/10 px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
                       <img
                         src="/partners/east-bay-cricket-shop-logo.jpeg"
                         alt="East Bay Cricket Shop logo"
-                        className="h-full min-h-[320px] w-full object-cover"
+                        className="h-auto max-h-[150px] w-auto max-w-full object-contain md:max-h-[180px] lg:max-h-[200px]"
                       />
                     </div>
                     <div className="absolute inset-x-0 bottom-5 text-center">

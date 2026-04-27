@@ -1,12 +1,7 @@
-const DEFAULT_LOCAL_CRICKET_API_BASE = "/cricket-api";
-const DEFAULT_HOSTED_CRICKET_API_BASE = "https://gamechangrs-cricket-api.onrender.com";
+const DEFAULT_CRICKET_API_BASE = "/cricket-api";
 
 function stripTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
-}
-
-function isLocalCricketHost(hostname: string) {
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
 function joinBaseAndPath(base: string, path: string) {
@@ -83,6 +78,371 @@ export type CricketDashboardSummaryResponse = {
     analyticsStatus?: string;
     reconciliationStatus?: string;
   } | null;
+};
+
+export type CricketAdminSeriesEntity = {
+  entityId?: string;
+  entitySlug?: string;
+  entityName?: string;
+  accessRole?: string;
+  seriesCount?: number | null;
+};
+
+export type CricketAdminSeriesItem = {
+  seriesSourceConfigId?: number | null;
+  entityId?: string;
+  entitySlug?: string;
+  entityName?: string;
+  configKey?: string;
+  seriesName?: string;
+  targetAgeGroup?: string;
+  seasonYear?: number | null;
+  sourceSystem?: string;
+  seriesUrl?: string;
+  isActive?: boolean;
+  accessRole?: string;
+  canManage?: boolean;
+  matchCount?: number | null;
+  computedMatches?: number | null;
+  warningMatches?: number | null;
+  playerCount?: number | null;
+  setupApiPath?: string | null;
+  tuningApiPath?: string | null;
+  matchesApiPath?: string | null;
+  viewersApiPath?: string | null;
+};
+
+export type CricketAdminSeriesResponse = {
+  authFoundationReady?: boolean;
+  readiness?: {
+    hasEntityTable?: boolean;
+    hasEntityMembershipTable?: boolean;
+    hasSeriesSourceConfigEntityId?: boolean;
+    isReady?: boolean;
+  };
+  actor?: {
+    userId?: string;
+    email?: string;
+    isPlatformAdmin?: boolean;
+    accessLabel?: string;
+  };
+  entityCount?: number | null;
+  seriesCount?: number | null;
+  defaultSeriesConfigKey?: string | null;
+  entities?: CricketAdminSeriesEntity[];
+  series?: CricketAdminSeriesItem[];
+};
+
+export type CricketViewerSeriesResponse = {
+  authFoundationReady?: boolean;
+  readiness?: {
+    hasEntityTable?: boolean;
+    hasEntityMembershipTable?: boolean;
+    hasSeriesSourceConfigEntityId?: boolean;
+    isReady?: boolean;
+  };
+  actor?: {
+    userId?: string;
+    email?: string;
+    isPlatformAdmin?: boolean;
+    accessLabel?: string;
+  };
+  seriesCount?: number | null;
+  defaultSeriesConfigKey?: string | null;
+  series?: CricketAdminSeriesItem[];
+};
+
+export type CricketAdminViewerGrant = {
+  grantId?: string;
+  entityId?: string;
+  seriesSourceConfigId?: number | null;
+  userId?: string;
+  accessRole?: string;
+  status?: string;
+  grantedByUserId?: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  expiresAt?: string | null;
+  isExpired?: boolean;
+};
+
+export type CricketAdminViewerGrantPayload = {
+  userId: string;
+  accessRole?: "viewer" | "analyst";
+  expiresAt?: string | null;
+};
+
+export type CricketAdminViewerGrantMutationResponse = {
+  message?: string;
+  dryRun?: boolean;
+  grant?: CricketAdminViewerGrant;
+};
+
+export type CricketAdminViewerGrantsResponse = {
+  actor?: {
+    userId?: string;
+    isPlatformAdmin?: boolean;
+    isEntityAdmin?: boolean;
+  };
+  series?: {
+    configKey?: string;
+    seriesName?: string;
+    entityId?: string;
+    seriesSourceConfigId?: number | null;
+  };
+  subscription?: {
+    planKey?: string;
+    status?: string;
+    maxViewerUsers?: number | null;
+  };
+  totals?: {
+    totalGrants?: number | null;
+    activeGrants?: number | null;
+    activeViewers?: number | null;
+    activeAnalysts?: number | null;
+    revokedGrants?: number | null;
+  };
+  grants?: CricketAdminViewerGrant[];
+};
+
+export type CricketAdminSubscriptionSummaryResponse = {
+  series?: {
+    configKey?: string;
+    seriesSourceConfigId?: number | null;
+    seriesName?: string;
+    entityId?: string;
+    entitySlug?: string;
+    entityName?: string;
+    isActive?: boolean;
+  };
+  subscription?: {
+    planKey?: string;
+    planDisplayName?: string;
+    status?: string;
+    billingProvider?: string;
+    billingCustomerRef?: string;
+    billingSubscriptionRef?: string;
+    contractOwnerEmail?: string;
+    enforcementMode?: string;
+    startsAt?: string | null;
+    endsAt?: string | null;
+  };
+  usage?: {
+    seriesCount?: number | null;
+    activeSeriesCount?: number | null;
+    adminUserCount?: number | null;
+    viewerUserCount?: number | null;
+  };
+  limits?: {
+    maxSeries?: number | null;
+    maxAdminUsers?: number | null;
+    maxViewerUsers?: number | null;
+    seriesRemaining?: number | null;
+    adminRemaining?: number | null;
+    viewerRemaining?: number | null;
+    seriesLimitReached?: boolean;
+    adminLimitReached?: boolean;
+    viewerLimitReached?: boolean;
+  };
+  entitlements?: {
+    hasActiveSubscription?: boolean;
+    manualRefreshEnabled?: boolean;
+    scheduledRefreshEnabled?: boolean;
+    weightTuningEnabled?: boolean;
+    viewerGrantEnabled?: boolean;
+  };
+  warnings?: string[];
+};
+
+export type CricketAdminSetupResponse = {
+  series?: {
+    configKey?: string;
+    seriesId?: number | null;
+    seriesName?: string;
+  };
+  sourceSetup?: {
+    id?: number | null;
+    name?: string;
+    sourceSystem?: string;
+    seriesUrl?: string;
+    expectedLeagueName?: string;
+    expectedSeriesName?: string;
+    seasonYear?: number | null;
+    targetAgeGroup?: string;
+    scrapeCompletedOnly?: boolean;
+    includeBallByBall?: boolean;
+    includePlayerProfiles?: boolean;
+    enableAutoDiscovery?: boolean;
+    isActive?: boolean;
+    notes?: string;
+  };
+  divisions?: Array<{
+    id?: number | null;
+    targetLabel?: string;
+    normalizedLabel?: string;
+    phaseNo?: number | null;
+    divisionNo?: number | null;
+    strengthRank?: number | null;
+    strengthTier?: string;
+    includeFlag?: boolean;
+    notes?: string;
+    sourceDivisionId?: string;
+    sourceLabel?: string;
+    statsUrl?: string;
+    resultsUrl?: string;
+    aliases?: string[];
+  }>;
+  reportProfile?: {
+    activeProfileKey?: string;
+    activeProfileName?: string;
+    options?: Array<{
+      profileKey?: string;
+      name?: string;
+      description?: string;
+    }>;
+  };
+  validationAnchors?: Array<{
+    id?: number | null;
+    entityType?: string;
+    entityName?: string;
+    expectationText?: string;
+    priorityRank?: number | null;
+    isActive?: boolean;
+  }>;
+  liveSummary?: {
+    totalMatches?: number | null;
+    warningMatches?: number | null;
+    computedMatches?: number | null;
+  };
+};
+
+export type CricketAdminSetupUpdatePayload = {
+  sourceSetup?: {
+    name?: string;
+    seriesUrl?: string;
+    expectedLeagueName?: string;
+    expectedSeriesName?: string;
+    seasonYear?: number | null;
+    targetAgeGroup?: string;
+    scrapeCompletedOnly?: boolean;
+    includeBallByBall?: boolean;
+    includePlayerProfiles?: boolean;
+    enableAutoDiscovery?: boolean;
+    isActive?: boolean;
+    notes?: string;
+  };
+  reportProfileKey?: string;
+  divisions?: Array<{
+    id?: number | null;
+    targetLabel?: string;
+    phaseNo?: number | null;
+    divisionNo?: number | null;
+    strengthRank?: number | null;
+    strengthTier?: string;
+    includeFlag?: boolean;
+    notes?: string;
+  }>;
+};
+
+export type CricketAdminSetupMutationResponse = {
+  message?: string;
+  dryRun?: boolean;
+  payload?: CricketAdminSetupResponse;
+};
+
+export type CricketAdminMatchOpsMatch = {
+  matchId?: number | null;
+  sourceMatchId?: string;
+  divisionLabel?: string;
+  matchDate?: string;
+  matchDateLabel?: string;
+  matchTitle?: string;
+  resultText?: string;
+  matchPageUrl?: string;
+  scorecardUrl?: string;
+  ballByBallUrl?: string;
+  adminSelectionOverride?: string;
+  adminOverrideReason?: string;
+  analyticsStatus?: string;
+  parseStatus?: string;
+  reconciliationStatus?: string;
+  needsRescrape?: boolean;
+  needsReparse?: boolean;
+  needsRecompute?: boolean;
+  lastChangeReason?: string;
+  lastErrorMessage?: string;
+};
+
+export type CricketAdminRefreshRequest = {
+  requestId?: number | null;
+  requestMatchUrl?: string;
+  normalizedMatchUrl?: string;
+  requestSourceMatchId?: string;
+  linkedSourceMatchId?: string;
+  reason?: string;
+  requestedBy?: string;
+  requestedAt?: string;
+  status?: string;
+  resolutionNote?: string;
+};
+
+export type CricketAdminMatchOpsResponse = {
+  series?: {
+    configKey?: string;
+    seriesId?: number | null;
+    seriesName?: string;
+  };
+  filters?: {
+    query?: string;
+    limit?: number | null;
+  };
+  summary?: {
+    totalMatches?: number | null;
+    warningMatches?: number | null;
+    overriddenMatches?: number | null;
+    computedMatches?: number | null;
+  };
+  matches?: CricketAdminMatchOpsMatch[];
+  recentRequests?: CricketAdminRefreshRequest[];
+};
+
+export type CricketAdminRefreshRequestPayload = {
+  matchUrl: string;
+  reason?: string;
+  requestedBy?: string;
+};
+
+export type CricketAdminRefreshRequestMutationResponse = {
+  message?: string;
+  request?: {
+    requestId?: number | null;
+    normalizedMatchUrl?: string;
+    requestSourceMatchId?: string;
+    requestedBy?: string;
+    reason?: string;
+  };
+  resolvedMatch?: {
+    matchId?: number | null;
+    sourceMatchId?: string;
+    divisionLabel?: string;
+    matchTitle?: string;
+  } | null;
+};
+
+export type CricketAdminMatchSelectionOverride = "auto" | "force_include" | "force_exclude";
+
+export type CricketAdminSelectionOverridePayload = {
+  override: CricketAdminMatchSelectionOverride;
+  reason?: string;
+  requestedBy?: string;
+};
+
+export type CricketAdminSelectionOverrideMutationResponse = {
+  message?: string;
+  matchId?: number | null;
+  sourceMatchId?: string;
+  override?: CricketAdminMatchSelectionOverride;
+  reason?: string;
 };
 
 export type CricketPlayerReportRouteState = {
@@ -204,11 +564,7 @@ export function getCricketApiBase() {
     return stripTrailingSlash(configuredBase);
   }
 
-  if (typeof window !== "undefined" && isLocalCricketHost(window.location.hostname)) {
-    return DEFAULT_LOCAL_CRICKET_API_BASE;
-  }
-
-  return DEFAULT_HOSTED_CRICKET_API_BASE;
+  return DEFAULT_CRICKET_API_BASE;
 }
 
 export function getCricketApiUrl(path: string) {
@@ -312,6 +668,25 @@ export function getAnalyticsWorkspaceRoute(searchQuery?: string, seriesConfigKey
   return getAnalyticsRoute("/analytics/workspace", searchQuery, seriesConfigKey);
 }
 
+export function getAnalyticsAdminRoute(seriesConfigKey?: string | null) {
+  return getAnalyticsRoute("/analytics/admin", undefined, seriesConfigKey);
+}
+
+async function readApiErrorMessage(response: Response, fallbackMessage: string) {
+  let message = fallbackMessage;
+
+  try {
+    const payload = await response.json();
+    if (typeof payload?.error === "string" && payload.error) {
+      message = payload.error;
+    }
+  } catch {
+    // Keep the fallback message when the response body is not JSON.
+  }
+
+  return message;
+}
+
 export async function searchCricketPlayers(
   query: string,
   options?: {
@@ -328,18 +703,7 @@ export async function searchCricketPlayers(
   });
 
   if (!response.ok) {
-    let message = `Search request failed with status ${response.status}.`;
-
-    try {
-      const payload = await response.json();
-      if (typeof payload?.error === "string" && payload.error) {
-        message = payload.error;
-      }
-    } catch {
-      // Keep the fallback message when the response body is not JSON.
-    }
-
-    throw new Error(message);
+    throw new Error(await readApiErrorMessage(response, `Search request failed with status ${response.status}.`));
   }
 
   return (await response.json()) as CricketPlayerSearchResponse;
@@ -353,18 +717,7 @@ export async function fetchCricketDashboardSummary(signal?: AbortSignal) {
   });
 
   if (!response.ok) {
-    let message = `Dashboard summary request failed with status ${response.status}.`;
-
-    try {
-      const payload = await response.json();
-      if (typeof payload?.error === "string" && payload.error) {
-        message = payload.error;
-      }
-    } catch {
-      // Keep the fallback message when the response body is not JSON.
-    }
-
-    throw new Error(message);
+    throw new Error(await readApiErrorMessage(response, `Dashboard summary request failed with status ${response.status}.`));
   }
 
   return (await response.json()) as CricketDashboardSummaryResponse;
@@ -384,19 +737,324 @@ export async function fetchCricketPlayerReport(
   });
 
   if (!response.ok) {
-    let message = `Report request failed with status ${response.status}.`;
-
-    try {
-      const payload = await response.json();
-      if (typeof payload?.error === "string" && payload.error) {
-        message = payload.error;
-      }
-    } catch {
-      // Keep the fallback message when the response body is not JSON.
-    }
-
-    throw new Error(message);
+    throw new Error(await readApiErrorMessage(response, `Report request failed with status ${response.status}.`));
   }
 
   return (await response.json()) as CricketPlayerReportResponse;
+}
+
+export async function fetchCricketAdminSeries(accessToken: string, signal?: AbortSignal) {
+  const url = new URL(getCricketApiUrl("/api/admin/series"), window.location.origin);
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    signal,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Admin series request failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketAdminSeriesResponse;
+}
+
+export async function fetchCricketViewerSeries(accessToken: string, signal?: AbortSignal) {
+  const url = new URL(getCricketApiUrl("/api/viewer/series"), window.location.origin);
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    signal,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Viewer series request failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketViewerSeriesResponse;
+}
+
+export async function fetchCricketAdminSetup(
+  seriesConfigKey: string,
+  accessToken: string,
+  signal?: AbortSignal
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(seriesConfigKey)}/admin/setup`),
+    window.location.origin
+  );
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    signal,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Admin setup request failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketAdminSetupResponse;
+}
+
+export async function updateCricketAdminSetup(
+  seriesConfigKey: string,
+  accessToken: string,
+  body: CricketAdminSetupUpdatePayload,
+  options?: {
+    dryRun?: boolean;
+    signal?: AbortSignal;
+  }
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(seriesConfigKey)}/admin/setup`),
+    window.location.origin
+  );
+
+  if (options?.dryRun) {
+    url.searchParams.set("dryRun", "true");
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "PUT",
+    signal: options?.signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Admin setup update failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketAdminSetupMutationResponse;
+}
+
+export async function fetchCricketAdminMatchOps(
+  seriesConfigKey: string,
+  accessToken: string,
+  options?: {
+    query?: string;
+    limit?: number;
+    signal?: AbortSignal;
+  }
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(seriesConfigKey)}/admin/matches`),
+    window.location.origin
+  );
+
+  if (options?.query?.trim()) {
+    url.searchParams.set("query", options.query.trim());
+  }
+  if (options?.limit) {
+    url.searchParams.set("limit", String(options.limit));
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    signal: options?.signal,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Admin match ops request failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketAdminMatchOpsResponse;
+}
+
+export async function fetchCricketAdminViewerGrants(
+  seriesConfigKey: string,
+  accessToken: string,
+  signal?: AbortSignal
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(seriesConfigKey)}/admin/viewers`),
+    window.location.origin
+  );
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    signal,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Admin viewer grants request failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketAdminViewerGrantsResponse;
+}
+
+export async function fetchCricketAdminSubscriptionSummary(
+  seriesConfigKey: string,
+  accessToken: string,
+  signal?: AbortSignal
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(seriesConfigKey)}/admin/subscription`),
+    window.location.origin
+  );
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    signal,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Admin subscription request failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketAdminSubscriptionSummaryResponse;
+}
+
+export async function createCricketAdminViewerGrant(
+  seriesConfigKey: string,
+  accessToken: string,
+  body: CricketAdminViewerGrantPayload,
+  options?: {
+    dryRun?: boolean;
+    signal?: AbortSignal;
+  }
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(seriesConfigKey)}/admin/viewers`),
+    window.location.origin
+  );
+
+  if (options?.dryRun) {
+    url.searchParams.set("dryRun", "true");
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    signal: options?.signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Viewer grant request failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketAdminViewerGrantMutationResponse;
+}
+
+export async function revokeCricketAdminViewerGrant(
+  seriesConfigKey: string,
+  grantId: string,
+  accessToken: string,
+  options?: {
+    dryRun?: boolean;
+    signal?: AbortSignal;
+  }
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(seriesConfigKey)}/admin/viewers/${encodeURIComponent(grantId)}`),
+    window.location.origin
+  );
+
+  if (options?.dryRun) {
+    url.searchParams.set("dryRun", "true");
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "DELETE",
+    signal: options?.signal,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Viewer revoke request failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketAdminViewerGrantMutationResponse;
+}
+
+export async function createCricketAdminRefreshRequest(
+  seriesConfigKey: string,
+  accessToken: string,
+  body: CricketAdminRefreshRequestPayload,
+  options?: {
+    dryRun?: boolean;
+    signal?: AbortSignal;
+  }
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(seriesConfigKey)}/admin/matches/refresh-requests`),
+    window.location.origin
+  );
+
+  if (options?.dryRun) {
+    url.searchParams.set("dryRun", "true");
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    signal: options?.signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Refresh request failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketAdminRefreshRequestMutationResponse;
+}
+
+export async function updateCricketAdminSelectionOverride(
+  seriesConfigKey: string,
+  matchId: number,
+  accessToken: string,
+  body: CricketAdminSelectionOverridePayload,
+  options?: {
+    dryRun?: boolean;
+    signal?: AbortSignal;
+  }
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(seriesConfigKey)}/admin/matches/${matchId}/selection-override`),
+    window.location.origin
+  );
+
+  if (options?.dryRun) {
+    url.searchParams.set("dryRun", "true");
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    signal: options?.signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Selection override update failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketAdminSelectionOverrideMutationResponse;
 }

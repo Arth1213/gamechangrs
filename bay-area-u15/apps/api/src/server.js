@@ -2,6 +2,7 @@
 
 const express = require("express");
 
+const { requireAuthenticatedCricketUser, requireSeriesAdminAccess } = require("./lib/auth");
 const { closePool, testConnection } = require("./lib/connection");
 const { normalizeText, toBoolean, toInteger } = require("./lib/utils");
 const {
@@ -23,6 +24,16 @@ const {
   updateTuning,
 } = require("./services/adminService");
 const {
+  getAdminSeriesCatalog,
+  getViewerSeriesCatalog,
+  listSeriesViewerGrants,
+  revokeSeriesViewerGrant,
+  upsertSeriesViewerGrant,
+} = require("./services/accessService");
+const {
+  getSeriesSubscriptionSummary,
+} = require("./services/subscriptionService");
+const {
   withClient,
 } = require("./services/seriesService");
 const {
@@ -37,30 +48,12 @@ const {
 } = require("./services/playerApiService");
 
 const app = express();
-const corsAllowOrigin = String(process.env.CORS_ALLOW_ORIGIN || "*").trim() || "*";
-const corsAllowMethods = "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS";
-const corsAllowHeadersFallback = "Content-Type, Authorization";
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
-  if (corsAllowOrigin === "*") {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-  } else {
-    res.setHeader("Access-Control-Allow-Origin", corsAllowOrigin);
-    res.setHeader("Vary", "Origin");
-  }
-  res.setHeader("Access-Control-Allow-Methods", corsAllowMethods);
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    normalizeText(req.headers["access-control-request-headers"]) || corsAllowHeadersFallback
-  );
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
-  }
   next();
 });
 
@@ -85,6 +78,11 @@ function isApiRequest(req) {
 function sendHtml(res, html, statusCode = 200) {
   res.status(statusCode).type("html").send(html);
 }
+
+const requireSeriesAdmin = asyncHandler(async (req, res, next) => {
+  await requireSeriesAdminAccess(req);
+  next();
+});
 
 async function loadSeriesCards() {
   return withClient(async (client) => {
@@ -258,6 +256,24 @@ app.get("/api/dashboard/summary", asyncHandler(async (req, res) => {
   });
 }));
 
+app.get("/api/admin/series", asyncHandler(async (req, res) => {
+  const actor = await requireAuthenticatedCricketUser(req);
+  const payload = await getAdminSeriesCatalog({
+    userId: actor.userId,
+    email: actor.email,
+  });
+  res.json(payload);
+}));
+
+app.get("/api/viewer/series", asyncHandler(async (req, res) => {
+  const actor = await requireAuthenticatedCricketUser(req);
+  const payload = await getViewerSeriesCatalog({
+    userId: actor.userId,
+    email: actor.email,
+  });
+  res.json(payload);
+}));
+
 app.get("/api/players/search", asyncHandler(async (req, res) => {
   const payload = await searchPlayersDefault({
     query: req.query.q ?? req.query.query ?? "",
@@ -348,21 +364,21 @@ app.get("/series/:seriesConfigKey/players/:playerId/report", asyncHandler(async 
   sendHtml(res, renderPlayerReportPage(payload));
 }));
 
-app.get("/api/series/:seriesConfigKey/admin/setup", asyncHandler(async (req, res) => {
+app.get("/api/series/:seriesConfigKey/admin/setup", requireSeriesAdmin, asyncHandler(async (req, res) => {
   const payload = await getSetupPayload({
     seriesConfigKey: req.params.seriesConfigKey,
   });
   res.json(payload);
 }));
 
-app.get("/admin/series/:seriesConfigKey/setup", asyncHandler(async (req, res) => {
+app.get("/admin/series/:seriesConfigKey/setup", requireSeriesAdmin, asyncHandler(async (req, res) => {
   const payload = await getSetupPayload({
     seriesConfigKey: req.params.seriesConfigKey,
   });
   sendHtml(res, renderAdminSetupPage(payload));
 }));
 
-app.put("/api/series/:seriesConfigKey/admin/setup", asyncHandler(async (req, res) => {
+app.put("/api/series/:seriesConfigKey/admin/setup", requireSeriesAdmin, asyncHandler(async (req, res) => {
   const payload = await updateSetup({
     seriesConfigKey: req.params.seriesConfigKey,
     body: req.body,
@@ -371,21 +387,21 @@ app.put("/api/series/:seriesConfigKey/admin/setup", asyncHandler(async (req, res
   res.json(payload);
 }));
 
-app.get("/api/series/:seriesConfigKey/admin/tuning", asyncHandler(async (req, res) => {
+app.get("/api/series/:seriesConfigKey/admin/tuning", requireSeriesAdmin, asyncHandler(async (req, res) => {
   const payload = await getTuningPayload({
     seriesConfigKey: req.params.seriesConfigKey,
   });
   res.json(payload);
 }));
 
-app.get("/admin/series/:seriesConfigKey/tuning", asyncHandler(async (req, res) => {
+app.get("/admin/series/:seriesConfigKey/tuning", requireSeriesAdmin, asyncHandler(async (req, res) => {
   const payload = await getTuningPayload({
     seriesConfigKey: req.params.seriesConfigKey,
   });
   sendHtml(res, renderAdminTuningPage(payload));
 }));
 
-app.put("/api/series/:seriesConfigKey/admin/tuning", asyncHandler(async (req, res) => {
+app.put("/api/series/:seriesConfigKey/admin/tuning", requireSeriesAdmin, asyncHandler(async (req, res) => {
   const payload = await updateTuning({
     seriesConfigKey: req.params.seriesConfigKey,
     body: req.body,
@@ -394,7 +410,7 @@ app.put("/api/series/:seriesConfigKey/admin/tuning", asyncHandler(async (req, re
   res.json(payload);
 }));
 
-app.get("/api/series/:seriesConfigKey/admin/matches", asyncHandler(async (req, res) => {
+app.get("/api/series/:seriesConfigKey/admin/matches", requireSeriesAdmin, asyncHandler(async (req, res) => {
   const payload = await getMatchOpsPayload({
     seriesConfigKey: req.params.seriesConfigKey,
     query: req.query.query,
@@ -403,7 +419,7 @@ app.get("/api/series/:seriesConfigKey/admin/matches", asyncHandler(async (req, r
   res.json(payload);
 }));
 
-app.get("/admin/series/:seriesConfigKey/matches", asyncHandler(async (req, res) => {
+app.get("/admin/series/:seriesConfigKey/matches", requireSeriesAdmin, asyncHandler(async (req, res) => {
   const payload = await getMatchOpsPayload({
     seriesConfigKey: req.params.seriesConfigKey,
     query: req.query.query,
@@ -412,7 +428,7 @@ app.get("/admin/series/:seriesConfigKey/matches", asyncHandler(async (req, res) 
   sendHtml(res, renderAdminMatchesPage(payload));
 }));
 
-app.post("/api/series/:seriesConfigKey/admin/matches/refresh-requests", asyncHandler(async (req, res) => {
+app.post("/api/series/:seriesConfigKey/admin/matches/refresh-requests", requireSeriesAdmin, asyncHandler(async (req, res) => {
   const payload = await createManualRefreshRequest({
     seriesConfigKey: req.params.seriesConfigKey,
     body: req.body,
@@ -421,12 +437,47 @@ app.post("/api/series/:seriesConfigKey/admin/matches/refresh-requests", asyncHan
   res.json(payload);
 }));
 
-app.post("/api/series/:seriesConfigKey/admin/matches/:matchId/selection-override", asyncHandler(async (req, res) => {
+app.post("/api/series/:seriesConfigKey/admin/matches/:matchId/selection-override", requireSeriesAdmin, asyncHandler(async (req, res) => {
   const payload = await updateMatchSelectionOverride({
     seriesConfigKey: req.params.seriesConfigKey,
     matchId: req.params.matchId,
     body: req.body,
     dryRun: parseDryRun(req),
+  });
+  res.json(payload);
+}));
+
+app.get("/api/series/:seriesConfigKey/admin/viewers", requireSeriesAdmin, asyncHandler(async (req, res) => {
+  const payload = await listSeriesViewerGrants({
+    seriesConfigKey: req.params.seriesConfigKey,
+    userId: req.cricketActor.userId,
+  });
+  res.json(payload);
+}));
+
+app.post("/api/series/:seriesConfigKey/admin/viewers", requireSeriesAdmin, asyncHandler(async (req, res) => {
+  const payload = await upsertSeriesViewerGrant({
+    actorUserId: req.cricketActor.userId,
+    seriesConfigKey: req.params.seriesConfigKey,
+    body: req.body,
+    dryRun: parseDryRun(req),
+  });
+  res.json(payload);
+}));
+
+app.delete("/api/series/:seriesConfigKey/admin/viewers/:grantId", requireSeriesAdmin, asyncHandler(async (req, res) => {
+  const payload = await revokeSeriesViewerGrant({
+    actorUserId: req.cricketActor.userId,
+    seriesConfigKey: req.params.seriesConfigKey,
+    grantId: req.params.grantId,
+    dryRun: parseDryRun(req),
+  });
+  res.json(payload);
+}));
+
+app.get("/api/series/:seriesConfigKey/admin/subscription", requireSeriesAdmin, asyncHandler(async (req, res) => {
+  const payload = await getSeriesSubscriptionSummary({
+    seriesConfigKey: req.params.seriesConfigKey,
   });
   res.json(payload);
 }));

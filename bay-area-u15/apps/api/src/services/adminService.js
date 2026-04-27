@@ -13,6 +13,9 @@ const {
   withClient,
   withTransaction,
 } = require("./seriesService");
+const {
+  assertSubscriptionActionAllowed,
+} = require("./subscriptionService");
 
 async function getSetupPayload(input) {
   return withClient(async (client) => {
@@ -39,6 +42,13 @@ async function updateSetup(input) {
 
       const sourceSetup = input.body?.sourceSetup || {};
       const divisions = Array.isArray(input.body?.divisions) ? input.body.divisions : [];
+
+      if (sourceSetup.isActive === true && context.row.is_active !== true) {
+        await assertSubscriptionActionAllowed(client, {
+          seriesConfigKey: input.seriesConfigKey,
+          action: "activate_series",
+        });
+      }
 
       await client.query(
         `
@@ -137,6 +147,11 @@ async function getTuningPayload(input) {
 async function updateTuning(input) {
   return withTransaction(
     async (client) => {
+      await assertSubscriptionActionAllowed(client, {
+        seriesConfigKey: input.seriesConfigKey,
+        action: "weight_tuning",
+      });
+
       const context = await resolveSeriesContext(client, input.seriesConfigKey);
       if (!context) {
         const error = new Error(`Series not found for config key: ${input.seriesConfigKey}`);
@@ -367,6 +382,11 @@ async function getMatchOpsPayload(input) {
 async function createManualRefreshRequest(input) {
   return withTransaction(
     async (client) => {
+      await assertSubscriptionActionAllowed(client, {
+        seriesConfigKey: input.seriesConfigKey,
+        action: "manual_refresh",
+      });
+
       const context = await resolveSeriesContext(client, input.seriesConfigKey);
       if (!context) {
         const error = new Error(`Series not found for config key: ${input.seriesConfigKey}`);

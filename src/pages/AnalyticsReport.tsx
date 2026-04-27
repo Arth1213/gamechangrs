@@ -8,10 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   CricketPlayerReportMetric,
   CricketPlayerReportResponse,
   CricketPlayerReportRouteState,
+  fetchCricketViewerSeries,
   fetchCricketPlayerReport,
   getAnalyticsWorkspaceRoute,
   getCricketPlayerReportUrl,
@@ -60,8 +62,10 @@ function includesLabel(value: string | undefined, label: string) {
 }
 
 type ReportSummaryStatus = "idle" | "loading" | "success" | "error";
+type ViewerStatus = "loading" | "success" | "error";
 
 const AnalyticsReport = () => {
+  const { session, user } = useAuth();
   const { playerId } = useParams<{ playerId: string }>();
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -71,15 +75,24 @@ const AnalyticsReport = () => {
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [reportSummary, setReportSummary] = useState<CricketPlayerReportResponse | null>(null);
   const [summaryReloadKey, setSummaryReloadKey] = useState(0);
+  const [viewerStatus, setViewerStatus] = useState<ViewerStatus>("loading");
+  const [viewerError, setViewerError] = useState<string | null>(null);
+  const [viewerSeries, setViewerSeries] = useState<Array<{ configKey?: string; seriesName?: string }>>([]);
+  const [viewerUserId, setViewerUserId] = useState<string>("");
+  const [viewerReloadKey, setViewerReloadKey] = useState(0);
 
   const numericPlayerId = Number.parseInt(playerId ?? "", 10);
   const divisionId = getDivisionId(searchParams.get("divisionId"));
+  const accessToken = session?.access_token || "";
   const currentSeriesKey = searchParams.get("series")?.trim() || routeState.seriesConfigKey?.trim() || "";
+  const defaultSeriesKey = viewerSeries[0]?.configKey?.trim() || "";
+  const effectiveSeriesKey = currentSeriesKey || defaultSeriesKey;
   const currentSearchQuery = searchParams.get("q")?.trim() || routeState.searchQuery?.trim() || "";
   const backToSearchUrl = useMemo(
-    () => getAnalyticsWorkspaceRoute(currentSearchQuery, currentSeriesKey || undefined),
-    [currentSearchQuery, currentSeriesKey]
+    () => getAnalyticsWorkspaceRoute(currentSearchQuery, effectiveSeriesKey || undefined),
+    [currentSearchQuery, effectiveSeriesKey]
   );
+  const hasViewerAccess = viewerSeries.some((series) => series.configKey?.trim() === effectiveSeriesKey);
   const reportUrl = useMemo(() => {
     if (!Number.isFinite(numericPlayerId)) {
       return null;
@@ -90,15 +103,64 @@ const AnalyticsReport = () => {
         playerId: numericPlayerId,
         divisionId,
       },
-      { seriesConfigKey: currentSeriesKey || undefined }
+      { seriesConfigKey: effectiveSeriesKey || undefined }
     );
-  }, [currentSeriesKey, divisionId, numericPlayerId]);
+  }, [divisionId, effectiveSeriesKey, numericPlayerId]);
+
+  useEffect(() => {
+    if (!accessToken) {
+      setViewerSeries([]);
+      setViewerUserId("");
+      setViewerStatus("error");
+      setViewerError("A signed-in session is required before report access can be checked.");
+      return;
+    }
+
+    const controller = new AbortController();
+    setViewerStatus("loading");
+    setViewerError(null);
+    setViewerSeries([]);
+    setViewerUserId("");
+
+    fetchCricketViewerSeries(accessToken, controller.signal)
+      .then((payload) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setViewerSeries(payload.series ?? []);
+        setViewerUserId(payload.actor?.userId?.trim() || "");
+        setViewerStatus("success");
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : "Viewer access could not be resolved right now.";
+        setViewerSeries([]);
+        setViewerUserId("");
+        setViewerStatus("error");
+        setViewerError(message);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [accessToken, viewerReloadKey]);
 
   useEffect(() => {
     setIsFrameLoading(true);
   }, [reportUrl]);
 
   useEffect(() => {
+    if (viewerStatus !== "success" || !hasViewerAccess) {
+      setReportSummary(null);
+      setSummaryError(null);
+      setSummaryStatus("idle");
+      return;
+    }
+
     if (!Number.isFinite(numericPlayerId)) {
       setReportSummary(null);
       setSummaryError(null);
@@ -117,7 +179,7 @@ const AnalyticsReport = () => {
         divisionId,
       },
       {
-        seriesConfigKey: currentSeriesKey || undefined,
+        seriesConfigKey: effectiveSeriesKey || undefined,
         signal: controller.signal,
       }
     )
@@ -143,7 +205,7 @@ const AnalyticsReport = () => {
     return () => {
       controller.abort();
     };
-  }, [currentSeriesKey, divisionId, numericPlayerId, summaryReloadKey]);
+  }, [divisionId, effectiveSeriesKey, hasViewerAccess, numericPlayerId, summaryReloadKey, viewerStatus]);
 
   const title =
     reportSummary?.header?.playerName ||
@@ -172,7 +234,11 @@ const AnalyticsReport = () => {
     return routeState.divisionLabel || (divisionId !== null ? `Division ${divisionId}` : null);
   }, [divisionId, divisionOptions, routeState.divisionLabel]);
   const roleLabel = reportSummary?.header?.primaryRole || routeState.roleLabel || null;
-  const seriesName = reportSummary?.meta?.series?.name || routeState.seriesName || null;
+  const seriesName =
+    reportSummary?.meta?.series?.name ||
+    viewerSeries.find((series) => series.configKey?.trim() === effectiveSeriesKey)?.seriesName ||
+    routeState.seriesName ||
+    null;
   const ageGroupLabel = reportSummary?.meta?.series?.targetAgeGroup || null;
   const recommendationLabel =
     reportSummary?.reportPayload?.recommendationBadge?.label || reportSummary?.header?.recommendation || null;
@@ -274,6 +340,131 @@ const AnalyticsReport = () => {
       }))
       .filter((group) => group.items.length > 0);
   }, [reportSummary?.standardStats]);
+
+  const handleRetryViewerAccess = () => {
+    setViewerReloadKey((current) => current + 1);
+  };
+
+  if (viewerStatus === "loading") {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <section className="pt-32 pb-20">
+          <div className="container mx-auto px-4">
+            <div className="mx-auto max-w-3xl">
+              <Card className="border-border/80 bg-card/85 shadow-xl">
+                <CardContent className="flex items-start gap-3 p-6 text-sm text-muted-foreground">
+                  <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+                  <div className="space-y-1">
+                    <p>Checking your report access.</p>
+                    <p className="text-xs text-muted-foreground/80">
+                      Game-Changrs is resolving the series you are allowed to open before loading the player report shell.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (viewerStatus === "error") {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <section className="pt-32 pb-20">
+          <div className="container mx-auto px-4">
+            <div className="mx-auto max-w-3xl">
+              <Card className="border-destructive/30 bg-destructive/10 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="font-display text-3xl text-foreground">Report access could not be checked</CardTitle>
+                  <CardDescription className="text-destructive/80">
+                    {viewerError || "Viewer access is unavailable right now."}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-3">
+                  <Button type="button" variant="outline" onClick={handleRetryViewerAccess}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Retry Access Check
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link to={backToSearchUrl}>
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Back to Search
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!hasViewerAccess) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <section className="pt-32 pb-20">
+          <div className="container mx-auto px-4">
+            <div className="mx-auto max-w-4xl">
+              <Card className="border-border/80 bg-card/85 shadow-xl">
+                <CardHeader className="space-y-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
+                    <ShieldCheck className="h-7 w-7" />
+                  </div>
+                  <div className="space-y-2">
+                    <CardTitle className="font-display text-4xl text-foreground">You do not have access to this report</CardTitle>
+                    <CardDescription className="max-w-2xl text-sm leading-7">
+                      This root report route is now limited to series viewers, analysts, and admins who were granted access in
+                      the cricket admin shell.
+                    </CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+                  <div className="rounded-2xl border border-border/80 bg-background/60 p-5">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-primary">Send this user id to your admin</p>
+                    <div className="mt-4 rounded-2xl border border-border/80 bg-background/70 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">User ID</p>
+                      <p className="mt-2 break-all font-mono text-sm text-foreground">
+                        {viewerUserId || user?.id || "Unavailable"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-border/80 bg-background/60 p-5">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">What to do</p>
+                    <div className="mt-4 space-y-3 text-sm leading-7 text-muted-foreground">
+                      <p>1. Ask the series admin to grant you viewer or analyst access.</p>
+                      <p>2. After the grant is added, refresh this report route.</p>
+                      <p>3. The existing standalone report will load inside the Game-Changrs shell.</p>
+                    </div>
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <Button type="button" variant="outline" onClick={handleRetryViewerAccess}>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Recheck Access
+                      </Button>
+                      <Button asChild variant="outline">
+                        <Link to={backToSearchUrl}>
+                          <ArrowLeft className="mr-2 h-4 w-4" />
+                          Back to Search
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!reportUrl) {
     return (

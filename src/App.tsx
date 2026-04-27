@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import TechniqueAI from "./pages/TechniqueAI";
 import Analytics, { AnalyticsWorkspacePage } from "./pages/Analytics";
 import AnalyticsReport from "./pages/AnalyticsReport";
+import AnalyticsAdmin from "./pages/AnalyticsAdmin";
 import AnalysisDetail from "./pages/AnalysisDetail";
 import AnalysisHistory from "./pages/AnalysisHistory";
 import Marketplace from "./pages/Marketplace";
@@ -49,9 +50,26 @@ const App = () => (
                 <TechniqueAI />
               </ProtectedRoute>
             } />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/analytics/workspace" element={<AnalyticsWorkspacePage />} />
-            <Route path="/analytics/reports/:playerId" element={<AnalyticsReport />} />
+            <Route path="/analytics" element={
+              <ProtectedRoute>
+                <Analytics />
+              </ProtectedRoute>
+            } />
+            <Route path="/analytics/workspace" element={
+              <ProtectedRoute>
+                <AnalyticsWorkspacePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/analytics/admin" element={
+              <ProtectedRoute>
+                <AnalyticsAdmin />
+              </ProtectedRoute>
+            } />
+            <Route path="/analytics/reports/:playerId" element={
+              <ProtectedRoute>
+                <AnalyticsReport />
+              </ProtectedRoute>
+            } />
             <Route path="/analysis/:id" element={
               <ProtectedRoute>
                 <AnalysisDetail />

@@ -9,6 +9,7 @@ import {
   Loader2,
   RefreshCw,
   Search,
+  ShieldCheck,
   Users,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -19,13 +20,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   CricketDashboardSummaryResponse,
   CricketPlayerSearchResponse,
   CricketPlayerReportRouteState,
   CricketPlayerSearchResult,
   CricketSeriesCard,
+  CricketViewerSeriesResponse,
   fetchCricketDashboardSummary,
+  fetchCricketViewerSeries,
+  getAnalyticsAdminRoute,
   getAnalyticsWorkspaceRoute,
   getCricketPlayerReportUrl,
   getRootCricketPlayerReportRoute,
@@ -34,6 +39,7 @@ import {
 
 type SearchStatus = "idle" | "searching" | "success" | "empty" | "error";
 type SummaryStatus = "loading" | "success" | "error";
+type ViewerStatus = "loading" | "success" | "error";
 type AnalyticsView = "landing" | "workspace";
 
 type CombinedCricketPlayerSearchResult = {
@@ -302,6 +308,37 @@ function normalizeSeriesCards(summary: CricketDashboardSummaryResponse | null): 
         freshnessNote: isDetailedCard ? summary.freshness?.note ?? null : null,
         latestMatchTitle: isDetailedCard ? summary.latestMatch?.matchTitle ?? null : null,
         latestMatchMeta,
+      } satisfies SeriesWorkspaceCard;
+    })
+    .filter((card): card is SeriesWorkspaceCard => Boolean(card))
+    .sort((left, right) => Number(right.isActive) - Number(left.isActive) || left.seriesName.localeCompare(right.seriesName));
+}
+
+function normalizeViewerSeriesCards(summary: CricketViewerSeriesResponse | null): SeriesWorkspaceCard[] {
+  return (summary?.series ?? [])
+    .map((card) => {
+      const configKey = card.configKey?.trim() || "";
+      if (!configKey) {
+        return null;
+      }
+
+      return {
+        configKey,
+        seriesName: card.seriesName?.trim() || configKey,
+        targetAgeGroup: card.targetAgeGroup?.trim() || null,
+        isActive: card.isActive === true,
+        playerCount: card.playerCount ?? null,
+        totalMatches: card.matchCount ?? null,
+        computedMatches: card.computedMatches ?? null,
+        divisionLabels: [],
+        warningMatches: card.warningMatches ?? null,
+        pendingOps: null,
+        adminOverrides: null,
+        freshnessLabel: null,
+        freshnessTone: null,
+        freshnessNote: null,
+        latestMatchTitle: null,
+        latestMatchMeta: null,
       } satisfies SeriesWorkspaceCard;
     })
     .filter((card): card is SeriesWorkspaceCard => Boolean(card))
@@ -637,7 +674,9 @@ function SeriesWorkspaceOverview({
   onExampleSearch,
   onRetrySearch,
 }: SeriesWorkspaceOverviewProps) {
-  if (summaryStatus === "loading") {
+  const hasSeriesCards = seriesCards.length > 0;
+
+  if (summaryStatus === "loading" && !hasSeriesCards) {
     return (
       <Card className="border-border/80 bg-card/85 shadow-xl">
         <CardContent className="flex items-start gap-3 p-6 text-sm text-muted-foreground">
@@ -653,7 +692,7 @@ function SeriesWorkspaceOverview({
     );
   }
 
-  if (summaryStatus === "error" && summaryError) {
+  if (summaryStatus === "error" && summaryError && !hasSeriesCards) {
     return (
       <Card className="border-destructive/30 bg-destructive/10 shadow-xl">
         <CardContent className="flex flex-col gap-4 p-6 text-sm text-destructive sm:flex-row sm:items-start sm:justify-between">
@@ -673,12 +712,44 @@ function SeriesWorkspaceOverview({
     );
   }
 
-  if (summaryStatus !== "success" || seriesCards.length === 0) {
+  if (seriesCards.length === 0) {
     return null;
   }
 
   return (
     <div className="space-y-5">
+      {summaryStatus === "loading" ? (
+        <Card className="border-border/80 bg-card/75 shadow-sm">
+          <CardContent className="flex items-start gap-3 p-5 text-sm text-muted-foreground">
+            <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+            <div className="space-y-1">
+              <p>Refreshing live series coverage detail.</p>
+              <p className="text-xs text-muted-foreground/80">
+                Accessible series are already loaded, so the workspace stays usable while detail metrics refresh.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {summaryStatus === "error" && summaryError ? (
+        <Card className="border-amber-500/30 bg-amber-500/10 shadow-sm">
+          <CardContent className="flex flex-col gap-4 p-5 text-sm text-amber-200 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="space-y-1">
+                <p>Series detail refresh failed, but your accessible series workspace is still available.</p>
+                <p className="text-amber-100/80">{summaryError}</p>
+              </div>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={onRetrySummary}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Retry Summary
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {seriesCards.map((seriesCard) => {
         const isSelected = seriesCard.configKey === selectedSeriesKey;
 
@@ -834,6 +905,7 @@ function SeriesWorkspaceOverview({
 
 const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
   const isWorkspaceView = view === "workspace";
+  const { session, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<SearchStatus>("idle");
@@ -844,11 +916,34 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [dashboardSummary, setDashboardSummary] = useState<CricketDashboardSummaryResponse | null>(null);
   const [summaryReloadKey, setSummaryReloadKey] = useState(0);
+  const [viewerStatus, setViewerStatus] = useState<ViewerStatus>("loading");
+  const [viewerError, setViewerError] = useState<string | null>(null);
+  const [viewerCatalog, setViewerCatalog] = useState<CricketViewerSeriesResponse | null>(null);
+  const [viewerReloadKey, setViewerReloadKey] = useState(0);
   const activeRequestRef = useRef<AbortController | null>(null);
+  const accessToken = session?.access_token || "";
   const currentUrlQuery = searchParams.get("q")?.trim() ?? "";
   const currentUrlSeries = searchParams.get("series")?.trim() ?? "";
-  const seriesCards = useMemo(() => normalizeSeriesCards(dashboardSummary), [dashboardSummary]);
-  const defaultSeriesKey = seriesCards.find((card) => card.isActive)?.configKey || seriesCards[0]?.configKey || "";
+  const accessibleFallbackCards = useMemo(() => normalizeViewerSeriesCards(viewerCatalog), [viewerCatalog]);
+  const seriesCards = useMemo(() => {
+    const accessibleSeries = viewerCatalog?.series ?? [];
+    if (!accessibleSeries.length) {
+      return [];
+    }
+
+    const accessibleKeys = new Set(
+      accessibleSeries
+        .map((series) => series.configKey?.trim())
+        .filter((value): value is string => Boolean(value))
+    );
+    const detailedCards = normalizeSeriesCards(dashboardSummary).filter((card) => accessibleKeys.has(card.configKey));
+    return detailedCards.length > 0 ? detailedCards : accessibleFallbackCards;
+  }, [accessibleFallbackCards, dashboardSummary, viewerCatalog]);
+  const defaultSeriesKey =
+    viewerCatalog?.defaultSeriesConfigKey?.trim()
+    || seriesCards.find((card) => card.isActive)?.configKey
+    || seriesCards[0]?.configKey
+    || "";
   const selectedSeriesKey =
     currentUrlSeries && seriesCards.some((card) => card.configKey === currentUrlSeries)
       ? currentUrlSeries
@@ -860,7 +955,12 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     () => getAnalyticsWorkspaceRoute(currentUrlQuery || undefined, selectedSeriesKey || undefined),
     [currentUrlQuery, selectedSeriesKey]
   );
+  const adminRoute = useMemo(
+    () => getAnalyticsAdminRoute(selectedSeriesKey || undefined),
+    [selectedSeriesKey]
+  );
   const analyticsRoute = "/analytics";
+  const hasSeriesAccess = seriesCards.length > 0;
 
   async function runSearch(trimmedQuery: string, seriesConfigKey: string) {
     activeRequestRef.current?.abort();
@@ -897,6 +997,44 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
       }
     }
   }
+
+  useEffect(() => {
+    if (!accessToken) {
+      setViewerCatalog(null);
+      setViewerStatus("error");
+      setViewerError("A signed-in session is required before analytics access can be checked.");
+      return;
+    }
+
+    const controller = new AbortController();
+    setViewerStatus("loading");
+    setViewerError(null);
+    setViewerCatalog(null);
+
+    fetchCricketViewerSeries(accessToken, controller.signal)
+      .then((response) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setViewerCatalog(response);
+        setViewerStatus("success");
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : "Viewer access could not be resolved right now.";
+        setViewerCatalog(null);
+        setViewerStatus("error");
+        setViewerError(message);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [accessToken, viewerReloadKey]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -961,6 +1099,28 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
       return;
     }
 
+    if (viewerStatus !== "success") {
+      activeRequestRef.current?.abort();
+      setPayload(null);
+      setLastQuery(trimmedQuery);
+      setErrorMessage(
+        viewerStatus === "error"
+          ? (viewerError || "Viewer access could not be resolved right now.")
+          : "Checking your analytics access before running search."
+      );
+      setStatus(viewerStatus === "error" ? "error" : "idle");
+      return;
+    }
+
+    if (!hasSeriesAccess) {
+      activeRequestRef.current?.abort();
+      setPayload(null);
+      setLastQuery(trimmedQuery);
+      setErrorMessage("You do not have viewer access to any analytics series yet.");
+      setStatus("error");
+      return;
+    }
+
     if (!selectedSeriesKey) {
       activeRequestRef.current?.abort();
       setPayload(null);
@@ -979,7 +1139,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     return () => {
       activeRequestRef.current?.abort();
     };
-  }, [currentUrlQuery, selectedSeriesKey, summaryStatus, isWorkspaceView]);
+  }, [currentUrlQuery, hasSeriesAccess, selectedSeriesKey, summaryStatus, viewerError, viewerStatus, isWorkspaceView]);
 
   const handleSearch = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1046,9 +1206,140 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     setSummaryReloadKey((current) => current + 1);
   };
 
+  const handleRetryViewerAccess = () => {
+    setViewerReloadKey((current) => current + 1);
+  };
+
   const handleSeriesSelection = (seriesConfigKey: string) => {
     setSearchParams(buildAnalyticsSearchParams(currentUrlQuery, seriesConfigKey));
   };
+
+  if (viewerStatus === "loading") {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+
+        <section className="bg-gradient-hero pb-20 pt-32">
+          <div className="container mx-auto px-4">
+            <div className="mx-auto max-w-3xl">
+              <Card className="border-border/80 bg-card/85 shadow-xl">
+                <CardContent className="flex items-start gap-3 p-6 text-sm text-muted-foreground">
+                  <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+                  <div className="space-y-1">
+                    <p>Checking your analytics access.</p>
+                    <p className="text-xs text-muted-foreground/80">
+                      Game-Changrs is resolving the series you are allowed to view before loading the selector workspace.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        <Footer />
+      </div>
+    );
+  }
+
+  if (viewerStatus === "error") {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+
+        <section className="bg-gradient-hero pb-20 pt-32">
+          <div className="container mx-auto px-4">
+            <div className="mx-auto max-w-3xl">
+              <Card className="border-destructive/30 bg-destructive/10 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="font-display text-3xl text-foreground">Analytics access could not be checked</CardTitle>
+                  <CardDescription className="text-destructive/80">
+                    {viewerError || "Viewer access is unavailable right now."}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-3">
+                  <Button type="button" variant="outline" onClick={handleRetryViewerAccess}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Retry Access Check
+                  </Button>
+                  <Button type="button" variant="outline" onClick={handleRetrySummary}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Retry Coverage Refresh
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!hasSeriesAccess) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+
+        <section className="bg-gradient-hero pb-20 pt-32">
+          <div className="container mx-auto px-4">
+            <div className="mx-auto max-w-4xl">
+              <Card className="border-border/80 bg-card/85 shadow-xl">
+                <CardHeader className="space-y-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
+                    <ShieldCheck className="h-7 w-7" />
+                  </div>
+                  <div className="space-y-2">
+                    <CardTitle className="font-display text-4xl text-foreground">Analytics access is private</CardTitle>
+                    <CardDescription className="max-w-2xl text-sm leading-7">
+                      Your account is signed in, but it has not been granted access to any cricket analytics series yet.
+                    </CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+                  <div className="rounded-2xl border border-border/80 bg-background/60 p-5">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-primary">Send this to your admin</p>
+                    <p className="mt-4 text-sm leading-7 text-muted-foreground">
+                      Ask the series admin to open <span className="font-mono text-foreground">/analytics/admin</span> and
+                      grant viewer or analyst access to your user id below.
+                    </p>
+                    <div className="mt-4 rounded-2xl border border-border/80 bg-background/70 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">User ID</p>
+                      <p className="mt-2 break-all font-mono text-sm text-foreground">
+                        {viewerCatalog?.actor?.userId || user?.id || "Unavailable"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-border/80 bg-background/60 p-5">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">What happens next</p>
+                    <div className="mt-4 space-y-3 text-sm leading-7 text-muted-foreground">
+                      <p>1. Sign in once to Game-Changrs.</p>
+                      <p>2. Share your user id with the series admin.</p>
+                      <p>3. The admin grants access inside the cricket admin shell.</p>
+                      <p>4. Refresh this page to load your series workspace.</p>
+                    </div>
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <Button type="button" variant="outline" onClick={handleRetryViewerAccess}>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Recheck Access
+                      </Button>
+                      <Button asChild variant="outline">
+                        <Link to={analyticsRoute}>Return to Analytics</Link>
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        <Footer />
+      </div>
+    );
+  }
 
   if (isWorkspaceView) {
     return (
@@ -1085,9 +1376,17 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                   </div>
                 </div>
 
-                <Button asChild variant="outline" className="w-full md:w-auto">
-                  <Link to={analyticsRoute}>Back to Analytics</Link>
-                </Button>
+                <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
+                  <Button asChild variant="outline" className="w-full md:w-auto">
+                    <Link to={adminRoute}>
+                      Admin Console
+                      <ShieldCheck className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" className="w-full md:w-auto">
+                    <Link to={analyticsRoute}>Back to Analytics</Link>
+                  </Button>
+                </div>
               </div>
 
               <SeriesWorkspaceOverview
@@ -1136,12 +1435,20 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                 ))}
               </div>
 
-              <Button asChild variant="outline" className="w-full md:w-auto">
-                <Link to={workspaceRoute}>
-                  Series Workspace
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
+              <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
+                <Button asChild variant="outline" className="w-full md:w-auto">
+                  <Link to={adminRoute}>
+                    Admin Console
+                    <ShieldCheck className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full md:w-auto">
+                  <Link to={workspaceRoute}>
+                    Series Workspace
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[1.16fr_0.84fr]">

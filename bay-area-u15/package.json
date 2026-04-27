@@ -1,10 +1,13 @@
 {
   "scripts": {
+    "api:start": "node apps/api/src/server.js",
     "worker:discover": "node apps/worker/src/index.js discover --config config/leagues.yaml --series bay-area-usac-hub-2026",
     "worker:inventory": "node apps/worker/src/index.js inventory --config config/leagues.yaml --series bay-area-usac-hub-2026",
     "worker:run": "node apps/worker/src/index.js run --config config/leagues.yaml --series bay-area-usac-hub-2026"
   },
   "dependencies": {
+    "express": "^5.2.1",
+    "pg": "^8.20.0",
     "playwright": "^1.59.1",
     "yaml": "^2.8.1"
   }

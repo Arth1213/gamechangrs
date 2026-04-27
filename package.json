@@ -8,7 +8,10 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "bay-u15:discover": "npm --prefix bay-area-u15 run worker:discover",
+    "bay-u15:inventory": "npm --prefix bay-area-u15 run worker:inventory",
+    "bay-u15:run": "npm --prefix bay-area-u15 run worker:run"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

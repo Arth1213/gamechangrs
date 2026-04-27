@@ -56,7 +56,6 @@ import {
   fetchCricketAdminSubscriptionSummary,
   fetchCricketAdminSetup,
   fetchCricketAdminViewerGrants,
-  getAnalyticsAdminRoute,
   revokeCricketAdminViewerGrant,
   updateCricketAdminSelectionOverride,
   updateCricketAdminSetup,
@@ -381,15 +380,14 @@ const AnalyticsAdmin = () => {
   const selectedSeries =
     series.find((item) => item.configKey === selectedSeriesKey) || series[0] || null;
   const readinessItems = getReadinessItems(catalog);
-  const currentAdminRoute = selectedSeries?.configKey
-    ? getAnalyticsAdminRoute(selectedSeries.configKey)
-    : "/analytics/admin";
-  const currentSetupApiPath = selectedSeries?.setupApiPath || null;
-  const currentMatchesApiPath = selectedSeries?.matchesApiPath || null;
-  const currentViewersApiPath = selectedSeries?.viewersApiPath || null;
-  const currentSubscriptionApiPath = selectedSeries?.configKey
-    ? `/api/series/${encodeURIComponent(selectedSeries.configKey)}/admin/subscription`
-    : null;
+  const selectedSeriesDisplayName = selectedSeries?.seriesName || selectedSeries?.configKey || "No series selected";
+  const selectedSeriesContext = [
+    selectedSeries?.entityName,
+    selectedSeries?.targetAgeGroup,
+    selectedSeries?.seasonYear ? String(selectedSeries.seasonYear) : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const currentFormSignature = formState ? JSON.stringify(formState) : "";
   const initialFormSignature = initialFormState ? JSON.stringify(initialFormState) : "";
   const isDirty = Boolean(formState && initialFormState && currentFormSignature !== initialFormSignature);
@@ -397,6 +395,16 @@ const AnalyticsAdmin = () => {
   const subscriptionReady = subscriptionStatus === "success" && Boolean(subscriptionSummary);
   const isHardSubscriptionEnforcement =
     (subscriptionSummary?.subscription?.enforcementMode || "hard").toLowerCase() !== "advisory";
+  const planSummaryLabel =
+    subscriptionStatus === "loading"
+      ? "Loading plan"
+      : subscriptionSummary?.subscription?.planDisplayName
+        || subscriptionSummary?.subscription?.planKey
+        || "Plan not loaded";
+  const planStatusLabel =
+    subscriptionStatus === "loading"
+      ? "Loading"
+      : subscriptionSummary?.subscription?.status || "Unknown";
   const manualRefreshAllowed = subscriptionReady
     ? (subscriptionSummary?.entitlements?.manualRefreshEnabled !== false || !isHardSubscriptionEnforcement)
     : false;
@@ -1133,7 +1141,7 @@ const AnalyticsAdmin = () => {
 
       <section className="bg-gradient-hero pb-20 pt-32">
         <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-7xl space-y-8">
+          <div className="mx-auto max-w-6xl space-y-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-2">
@@ -1161,8 +1169,8 @@ const AnalyticsAdmin = () => {
                     Series administration
                   </h1>
                   <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-                    Manage live series setup and first-pass match operations from inside Game-Changrs while keeping the
-                    Render cricket API as the authoritative runtime.
+                    Configure a series, understand what the current plan allows, manage match operations, and control
+                    who can see reports.
                   </p>
                 </div>
               </div>
@@ -1175,12 +1183,12 @@ const AnalyticsAdmin = () => {
               </Button>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="grid gap-4 xl:grid-cols-[1.12fr_0.88fr]" id="access-overview">
               <Card className="border-border/80 bg-card/85 shadow-xl">
-                <CardContent className="space-y-5 p-6">
+                <CardContent className="space-y-6 p-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-2">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-primary">Authenticated scope</p>
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-primary">Control overview</p>
                       <div className="font-display text-2xl text-foreground">
                         {catalog?.actor?.email || user?.email || "Signed-in user"}
                       </div>
@@ -1190,8 +1198,7 @@ const AnalyticsAdmin = () => {
                         </p>
                       ) : null}
                       <p className="text-sm leading-6 text-muted-foreground">
-                        The root app uses the signed-in Supabase session to read and update protected cricket admin
-                        endpoints.
+                        The signed-in Game-Changrs session is the authority for admin access on this page.
                       </p>
                     </div>
 
@@ -1200,7 +1207,7 @@ const AnalyticsAdmin = () => {
                     </Badge>
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
                       <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Entities</p>
                       <div className="mt-3 font-display text-4xl text-foreground">
@@ -1214,54 +1221,103 @@ const AnalyticsAdmin = () => {
                       </div>
                     </div>
                     <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Current route</p>
-                      <div className="mt-3 text-sm leading-6 text-foreground">/analytics/admin</div>
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Selected series</p>
+                      <div className="mt-3 text-base font-semibold leading-6 text-foreground">
+                        {selectedSeriesDisplayName}
+                      </div>
+                      {selectedSeriesContext ? (
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{selectedSeriesContext}</p>
+                      ) : null}
+                    </div>
+                    <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Plan status</p>
+                      <div className="mt-3 text-base font-semibold leading-6 text-foreground">{planStatusLabel}</div>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{planSummaryLabel}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="border-border/80 bg-card/85 shadow-xl">
-                <CardContent className="space-y-4 p-6">
+                <CardContent className="space-y-5 p-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
                       <ShieldCheck className="h-6 w-6" />
                     </div>
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">This slice</p>
-                      <p className="font-display text-2xl text-foreground">Subscription gates + plan checks</p>
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">How to use this page</p>
+                      <p className="font-display text-2xl text-foreground">Read it top to bottom</p>
                     </div>
                   </div>
 
-                  <div className="space-y-3 text-sm leading-7 text-muted-foreground">
-                    <p>1. Discover manageable series for the signed-in admin.</p>
-                    <p>2. Load the existing setup JSON for the selected series.</p>
-                    <p>3. Surface the current entity plan, usage, and billing contract points.</p>
-                    <p>4. Gate viewer grants and manual refresh with live entitlement checks.</p>
-                    <p>5. Keep the verified cricket runtime unchanged while future paid controls take shape.</p>
+                  <div className="space-y-4">
+                    {[
+                      {
+                        title: "Access overview",
+                        body: "Who is signed in, what role they hold, and which series they can manage.",
+                      },
+                      {
+                        title: "Plan + enforcement",
+                        body: "What the owning entity plan currently permits. Hard enforcement means blocked actions, not warnings.",
+                      },
+                      {
+                        title: "Series setup",
+                        body: "Source URL, scraping options, report profile, and division mappings for the selected series.",
+                      },
+                      {
+                        title: "Operations + sharing",
+                        body: "Manual refresh requests, match overrides, and viewer / analyst access grants.",
+                      },
+                    ].map((item, index) => (
+                      <div key={item.title} className="flex gap-3 rounded-2xl border border-border/70 bg-background/55 p-4">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-cyan-400/20 bg-cyan-400/10 text-sm font-semibold text-cyan-200">
+                          {index + 1}
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-medium text-foreground">{item.title}</p>
+                          <p className="text-sm leading-6 text-muted-foreground">{item.body}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
             </div>
 
+            <div className="flex flex-wrap gap-2">
+              {[
+                { href: "#access-overview", label: "Overview" },
+                { href: "#plan-controls", label: "Plan + gates" },
+                { href: "#series-setup", label: "Series setup" },
+                { href: "#match-ops", label: "Match operations" },
+                { href: "#viewer-access", label: "Viewer access" },
+              ].map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="inline-flex items-center rounded-full border border-border/80 bg-card/70 px-4 py-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+                >
+                  {item.label}
+                </a>
+              ))}
+            </div>
+
             {selectedSeries ? (
-              <Card className="border-border/80 bg-card/85 shadow-xl">
+              <Card className="border-border/80 bg-card/85 shadow-xl" id="plan-controls">
                 <CardContent className="space-y-5 p-6">
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Database className="h-4 w-4 text-cyan-200" />
                         <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                          Subscription Enforcement
+                          Plan + enforcement
                         </p>
                       </div>
                       <div>
-                        <h2 className="font-display text-2xl text-foreground">
-                          {subscriptionSummary?.subscription?.planDisplayName || "Entity plan summary"}
-                        </h2>
+                        <h2 className="font-display text-2xl text-foreground">{planSummaryLabel}</h2>
                         <p className="text-sm leading-7 text-muted-foreground">
-                          Entitlements and capacity checks that gate viewer grants, manual refresh, and future paid series
-                          management.
+                          This section explains what the current entity plan allows on this page and whether those rules
+                          are advisory or enforced.
                         </p>
                       </div>
                     </div>
@@ -1317,6 +1373,33 @@ const AnalyticsAdmin = () => {
 
                   {subscriptionStatus === "success" && subscriptionSummary ? (
                     <>
+                      <div className="grid gap-3 lg:grid-cols-3">
+                        <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Selected series</p>
+                          <p className="mt-3 font-semibold text-foreground">{selectedSeriesDisplayName}</p>
+                          {selectedSeriesContext ? (
+                            <p className="mt-1 text-sm leading-6 text-muted-foreground">{selectedSeriesContext}</p>
+                          ) : null}
+                        </div>
+                        <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Enforcement mode</p>
+                          <p className="mt-3 font-semibold text-foreground">
+                            {isHardSubscriptionEnforcement ? "Hard enforcement" : "Advisory mode"}
+                          </p>
+                          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                            {isHardSubscriptionEnforcement
+                              ? "If a feature is not allowed by the plan, this page blocks the action."
+                              : "Unavailable features are flagged, but not hard-blocked."}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">What this controls</p>
+                          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                            Viewer grants, manual refresh requests, and future paid-series controls all read from this plan.
+                          </p>
+                        </div>
+                      </div>
+
                       <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
                         <div className="grid gap-3 md:grid-cols-3">
                           <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
@@ -1392,7 +1475,7 @@ const AnalyticsAdmin = () => {
                       <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
                         <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
                           <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                            Billing contract points
+                            Billing references
                           </p>
                           <div className="mt-4 space-y-3 text-sm leading-7 text-muted-foreground">
                             <p>
@@ -1442,10 +1525,6 @@ const AnalyticsAdmin = () => {
                       </div>
                     </>
                   ) : null}
-
-                  <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                    {currentSubscriptionApiPath ? `API route: ${currentSubscriptionApiPath}` : ""}
-                  </div>
                 </CardContent>
               </Card>
             ) : null}
@@ -1525,12 +1604,12 @@ const AnalyticsAdmin = () => {
 
             {catalogStatus === "success" && catalog?.authFoundationReady === true && series.length ? (
               <div className="space-y-4">
-                <div className="grid gap-4 lg:grid-cols-[0.96fr_1.04fr]">
+                <div className="grid gap-4 lg:grid-cols-[0.96fr_1.04fr]" id="series-setup">
                   <Card className="border-border/80 bg-card/85 shadow-xl">
                   <CardHeader>
-                    <CardTitle className="font-display text-3xl text-foreground">Managed series</CardTitle>
+                    <CardTitle className="font-display text-2xl text-foreground">Managed series</CardTitle>
                     <CardDescription>
-                      Select a series to load and edit its setup profile through the authenticated cricket admin API.
+                      Pick the series you want to configure. The setup, operations, and sharing panels all follow this selection.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -1595,10 +1674,9 @@ const AnalyticsAdmin = () => {
                   <CardHeader>
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                       <div className="space-y-2">
-                        <CardTitle className="font-display text-3xl text-foreground">Live setup editor</CardTitle>
+                        <CardTitle className="font-display text-2xl text-foreground">Series setup</CardTitle>
                         <CardDescription>
-                          Existing setup data is loaded from the protected Render API and edited in place through the
-                          same setup route.
+                          Edit source settings, report profile, and division mapping for the selected series.
                         </CardDescription>
                       </div>
 
@@ -2065,17 +2143,9 @@ const AnalyticsAdmin = () => {
                         <div className="flex flex-col gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 md:flex-row md:items-center md:justify-between">
                           <div className="space-y-1 text-sm leading-7 text-muted-foreground">
                             <p>
-                              Setup writes go to the existing protected setup endpoint and keep the public selector/report
-                              routes unchanged.
+                              Setup changes save directly into the protected series runtime and do not alter the public
+                              analytics entry experience.
                             </p>
-                            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                              Root route: {currentAdminRoute}
-                            </p>
-                            {currentSetupApiPath ? (
-                              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                                API route: {currentSetupApiPath}
-                              </p>
-                            ) : null}
                           </div>
 
                           <div className="flex flex-wrap gap-2">
@@ -2100,16 +2170,13 @@ const AnalyticsAdmin = () => {
                   </Card>
                 </div>
 
-                <Card className="border-border/80 bg-card/85 shadow-xl">
+                <Card className="border-border/80 bg-card/85 shadow-xl" id="match-ops">
                   <CardHeader>
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                       <div className="space-y-2">
-                        <CardTitle className="font-display text-3xl text-foreground">
-                          Job control plane
-                        </CardTitle>
+                        <CardTitle className="font-display text-2xl text-foreground">Match operations</CardTitle>
                         <CardDescription>
-                          Use the existing protected cricket admin endpoints to create manual refresh requests, review
-                          recent match operations, and force include or exclude decisions at the match level.
+                          Review match status, create manual refresh requests, and apply per-match selection overrides.
                         </CardDescription>
                       </div>
 
@@ -2255,8 +2322,8 @@ const AnalyticsAdmin = () => {
                         ) : null}
 
                         <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-sm leading-7 text-muted-foreground">
-                          This slice keeps orchestration small: manual refresh requests and per-match overrides are live
-                          here, while full-series extract triggers, weekly schedules, and worker run history remain
+                          This section keeps orchestration focused: manual refresh requests and per-match overrides are
+                          live here, while full-series extract triggers, weekly schedules, and worker run history remain
                           deferred until the worker boundary is exposed safely.
                         </div>
 
@@ -2592,17 +2659,9 @@ const AnalyticsAdmin = () => {
                     <div className="flex flex-col gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 md:flex-row md:items-start md:justify-between">
                       <div className="space-y-1 text-sm leading-7 text-muted-foreground">
                         <p>
-                          Job-control actions continue to use the verified cricket API as the source of truth and keep
-                          the public analytics landing, player search, and player report routes unchanged.
+                          This section is intentionally narrow: manual refresh requests and per-match overrides are live
+                          here, while scheduler history and worker-run auditing stay outside this page for now.
                         </p>
-                        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                          Root route: {currentAdminRoute}
-                        </p>
-                        {currentMatchesApiPath ? (
-                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                            API route: {currentMatchesApiPath}
-                          </p>
-                        ) : null}
                       </div>
 
                       <div className="grid gap-2 sm:grid-cols-3">
@@ -2629,14 +2688,14 @@ const AnalyticsAdmin = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="border-border/80 bg-card/85 shadow-xl">
+                <Card className="border-border/80 bg-card/85 shadow-xl" id="viewer-access">
                   <CardContent className="space-y-6 p-6">
                     <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <ShieldCheck className="h-4 w-4 text-cyan-200" />
                           <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                            Viewer Access And Sharing
+                            Viewer access
                           </p>
                         </div>
                         <div>
@@ -2889,17 +2948,9 @@ const AnalyticsAdmin = () => {
                     <div className="flex flex-col gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 md:flex-row md:items-start md:justify-between">
                       <div className="space-y-1 text-sm leading-7 text-muted-foreground">
                         <p>
-                          This slice begins enforcing viewer access in the root Game-Changrs analytics flow while leaving the
-                          existing standalone Render report runtime unchanged for now.
+                          Viewer access here controls who can use the Game-Changrs analytics and report surface for this
+                          series. The existing report runtime remains the underlying source of truth.
                         </p>
-                        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                          Root route: {currentAdminRoute}
-                        </p>
-                        {currentViewersApiPath ? (
-                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                            API route: {currentViewersApiPath}
-                          </p>
-                        ) : null}
                       </div>
 
                       <div className="grid gap-2 sm:grid-cols-3">

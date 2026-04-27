@@ -48,12 +48,70 @@ const {
 } = require("./services/playerApiService");
 
 const app = express();
+const API_CORS_ALLOWED_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
+const API_CORS_ALLOWED_HEADERS = [
+  "Authorization",
+  "Content-Type",
+  "Accept",
+  "apikey",
+  "x-client-info",
+].join(", ");
+const API_CORS_MAX_AGE_SECONDS = "86400";
+const API_CORS_ORIGIN_PATTERNS = [
+  /^https:\/\/game-changrs\.com$/i,
+  /^https:\/\/www\.game-changrs\.com$/i,
+  /^https:\/\/gamechangrs\.com$/i,
+  /^https:\/\/www\.gamechangrs\.com$/i,
+  /^https:\/\/([a-z0-9-]+\.)*lovable\.app$/i,
+  /^https:\/\/lovable\.dev$/i,
+  /^http:\/\/localhost:\d+$/i,
+  /^http:\/\/127\.0\.0\.1:\d+$/i,
+  /^http:\/\/\[\:\:1\]:\d+$/i,
+];
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
+  next();
+});
+
+function isAllowedCorsOrigin(origin) {
+  if (!origin || typeof origin !== "string") {
+    return false;
+  }
+
+  return API_CORS_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin));
+}
+
+function applyApiCorsHeaders(req, res) {
+  const origin = req.headers.origin;
+  if (!isAllowedCorsOrigin(origin)) {
+    return false;
+  }
+
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Access-Control-Allow-Methods", API_CORS_ALLOWED_METHODS);
+  res.setHeader("Access-Control-Allow-Headers", API_CORS_ALLOWED_HEADERS);
+  res.setHeader("Access-Control-Max-Age", API_CORS_MAX_AGE_SECONDS);
+  res.append("Vary", "Origin");
+  return true;
+}
+
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api/")) {
+    next();
+    return;
+  }
+
+  applyApiCorsHeaders(req, res);
+
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
+
   next();
 });
 

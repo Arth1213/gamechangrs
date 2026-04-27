@@ -9,7 +9,8 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import TechniqueAI from "./pages/TechniqueAI";
-import Analytics from "./pages/Analytics";
+import Analytics, { AnalyticsWorkspacePage } from "./pages/Analytics";
+import AnalyticsReport from "./pages/AnalyticsReport";
 import AnalysisDetail from "./pages/AnalysisDetail";
 import AnalysisHistory from "./pages/AnalysisHistory";
 import Marketplace from "./pages/Marketplace";
@@ -49,6 +50,8 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/analytics/workspace" element={<AnalyticsWorkspacePage />} />
+            <Route path="/analytics/reports/:playerId" element={<AnalyticsReport />} />
             <Route path="/analysis/:id" element={
               <ProtectedRoute>
                 <AnalysisDetail />

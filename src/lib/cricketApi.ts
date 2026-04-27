@@ -1,7 +1,12 @@
-const DEFAULT_CRICKET_API_BASE = "/cricket-api";
+const DEFAULT_LOCAL_CRICKET_API_BASE = "/cricket-api";
+const DEFAULT_HOSTED_CRICKET_API_BASE = "https://gamechangrs-cricket-api.onrender.com";
 
 function stripTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
+}
+
+function isLocalCricketHost(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
 function joinBaseAndPath(base: string, path: string) {
@@ -564,7 +569,11 @@ export function getCricketApiBase() {
     return stripTrailingSlash(configuredBase);
   }
 
-  return DEFAULT_CRICKET_API_BASE;
+  if (typeof window !== "undefined" && isLocalCricketHost(window.location.hostname)) {
+    return DEFAULT_LOCAL_CRICKET_API_BASE;
+  }
+
+  return DEFAULT_HOSTED_CRICKET_API_BASE;
 }
 
 export function getCricketApiUrl(path: string) {

@@ -37,12 +37,30 @@ const {
 } = require("./services/playerApiService");
 
 const app = express();
+const corsAllowOrigin = String(process.env.CORS_ALLOW_ORIGIN || "*").trim() || "*";
+const corsAllowMethods = "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS";
+const corsAllowHeadersFallback = "Content-Type, Authorization";
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
+  if (corsAllowOrigin === "*") {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  } else {
+    res.setHeader("Access-Control-Allow-Origin", corsAllowOrigin);
+    res.setHeader("Vary", "Origin");
+  }
+  res.setHeader("Access-Control-Allow-Methods", corsAllowMethods);
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    normalizeText(req.headers["access-control-request-headers"]) || corsAllowHeadersFallback
+  );
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
   next();
 });
 

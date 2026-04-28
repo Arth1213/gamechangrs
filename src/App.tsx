@@ -11,6 +11,8 @@ import Auth from "./pages/Auth";
 import TechniqueAI from "./pages/TechniqueAI";
 import Analytics, { AnalyticsWorkspacePage } from "./pages/Analytics";
 import AnalyticsReport from "./pages/AnalyticsReport";
+import AnalyticsAdminGateway from "./pages/AnalyticsAdminGateway";
+import AnalyticsPlatformAdmin from "./pages/AnalyticsPlatformAdmin";
 import AnalyticsAdmin from "./pages/AnalyticsAdmin";
 import AnalysisDetail from "./pages/AnalysisDetail";
 import AnalysisHistory from "./pages/AnalysisHistory";
@@ -61,6 +63,16 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/analytics/admin" element={
+              <ProtectedRoute>
+                <AnalyticsAdminGateway />
+              </ProtectedRoute>
+            } />
+            <Route path="/analytics/admin/platform" element={
+              <ProtectedRoute>
+                <AnalyticsPlatformAdmin />
+              </ProtectedRoute>
+            } />
+            <Route path="/analytics/admin/series" element={
               <ProtectedRoute>
                 <AnalyticsAdmin />
               </ProtectedRoute>

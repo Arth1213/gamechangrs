@@ -6,6 +6,8 @@ const { normalizeText, toInteger } = require("../lib/utils");
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VIEWER_ACCESS_ROLES = new Set(["viewer", "analyst"]);
+const ACCESS_REQUEST_TYPES = new Set(["self_request", "admin_invite"]);
+const ACCESS_REQUEST_STATUSES = new Set(["pending", "approved", "declined", "canceled"]);
 
 function normalizeUuid(value) {
   const normalized = normalizeText(value).toLowerCase();
@@ -15,6 +17,21 @@ function normalizeUuid(value) {
 function normalizeViewerAccessRole(value) {
   const normalized = normalizeText(value).toLowerCase();
   return VIEWER_ACCESS_ROLES.has(normalized) ? normalized : "";
+}
+
+function normalizeEmail(value) {
+  const normalized = normalizeText(value).toLowerCase();
+  return normalized.includes("@") ? normalized : "";
+}
+
+function normalizeAccessRequestType(value) {
+  const normalized = normalizeText(value).toLowerCase();
+  return ACCESS_REQUEST_TYPES.has(normalized) ? normalized : "";
+}
+
+function normalizeAccessRequestStatus(value) {
+  const normalized = normalizeText(value).toLowerCase();
+  return ACCESS_REQUEST_STATUSES.has(normalized) ? normalized : "";
 }
 
 function parseOptionalIsoTimestamp(value) {
@@ -166,6 +183,47 @@ function mapViewerGrantRow(row) {
   };
 }
 
+function mapAccessRequestRow(row) {
+  return {
+    requestId: normalizeText(row.id),
+    entityId: normalizeText(row.entity_id),
+    seriesSourceConfigId: toInteger(row.series_source_config_id),
+    requestedEmail: normalizeText(row.requested_email),
+    requestedUserId: normalizeText(row.requested_user_id),
+    requestedAccessRole: normalizeText(row.requested_access_role),
+    requestType: normalizeText(row.request_type),
+    requestStatus: normalizeText(row.request_status),
+    requestNote: normalizeText(row.request_note),
+    adminResponseNote: normalizeText(row.admin_response_note),
+    requestedByUserId: normalizeText(row.requested_by_user_id),
+    reviewedByUserId: normalizeText(row.reviewed_by_user_id),
+    requestedExpiresAt: row.requested_expires_at || null,
+    resolvedGrantId: normalizeText(row.resolved_grant_id),
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+    resolvedAt: row.resolved_at || null,
+  };
+}
+
+function mapEntityAdminMembershipRow(row) {
+  const role = normalizeText(row.role);
+  const status = normalizeText(row.status);
+  const isOwner = row.is_owner === true || role === "owner";
+
+  return {
+    membershipId: normalizeText(row.membership_id || row.id),
+    entityId: normalizeText(row.entity_id),
+    userId: normalizeText(row.user_id),
+    role,
+    status,
+    invitedByUserId: normalizeText(row.invited_by_user_id),
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+    isOwner,
+    canRemove: isOwner !== true && status === "active",
+  };
+}
+
 async function listManagedEntities(client, input) {
   const result = input.isPlatformAdmin
     ? await client.query(
@@ -174,11 +232,23 @@ async function listManagedEntities(client, input) {
             e.id as entity_id,
             e.slug as entity_slug,
             e.display_name as entity_name,
+            e.owner_user_id,
             'platform_admin'::text as access_role,
-            count(distinct c.id)::int as series_count
+            count(distinct c.id)::int as series_count,
+            count(
+              distinct case
+                when em_all.status = 'active' and em_all.role in ('owner', 'admin') then em_all.user_id
+                else null
+              end
+            )::int as active_admin_user_count,
+            es.plan_key as subscription_plan_key,
+            es.status as subscription_status,
+            es.max_admin_users
           from public.entity e
           left join public.series_source_config c on c.entity_id = e.id
-          group by e.id
+          left join public.entity_membership em_all on em_all.entity_id = e.id
+          left join public.entity_subscription es on es.entity_id = e.id
+          group by e.id, es.plan_key, es.status, es.max_admin_users
           order by e.display_name, e.id
         `
       )
@@ -188,8 +258,18 @@ async function listManagedEntities(client, input) {
             e.id as entity_id,
             e.slug as entity_slug,
             e.display_name as entity_name,
+            e.owner_user_id,
             em.role as access_role,
-            count(distinct c.id)::int as series_count
+            count(distinct c.id)::int as series_count,
+            count(
+              distinct case
+                when em_all.status = 'active' and em_all.role in ('owner', 'admin') then em_all.user_id
+                else null
+              end
+            )::int as active_admin_user_count,
+            es.plan_key as subscription_plan_key,
+            es.status as subscription_status,
+            es.max_admin_users
           from public.entity e
           join public.entity_membership em
             on em.entity_id = e.id
@@ -197,19 +277,164 @@ async function listManagedEntities(client, input) {
            and em.status = 'active'
            and em.role in ('owner', 'admin')
           left join public.series_source_config c on c.entity_id = e.id
-          group by e.id, em.role
+          left join public.entity_membership em_all on em_all.entity_id = e.id
+          left join public.entity_subscription es on es.entity_id = e.id
+          group by e.id, em.role, es.plan_key, es.status, es.max_admin_users
           order by e.display_name, e.id
         `,
         [input.userId]
       );
 
-  return result.rows.map((row) => ({
-    entityId: normalizeText(row.entity_id),
-    entitySlug: normalizeText(row.entity_slug),
-    entityName: normalizeText(row.entity_name),
-    accessRole: normalizeText(row.access_role),
-    seriesCount: toInteger(row.series_count) || 0,
-  }));
+  return result.rows.map((row) => {
+    const maxAdminUsers = toInteger(row.max_admin_users);
+    const activeAdminUsers = toInteger(row.active_admin_user_count) || 0;
+
+    return {
+      entityId: normalizeText(row.entity_id),
+      entitySlug: normalizeText(row.entity_slug),
+      entityName: normalizeText(row.entity_name),
+      ownerUserId: normalizeText(row.owner_user_id),
+      accessRole: normalizeText(row.access_role),
+      seriesCount: toInteger(row.series_count) || 0,
+      subscriptionPlanKey: normalizeText(row.subscription_plan_key),
+      subscriptionStatus: normalizeText(row.subscription_status),
+      maxAdminUsers,
+      activeAdminUsers,
+      remainingAdminUsers:
+        maxAdminUsers === null || maxAdminUsers === undefined
+          ? null
+          : Math.max(maxAdminUsers - activeAdminUsers, 0),
+      admins: [],
+    };
+  });
+}
+
+async function listManagedEntityAdminMemberships(client, input) {
+  const result = input.isPlatformAdmin
+    ? await client.query(
+        `
+          select
+            em.id as membership_id,
+            em.entity_id,
+            em.user_id,
+            em.role,
+            em.status,
+            em.invited_by_user_id,
+            em.created_at,
+            em.updated_at,
+            (e.owner_user_id = em.user_id) as is_owner
+          from public.entity_membership em
+          join public.entity e on e.id = em.entity_id
+          where em.status = 'active'
+            and em.role in ('owner', 'admin')
+          order by e.display_name, case when em.role = 'owner' then 0 else 1 end, em.created_at, em.user_id
+        `
+      )
+    : await client.query(
+        `
+          select
+            em.id as membership_id,
+            em.entity_id,
+            em.user_id,
+            em.role,
+            em.status,
+            em.invited_by_user_id,
+            em.created_at,
+            em.updated_at,
+            (e.owner_user_id = em.user_id) as is_owner
+          from public.entity_membership em
+          join public.entity e on e.id = em.entity_id
+          where em.status = 'active'
+            and em.role in ('owner', 'admin')
+            and exists (
+              select 1
+              from public.entity_membership em_access
+              where em_access.entity_id = em.entity_id
+                and em_access.user_id = $1
+                and em_access.status = 'active'
+                and em_access.role in ('owner', 'admin')
+            )
+          order by e.display_name, case when em.role = 'owner' then 0 else 1 end, em.created_at, em.user_id
+        `,
+        [input.userId]
+      );
+
+  return result.rows.map(mapEntityAdminMembershipRow);
+}
+
+async function loadEntityManagementSnapshot(client, input) {
+  const readiness = await getEntityAccessReadiness(client);
+  const entityId = normalizeUuid(input.entityId);
+
+  if (!entityId) {
+    const error = new Error("entityId must be a valid UUID.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const entity = await fetchOne(
+    client,
+    `
+      select
+        e.id as entity_id,
+        e.slug as entity_slug,
+        e.display_name as entity_name
+      from public.entity e
+      where e.id = $1
+      limit 1
+    `,
+    [entityId]
+  );
+
+  if (!entity) {
+    const error = new Error(`Entity not found for id: ${entityId}`);
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (!readiness.isReady) {
+    return {
+      authFoundationReady: false,
+      readiness,
+      entityId: normalizeText(entity.entity_id),
+      entitySlug: normalizeText(entity.entity_slug),
+      entityName: normalizeText(entity.entity_name),
+      isPlatformAdmin: false,
+      isEntityAdmin: false,
+      canManage: false,
+      accessRole: null,
+    };
+  }
+
+  const isPlatformAdmin = await getPlatformAdminStatus(client, input.userId);
+  const membership = await fetchOne(
+    client,
+    `
+      select role
+      from public.entity_membership
+      where entity_id = $1
+        and user_id = $2
+        and status = 'active'
+        and role in ('owner', 'admin')
+      limit 1
+    `,
+    [entityId, input.userId]
+  );
+
+  const entityRole = normalizeText(membership?.role);
+  const isEntityAdmin = entityRole === "owner" || entityRole === "admin";
+
+  return {
+    authFoundationReady: true,
+    readiness,
+    entityId: normalizeText(entity.entity_id),
+    entitySlug: normalizeText(entity.entity_slug),
+    entityName: normalizeText(entity.entity_name),
+    isPlatformAdmin,
+    isEntityAdmin,
+    canManage: isPlatformAdmin || isEntityAdmin,
+    accessRole: isPlatformAdmin ? "platform_admin" : (entityRole || null),
+  };
 }
 
 async function listManagedSeries(client, input) {
@@ -397,6 +622,287 @@ async function loadSeriesAccessSnapshot(client, input) {
   };
 }
 
+async function grantSeriesViewerAccess(client, input) {
+  const row = await fetchOne(
+    client,
+    `
+      insert into public.series_access_grant (
+        entity_id,
+        series_source_config_id,
+        user_id,
+        access_role,
+        status,
+        granted_by_user_id,
+        expires_at
+      )
+      values ($1, $2, $3, $4, 'active', $5, $6)
+      on conflict (entity_id, series_source_config_id, user_id)
+      do update set
+        access_role = excluded.access_role,
+        status = 'active',
+        granted_by_user_id = excluded.granted_by_user_id,
+        expires_at = excluded.expires_at,
+        updated_at = now()
+      returning
+        id,
+        entity_id,
+        series_source_config_id,
+        user_id,
+        access_role,
+        status,
+        granted_by_user_id,
+        created_at,
+        updated_at,
+        expires_at,
+        (expires_at is not null and expires_at <= now()) as is_expired
+    `,
+    [
+      input.entityId,
+      input.seriesSourceConfigId,
+      input.targetUserId,
+      input.accessRole,
+      input.grantedByUserId || null,
+      input.expiresAt || null,
+    ]
+  );
+
+  return mapViewerGrantRow(row);
+}
+
+async function loadSeriesAccessRequests(client, seriesSourceConfigId) {
+  const result = await client.query(
+    `
+      select
+        sar.id,
+        sar.entity_id,
+        sar.series_source_config_id,
+        sar.requested_email,
+        sar.requested_user_id,
+        sar.requested_access_role,
+        sar.request_type,
+        sar.request_status,
+        sar.request_note,
+        sar.admin_response_note,
+        sar.requested_by_user_id,
+        sar.reviewed_by_user_id,
+        sar.requested_expires_at,
+        sar.resolved_grant_id,
+        sar.created_at,
+        sar.updated_at,
+        sar.resolved_at
+      from public.series_access_request sar
+      where sar.series_source_config_id = $1
+      order by
+        case when sar.request_status = 'pending' then 0 else 1 end,
+        sar.created_at desc,
+        sar.requested_email
+    `,
+    [seriesSourceConfigId]
+  );
+
+  return result.rows.map(mapAccessRequestRow);
+}
+
+async function upsertPendingSeriesAccessRequestRow(client, input) {
+  const requestType = normalizeAccessRequestType(input.requestType) || "self_request";
+  const requestedEmail = normalizeEmail(input.requestedEmail);
+  const requestedAccessRole = normalizeViewerAccessRole(input.requestedAccessRole) || "viewer";
+
+  if (!requestedEmail) {
+    const error = new Error("A valid email address is required for series access requests.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  let existing = null;
+
+  if (requestType === "admin_invite") {
+    existing = await fetchOne(
+      client,
+      `
+        select *
+        from public.series_access_request
+        where series_source_config_id = $1
+          and lower(requested_email) = lower($2)
+          and requested_access_role = $3
+          and request_type = 'admin_invite'
+          and request_status = 'pending'
+        order by created_at desc, id desc
+        limit 1
+      `,
+      [input.seriesSourceConfigId, requestedEmail, requestedAccessRole]
+    );
+  } else if (input.requestedUserId) {
+    existing = await fetchOne(
+      client,
+      `
+        select *
+        from public.series_access_request
+        where series_source_config_id = $1
+          and requested_user_id = $2
+          and requested_access_role = $3
+          and request_type = 'self_request'
+          and request_status = 'pending'
+        order by created_at desc, id desc
+        limit 1
+      `,
+      [input.seriesSourceConfigId, input.requestedUserId, requestedAccessRole]
+    );
+  }
+
+  if (existing) {
+    const updated = await fetchOne(
+      client,
+      `
+        update public.series_access_request
+        set
+          requested_email = $2,
+          requested_user_id = coalesce($3, requested_user_id),
+          request_note = $4,
+          requested_by_user_id = $5,
+          requested_expires_at = $6,
+          admin_response_note = case
+            when request_status = 'pending' then null
+            else admin_response_note
+          end,
+          updated_at = now()
+        where id = $1
+        returning *
+      `,
+      [
+        existing.id,
+        requestedEmail,
+        input.requestedUserId || null,
+        normalizeText(input.requestNote) || null,
+        input.requestedByUserId || null,
+        input.requestedExpiresAt || null,
+      ]
+    );
+
+    return mapAccessRequestRow(updated);
+  }
+
+  const inserted = await fetchOne(
+    client,
+    `
+      insert into public.series_access_request (
+        entity_id,
+        series_source_config_id,
+        requested_email,
+        requested_user_id,
+        requested_access_role,
+        request_type,
+        request_status,
+        request_note,
+        requested_by_user_id,
+        requested_expires_at
+      )
+      values ($1,$2,$3,$4,$5,$6,'pending',$7,$8,$9)
+      returning *
+    `,
+    [
+      input.entityId,
+      input.seriesSourceConfigId,
+      requestedEmail,
+      input.requestedUserId || null,
+      requestedAccessRole,
+      requestType,
+      normalizeText(input.requestNote) || null,
+      input.requestedByUserId || null,
+      input.requestedExpiresAt || null,
+    ]
+  );
+
+  return mapAccessRequestRow(inserted);
+}
+
+async function autoActivatePendingSeriesInvites(client, input) {
+  const actorUserId = normalizeUuid(input.userId);
+  const actorEmail = normalizeEmail(input.email);
+
+  if (!actorUserId || !actorEmail) {
+    return {
+      activatedCount: 0,
+    };
+  }
+
+  const result = await client.query(
+    `
+      select
+        sar.*,
+        c.config_key
+      from public.series_access_request sar
+      join public.series_source_config c on c.id = sar.series_source_config_id
+      where lower(sar.requested_email) = lower($1)
+        and sar.request_type = 'admin_invite'
+        and sar.request_status = 'pending'
+        and (sar.requested_user_id is null or sar.requested_user_id = $2)
+      order by sar.created_at, sar.id
+    `,
+    [actorEmail, actorUserId]
+  );
+
+  let activatedCount = 0;
+
+  for (const row of result.rows) {
+    try {
+      await assertSubscriptionActionAllowed(client, {
+        seriesConfigKey: normalizeText(row.config_key),
+        action: "viewer_grant",
+        targetUserId: actorUserId,
+      });
+
+      const grant = await grantSeriesViewerAccess(client, {
+        entityId: normalizeText(row.entity_id),
+        seriesSourceConfigId: toInteger(row.series_source_config_id),
+        targetUserId: actorUserId,
+        accessRole: normalizeViewerAccessRole(row.requested_access_role) || "viewer",
+        grantedByUserId: normalizeUuid(row.requested_by_user_id) || null,
+        expiresAt: row.requested_expires_at || null,
+      });
+
+      await client.query(
+        `
+          update public.series_access_request
+          set
+            requested_user_id = $2,
+            request_status = 'approved',
+            reviewed_by_user_id = coalesce(reviewed_by_user_id, requested_by_user_id),
+            admin_response_note = coalesce(
+              nullif(admin_response_note, ''),
+              'Access auto-activated on first login from an admin-approved email invite.'
+            ),
+            resolved_grant_id = $3,
+            resolved_at = coalesce(resolved_at, now()),
+            updated_at = now()
+          where id = $1
+        `,
+        [row.id, actorUserId, grant.grantId || null]
+      );
+
+      activatedCount += 1;
+    } catch (error) {
+      await client.query(
+        `
+          update public.series_access_request
+          set
+            admin_response_note = $2,
+            updated_at = now()
+          where id = $1
+        `,
+        [
+          row.id,
+          normalizeText(error?.message) || "Invite auto-activation failed. Review entity limits and series access rules.",
+        ]
+      );
+    }
+  }
+
+  return {
+    activatedCount,
+  };
+}
+
 async function getSeriesAdminAccess(input) {
   return withClient(async (client) => {
     return loadSeriesAccessSnapshot(client, {
@@ -404,6 +910,329 @@ async function getSeriesAdminAccess(input) {
       seriesConfigKey: input.seriesConfigKey,
     });
   });
+}
+
+async function getEntityManagementAccess(input) {
+  return withClient(async (client) => {
+    return loadEntityManagementSnapshot(client, {
+      userId: input.userId,
+      entityId: input.entityId,
+    });
+  });
+}
+
+async function loadPlatformManagedEntityContext(client, input) {
+  const readiness = await getEntityAccessReadiness(client);
+
+  if (!readiness.isReady) {
+    const error = new Error(
+      "Phase 10 entity auth foundation is not available in the database yet. Apply the tenant-foundation migration first."
+    );
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const actorUserId = normalizeUuid(input.actorUserId);
+  if (!actorUserId) {
+    const error = new Error("A valid actor user id is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const isPlatformAdmin = await getPlatformAdminStatus(client, actorUserId);
+  if (!isPlatformAdmin) {
+    const error = new Error("Only platform admins can manage entity admin access.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const entityId = normalizeUuid(input.entityId);
+  if (!entityId) {
+    const error = new Error("entityId must be a valid UUID.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const entity = await fetchOne(
+    client,
+    `
+      select
+        e.id as entity_id,
+        e.slug as entity_slug,
+        e.display_name as entity_name,
+        e.owner_user_id,
+        es.plan_key as subscription_plan_key,
+        es.status as subscription_status,
+        es.max_admin_users,
+        count(
+          distinct case
+            when em.status = 'active' and em.role in ('owner', 'admin') then em.user_id
+            else null
+          end
+        )::int as active_admin_user_count
+      from public.entity e
+      left join public.entity_subscription es on es.entity_id = e.id
+      left join public.entity_membership em on em.entity_id = e.id
+      where e.id = $1
+      group by e.id, es.plan_key, es.status, es.max_admin_users
+      limit 1
+    `,
+    [entityId]
+  );
+
+  if (!entity) {
+    const error = new Error(`Entity not found for id: ${entityId}`);
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return {
+    actorUserId,
+    entityId: normalizeText(entity.entity_id),
+    entitySlug: normalizeText(entity.entity_slug),
+    entityName: normalizeText(entity.entity_name),
+    ownerUserId: normalizeText(entity.owner_user_id),
+    subscriptionPlanKey: normalizeText(entity.subscription_plan_key),
+    subscriptionStatus: normalizeText(entity.subscription_status),
+    maxAdminUsers: toInteger(entity.max_admin_users),
+    activeAdminUsers: toInteger(entity.active_admin_user_count) || 0,
+  };
+}
+
+async function upsertEntityAdminMembership(input) {
+  return withTransaction(
+    async (client) => {
+      const context = await loadPlatformManagedEntityContext(client, {
+        actorUserId: input.actorUserId,
+        entityId: input.entityId,
+      });
+
+      const targetUserId = normalizeUuid(input.body?.userId);
+      if (!targetUserId) {
+        const error = new Error("userId must be a valid UUID.");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const requestedRole = normalizeText(input.body?.role).toLowerCase() || "admin";
+      if (requestedRole !== "admin") {
+        const error = new Error("Only direct series-admin assignment is supported in this phase.");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const existing = await fetchOne(
+        client,
+        `
+          select
+            em.id as membership_id,
+            em.entity_id,
+            em.user_id,
+            em.role,
+            em.status,
+            em.invited_by_user_id,
+            em.created_at,
+            em.updated_at,
+            (e.owner_user_id = em.user_id) as is_owner
+          from public.entity_membership em
+          join public.entity e on e.id = em.entity_id
+          where em.entity_id = $1
+            and em.user_id = $2
+          limit 1
+        `,
+        [context.entityId, targetUserId]
+      );
+
+      const existingRole = normalizeText(existing?.role);
+      const existingStatus = normalizeText(existing?.status);
+      const isExistingOwner = existing?.is_owner === true || existingRole === "owner" || context.ownerUserId === targetUserId;
+
+      if (isExistingOwner && existingStatus === "active") {
+        return {
+          message: input.dryRun === true
+            ? "Dry-run confirmed. This user already has owner access for the entity."
+            : "This user already has owner access for the entity.",
+          entity: {
+            entityId: context.entityId,
+            entityName: context.entityName,
+            entitySlug: context.entitySlug,
+            ownerUserId: context.ownerUserId,
+          },
+          membership: existing ? mapEntityAdminMembershipRow(existing) : null,
+        };
+      }
+
+      const wouldConsumeSeat = !(existingStatus === "active" && (existingRole === "owner" || existingRole === "admin"));
+      if (
+        wouldConsumeSeat
+        && context.maxAdminUsers !== null
+        && context.activeAdminUsers >= context.maxAdminUsers
+      ) {
+        const error = new Error(
+          `Admin allocation is at limit for this entity (${context.activeAdminUsers}/${context.maxAdminUsers}).`
+        );
+        error.statusCode = 409;
+        throw error;
+      }
+
+      const row = await fetchOne(
+        client,
+        `
+          insert into public.entity_membership (
+            entity_id,
+            user_id,
+            role,
+            status,
+            invited_by_user_id
+          )
+          values ($1, $2, 'admin', 'active', $3)
+          on conflict (entity_id, user_id)
+          do update set
+            role = case
+              when public.entity_membership.role = 'owner' then public.entity_membership.role
+              else 'admin'
+            end,
+            status = 'active',
+            invited_by_user_id = coalesce(public.entity_membership.invited_by_user_id, excluded.invited_by_user_id),
+            updated_at = now()
+          returning
+            id as membership_id,
+            entity_id,
+            user_id,
+            role,
+            status,
+            invited_by_user_id,
+            created_at,
+            updated_at,
+            false as is_owner
+        `,
+        [context.entityId, targetUserId, context.actorUserId]
+      );
+
+      return {
+        message: input.dryRun === true
+          ? "Dry-run entity admin assignment validated."
+          : "Entity admin access granted.",
+        entity: {
+          entityId: context.entityId,
+          entityName: context.entityName,
+          entitySlug: context.entitySlug,
+          ownerUserId: context.ownerUserId,
+        },
+        membership: mapEntityAdminMembershipRow(row),
+      };
+    },
+    { dryRun: input.dryRun === true }
+  );
+}
+
+async function disableEntityAdminMembership(input) {
+  return withTransaction(
+    async (client) => {
+      const context = await loadPlatformManagedEntityContext(client, {
+        actorUserId: input.actorUserId,
+        entityId: input.entityId,
+      });
+
+      const targetUserId = normalizeUuid(input.targetUserId);
+      if (!targetUserId) {
+        const error = new Error("targetUserId must be a valid UUID.");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const existing = await fetchOne(
+        client,
+        `
+          select
+            em.id as membership_id,
+            em.entity_id,
+            em.user_id,
+            em.role,
+            em.status,
+            em.invited_by_user_id,
+            em.created_at,
+            em.updated_at,
+            (e.owner_user_id = em.user_id) as is_owner
+          from public.entity_membership em
+          join public.entity e on e.id = em.entity_id
+          where em.entity_id = $1
+            and em.user_id = $2
+            and em.role in ('owner', 'admin')
+          limit 1
+        `,
+        [context.entityId, targetUserId]
+      );
+
+      if (!existing) {
+        const error = new Error("Entity admin membership not found.");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const existingRole = normalizeText(existing.role);
+      const existingStatus = normalizeText(existing.status);
+      const isOwner = existing.is_owner === true || existingRole === "owner" || context.ownerUserId === targetUserId;
+
+      if (isOwner) {
+        const error = new Error("Owner reassignment is not handled from this console yet.");
+        error.statusCode = 409;
+        throw error;
+      }
+
+      if (existingStatus !== "active") {
+        return {
+          message: input.dryRun === true
+            ? "Dry-run confirmed. Entity admin access is already inactive."
+            : "Entity admin access is already inactive.",
+          entity: {
+            entityId: context.entityId,
+            entityName: context.entityName,
+            entitySlug: context.entitySlug,
+            ownerUserId: context.ownerUserId,
+          },
+          membership: mapEntityAdminMembershipRow(existing),
+        };
+      }
+
+      const row = await fetchOne(
+        client,
+        `
+          update public.entity_membership
+          set
+            status = 'disabled',
+            updated_at = now()
+          where entity_id = $1
+            and user_id = $2
+          returning
+            id as membership_id,
+            entity_id,
+            user_id,
+            role,
+            status,
+            invited_by_user_id,
+            created_at,
+            updated_at,
+            false as is_owner
+        `,
+        [context.entityId, targetUserId]
+      );
+
+      return {
+        message: input.dryRun === true
+          ? "Dry-run entity admin removal validated."
+          : "Entity admin access removed.",
+        entity: {
+          entityId: context.entityId,
+          entityName: context.entityName,
+          entitySlug: context.entitySlug,
+          ownerUserId: context.ownerUserId,
+        },
+        membership: row ? mapEntityAdminMembershipRow(row) : null,
+      };
+    },
+    { dryRun: input.dryRun === true }
+  );
 }
 
 async function getAdminSeriesCatalog(input) {
@@ -429,16 +1258,29 @@ async function getAdminSeriesCatalog(input) {
       };
     }
 
-    const [entities, series] = await Promise.all([
-      listManagedEntities(client, {
-        userId: input.userId,
-        isPlatformAdmin,
-      }),
-      listManagedSeries(client, {
-        userId: input.userId,
-        isPlatformAdmin,
-      }),
-    ]);
+    const entities = await listManagedEntities(client, {
+      userId: input.userId,
+      isPlatformAdmin,
+    });
+    const series = await listManagedSeries(client, {
+      userId: input.userId,
+      isPlatformAdmin,
+    });
+    const adminMemberships = await listManagedEntityAdminMemberships(client, {
+      userId: input.userId,
+      isPlatformAdmin,
+    });
+
+    const membershipsByEntity = new Map();
+    for (const membership of adminMemberships) {
+      const entityId = normalizeText(membership.entityId);
+      if (!entityId) {
+        continue;
+      }
+      const bucket = membershipsByEntity.get(entityId) || [];
+      bucket.push(membership);
+      membershipsByEntity.set(entityId, bucket);
+    }
 
     return {
       authFoundationReady: true,
@@ -450,7 +1292,10 @@ async function getAdminSeriesCatalog(input) {
         series.find((item) => item.isActive)?.configKey
         || series[0]?.configKey
         || null,
-      entities,
+      entities: entities.map((entity) => ({
+        ...entity,
+        admins: membershipsByEntity.get(entity.entityId) || [],
+      })),
       series,
     };
   });
@@ -477,6 +1322,11 @@ async function getViewerSeriesCatalog(input) {
         series: [],
       };
     }
+
+    await autoActivatePendingSeriesInvites(client, {
+      userId: input.userId,
+      email: input.email,
+    });
 
     const series = await listViewableSeries(client, {
       userId: input.userId,
@@ -526,47 +1376,49 @@ async function listSeriesViewerGrants(input) {
       throw error;
     }
 
-    const [subscription, result] = await Promise.all([
-      fetchOne(
-        client,
-        `
-          select
-            plan_key,
-            status,
-            max_viewer_users
-          from public.entity_subscription
-          where entity_id = $1
-          limit 1
-        `,
-        [access.entityId]
-      ),
-      client.query(
-        `
-          select
-            sag.id,
-            sag.entity_id,
-            sag.series_source_config_id,
-            sag.user_id,
-            sag.access_role,
-            sag.status,
-            sag.granted_by_user_id,
-            sag.created_at,
-            sag.updated_at,
-            sag.expires_at,
-            (sag.expires_at is not null and sag.expires_at <= now()) as is_expired
-          from public.series_access_grant sag
-          where sag.series_source_config_id = $1
-          order by
-            case when sag.status = 'active' then 0 else 1 end,
-            sag.created_at desc,
-            sag.user_id
-        `,
-        [access.seriesSourceConfigId]
-      ),
-    ]);
+    const subscription = await fetchOne(
+      client,
+      `
+        select
+          plan_key,
+          status,
+          max_viewer_users
+        from public.entity_subscription
+        where entity_id = $1
+        limit 1
+      `,
+      [access.entityId]
+    );
+    const result = await client.query(
+      `
+        select
+          sag.id,
+          sag.entity_id,
+          sag.series_source_config_id,
+          sag.user_id,
+          sag.access_role,
+          sag.status,
+          sag.granted_by_user_id,
+          sag.created_at,
+          sag.updated_at,
+          sag.expires_at,
+          (sag.expires_at is not null and sag.expires_at <= now()) as is_expired
+        from public.series_access_grant sag
+        where sag.series_source_config_id = $1
+        order by
+          case when sag.status = 'active' then 0 else 1 end,
+          sag.created_at desc,
+          sag.user_id
+      `,
+      [access.seriesSourceConfigId]
+    );
+    const requests = await loadSeriesAccessRequests(client, access.seriesSourceConfigId);
 
     const grants = result.rows.map(mapViewerGrantRow);
     const activeGrants = grants.filter((grant) => grant.status === "active" && grant.isExpired !== true);
+    const pendingRequests = requests.filter((request) => request.requestStatus === "pending");
+    const approvedRequests = requests.filter((request) => request.requestStatus === "approved");
+    const declinedRequests = requests.filter((request) => request.requestStatus === "declined");
 
     return {
       actor: {
@@ -591,8 +1443,13 @@ async function listSeriesViewerGrants(input) {
         activeViewers: activeGrants.filter((grant) => grant.accessRole === "viewer").length,
         activeAnalysts: activeGrants.filter((grant) => grant.accessRole === "analyst").length,
         revokedGrants: grants.filter((grant) => grant.status === "revoked").length,
+        totalRequests: requests.length,
+        pendingRequests: pendingRequests.length,
+        approvedRequests: approvedRequests.length,
+        declinedRequests: declinedRequests.length,
       },
       grants,
+      requests,
     };
   });
 }
@@ -600,6 +1457,7 @@ async function listSeriesViewerGrants(input) {
 async function upsertSeriesViewerGrant(input) {
   const actorUserId = normalizeUuid(input.actorUserId);
   const targetUserId = normalizeUuid(input.body?.userId);
+  const targetEmail = normalizeEmail(input.body?.email);
   const accessRole = normalizeViewerAccessRole(input.body?.accessRole) || "viewer";
   const expiresAt = parseOptionalIsoTimestamp(input.body?.expiresAt);
 
@@ -609,8 +1467,8 @@ async function upsertSeriesViewerGrant(input) {
     throw error;
   }
 
-  if (!targetUserId) {
-    const error = new Error("userId must be a valid UUID.");
+  if (!targetUserId && !targetEmail) {
+    const error = new Error("Provide either a valid userId or an email address.");
     error.statusCode = 400;
     throw error;
   }
@@ -644,58 +1502,336 @@ async function upsertSeriesViewerGrant(input) {
         throw error;
       }
 
+      if (targetUserId) {
+        await assertSubscriptionActionAllowed(client, {
+          seriesConfigKey: input.seriesConfigKey,
+          action: "viewer_grant",
+          targetUserId,
+        });
+
+        const grant = await grantSeriesViewerAccess(client, {
+          entityId: access.entityId,
+          seriesSourceConfigId: access.seriesSourceConfigId,
+          targetUserId,
+          accessRole,
+          grantedByUserId: actorUserId,
+          expiresAt,
+        });
+
+        return {
+          message: input.dryRun ? "Dry-run viewer access grant validated." : "Viewer access granted.",
+          grant,
+        };
+      }
+
+      const request = await upsertPendingSeriesAccessRequestRow(client, {
+        entityId: access.entityId,
+        seriesSourceConfigId: access.seriesSourceConfigId,
+        requestedEmail: targetEmail,
+        requestedUserId: null,
+        requestedAccessRole: accessRole,
+        requestType: "admin_invite",
+        requestNote:
+          "Pre-approved by a series admin. Access will activate automatically the first time this email signs in to Game-Changrs.",
+        requestedByUserId: actorUserId,
+        requestedExpiresAt: expiresAt,
+      });
+
+      return {
+        message: input.dryRun
+          ? "Dry-run email invite validated."
+          : "Email access invite saved. The grant will auto-activate the first time this email signs in.",
+        request,
+      };
+    },
+    { dryRun: input.dryRun === true }
+  );
+}
+
+async function createSeriesAccessRequest(input) {
+  const actorUserId = normalizeUuid(input.actorUserId);
+  const actorEmail = normalizeEmail(input.actorEmail);
+  const accessRole = normalizeViewerAccessRole(input.body?.accessRole) || "viewer";
+  const requestNote = normalizeText(input.body?.requestNote);
+
+  if (!actorUserId) {
+    const error = new Error("A valid actor user id is required to create a series access request.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!actorEmail) {
+    const error = new Error("A signed-in user email is required before requesting series access.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return withTransaction(
+    async (client) => {
+      const access = await loadSeriesAccessSnapshot(client, {
+        userId: actorUserId,
+        seriesConfigKey: input.seriesConfigKey,
+      });
+
+      if (!access.authFoundationReady) {
+        const error = new Error(
+          "Phase 10 entity auth foundation is not available in the database yet. Apply the tenant-foundation migration first."
+        );
+        error.statusCode = 503;
+        throw error;
+      }
+
+      if (!access.entityId) {
+        const error = new Error(
+          `Series ${access.seriesConfigKey} is not attached to an owning entity yet.`
+        );
+        error.statusCode = 503;
+        throw error;
+      }
+
+      if (access.canView) {
+        return {
+          message: input.dryRun
+            ? "Dry-run access request validated. Access is already active."
+            : "Access is already active for this user.",
+          accessGranted: true,
+          request: null,
+          grant: null,
+        };
+      }
+
+      const pendingInvite = await fetchOne(
+        client,
+        `
+          select *
+          from public.series_access_request
+          where series_source_config_id = $1
+            and lower(requested_email) = lower($2)
+            and request_type = 'admin_invite'
+            and request_status = 'pending'
+          order by created_at desc, id desc
+          limit 1
+        `,
+        [access.seriesSourceConfigId, actorEmail]
+      );
+
+      if (pendingInvite) {
+        await assertSubscriptionActionAllowed(client, {
+          seriesConfigKey: input.seriesConfigKey,
+          action: "viewer_grant",
+          targetUserId: actorUserId,
+        });
+
+        const grant = await grantSeriesViewerAccess(client, {
+          entityId: access.entityId,
+          seriesSourceConfigId: access.seriesSourceConfigId,
+          targetUserId: actorUserId,
+          accessRole: normalizeViewerAccessRole(pendingInvite.requested_access_role) || accessRole,
+          grantedByUserId: normalizeUuid(pendingInvite.requested_by_user_id) || null,
+          expiresAt: pendingInvite.requested_expires_at || null,
+        });
+
+        const resolvedRequest = await fetchOne(
+          client,
+          `
+            update public.series_access_request
+            set
+              requested_user_id = $2,
+              request_status = 'approved',
+              reviewed_by_user_id = coalesce(reviewed_by_user_id, requested_by_user_id),
+              admin_response_note = coalesce(
+                nullif(admin_response_note, ''),
+                'Access auto-activated when the approved email signed in.'
+              ),
+              resolved_grant_id = $3,
+              resolved_at = coalesce(resolved_at, now()),
+              updated_at = now()
+            where id = $1
+            returning *
+          `,
+          [pendingInvite.id, actorUserId, grant.grantId || null]
+        );
+
+        return {
+          message: input.dryRun
+            ? "Dry-run access request validated against an admin-approved email invite."
+            : "Access granted from the admin-approved email invite.",
+          accessGranted: true,
+          request: mapAccessRequestRow(resolvedRequest),
+          grant,
+        };
+      }
+
+      const request = await upsertPendingSeriesAccessRequestRow(client, {
+        entityId: access.entityId,
+        seriesSourceConfigId: access.seriesSourceConfigId,
+        requestedEmail: actorEmail,
+        requestedUserId: actorUserId,
+        requestedAccessRole: accessRole,
+        requestType: "self_request",
+        requestNote: requestNote || "Viewer requested access from the report route.",
+        requestedByUserId: actorUserId,
+        requestedExpiresAt: null,
+      });
+
+      return {
+        message: input.dryRun
+          ? "Dry-run access request validated."
+          : "Access request submitted for admin review.",
+        accessGranted: false,
+        request,
+        grant: null,
+      };
+    },
+    { dryRun: input.dryRun === true }
+  );
+}
+
+async function applySeriesAccessRequestDecision(input) {
+  const actorUserId = normalizeUuid(input.actorUserId);
+  const requestId = normalizeUuid(input.requestId);
+  const action = normalizeText(input.body?.action).toLowerCase();
+  const adminResponseNote = normalizeText(input.body?.responseNote);
+
+  if (!actorUserId) {
+    const error = new Error("A valid actor user id is required to review an access request.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!requestId) {
+    const error = new Error("requestId must be a valid UUID.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!["approve", "decline"].includes(action)) {
+    const error = new Error("action must be either approve or decline.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return withTransaction(
+    async (client) => {
+      const access = await loadSeriesAccessSnapshot(client, {
+        userId: actorUserId,
+        seriesConfigKey: input.seriesConfigKey,
+      });
+
+      if (!access.authFoundationReady) {
+        const error = new Error(
+          "Phase 10 entity auth foundation is not available in the database yet. Apply the tenant-foundation migration first."
+        );
+        error.statusCode = 503;
+        throw error;
+      }
+
+      if (!access.entityId) {
+        const error = new Error(
+          `Series ${access.seriesConfigKey} is not attached to an owning entity yet.`
+        );
+        error.statusCode = 503;
+        throw error;
+      }
+
+      if (!access.canManage) {
+        const error = new Error("You do not have admin access to review access requests for this series.");
+        error.statusCode = 403;
+        throw error;
+      }
+
+      const request = await fetchOne(
+        client,
+        `
+          select *
+          from public.series_access_request
+          where id = $1
+            and series_source_config_id = $2
+          limit 1
+        `,
+        [requestId, access.seriesSourceConfigId]
+      );
+
+      if (!request) {
+        const error = new Error("Series access request not found for this series.");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      if (action === "decline") {
+        const declined = await fetchOne(
+          client,
+          `
+            update public.series_access_request
+            set
+              request_status = 'declined',
+              reviewed_by_user_id = $2,
+              admin_response_note = $3,
+              resolved_at = coalesce(resolved_at, now()),
+              updated_at = now()
+            where id = $1
+            returning *
+          `,
+          [requestId, actorUserId, adminResponseNote || "Request declined by a series admin."]
+        );
+
+        return {
+          message: input.dryRun ? "Dry-run decline validated." : "Access request declined.",
+          request: mapAccessRequestRow(declined),
+          grant: null,
+        };
+      }
+
+      const targetUserId = normalizeUuid(request.requested_user_id);
+      if (!targetUserId) {
+        const error = new Error(
+          "This request is waiting for the invited email to sign in. It will auto-activate on first login or can be approved after a self-request links a user id."
+        );
+        error.statusCode = 409;
+        throw error;
+      }
+
       await assertSubscriptionActionAllowed(client, {
         seriesConfigKey: input.seriesConfigKey,
         action: "viewer_grant",
         targetUserId,
       });
 
-      const row = await fetchOne(
+      const grant = await grantSeriesViewerAccess(client, {
+        entityId: access.entityId,
+        seriesSourceConfigId: access.seriesSourceConfigId,
+        targetUserId,
+        accessRole: normalizeViewerAccessRole(request.requested_access_role) || "viewer",
+        grantedByUserId: actorUserId,
+        expiresAt: request.requested_expires_at || null,
+      });
+
+      const approved = await fetchOne(
         client,
         `
-          insert into public.series_access_grant (
-            entity_id,
-            series_source_config_id,
-            user_id,
-            access_role,
-            status,
-            granted_by_user_id,
-            expires_at
-          )
-          values ($1, $2, $3, $4, 'active', $5, $6)
-          on conflict (entity_id, series_source_config_id, user_id)
-          do update set
-            access_role = excluded.access_role,
-            status = 'active',
-            granted_by_user_id = excluded.granted_by_user_id,
-            expires_at = excluded.expires_at,
+          update public.series_access_request
+          set
+            request_status = 'approved',
+            reviewed_by_user_id = $2,
+            admin_response_note = $3,
+            resolved_grant_id = $4,
+            resolved_at = coalesce(resolved_at, now()),
             updated_at = now()
-          returning
-            id,
-            entity_id,
-            series_source_config_id,
-            user_id,
-            access_role,
-            status,
-            granted_by_user_id,
-            created_at,
-            updated_at,
-            expires_at,
-            (expires_at is not null and expires_at <= now()) as is_expired
+          where id = $1
+          returning *
         `,
         [
-          access.entityId,
-          access.seriesSourceConfigId,
-          targetUserId,
-          accessRole,
+          requestId,
           actorUserId,
-          expiresAt,
+          adminResponseNote || "Approved by a series admin.",
+          grant.grantId || null,
         ]
       );
 
       return {
-        message: input.dryRun ? "Dry-run viewer access grant validated." : "Viewer access granted.",
-        grant: mapViewerGrantRow(row),
+        message: input.dryRun ? "Dry-run approval validated." : "Access request approved.",
+        request: mapAccessRequestRow(approved),
+        grant,
       };
     },
     { dryRun: input.dryRun === true }
@@ -788,11 +1924,17 @@ async function revokeSeriesViewerGrant(input) {
 }
 
 module.exports = {
+  applySeriesAccessRequestDecision,
+  createSeriesAccessRequest,
+  disableEntityAdminMembership,
   getAdminSeriesCatalog,
+  getEntityManagementAccess,
   getEntityAccessReadiness,
   getSeriesAdminAccess,
   getViewerSeriesCatalog,
+  loadEntityManagementSnapshot,
   listSeriesViewerGrants,
   revokeSeriesViewerGrant,
+  upsertEntityAdminMembership,
   upsertSeriesViewerGrant,
 };

@@ -13,8 +13,10 @@ import {
   CricketPlayerReportMetric,
   CricketPlayerReportResponse,
   CricketPlayerReportRouteState,
+  createCricketSeriesAccessRequest,
   fetchCricketViewerSeries,
   fetchCricketPlayerReport,
+  getAnalyticsPlatformAdminRoute,
   getAnalyticsWorkspaceRoute,
   getCricketPlayerReportUrl,
 } from "@/lib/cricketApi";
@@ -63,6 +65,7 @@ function includesLabel(value: string | undefined, label: string) {
 
 type ReportSummaryStatus = "idle" | "loading" | "success" | "error";
 type ViewerStatus = "loading" | "success" | "error";
+type AccessRequestStatus = "idle" | "saving" | "success" | "error";
 
 const AnalyticsReport = () => {
   const { session, user } = useAuth();
@@ -79,7 +82,10 @@ const AnalyticsReport = () => {
   const [viewerError, setViewerError] = useState<string | null>(null);
   const [viewerSeries, setViewerSeries] = useState<Array<{ configKey?: string; seriesName?: string }>>([]);
   const [viewerUserId, setViewerUserId] = useState<string>("");
+  const [viewerIsPlatformAdmin, setViewerIsPlatformAdmin] = useState(false);
   const [viewerReloadKey, setViewerReloadKey] = useState(0);
+  const [accessRequestStatus, setAccessRequestStatus] = useState<AccessRequestStatus>("idle");
+  const [accessRequestMessage, setAccessRequestMessage] = useState<string | null>(null);
 
   const numericPlayerId = Number.parseInt(playerId ?? "", 10);
   const divisionId = getDivisionId(searchParams.get("divisionId"));
@@ -92,6 +98,7 @@ const AnalyticsReport = () => {
     () => getAnalyticsWorkspaceRoute(currentSearchQuery, effectiveSeriesKey || undefined),
     [currentSearchQuery, effectiveSeriesKey]
   );
+  const platformAdminRoute = getAnalyticsPlatformAdminRoute();
   const hasViewerAccess = viewerSeries.some((series) => series.configKey?.trim() === effectiveSeriesKey);
   const reportUrl = useMemo(() => {
     if (!Number.isFinite(numericPlayerId)) {
@@ -111,6 +118,7 @@ const AnalyticsReport = () => {
     if (!accessToken) {
       setViewerSeries([]);
       setViewerUserId("");
+      setViewerIsPlatformAdmin(false);
       setViewerStatus("error");
       setViewerError("A signed-in session is required before report access can be checked.");
       return;
@@ -121,6 +129,7 @@ const AnalyticsReport = () => {
     setViewerError(null);
     setViewerSeries([]);
     setViewerUserId("");
+    setViewerIsPlatformAdmin(false);
 
     fetchCricketViewerSeries(accessToken, controller.signal)
       .then((payload) => {
@@ -130,6 +139,7 @@ const AnalyticsReport = () => {
 
         setViewerSeries(payload.series ?? []);
         setViewerUserId(payload.actor?.userId?.trim() || "");
+        setViewerIsPlatformAdmin(payload.actor?.isPlatformAdmin === true);
         setViewerStatus("success");
       })
       .catch((error) => {
@@ -140,6 +150,7 @@ const AnalyticsReport = () => {
         const message = error instanceof Error ? error.message : "Viewer access could not be resolved right now.";
         setViewerSeries([]);
         setViewerUserId("");
+        setViewerIsPlatformAdmin(false);
         setViewerStatus("error");
         setViewerError(message);
       });
@@ -152,6 +163,11 @@ const AnalyticsReport = () => {
   useEffect(() => {
     setIsFrameLoading(true);
   }, [reportUrl]);
+
+  useEffect(() => {
+    setAccessRequestStatus("idle");
+    setAccessRequestMessage(null);
+  }, [effectiveSeriesKey, numericPlayerId]);
 
   useEffect(() => {
     if (viewerStatus !== "success" || !hasViewerAccess) {
@@ -345,6 +361,34 @@ const AnalyticsReport = () => {
     setViewerReloadKey((current) => current + 1);
   };
 
+  const handleRequestReportAccess = async () => {
+    if (!accessToken || !effectiveSeriesKey) {
+      return;
+    }
+
+    setAccessRequestStatus("saving");
+    setAccessRequestMessage(null);
+
+    try {
+      const response = await createCricketSeriesAccessRequest(
+        effectiveSeriesKey,
+        accessToken,
+        {
+          accessRole: "viewer",
+          requestNote: "Requested from the root report access wall.",
+        }
+      );
+
+      setAccessRequestStatus("success");
+      setAccessRequestMessage(response.message || "Access request submitted.");
+      setViewerReloadKey((current) => current + 1);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Access request failed unexpectedly.";
+      setAccessRequestStatus("error");
+      setAccessRequestMessage(message);
+    }
+  };
+
   if (viewerStatus === "loading") {
     return (
       <div className="min-h-screen bg-background">
@@ -419,16 +463,21 @@ const AnalyticsReport = () => {
                     <ShieldCheck className="h-7 w-7" />
                   </div>
                   <div className="space-y-2">
-                    <CardTitle className="font-display text-4xl text-foreground">You do not have access to this report</CardTitle>
+                    <CardTitle className="font-display text-4xl text-foreground">
+                      {viewerIsPlatformAdmin ? "This report route needs a valid live series context" : "You do not have access to this report"}
+                    </CardTitle>
                     <CardDescription className="max-w-2xl text-sm leading-7">
-                      This root report route is now limited to series viewers, analysts, and admins who were granted access in
-                      the cricket admin shell.
+                      {viewerIsPlatformAdmin
+                        ? "Platform admins already have global report access. This route is failing because the series context or player-to-series path could not be resolved from the current URL."
+                        : "This root report route is now limited to series viewers, analysts, and admins who were granted access in the cricket admin shell."}
                     </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
                   <div className="rounded-2xl border border-border/80 bg-background/60 p-5">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-primary">Send this user id to your admin</p>
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-primary">
+                      {viewerIsPlatformAdmin ? "Platform-admin scope" : "Send this user id to your admin"}
+                    </p>
                     <div className="mt-4 rounded-2xl border border-border/80 bg-background/70 p-4">
                       <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">User ID</p>
                       <p className="mt-2 break-all font-mono text-sm text-foreground">
@@ -439,15 +488,53 @@ const AnalyticsReport = () => {
                   <div className="rounded-2xl border border-border/80 bg-background/60 p-5">
                     <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">What to do</p>
                     <div className="mt-4 space-y-3 text-sm leading-7 text-muted-foreground">
-                      <p>1. Ask the series admin to grant you viewer or analyst access.</p>
-                      <p>2. After the grant is added, refresh this report route.</p>
-                      <p>3. The existing standalone report will load inside the Game-Changrs shell.</p>
+                      {viewerIsPlatformAdmin ? (
+                        <>
+                          <p>1. Recheck access once to reload the live series catalog.</p>
+                          <p>2. If this URL was opened without the correct series key, go back to the series workspace and reopen the report from there.</p>
+                          <p>3. Platform admins do not need approval and do not consume viewer seats.</p>
+                        </>
+                      ) : (
+                        <>
+                          <p>1. If the admin already pre-approved your email, click Recheck Access after you sign in.</p>
+                          <p>2. If not, submit a request below so the series admin can approve you.</p>
+                          <p>3. Once approved, the existing standalone report will load inside this Game-Changrs shell.</p>
+                        </>
+                      )}
                     </div>
+                    {accessRequestMessage ? (
+                      <div
+                        className={`mt-5 rounded-2xl border p-4 text-sm leading-7 ${
+                          accessRequestStatus === "error"
+                            ? "border-destructive/30 bg-destructive/5 text-destructive"
+                            : "border-cyan-400/20 bg-cyan-400/5 text-cyan-100"
+                        }`}
+                      >
+                        {accessRequestMessage}
+                      </div>
+                    ) : null}
                     <div className="mt-5 flex flex-wrap gap-3">
+                      {!viewerIsPlatformAdmin ? (
+                        <Button
+                          type="button"
+                          onClick={() => void handleRequestReportAccess()}
+                          disabled={accessRequestStatus === "saving" || !effectiveSeriesKey}
+                        >
+                          {accessRequestStatus === "saving" ? "Submitting request..." : "Request access"}
+                        </Button>
+                      ) : null}
                       <Button type="button" variant="outline" onClick={handleRetryViewerAccess}>
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Recheck Access
                       </Button>
+                      {viewerIsPlatformAdmin ? (
+                        <Button asChild variant="outline">
+                          <Link to={platformAdminRoute}>
+                            Platform Console
+                            <ShieldCheck className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      ) : null}
                       <Button asChild variant="outline">
                         <Link to={backToSearchUrl}>
                           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -506,13 +593,26 @@ const AnalyticsReport = () => {
           <div className="mx-auto max-w-7xl space-y-8">
             <div className="grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
               <div className="space-y-4">
-                <Badge className="gap-2 border border-cyan-400/20 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/10">
-                  <FileSearch className="h-3.5 w-3.5" />
-                  Selector Report Shell
-                </Badge>
+                <div className="flex flex-wrap gap-2">
+                  <Badge className="gap-2 border border-cyan-400/20 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/10">
+                    <FileSearch className="h-3.5 w-3.5" />
+                    Selector Report Shell
+                  </Badge>
+                  {viewerIsPlatformAdmin ? (
+                    <Badge variant="outline" className="border-cyan-400/20 bg-cyan-400/10 text-cyan-200">
+                      Platform Admin Access
+                    </Badge>
+                  ) : null}
+                </div>
                 <div className="space-y-3">
                   <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl">{title}</h1>
                   <p className="max-w-4xl text-lg text-muted-foreground">{quickRead}</p>
+                  {viewerIsPlatformAdmin ? (
+                    <p className="max-w-4xl text-sm leading-7 text-cyan-100/85">
+                      Platform-admin scope is global. This report is available without a series-user grant and does not
+                      count against viewer allocation.
+                    </p>
+                  ) : null}
                   {subtitleParts.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {subtitleParts.map((part) => (
@@ -523,6 +623,14 @@ const AnalyticsReport = () => {
                     </div>
                   ) : null}
                   <div className="flex flex-wrap gap-3">
+                    {viewerIsPlatformAdmin ? (
+                      <Button variant="outline" asChild>
+                        <Link to={platformAdminRoute}>
+                          Platform Console
+                          <ShieldCheck className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
+                    ) : null}
                     <Button variant="outline" asChild>
                       <Link to={backToSearchUrl}>
                         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -585,6 +693,11 @@ const AnalyticsReport = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
+                    {viewerIsPlatformAdmin ? (
+                      <Badge variant="outline" className="border-cyan-400/25 bg-cyan-400/10 text-cyan-200">
+                        Global superuser access
+                      </Badge>
+                    ) : null}
                     {currentSeriesKey ? (
                       <Badge variant="outline" className="border-sky-400/25 bg-sky-400/10 text-sky-200">
                         Series-scoped route

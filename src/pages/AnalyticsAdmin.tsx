@@ -7,8 +7,8 @@ import {
   Clock3,
   Database,
   ExternalLink,
-  Globe2,
   ListChecks,
+  Plus,
   RefreshCw,
   Save,
   Search,
@@ -39,11 +39,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import {
+  createCricketAdminSeries,
   createCricketAdminRefreshRequest,
   createCricketAdminViewerGrant,
+  CricketAdminCreateSeriesPayload,
   CricketAdminMatchOpsMatch,
   CricketAdminMatchOpsResponse,
   CricketAdminMatchSelectionOverride,
+  CricketAdminSeriesAccessRequest,
   CricketAdminSeriesItem,
   CricketAdminSeriesResponse,
   CricketAdminSetupResponse,
@@ -51,11 +54,13 @@ import {
   CricketAdminSubscriptionSummaryResponse,
   CricketAdminViewerGrant,
   CricketAdminViewerGrantsResponse,
+  decideCricketAdminAccessRequest,
   fetchCricketAdminSeries,
   fetchCricketAdminMatchOps,
   fetchCricketAdminSubscriptionSummary,
   fetchCricketAdminSetup,
   fetchCricketAdminViewerGrants,
+  getAnalyticsPlatformAdminRoute,
   revokeCricketAdminViewerGrant,
   updateCricketAdminSelectionOverride,
   updateCricketAdminSetup,
@@ -67,6 +72,7 @@ type MutationStatus = "idle" | "saving" | "success" | "error";
 type MatchOpsStatus = "idle" | "loading" | "success" | "error";
 type ViewerAccessStatus = "idle" | "loading" | "success" | "error";
 type SubscriptionStatus = "idle" | "loading" | "success" | "error";
+type SeriesEntryMode = "edit" | "create";
 
 type RefreshRequestFormState = {
   matchUrl: string;
@@ -78,10 +84,35 @@ type MatchOverrideDraft = {
   reason: string;
 };
 
-type ViewerGrantFormState = {
+type ViewerInviteFormState = {
+  email: string;
+  accessRole: "viewer" | "analyst";
+  expiresAt: string;
+};
+
+type ViewerDirectGrantFormState = {
   userId: string;
   accessRole: "viewer" | "analyst";
   expiresAt: string;
+};
+
+type SeriesCreationFormState = {
+  entityId: string;
+  sourceSetup: {
+    name: string;
+    sourceSystem: string;
+    seriesUrl: string;
+    expectedLeagueName: string;
+    expectedSeriesName: string;
+    seasonYear: string;
+    targetAgeGroup: string;
+    scrapeCompletedOnly: boolean;
+    includeBallByBall: boolean;
+    includePlayerProfiles: boolean;
+    enableAutoDiscovery: boolean;
+    isActive: boolean;
+    notes: string;
+  };
 };
 
 type SetupFormState = {
@@ -319,6 +350,27 @@ function buildSetupUpdatePayload(formState: SetupFormState): CricketAdminSetupUp
   };
 }
 
+function createSeriesCreationForm(entityId = ""): SeriesCreationFormState {
+  return {
+    entityId,
+    sourceSetup: {
+      name: "",
+      sourceSystem: "cricclubs",
+      seriesUrl: "",
+      expectedLeagueName: "",
+      expectedSeriesName: "",
+      seasonYear: String(new Date().getFullYear()),
+      targetAgeGroup: "",
+      scrapeCompletedOnly: true,
+      includeBallByBall: true,
+      includePlayerProfiles: true,
+      enableAutoDiscovery: true,
+      isActive: false,
+      notes: "",
+    },
+  };
+}
+
 const AnalyticsAdmin = () => {
   const { session, user } = useAuth();
   const { toast } = useToast();
@@ -344,6 +396,11 @@ const AnalyticsAdmin = () => {
   const [viewerAccessError, setViewerAccessError] = useState<string | null>(null);
   const [viewerAccess, setViewerAccess] = useState<CricketAdminViewerGrantsResponse | null>(null);
   const [viewerAccessReloadKey, setViewerAccessReloadKey] = useState(0);
+  const [seriesEntryMode, setSeriesEntryMode] = useState<SeriesEntryMode>("edit");
+  const [createSeriesForm, setCreateSeriesForm] = useState<SeriesCreationFormState>(createSeriesCreationForm());
+  const [createSeriesStatus, setCreateSeriesStatus] = useState<MutationStatus>("idle");
+  const [createSeriesMessage, setCreateSeriesMessage] = useState<string | null>(null);
+  const [createSeriesError, setCreateSeriesError] = useState<string | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>("idle");
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
   const [subscriptionSummary, setSubscriptionSummary] = useState<CricketAdminSubscriptionSummaryResponse | null>(null);
@@ -364,21 +421,41 @@ const AnalyticsAdmin = () => {
   >({});
   const [overrideMessageByMatch, setOverrideMessageByMatch] = useState<Record<number, string>>({});
   const [overrideErrorByMatch, setOverrideErrorByMatch] = useState<Record<number, string>>({});
-  const [viewerGrantForm, setViewerGrantForm] = useState<ViewerGrantFormState>({
+  const [viewerInviteForm, setViewerInviteForm] = useState<ViewerInviteFormState>({
+    email: "",
+    accessRole: "viewer",
+    expiresAt: "",
+  });
+  const [viewerInviteMutationStatus, setViewerInviteMutationStatus] = useState<MutationStatus>("idle");
+  const [viewerInviteMutationMessage, setViewerInviteMutationMessage] = useState<string | null>(null);
+  const [viewerInviteMutationError, setViewerInviteMutationError] = useState<string | null>(null);
+  const [viewerDirectGrantForm, setViewerDirectGrantForm] = useState<ViewerDirectGrantFormState>({
     userId: "",
     accessRole: "viewer",
     expiresAt: "",
   });
-  const [viewerGrantMutationStatus, setViewerGrantMutationStatus] = useState<MutationStatus>("idle");
-  const [viewerGrantMutationMessage, setViewerGrantMutationMessage] = useState<string | null>(null);
-  const [viewerGrantMutationError, setViewerGrantMutationError] = useState<string | null>(null);
+  const [viewerDirectGrantMutationStatus, setViewerDirectGrantMutationStatus] = useState<MutationStatus>("idle");
+  const [viewerDirectGrantMutationMessage, setViewerDirectGrantMutationMessage] = useState<string | null>(null);
+  const [viewerDirectGrantMutationError, setViewerDirectGrantMutationError] = useState<string | null>(null);
   const [viewerRevokeStatusByGrant, setViewerRevokeStatusByGrant] = useState<Record<string, MutationStatus>>({});
+  const [accessRequestDecisionStatusByRequest, setAccessRequestDecisionStatusByRequest] = useState<Record<string, MutationStatus>>({});
 
   const accessToken = session?.access_token || "";
   const selectedSeriesKey = searchParams.get("series")?.trim() || "";
   const series = catalog?.series ?? [];
+  const entities = catalog?.entities ?? [];
+  const isPlatformAdminActor = catalog?.actor?.isPlatformAdmin === true;
+  const hasSeriesAdminConsoleAccess = isPlatformAdminActor || entities.length > 0;
   const selectedSeries =
     series.find((item) => item.configKey === selectedSeriesKey) || series[0] || null;
+  const selectedEntityId = seriesEntryMode === "create"
+    ? (createSeriesForm.entityId || selectedSeries?.entityId || entities[0]?.entityId || "")
+    : (selectedSeries?.entityId || createSeriesForm.entityId || entities[0]?.entityId || "");
+  const selectedEntity =
+    entities.find((item) => item.entityId === selectedEntityId)
+    || entities.find((item) => item.entityId === selectedSeries?.entityId)
+    || entities[0]
+    || null;
   const readinessItems = getReadinessItems(catalog);
   const selectedSeriesDisplayName = selectedSeries?.seriesName || selectedSeries?.configKey || "No series selected";
   const selectedSeriesContext = [
@@ -408,15 +485,16 @@ const AnalyticsAdmin = () => {
   const manualRefreshAllowed = subscriptionReady
     ? (subscriptionSummary?.entitlements?.manualRefreshEnabled !== false || !isHardSubscriptionEnforcement)
     : false;
-  const viewerGrantAllowed = subscriptionReady
+  const viewerGrantEnabledByPlan = subscriptionReady
+    ? (subscriptionSummary?.entitlements?.viewerGrantEnabled !== false || !isHardSubscriptionEnforcement)
+    : false;
+  const viewerImmediateGrantAllowed = viewerGrantEnabledByPlan
     ? (
-        subscriptionSummary?.entitlements?.viewerGrantEnabled !== false
-        && (
-          !subscriptionSummary?.limits?.viewerLimitReached
-          || !isHardSubscriptionEnforcement
-        )
+        !subscriptionSummary?.limits?.viewerLimitReached
+        || !isHardSubscriptionEnforcement
       )
     : false;
+  const pendingViewerAccessRequests = viewerAccess?.requests?.filter((request) => request.requestStatus === "pending") ?? [];
 
   useEffect(() => {
     if (!accessToken) {
@@ -472,6 +550,32 @@ const AnalyticsAdmin = () => {
     nextParams.set("series", nextSeriesKey);
     setSearchParams(nextParams, { replace: true });
   }, [catalog?.series, searchParams, selectedSeriesKey, setSearchParams]);
+
+  useEffect(() => {
+    const fallbackEntityId = selectedSeries?.entityId || entities[0]?.entityId || "";
+    setCreateSeriesForm((current) => {
+      if (current.entityId || !fallbackEntityId) {
+        return current;
+      }
+
+      return {
+        ...current,
+        entityId: fallbackEntityId,
+      };
+    });
+  }, [entities, selectedSeries?.entityId]);
+
+  useEffect(() => {
+    if (catalogStatus !== "success" || catalog?.authFoundationReady !== true) {
+      return;
+    }
+
+    if (!series.length) {
+      setSeriesEntryMode("create");
+    } else if (seriesEntryMode !== "create") {
+      setSeriesEntryMode("edit");
+    }
+  }, [catalog?.authFoundationReady, catalogStatus, series.length, seriesEntryMode]);
 
   useEffect(() => {
     const currentSeriesKey = selectedSeries?.configKey?.trim();
@@ -676,15 +780,24 @@ const AnalyticsAdmin = () => {
   }, [matchQuery, selectedSeries?.configKey]);
 
   useEffect(() => {
-    setViewerGrantForm({
+    setViewerInviteForm({
+      email: "",
+      accessRole: "viewer",
+      expiresAt: "",
+    });
+    setViewerInviteMutationStatus("idle");
+    setViewerInviteMutationMessage(null);
+    setViewerInviteMutationError(null);
+    setViewerDirectGrantForm({
       userId: "",
       accessRole: "viewer",
       expiresAt: "",
     });
-    setViewerGrantMutationStatus("idle");
-    setViewerGrantMutationMessage(null);
-    setViewerGrantMutationError(null);
+    setViewerDirectGrantMutationStatus("idle");
+    setViewerDirectGrantMutationMessage(null);
+    setViewerDirectGrantMutationError(null);
     setViewerRevokeStatusByGrant({});
+    setAccessRequestDecisionStatusByRequest({});
   }, [selectedSeries?.configKey]);
 
   const handleSelectSeries = (configKey?: string) => {
@@ -702,6 +815,103 @@ const AnalyticsAdmin = () => {
     }
 
     setSearchParams(nextParams);
+  };
+
+  const handleCreateSeriesSourceFieldChange = (
+    field: keyof SeriesCreationFormState["sourceSetup"],
+    value: string | boolean,
+  ) => {
+    setCreateSeriesForm((current) => ({
+      ...current,
+      sourceSetup: {
+        ...current.sourceSetup,
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleResetCreateSeriesForm = () => {
+    setCreateSeriesForm(createSeriesCreationForm(selectedSeries?.entityId || entities[0]?.entityId || ""));
+    setCreateSeriesStatus("idle");
+    setCreateSeriesMessage(null);
+    setCreateSeriesError(null);
+  };
+
+  const handleCreateSeries = async (dryRun = false) => {
+    if (!accessToken) {
+      return;
+    }
+
+    if (!createSeriesForm.entityId.trim()) {
+      const message = "Choose the entity that will own this series.";
+      setCreateSeriesStatus("error");
+      setCreateSeriesError(message);
+      setCreateSeriesMessage(null);
+      toast({
+        title: "Series creation failed",
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const body: CricketAdminCreateSeriesPayload = {
+      entityId: createSeriesForm.entityId,
+      sourceSetup: {
+        name: createSeriesForm.sourceSetup.name,
+        sourceSystem: createSeriesForm.sourceSetup.sourceSystem,
+        seriesUrl: createSeriesForm.sourceSetup.seriesUrl,
+        expectedLeagueName: createSeriesForm.sourceSetup.expectedLeagueName,
+        expectedSeriesName: createSeriesForm.sourceSetup.expectedSeriesName,
+        seasonYear: parseIntegerOrNull(createSeriesForm.sourceSetup.seasonYear),
+        targetAgeGroup: createSeriesForm.sourceSetup.targetAgeGroup,
+        scrapeCompletedOnly: createSeriesForm.sourceSetup.scrapeCompletedOnly,
+        includeBallByBall: createSeriesForm.sourceSetup.includeBallByBall,
+        includePlayerProfiles: createSeriesForm.sourceSetup.includePlayerProfiles,
+        enableAutoDiscovery: createSeriesForm.sourceSetup.enableAutoDiscovery,
+        isActive: createSeriesForm.sourceSetup.isActive,
+        notes: createSeriesForm.sourceSetup.notes,
+      },
+    };
+
+    setCreateSeriesStatus("saving");
+    setCreateSeriesError(null);
+    setCreateSeriesMessage(null);
+
+    try {
+      const response = await createCricketAdminSeries(accessToken, body, { dryRun });
+      const message = response.message || (dryRun ? "Dry-run validated." : "Series created.");
+
+      setCreateSeriesStatus("success");
+      setCreateSeriesMessage(message);
+
+      toast({
+        title: dryRun ? "Series dry run complete" : "Series created",
+        description: message,
+      });
+
+      if (!dryRun && response.series?.configKey) {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.set("series", response.series.configKey);
+        setSearchParams(nextParams, { replace: true });
+        setSeriesEntryMode("edit");
+        setCatalogReloadKey((current) => current + 1);
+        setSetupReloadKey((current) => current + 1);
+        setSubscriptionReloadKey((current) => current + 1);
+        setViewerAccessReloadKey((current) => current + 1);
+        handleResetCreateSeriesForm();
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Series creation failed unexpectedly.";
+      setCreateSeriesStatus("error");
+      setCreateSeriesError(message);
+      setCreateSeriesMessage(null);
+      toast({
+        title: "Series creation failed",
+        description: message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSourceFieldChange = (
@@ -1011,48 +1221,144 @@ const AnalyticsAdmin = () => {
     }
   };
 
-  const handleViewerGrantFieldChange = (field: keyof ViewerGrantFormState, value: string) => {
-    setViewerGrantForm((current) => ({
+  const handleViewerInviteFieldChange = (field: keyof ViewerInviteFormState, value: string) => {
+    setViewerInviteForm((current) => ({
       ...current,
       [field]: value,
     }));
   };
 
-  const handleGrantViewerAccess = async () => {
+  const handleViewerDirectGrantFieldChange = (field: keyof ViewerDirectGrantFormState, value: string) => {
+    setViewerDirectGrantForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const handleGrantViewerInvite = async () => {
     if (!selectedSeries?.configKey || !accessToken) {
       return;
     }
 
-    if (!viewerGrantAllowed) {
-      const message = "New viewer grants are blocked by the current entity plan or viewer allocation limit.";
-      setViewerGrantMutationStatus("error");
-      setViewerGrantMutationError(message);
-      setViewerGrantMutationMessage(null);
+    if (!viewerGrantEnabledByPlan) {
+      const message = "New viewer access is blocked by the current entity plan.";
+      setViewerInviteMutationStatus("error");
+      setViewerInviteMutationError(message);
+      setViewerInviteMutationMessage(null);
       toast({
-        title: "Viewer access grant blocked",
+        title: "Email pre-approval blocked",
         description: message,
         variant: "destructive",
       });
       return;
     }
 
-    const userId = viewerGrantForm.userId.trim();
+    const email = viewerInviteForm.email.trim();
+    if (!email) {
+      const message = "Enter the email address that should be pre-approved for this series.";
+      setViewerInviteMutationStatus("error");
+      setViewerInviteMutationError(message);
+      setViewerInviteMutationMessage(null);
+      toast({
+        title: "Email pre-approval failed",
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setViewerInviteMutationStatus("saving");
+    setViewerInviteMutationError(null);
+    setViewerInviteMutationMessage(null);
+
+    try {
+      const response = await createCricketAdminViewerGrant(
+        selectedSeries.configKey,
+        accessToken,
+        {
+          email,
+          accessRole: viewerInviteForm.accessRole,
+          expiresAt: viewerInviteForm.expiresAt.trim() || undefined,
+        }
+      );
+
+      const message = response.message || "Email pre-approval saved.";
+      setViewerInviteMutationStatus("success");
+      setViewerInviteMutationMessage(message);
+      setViewerInviteForm({
+        email: "",
+        accessRole: "viewer",
+        expiresAt: "",
+      });
+      setViewerAccessReloadKey((current) => current + 1);
+      setSubscriptionReloadKey((current) => current + 1);
+
+      toast({
+        title: "Email pre-approval saved",
+        description: message,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Email pre-approval failed unexpectedly.";
+      setViewerInviteMutationStatus("error");
+      setViewerInviteMutationError(message);
+
+      toast({
+        title: "Email pre-approval failed",
+        description: message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGrantViewerDirectAccess = async () => {
+    if (!selectedSeries?.configKey || !accessToken) {
+      return;
+    }
+
+    if (!viewerGrantEnabledByPlan) {
+      const message = "New viewer access is blocked by the current entity plan.";
+      setViewerDirectGrantMutationStatus("error");
+      setViewerDirectGrantMutationError(message);
+      setViewerDirectGrantMutationMessage(null);
+      toast({
+        title: "Direct viewer grant blocked",
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const userId = viewerDirectGrantForm.userId.trim();
     if (!userId) {
-      const message = "A viewer user id is required.";
-      setViewerGrantMutationStatus("error");
-      setViewerGrantMutationError(message);
-      setViewerGrantMutationMessage(null);
+      const message = "Enter the Game-Changrs user id for the person who should get immediate access.";
+      setViewerDirectGrantMutationStatus("error");
+      setViewerDirectGrantMutationError(message);
+      setViewerDirectGrantMutationMessage(null);
       toast({
-        title: "Viewer access grant failed",
+        title: "Direct viewer grant failed",
         description: message,
         variant: "destructive",
       });
       return;
     }
 
-    setViewerGrantMutationStatus("saving");
-    setViewerGrantMutationError(null);
-    setViewerGrantMutationMessage(null);
+    if (!viewerImmediateGrantAllowed) {
+      const message =
+        "Direct user-id grants are at the current viewer limit. Use email pre-approval instead, or free an existing viewer seat.";
+      setViewerDirectGrantMutationStatus("error");
+      setViewerDirectGrantMutationError(message);
+      setViewerDirectGrantMutationMessage(null);
+      toast({
+        title: "Direct viewer grant blocked",
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setViewerDirectGrantMutationStatus("saving");
+    setViewerDirectGrantMutationError(null);
+    setViewerDirectGrantMutationMessage(null);
 
     try {
       const response = await createCricketAdminViewerGrant(
@@ -1060,32 +1366,81 @@ const AnalyticsAdmin = () => {
         accessToken,
         {
           userId,
-          accessRole: viewerGrantForm.accessRole,
-          expiresAt: viewerGrantForm.expiresAt.trim() || undefined,
+          accessRole: viewerDirectGrantForm.accessRole,
+          expiresAt: viewerDirectGrantForm.expiresAt.trim() || undefined,
         }
       );
 
       const message = response.message || "Viewer access granted.";
-      setViewerGrantMutationStatus("success");
-      setViewerGrantMutationMessage(message);
-      setViewerGrantForm({
+      setViewerDirectGrantMutationStatus("success");
+      setViewerDirectGrantMutationMessage(message);
+      setViewerDirectGrantForm({
         userId: "",
         accessRole: "viewer",
         expiresAt: "",
       });
       setViewerAccessReloadKey((current) => current + 1);
+      setSubscriptionReloadKey((current) => current + 1);
 
       toast({
         title: "Viewer access granted",
         description: message,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Viewer access grant failed unexpectedly.";
-      setViewerGrantMutationStatus("error");
-      setViewerGrantMutationError(message);
+      const message = error instanceof Error ? error.message : "Direct viewer grant failed unexpectedly.";
+      setViewerDirectGrantMutationStatus("error");
+      setViewerDirectGrantMutationError(message);
 
       toast({
-        title: "Viewer access grant failed",
+        title: "Direct viewer grant failed",
+        description: message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAccessRequestDecision = async (
+    request: CricketAdminSeriesAccessRequest,
+    action: "approve" | "decline",
+  ) => {
+    const requestId = request.requestId?.trim();
+    if (!selectedSeries?.configKey || !accessToken || !requestId) {
+      return;
+    }
+
+    setAccessRequestDecisionStatusByRequest((current) => ({
+      ...current,
+      [requestId]: "saving",
+    }));
+
+    try {
+      const response = await decideCricketAdminAccessRequest(
+        selectedSeries.configKey,
+        requestId,
+        accessToken,
+        { action }
+      );
+
+      setAccessRequestDecisionStatusByRequest((current) => ({
+        ...current,
+        [requestId]: "success",
+      }));
+      setViewerAccessReloadKey((current) => current + 1);
+      setSubscriptionReloadKey((current) => current + 1);
+
+      toast({
+        title: action === "approve" ? "Access request approved" : "Access request declined",
+        description: response.message || "Access request updated.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Access request update failed unexpectedly.";
+      setAccessRequestDecisionStatusByRequest((current) => ({
+        ...current,
+        [requestId]: "error",
+      }));
+
+      toast({
+        title: "Access request update failed",
         description: message,
         variant: "destructive",
       });
@@ -1155,13 +1510,13 @@ const AnalyticsAdmin = () => {
                     variant="outline"
                     className="border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-cyan-200"
                   >
-                    Admin Shell
+                    Series Admin Console
                   </Badge>
                   <Badge
                     variant="outline"
                     className="border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-emerald-300"
                   >
-                    Setup + Access Controls
+                    Required + Optional Controls
                   </Badge>
                 </div>
                 <div className="space-y-2">
@@ -1169,18 +1524,28 @@ const AnalyticsAdmin = () => {
                     Series administration
                   </h1>
                   <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-                    Configure a series, understand what the current plan allows, manage match operations, and control
-                    who can see reports.
+                    Run one series in order: required setup first, series users next, then optional tuning and match
+                    operations.
                   </p>
                 </div>
               </div>
 
-              <Button asChild variant="outline" className="w-full md:w-auto">
-                <Link to="/analytics">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Analytics
-                </Link>
-              </Button>
+              <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
+                {isPlatformAdminActor ? (
+                  <Button asChild variant="outline" className="w-full md:w-auto">
+                    <Link to={getAnalyticsPlatformAdminRoute()}>
+                      <ShieldCheck className="mr-2 h-4 w-4" />
+                      Platform Console
+                    </Link>
+                  </Button>
+                ) : null}
+                <Button asChild variant="outline" className="w-full md:w-auto">
+                  <Link to="/analytics">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Analytics
+                  </Link>
+                </Button>
+              </div>
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[1.12fr_0.88fr]" id="access-overview">
@@ -1203,7 +1568,7 @@ const AnalyticsAdmin = () => {
                     </div>
 
                     <Badge className={getAccessTone(catalog?.actor?.accessLabel)}>
-                      {catalog?.actor?.isPlatformAdmin ? "Platform admin" : "Entity-scoped admin"}
+                      {catalog?.actor?.isPlatformAdmin ? "Platform admin in series console" : "Series admin"}
                     </Badge>
                   </div>
 
@@ -1245,38 +1610,29 @@ const AnalyticsAdmin = () => {
                       <ShieldCheck className="h-6 w-6" />
                     </div>
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">How to use this page</p>
-                      <p className="font-display text-2xl text-foreground">Read it top to bottom</p>
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">Operating order</p>
+                      <p className="font-display text-2xl text-foreground">Required first. Optional after.</p>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="grid gap-3">
                     {[
                       {
-                        title: "Access overview",
-                        body: "Who is signed in, what role they hold, and which series they can manage.",
+                        title: "Confirm scope",
+                        body: "Check the signed-in role, selected series, and plan status.",
                       },
                       {
-                        title: "Plan + enforcement",
-                        body: "What the owning entity plan currently permits. Hard enforcement means blocked actions, not warnings.",
+                        title: "Finish required setup",
+                        body: "Source URL, series identity, and capture flags come first.",
                       },
                       {
-                        title: "Series setup",
-                        body: "Source URL, scraping options, report profile, and division mappings for the selected series.",
+                        title: "Move downward",
+                        body: "Series users next. Optional tuning and match ops stay below.",
                       },
-                      {
-                        title: "Operations + sharing",
-                        body: "Manual refresh requests, match overrides, and viewer / analyst access grants.",
-                      },
-                    ].map((item, index) => (
-                      <div key={item.title} className="flex gap-3 rounded-2xl border border-border/70 bg-background/55 p-4">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-cyan-400/20 bg-cyan-400/10 text-sm font-semibold text-cyan-200">
-                          {index + 1}
-                        </div>
-                        <div className="space-y-1">
-                          <p className="font-medium text-foreground">{item.title}</p>
-                          <p className="text-sm leading-6 text-muted-foreground">{item.body}</p>
-                        </div>
+                    ].map((item) => (
+                      <div key={item.title} className="rounded-2xl border border-border/70 bg-background/55 p-4">
+                        <p className="font-medium text-foreground">{item.title}</p>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.body}</p>
                       </div>
                     ))}
                   </div>
@@ -1288,9 +1644,11 @@ const AnalyticsAdmin = () => {
               {[
                 { href: "#access-overview", label: "Overview" },
                 { href: "#plan-controls", label: "Plan + gates" },
-                { href: "#series-setup", label: "Series setup" },
-                { href: "#match-ops", label: "Match operations" },
-                { href: "#viewer-access", label: "Viewer access" },
+                { href: "#series-entry", label: "Mandatory setup" },
+                { href: "#series-switcher", label: "Series switcher" },
+                { href: "#series-users", label: "Series users" },
+                { href: "#series-setup", label: "Optional tuning" },
+                { href: "#match-ops", label: "Optional match ops" },
               ].map((item) => (
                 <a
                   key={item.href}
@@ -1396,6 +1754,10 @@ const AnalyticsAdmin = () => {
                           <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">What this controls</p>
                           <p className="mt-3 text-sm leading-6 text-muted-foreground">
                             Viewer grants, manual refresh requests, and future paid-series controls all read from this plan.
+                          </p>
+                          <p className="mt-3 text-sm leading-6 text-cyan-100/85">
+                            Platform-admin access sits above this allocation model. Platform admins can enter any series
+                            console or report route without consuming viewer seats.
                           </p>
                         </div>
                       </div>
@@ -1591,25 +1953,594 @@ const AnalyticsAdmin = () => {
               </Card>
             ) : null}
 
-            {catalogStatus === "success" && catalog?.authFoundationReady === true && !series.length ? (
+            {catalogStatus === "success" && catalog?.authFoundationReady === true && hasSeriesAdminConsoleAccess && !series.length ? (
               <Card className="border-border/80 bg-card/85 shadow-xl">
                 <CardHeader>
-                  <CardTitle>No manageable series found</CardTitle>
+                  <CardTitle>No series exist for this entity yet</CardTitle>
                   <CardDescription>
-                    This account is authenticated, but it does not currently map to any entity-owned cricket series.
+                    Start with the mandatory setup card below. Once the first series is created, the series-user and
+                    optional-control sections will attach to it automatically.
                   </CardDescription>
                 </CardHeader>
               </Card>
             ) : null}
 
-            {catalogStatus === "success" && catalog?.authFoundationReady === true && series.length ? (
-              <div className="space-y-4">
-                <div className="grid gap-4 lg:grid-cols-[0.96fr_1.04fr]" id="series-setup">
-                  <Card className="border-border/80 bg-card/85 shadow-xl">
+            {catalogStatus === "success" && catalog?.authFoundationReady === true && !hasSeriesAdminConsoleAccess ? (
+              <Card className="border-amber-500/30 bg-amber-500/8 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-amber-200">
+                    <ShieldCheck className="h-5 w-5" />
+                    Series admin access required
+                  </CardTitle>
+                  <CardDescription className="text-amber-100/80">
+                    This route is reserved for platform admins and series admins. Series users do not receive an admin
+                    console and should use the analytics workspace instead.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button asChild variant="outline">
+                    <Link to="/analytics">
+                      Back to Analytics
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {catalogStatus === "success" && catalog?.authFoundationReady === true && hasSeriesAdminConsoleAccess && entities.length ? (
+              <div className="flex flex-col gap-4">
+                <Card className="order-1 border-border/80 bg-card/85 shadow-xl" id="series-entry">
+                  <CardContent className="space-y-6 p-6">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-cyan-200" />
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                            Mandatory setup
+                          </p>
+                        </div>
+                        <div>
+                          <h2 className="font-display text-2xl text-foreground">Create or update the required series setup</h2>
+                          <p className="text-sm leading-7 text-muted-foreground">
+                            Start here. Enter the source URL, series identity, coverage flags, and activation fields
+                            needed for extract, ball-by-ball capture, and report generation. Series-user access comes
+                            next. Optional tuning stays lower on the page.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant={seriesEntryMode === "create" ? "default" : "outline"}
+                          onClick={() => setSeriesEntryMode("create")}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          New series
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={seriesEntryMode === "edit" ? "default" : "outline"}
+                          onClick={() => setSeriesEntryMode("edit")}
+                          disabled={!selectedSeries}
+                        >
+                          <Save className="mr-2 h-4 w-4" />
+                          Update selected
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                        {seriesEntryMode === "create" ? (
+                          <>
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="space-y-2">
+                                <Label>Owning entity</Label>
+                                <Select
+                                  value={createSeriesForm.entityId || "__none__"}
+                                  onValueChange={(value) =>
+                                    setCreateSeriesForm((current) => ({
+                                      ...current,
+                                      entityId: value === "__none__" ? "" : value,
+                                    }))
+                                  }
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select the entity that owns this series" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="__none__">Select entity</SelectItem>
+                                    {entities.map((entity) => (
+                                      <SelectItem key={entity.entityId || entity.entityName} value={entity.entityId || ""}>
+                                        {entity.entityName || entity.entitySlug || entity.entityId}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <p className="text-xs leading-6 text-muted-foreground">
+                                  This decides which admin team owns the series and which plan limits apply.
+                                </p>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="create-series-name">Series display name</Label>
+                                <Input
+                                  id="create-series-name"
+                                  value={createSeriesForm.sourceSetup.name}
+                                  onChange={(event) =>
+                                    handleCreateSeriesSourceFieldChange("name", event.target.value)
+                                  }
+                                  placeholder="2026 Bay Area USAC Hub"
+                                />
+                                <p className="text-xs leading-6 text-muted-foreground">
+                                  Coach-facing series label used in dashboards, reports, and admin lists.
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="create-series-url">Primary source URL</Label>
+                              <Input
+                                id="create-series-url"
+                                value={createSeriesForm.sourceSetup.seriesUrl}
+                                onChange={(event) =>
+                                  handleCreateSeriesSourceFieldChange("seriesUrl", event.target.value)
+                                }
+                                placeholder="https://cricclubs.com/USACricketJunior/viewLeague.do?league=434&clubId=40319"
+                              />
+                              <p className="text-xs leading-6 text-muted-foreground">
+                                Paste the CricClubs league page. This is the anchor used to discover results, scorecards,
+                                and ball-by-ball coverage.
+                              </p>
+                            </div>
+
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="space-y-2">
+                                <Label htmlFor="create-expected-league-name">League namespace</Label>
+                                <Input
+                                  id="create-expected-league-name"
+                                  value={createSeriesForm.sourceSetup.expectedLeagueName}
+                                  onChange={(event) =>
+                                    handleCreateSeriesSourceFieldChange("expectedLeagueName", event.target.value)
+                                  }
+                                  placeholder="USACricketJunior"
+                                />
+                                <p className="text-xs leading-6 text-muted-foreground">
+                                  Usually the path segment in the CricClubs URL. It helps validate match and results links.
+                                </p>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="create-expected-series-name">Expected source series name</Label>
+                                <Input
+                                  id="create-expected-series-name"
+                                  value={createSeriesForm.sourceSetup.expectedSeriesName}
+                                  onChange={(event) =>
+                                    handleCreateSeriesSourceFieldChange("expectedSeriesName", event.target.value)
+                                  }
+                                  placeholder="Bay Area USAC Hub"
+                                />
+                                <p className="text-xs leading-6 text-muted-foreground">
+                                  Use the source-site label you expect the extractor to find. It helps with sanity checks.
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="space-y-2">
+                                <Label htmlFor="create-season-year">Season year</Label>
+                                <Input
+                                  id="create-season-year"
+                                  inputMode="numeric"
+                                  value={createSeriesForm.sourceSetup.seasonYear}
+                                  onChange={(event) =>
+                                    handleCreateSeriesSourceFieldChange("seasonYear", event.target.value)
+                                  }
+                                />
+                                <p className="text-xs leading-6 text-muted-foreground">
+                                  Used for naming, report context, and grouping the right season data together.
+                                </p>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="create-target-age-group">Target age group</Label>
+                                <Input
+                                  id="create-target-age-group"
+                                  value={createSeriesForm.sourceSetup.targetAgeGroup}
+                                  onChange={(event) =>
+                                    handleCreateSeriesSourceFieldChange("targetAgeGroup", event.target.value)
+                                  }
+                                  placeholder="U15"
+                                />
+                                <p className="text-xs leading-6 text-muted-foreground">
+                                  Keeps age groups separated and is shown directly in reports and workspace labels.
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="grid gap-3 md:grid-cols-2">
+                              {[
+                                {
+                                  key: "scrapeCompletedOnly" as const,
+                                  label: "Completed matches only",
+                                  body: "Use this when the extract should ignore fixtures that are still live or incomplete.",
+                                },
+                                {
+                                  key: "includeBallByBall" as const,
+                                  label: "Include ball-by-ball",
+                                  body: "Turn this on when commentary and over-by-over events should be stored and scored.",
+                                },
+                                {
+                                  key: "includePlayerProfiles" as const,
+                                  label: "Include player profiles",
+                                  body: "Adds public player-profile metadata when that source exposes it.",
+                                },
+                                {
+                                  key: "enableAutoDiscovery" as const,
+                                  label: "Auto-discover linked pages",
+                                  body: "Lets the extractor discover division pages, results pages, and related links from the source URL.",
+                                },
+                                {
+                                  key: "isActive" as const,
+                                  label: "Mark series active now",
+                                  body: "Active series appear immediately in the managed analytics flow. Leave this off until the source is ready.",
+                                },
+                              ].map((item) => (
+                                <div key={item.key} className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="space-y-1">
+                                      <p className="font-medium text-foreground">{item.label}</p>
+                                      <p className="text-xs leading-6 text-muted-foreground">{item.body}</p>
+                                    </div>
+                                    <Switch
+                                      checked={createSeriesForm.sourceSetup[item.key]}
+                                      onCheckedChange={(checked) =>
+                                        handleCreateSeriesSourceFieldChange(item.key, checked)
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="create-series-notes">Operator notes</Label>
+                              <Textarea
+                                id="create-series-notes"
+                                className="min-h-[104px]"
+                                value={createSeriesForm.sourceSetup.notes}
+                                onChange={(event) =>
+                                  handleCreateSeriesSourceFieldChange("notes", event.target.value)
+                                }
+                                placeholder="Internal notes for the admin team"
+                              />
+                              <p className="text-xs leading-6 text-muted-foreground">
+                                Optional internal notes only. These do not show up in player-facing or viewer-facing reports.
+                              </p>
+                            </div>
+
+                            {createSeriesMessage ? (
+                              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-7 text-emerald-200">
+                                {createSeriesMessage}
+                              </div>
+                            ) : null}
+
+                            {createSeriesError ? (
+                              <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm leading-7 text-destructive">
+                                {createSeriesError}
+                              </div>
+                            ) : null}
+
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => void handleCreateSeries(true)}
+                                disabled={createSeriesStatus === "saving"}
+                              >
+                                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                                Dry run
+                              </Button>
+                              <Button
+                                type="button"
+                                onClick={() => void handleCreateSeries(false)}
+                                disabled={createSeriesStatus === "saving"}
+                              >
+                                {createSeriesStatus === "saving" ? "Creating..." : "Create series"}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleResetCreateSeriesForm}
+                                disabled={createSeriesStatus === "saving"}
+                              >
+                                Reset
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="space-y-1">
+                              <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                                Update selected series
+                              </p>
+                              <p className="text-sm leading-7 text-muted-foreground">
+                                Use this first-pass editor for the mandatory identity and source fields. Deeper mapping,
+                                report-profile, and tuning controls remain below.
+                              </p>
+                            </div>
+
+                            {setupStatus === "success" && formState ? (
+                              <>
+                                <div className="grid gap-3 md:grid-cols-2">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="entry-series-name">Series display name</Label>
+                                    <Input
+                                      id="entry-series-name"
+                                      value={formState.sourceSetup.name}
+                                      onChange={(event) => handleSourceFieldChange("name", event.target.value)}
+                                    />
+                                    <p className="text-xs leading-6 text-muted-foreground">
+                                      Coach-facing label for this series and the default report heading.
+                                    </p>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label htmlFor="entry-target-age-group">Target age group</Label>
+                                    <Input
+                                      id="entry-target-age-group"
+                                      value={formState.sourceSetup.targetAgeGroup}
+                                      onChange={(event) => handleSourceFieldChange("targetAgeGroup", event.target.value)}
+                                    />
+                                    <p className="text-xs leading-6 text-muted-foreground">
+                                      Keeps the workspace aligned to the right age bracket and report label.
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="entry-series-url">Primary source URL</Label>
+                                  <Input
+                                    id="entry-series-url"
+                                    value={formState.sourceSetup.seriesUrl}
+                                    onChange={(event) => handleSourceFieldChange("seriesUrl", event.target.value)}
+                                  />
+                                  <p className="text-xs leading-6 text-muted-foreground">
+                                    Main source URL used to discover results, scorecards, and linked CricClubs pages.
+                                  </p>
+                                </div>
+
+                                <div className="grid gap-3 md:grid-cols-2">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="entry-league-name">League namespace</Label>
+                                    <Input
+                                      id="entry-league-name"
+                                      value={formState.sourceSetup.expectedLeagueName}
+                                      onChange={(event) =>
+                                        handleSourceFieldChange("expectedLeagueName", event.target.value)
+                                      }
+                                    />
+                                    <p className="text-xs leading-6 text-muted-foreground">
+                                      Validates that the extracted match links stay inside the expected CricClubs namespace.
+                                    </p>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label htmlFor="entry-expected-series-name">Expected source series name</Label>
+                                    <Input
+                                      id="entry-expected-series-name"
+                                      value={formState.sourceSetup.expectedSeriesName}
+                                      onChange={(event) =>
+                                        handleSourceFieldChange("expectedSeriesName", event.target.value)
+                                      }
+                                    />
+                                    <p className="text-xs leading-6 text-muted-foreground">
+                                      Source-side name you expect the extractor and validators to match.
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="grid gap-3 md:grid-cols-2">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="entry-season-year">Season year</Label>
+                                    <Input
+                                      id="entry-season-year"
+                                      inputMode="numeric"
+                                      value={formState.sourceSetup.seasonYear}
+                                      onChange={(event) => handleSourceFieldChange("seasonYear", event.target.value)}
+                                    />
+                                    <p className="text-xs leading-6 text-muted-foreground">
+                                      Groups the series into the correct season and controls naming consistency.
+                                    </p>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label htmlFor="entry-notes">Operator notes</Label>
+                                    <Input
+                                      id="entry-notes"
+                                      value={formState.sourceSetup.notes}
+                                      onChange={(event) => handleSourceFieldChange("notes", event.target.value)}
+                                    />
+                                    <p className="text-xs leading-6 text-muted-foreground">
+                                      Internal admin note only. Use this for reminders or source-specific caveats.
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="grid gap-3 md:grid-cols-2">
+                                  {[
+                                    {
+                                      key: "scrapeCompletedOnly" as const,
+                                      label: "Completed matches only",
+                                      body: "Ignore incomplete fixtures until they are final.",
+                                    },
+                                    {
+                                      key: "includeBallByBall" as const,
+                                      label: "Include ball-by-ball",
+                                      body: "Store commentary and delivery-level events for advanced analytics.",
+                                    },
+                                    {
+                                      key: "includePlayerProfiles" as const,
+                                      label: "Include player profiles",
+                                      body: "Collect available public player-profile metadata from the source.",
+                                    },
+                                    {
+                                      key: "enableAutoDiscovery" as const,
+                                      label: "Auto-discover linked pages",
+                                      body: "Follow the main source page to find results, standings, and divisions.",
+                                    },
+                                    {
+                                      key: "isActive" as const,
+                                      label: "Active in live analytics",
+                                      body: "Controls whether this series is live in the active analytics surface.",
+                                    },
+                                  ].map((item) => (
+                                    <div key={item.key} className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="space-y-1">
+                                          <p className="font-medium text-foreground">{item.label}</p>
+                                          <p className="text-xs leading-6 text-muted-foreground">{item.body}</p>
+                                        </div>
+                                        <Switch
+                                          checked={formState.sourceSetup[item.key]}
+                                          onCheckedChange={(checked) => handleSourceFieldChange(item.key, checked)}
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => void handleSave(true)}
+                                    disabled={!isDirty || mutationStatus === "saving"}
+                                  >
+                                    <SlidersHorizontal className="mr-2 h-4 w-4" />
+                                    Dry run
+                                  </Button>
+                                  <Button
+                                    onClick={() => void handleSave(false)}
+                                    disabled={!isDirty || mutationStatus === "saving"}
+                                  >
+                                    <Save className="mr-2 h-4 w-4" />
+                                    Save setup
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleResetChanges}
+                                    disabled={!isDirty || mutationStatus === "saving"}
+                                  >
+                                    Reset changes
+                                  </Button>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="rounded-2xl border border-border/70 bg-background/60 p-5 text-sm leading-7 text-muted-foreground">
+                                Select a series to edit its mandatory setup fields.
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="rounded-2xl border border-border/80 bg-background/55 p-5">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Package guardrails</p>
+                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+                              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Series allocation</p>
+                              <p className="mt-2 text-2xl font-semibold text-foreground">
+                                {formatNumber(subscriptionSummary?.usage?.seriesCount ?? selectedEntity?.seriesCount ?? 0)}
+                                {subscriptionSummary?.limits?.maxSeries !== null && subscriptionSummary?.limits?.maxSeries !== undefined
+                                  ? ` / ${formatNumber(subscriptionSummary.limits.maxSeries)}`
+                                  : ""}
+                              </p>
+                              <p className="mt-1 text-xs leading-6 text-muted-foreground">
+                                The base package is set to five managed series before premium expansion kicks in.
+                              </p>
+                            </div>
+
+                            <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+                              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Owning entity</p>
+                              <p className="mt-2 text-base font-semibold text-foreground">
+                                {selectedEntity?.entityName || "No entity selected"}
+                              </p>
+                              <p className="mt-1 text-xs leading-6 text-muted-foreground">
+                                Viewer access, billing limits, and future paid controls all scope to this entity.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-border/80 bg-background/55 p-5">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Required now</p>
+                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            {[
+                              {
+                                title: "Series identity",
+                                body: "Name, season, and age group used in reports and selector views.",
+                              },
+                              {
+                                title: "Source capture",
+                                body: "Primary league URL plus the expected CricClubs namespace and source series label.",
+                              },
+                              {
+                                title: "Coverage switches",
+                                body: "Completed-only ingest, ball-by-ball, player profiles, and auto-discovery.",
+                              },
+                              {
+                                title: "Activation",
+                                body: "Whether the series should appear immediately in live analytics.",
+                              },
+                            ].map((item) => (
+                              <div key={item.title} className="rounded-xl border border-border/70 bg-background/60 p-4">
+                                <p className="font-medium text-foreground">{item.title}</p>
+                                <p className="mt-2 text-xs leading-6 text-muted-foreground">{item.body}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-5">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">After required setup</p>
+                          <div className="mt-4 grid gap-3">
+                            {[
+                              {
+                                title: "Series users",
+                                body: "Grant access by email or user id, then approve pending view requests for this series.",
+                              },
+                              {
+                                title: "Optional tuning",
+                                body: "Choose the report profile and tune division mappings after the source setup is stable.",
+                              },
+                              {
+                                title: "Optional operations",
+                                body: "Request a manual refresh or override a specific match only when the automated flow needs help.",
+                              },
+                            ].map((item) => (
+                              <div key={item.title} className="rounded-xl border border-cyan-400/15 bg-background/55 p-4">
+                                <p className="font-medium text-foreground">{item.title}</p>
+                                <p className="mt-2 text-xs leading-6 text-muted-foreground">{item.body}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {series.length ? (
+                  <>
+                <Card className="order-2 border-border/80 bg-card/85 shadow-xl" id="series-switcher">
                   <CardHeader>
-                    <CardTitle className="font-display text-2xl text-foreground">Managed series</CardTitle>
+                    <CardTitle className="font-display text-2xl text-foreground">Series switcher</CardTitle>
                     <CardDescription>
-                      Pick the series you want to configure. The setup, operations, and sharing panels all follow this selection.
+                      Pick the series you want to work on. The setup, access, and optional control panels all follow
+                      this selection.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -1670,13 +2601,15 @@ const AnalyticsAdmin = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="border-border/80 bg-card/85 shadow-xl">
+                <Card className="order-4 border-border/80 bg-card/85 shadow-xl" id="series-setup">
                   <CardHeader>
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                       <div className="space-y-2">
-                        <CardTitle className="font-display text-2xl text-foreground">Series setup</CardTitle>
+                        <CardTitle className="font-display text-2xl text-foreground">Optional tuning and detail controls</CardTitle>
                         <CardDescription>
-                          Edit source settings, report profile, and division mapping for the selected series.
+                          Use this only after the required setup above is stable. This section is for report profile
+                          selection, division mapping, and validation references. The source URL and capture switches
+                          stay in the mandatory setup block above.
                         </CardDescription>
                       </div>
 
@@ -1795,112 +2728,13 @@ const AnalyticsAdmin = () => {
 
                     {setupStatus === "success" && formState ? (
                       <>
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <div className="space-y-3 rounded-2xl border border-border/80 bg-background/55 p-4">
-                            <div className="flex items-center gap-2">
-                              <Globe2 className="h-4 w-4 text-cyan-200" />
-                              <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                                Source setup
-                              </p>
-                            </div>
-
-                            <div className="grid gap-3">
-                              <div className="space-y-2">
-                                <Label htmlFor="series-name">Series display name</Label>
-                                <Input
-                                  id="series-name"
-                                  value={formState.sourceSetup.name}
-                                  onChange={(event) =>
-                                    handleSourceFieldChange("name", event.target.value)
-                                  }
-                                />
-                              </div>
-
-                              <div className="grid gap-3 md:grid-cols-2">
-                                <div className="space-y-2">
-                                  <Label htmlFor="target-age-group">Target age group</Label>
-                                  <Input
-                                    id="target-age-group"
-                                    value={formState.sourceSetup.targetAgeGroup}
-                                    onChange={(event) =>
-                                      handleSourceFieldChange("targetAgeGroup", event.target.value)
-                                    }
-                                  />
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label htmlFor="season-year">Season year</Label>
-                                  <Input
-                                    id="season-year"
-                                    inputMode="numeric"
-                                    value={formState.sourceSetup.seasonYear}
-                                    onChange={(event) =>
-                                      handleSourceFieldChange("seasonYear", event.target.value)
-                                    }
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label htmlFor="series-url">Series source URL</Label>
-                                <Input
-                                  id="series-url"
-                                  value={formState.sourceSetup.seriesUrl}
-                                  onChange={(event) =>
-                                    handleSourceFieldChange("seriesUrl", event.target.value)
-                                  }
-                                />
-                              </div>
-
-                              <div className="grid gap-3 md:grid-cols-2">
-                                <div className="space-y-2">
-                                  <Label htmlFor="expected-league-name">Expected league name</Label>
-                                  <Input
-                                    id="expected-league-name"
-                                    value={formState.sourceSetup.expectedLeagueName}
-                                    onChange={(event) =>
-                                      handleSourceFieldChange("expectedLeagueName", event.target.value)
-                                    }
-                                  />
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label htmlFor="expected-series-name">Expected series name</Label>
-                                  <Input
-                                    id="expected-series-name"
-                                    value={formState.sourceSetup.expectedSeriesName}
-                                    onChange={(event) =>
-                                      handleSourceFieldChange("expectedSeriesName", event.target.value)
-                                    }
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label htmlFor="series-notes">Series notes</Label>
-                                <Textarea
-                                  id="series-notes"
-                                  className="min-h-[112px]"
-                                  value={formState.sourceSetup.notes}
-                                  onChange={(event) =>
-                                    handleSourceFieldChange("notes", event.target.value)
-                                  }
-                                />
-                              </div>
-                            </div>
-                          </div>
-
+                        <div className="grid gap-4 xl:grid-cols-[0.42fr_0.58fr]">
                           <div className="space-y-3 rounded-2xl border border-border/80 bg-background/55 p-4">
                             <div className="flex items-center gap-2">
                               <SlidersHorizontal className="h-4 w-4 text-cyan-200" />
                               <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                                Flags + profile
+                                Optional controls
                               </p>
-                            </div>
-
-                            <div className="rounded-xl border border-border/70 bg-background/60 p-3 text-sm leading-6 text-muted-foreground">
-                              <span className="font-semibold text-foreground">Source system:</span>{" "}
-                              {formState.sourceSetup.sourceSystem || selectedSeries?.sourceSystem || "-"}
                             </div>
 
                             <div className="grid gap-3">
@@ -1934,6 +2768,9 @@ const AnalyticsAdmin = () => {
                                     ))}
                                   </SelectContent>
                                 </Select>
+                                <p className="text-xs leading-6 text-muted-foreground">
+                                  Changes the player-report presentation profile without changing the extracted match data.
+                                </p>
                                 {setup?.reportProfile?.options?.length ? (
                                   <p className="text-xs leading-6 text-muted-foreground">
                                     {setup.reportProfile.options.find(
@@ -1943,179 +2780,228 @@ const AnalyticsAdmin = () => {
                                 ) : null}
                               </div>
 
-                              {[
-                                {
-                                  key: "scrapeCompletedOnly",
-                                  label: "Scrape completed matches only",
-                                },
-                                {
-                                  key: "includeBallByBall",
-                                  label: "Include ball-by-ball commentary",
-                                },
-                                {
-                                  key: "includePlayerProfiles",
-                                  label: "Include player profile scraping",
-                                },
-                                {
-                                  key: "enableAutoDiscovery",
-                                  label: "Enable auto discovery",
-                                },
-                                {
-                                  key: "isActive",
-                                  label: "Mark this series active",
-                                },
-                              ].map((item) => (
-                                <div
-                                  key={item.key}
-                                  className="flex items-center justify-between rounded-xl border border-border/70 bg-background/60 p-3"
-                                >
+                              <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+                                <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                  Required setup lives above
+                                </p>
+                                <div className="mt-3 space-y-3 text-sm">
                                   <div>
-                                    <p className="font-medium text-foreground">{item.label}</p>
+                                    <p className="font-medium text-foreground">Source system</p>
+                                    <p className="text-xs leading-6 text-muted-foreground">
+                                      {formState.sourceSetup.sourceSystem || selectedSeries?.sourceSystem || "-"}
+                                    </p>
                                   </div>
-                                  <Switch
-                                    checked={Boolean(formState.sourceSetup[item.key as keyof SetupFormState["sourceSetup"]])}
-                                    onCheckedChange={(checked) =>
-                                      handleSourceFieldChange(
-                                        item.key as keyof SetupFormState["sourceSetup"],
-                                        checked,
-                                      )
-                                    }
-                                  />
+                                  <div>
+                                    <p className="font-medium text-foreground">Primary source URL</p>
+                                    <p className="break-all text-xs leading-6 text-muted-foreground">
+                                      {formState.sourceSetup.seriesUrl || "-"}
+                                    </p>
+                                  </div>
+                                  <div className="grid gap-3 sm:grid-cols-2">
+                                    <div>
+                                      <p className="font-medium text-foreground">League namespace</p>
+                                      <p className="text-xs leading-6 text-muted-foreground">
+                                        {formState.sourceSetup.expectedLeagueName || "-"}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-foreground">Expected source name</p>
+                                      <p className="text-xs leading-6 text-muted-foreground">
+                                        {formState.sourceSetup.expectedSeriesName || "-"}
+                                      </p>
+                                    </div>
+                                  </div>
                                 </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
+                              </div>
 
-                        <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
-                          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <Building2 className="h-4 w-4 text-cyan-200" />
-                                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                                  Division mappings
+                              <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+                                <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                  Current capture settings
+                                </p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {[
+                                    {
+                                      key: "scrapeCompletedOnly",
+                                      label: "Completed only",
+                                    },
+                                    {
+                                      key: "includeBallByBall",
+                                      label: "Ball-by-ball",
+                                    },
+                                    {
+                                      key: "includePlayerProfiles",
+                                      label: "Player profiles",
+                                    },
+                                    {
+                                      key: "enableAutoDiscovery",
+                                      label: "Auto discovery",
+                                    },
+                                    {
+                                      key: "isActive",
+                                      label: "Active",
+                                    },
+                                  ].map((item) => {
+                                    const enabled = Boolean(
+                                      formState.sourceSetup[item.key as keyof SetupFormState["sourceSetup"]],
+                                    );
+
+                                    return (
+                                      <Badge
+                                        key={item.key}
+                                        className={
+                                          enabled
+                                            ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
+                                            : "border-border/80 bg-card/70 text-muted-foreground"
+                                        }
+                                      >
+                                        {item.label}
+                                      </Badge>
+                                    );
+                                  })}
+                                </div>
+                                <p className="mt-3 text-xs leading-6 text-muted-foreground">
+                                  Edit these required capture switches in the mandatory setup section above.
                                 </p>
                               </div>
-                              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                                Update phase/division boundaries and inclusion flags for this series.
-                              </p>
-                            </div>
 
-                            <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
-                              {formatNumber(divisionCount)} mapped divisions
-                            </Badge>
+                              <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-sm leading-7 text-muted-foreground">
+                                Use this optional block for report layout and scoring detail only. Source identity and
+                                extract coverage stay above so there is one clear place to enter required series data.
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="space-y-3">
-                            {formState.divisions.map((division, index) => (
-                              <div
-                                key={division.id ?? `${division.targetLabel}-${index}`}
-                                className="rounded-2xl border border-border/70 bg-background/60 p-4"
-                              >
-                                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                                  <div className="space-y-1">
-                                    <p className="font-semibold text-foreground">
-                                      {division.targetLabel || `Division ${index + 1}`}
-                                    </p>
-                                    <p className="text-sm leading-6 text-muted-foreground">
-                                      {division.sourceLabel || "No linked source division label"}
-                                      {division.sourceDivisionId ? ` · source ${division.sourceDivisionId}` : ""}
-                                    </p>
-                                  </div>
-
-                                  <div className="flex flex-wrap gap-2">
-                                    {division.aliases.map((alias) => (
-                                      <Badge
-                                        key={alias}
-                                        variant="outline"
-                                        className="border-border/80 bg-card/70 text-foreground"
-                                      >
-                                        {alias}
-                                      </Badge>
-                                    ))}
-                                  </div>
+                          <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
+                            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <Building2 className="h-4 w-4 text-cyan-200" />
+                                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                                    Division mappings
+                                  </p>
                                 </div>
+                                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                  Update phase/division boundaries, strength tiers, and inclusion flags after the source
+                                  setup is already stable.
+                                </p>
+                              </div>
 
-                                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                                  <div className="space-y-2">
-                                    <Label htmlFor={`division-target-${index}`}>Target label</Label>
-                                    <Input
-                                      id={`division-target-${index}`}
-                                      value={division.targetLabel}
-                                      onChange={(event) =>
-                                        handleDivisionFieldChange(index, "targetLabel", event.target.value)
-                                      }
-                                    />
+                              <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                                {formatNumber(divisionCount)} mapped divisions
+                              </Badge>
+                            </div>
+
+                            <div className="space-y-3">
+                              {formState.divisions.map((division, index) => (
+                                <div
+                                  key={division.id ?? `${division.targetLabel}-${index}`}
+                                  className="rounded-2xl border border-border/70 bg-background/60 p-4"
+                                >
+                                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                    <div className="space-y-1">
+                                      <p className="font-semibold text-foreground">
+                                        {division.targetLabel || `Division ${index + 1}`}
+                                      </p>
+                                      <p className="text-sm leading-6 text-muted-foreground">
+                                        {division.sourceLabel || "No linked source division label"}
+                                        {division.sourceDivisionId ? ` · source ${division.sourceDivisionId}` : ""}
+                                      </p>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2">
+                                      {division.aliases.map((alias) => (
+                                        <Badge
+                                          key={alias}
+                                          variant="outline"
+                                          className="border-border/80 bg-card/70 text-foreground"
+                                        >
+                                          {alias}
+                                        </Badge>
+                                      ))}
+                                    </div>
                                   </div>
 
-                                  <div className="space-y-2">
-                                    <Label htmlFor={`division-phase-${index}`}>Phase</Label>
-                                    <Input
-                                      id={`division-phase-${index}`}
-                                      inputMode="numeric"
-                                      value={division.phaseNo}
-                                      onChange={(event) =>
-                                        handleDivisionFieldChange(index, "phaseNo", event.target.value)
-                                      }
-                                    />
-                                  </div>
+                                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                                    <div className="space-y-2">
+                                      <Label htmlFor={`division-target-${index}`}>Target label</Label>
+                                      <Input
+                                        id={`division-target-${index}`}
+                                        value={division.targetLabel}
+                                        onChange={(event) =>
+                                          handleDivisionFieldChange(index, "targetLabel", event.target.value)
+                                        }
+                                      />
+                                    </div>
 
-                                  <div className="space-y-2">
-                                    <Label htmlFor={`division-number-${index}`}>Division</Label>
-                                    <Input
-                                      id={`division-number-${index}`}
-                                      inputMode="numeric"
-                                      value={division.divisionNo}
-                                      onChange={(event) =>
-                                        handleDivisionFieldChange(index, "divisionNo", event.target.value)
-                                      }
-                                    />
-                                  </div>
+                                    <div className="space-y-2">
+                                      <Label htmlFor={`division-phase-${index}`}>Phase</Label>
+                                      <Input
+                                        id={`division-phase-${index}`}
+                                        inputMode="numeric"
+                                        value={division.phaseNo}
+                                        onChange={(event) =>
+                                          handleDivisionFieldChange(index, "phaseNo", event.target.value)
+                                        }
+                                      />
+                                    </div>
 
-                                  <div className="space-y-2">
-                                    <Label htmlFor={`division-tier-${index}`}>Strength tier</Label>
-                                    <Input
-                                      id={`division-tier-${index}`}
-                                      value={division.strengthTier}
-                                      onChange={(event) =>
-                                        handleDivisionFieldChange(index, "strengthTier", event.target.value)
-                                      }
-                                    />
-                                  </div>
-                                </div>
+                                    <div className="space-y-2">
+                                      <Label htmlFor={`division-number-${index}`}>Division</Label>
+                                      <Input
+                                        id={`division-number-${index}`}
+                                        inputMode="numeric"
+                                        value={division.divisionNo}
+                                        onChange={(event) =>
+                                          handleDivisionFieldChange(index, "divisionNo", event.target.value)
+                                        }
+                                      />
+                                    </div>
 
-                                <div className="mt-4 grid gap-3 md:grid-cols-[0.3fr_0.7fr]">
-                                  <div className="rounded-xl border border-border/70 bg-background/55 p-3">
-                                    <div className="flex items-center justify-between gap-3">
-                                      <div>
-                                        <p className="font-medium text-foreground">Include in scoring model</p>
-                                        <p className="text-xs leading-6 text-muted-foreground">
-                                          Toggle this division on or off for the active series setup.
-                                        </p>
-                                      </div>
-                                      <Switch
-                                        checked={division.includeFlag}
-                                        onCheckedChange={(checked) =>
-                                          handleDivisionFieldChange(index, "includeFlag", checked)
+                                    <div className="space-y-2">
+                                      <Label htmlFor={`division-tier-${index}`}>Strength tier</Label>
+                                      <Input
+                                        id={`division-tier-${index}`}
+                                        value={division.strengthTier}
+                                        onChange={(event) =>
+                                          handleDivisionFieldChange(index, "strengthTier", event.target.value)
                                         }
                                       />
                                     </div>
                                   </div>
 
-                                  <div className="space-y-2">
-                                    <Label htmlFor={`division-notes-${index}`}>Division notes</Label>
-                                    <Textarea
-                                      id={`division-notes-${index}`}
-                                      className="min-h-[88px]"
-                                      value={division.notes}
-                                      onChange={(event) =>
-                                        handleDivisionFieldChange(index, "notes", event.target.value)
-                                      }
-                                    />
+                                  <div className="mt-4 grid gap-3 md:grid-cols-[0.3fr_0.7fr]">
+                                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                      <div className="flex items-center justify-between gap-3">
+                                        <div>
+                                          <p className="font-medium text-foreground">Include in scoring model</p>
+                                          <p className="text-xs leading-6 text-muted-foreground">
+                                            Toggle this division on or off for the active series setup.
+                                          </p>
+                                        </div>
+                                        <Switch
+                                          checked={division.includeFlag}
+                                          onCheckedChange={(checked) =>
+                                            handleDivisionFieldChange(index, "includeFlag", checked)
+                                          }
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <Label htmlFor={`division-notes-${index}`}>Division notes</Label>
+                                      <Textarea
+                                        id={`division-notes-${index}`}
+                                        className="min-h-[88px]"
+                                        value={division.notes}
+                                        onChange={(event) =>
+                                          handleDivisionFieldChange(index, "notes", event.target.value)
+                                        }
+                                      />
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
                         </div>
 
@@ -2167,16 +3053,16 @@ const AnalyticsAdmin = () => {
                       </>
                     ) : null}
                   </CardContent>
-                  </Card>
-                </div>
+                </Card>
 
-                <Card className="border-border/80 bg-card/85 shadow-xl" id="match-ops">
+                <Card className="order-5 border-border/80 bg-card/85 shadow-xl" id="match-ops">
                   <CardHeader>
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                       <div className="space-y-2">
-                        <CardTitle className="font-display text-2xl text-foreground">Match operations</CardTitle>
+                        <CardTitle className="font-display text-2xl text-foreground">Optional match operations</CardTitle>
                         <CardDescription>
-                          Review match status, create manual refresh requests, and apply per-match selection overrides.
+                          Use these controls only when a series needs manual refresh help or a per-match inclusion
+                          override.
                         </CardDescription>
                       </div>
 
@@ -2688,26 +3574,26 @@ const AnalyticsAdmin = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="border-border/80 bg-card/85 shadow-xl" id="viewer-access">
+                <Card className="order-3 border-border/80 bg-card/85 shadow-xl" id="series-users">
                   <CardContent className="space-y-6 p-6">
                     <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <ShieldCheck className="h-4 w-4 text-cyan-200" />
                           <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                            Viewer access
+                            Series users
                           </p>
                         </div>
                         <div>
-                          <h2 className="font-display text-2xl text-foreground">Series report access</h2>
+                          <h2 className="font-display text-2xl text-foreground">Series user access</h2>
                           <p className="text-sm leading-7 text-muted-foreground">
-                            Grant or revoke viewer and analyst access for the currently selected series without changing the
-                            verified cricket report runtime.
+                            Approve who can view the reports for the currently selected series. Coach and selector users
+                            share the same access model in this phase.
                           </p>
                         </div>
                       </div>
 
-                      <div className="grid gap-2 sm:grid-cols-3">
+                      <div className="grid gap-2 sm:grid-cols-4">
                         <div className="rounded-xl border border-border/70 bg-background/60 p-3">
                           <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Active viewers</p>
                           <p className="mt-2 text-sm text-foreground">
@@ -2721,6 +3607,12 @@ const AnalyticsAdmin = () => {
                           </p>
                         </div>
                         <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Pending requests</p>
+                          <p className="mt-2 text-sm text-foreground">
+                            {formatNumber(viewerAccess?.totals?.pendingRequests ?? 0)}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border/70 bg-background/60 p-3">
                           <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Viewer plan cap</p>
                           <p className="mt-2 text-sm text-foreground">
                             {formatNumber(viewerAccess?.subscription?.maxViewerUsers ?? null)}
@@ -2729,38 +3621,39 @@ const AnalyticsAdmin = () => {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 xl:grid-cols-[0.42fr_0.58fr]">
+                    <div className="grid gap-4 xl:grid-cols-3">
                       <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
                         <div className="space-y-2">
                           <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                            Grant access
+                            1. Pre-approve by email
                           </p>
                           <p className="text-sm leading-7 text-muted-foreground">
-                            Users must sign in once to Game-Changrs before you can grant access. Use their root-app user id,
-                            not a CricClubs player id.
+                            Use this before the user has signed in. Access will activate automatically on first login
+                            for the invited email.
                           </p>
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="viewer-access-user-id">Viewer user id</Label>
+                          <Label htmlFor="viewer-invite-email">Viewer email</Label>
                           <Input
-                            id="viewer-access-user-id"
-                            placeholder="5ffa7fd5-37b9-4505-b819-8357be68de8f"
-                            value={viewerGrantForm.userId}
-                            onChange={(event) => handleViewerGrantFieldChange("userId", event.target.value)}
+                            id="viewer-invite-email"
+                            type="email"
+                            placeholder="viewer@example.com"
+                            value={viewerInviteForm.email}
+                            onChange={(event) => handleViewerInviteFieldChange("email", event.target.value)}
                           />
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                           <div className="space-y-2">
-                            <Label htmlFor="viewer-access-role">Access role</Label>
+                            <Label htmlFor="viewer-invite-role">Access role</Label>
                             <Select
-                              value={viewerGrantForm.accessRole}
+                              value={viewerInviteForm.accessRole}
                               onValueChange={(value) =>
-                                handleViewerGrantFieldChange("accessRole", value as ViewerGrantFormState["accessRole"])
+                                handleViewerInviteFieldChange("accessRole", value as ViewerInviteFormState["accessRole"])
                               }
                             >
-                              <SelectTrigger id="viewer-access-role">
+                              <SelectTrigger id="viewer-invite-role">
                                 <SelectValue placeholder="Viewer" />
                               </SelectTrigger>
                               <SelectContent>
@@ -2771,91 +3664,177 @@ const AnalyticsAdmin = () => {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="viewer-access-expires-at">Expires at (optional)</Label>
+                            <Label htmlFor="viewer-invite-expires-at">Expires at (optional)</Label>
                             <Input
-                              id="viewer-access-expires-at"
+                              id="viewer-invite-expires-at"
                               type="datetime-local"
-                              value={viewerGrantForm.expiresAt}
-                              onChange={(event) => handleViewerGrantFieldChange("expiresAt", event.target.value)}
+                              value={viewerInviteForm.expiresAt}
+                              onChange={(event) => handleViewerInviteFieldChange("expiresAt", event.target.value)}
                             />
                           </div>
                         </div>
 
-                        {viewerGrantMutationMessage ? (
+                        {viewerInviteMutationMessage ? (
                           <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-7 text-emerald-200">
-                            {viewerGrantMutationMessage}
+                            {viewerInviteMutationMessage}
                           </div>
                         ) : null}
 
-                        {viewerGrantMutationError ? (
+                        {viewerInviteMutationError ? (
                           <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm leading-7 text-destructive">
-                            {viewerGrantMutationError}
+                            {viewerInviteMutationError}
+                          </div>
+                        ) : null}
+
+                        {!viewerGrantEnabledByPlan ? (
+                          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm leading-7 text-amber-200">
+                            New viewer access is blocked by the current entity plan.
                           </div>
                         ) : null}
 
                         <div className="flex flex-wrap gap-2">
                           <Button
                             type="button"
-                            onClick={() => void handleGrantViewerAccess()}
-                            disabled={viewerGrantMutationStatus === "saving" || !viewerGrantAllowed}
+                            onClick={() => void handleGrantViewerInvite()}
+                            disabled={viewerInviteMutationStatus === "saving" || !viewerGrantEnabledByPlan}
                           >
-                            {viewerGrantMutationStatus === "saving" ? "Granting..." : "Grant access"}
+                            {viewerInviteMutationStatus === "saving" ? "Saving..." : "Save pre-approval"}
                           </Button>
                           <Button
                             type="button"
                             variant="outline"
                             onClick={() =>
-                              setViewerGrantForm({
+                              setViewerInviteForm({
+                                email: "",
+                                accessRole: "viewer",
+                                expiresAt: "",
+                              })
+                            }
+                            disabled={viewerInviteMutationStatus === "saving"}
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
+                        <div className="space-y-2">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                            2. Grant now by user id
+                          </p>
+                          <p className="text-sm leading-7 text-muted-foreground">
+                            Use this when the person already has a Game-Changrs account and has shared their root user id.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="viewer-direct-user-id">Viewer user id</Label>
+                          <Input
+                            id="viewer-direct-user-id"
+                            placeholder="5ffa7fd5-37b9-4505-b819-8357be68de8f"
+                            value={viewerDirectGrantForm.userId}
+                            onChange={(event) => handleViewerDirectGrantFieldChange("userId", event.target.value)}
+                          />
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                          <div className="space-y-2">
+                            <Label htmlFor="viewer-direct-role">Access role</Label>
+                            <Select
+                              value={viewerDirectGrantForm.accessRole}
+                              onValueChange={(value) =>
+                                handleViewerDirectGrantFieldChange("accessRole", value as ViewerDirectGrantFormState["accessRole"])
+                              }
+                            >
+                              <SelectTrigger id="viewer-direct-role">
+                                <SelectValue placeholder="Viewer" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="viewer">Viewer</SelectItem>
+                                <SelectItem value="analyst">Analyst</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="viewer-direct-expires-at">Expires at (optional)</Label>
+                            <Input
+                              id="viewer-direct-expires-at"
+                              type="datetime-local"
+                              value={viewerDirectGrantForm.expiresAt}
+                              onChange={(event) => handleViewerDirectGrantFieldChange("expiresAt", event.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        {viewerDirectGrantMutationMessage ? (
+                          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-7 text-emerald-200">
+                            {viewerDirectGrantMutationMessage}
+                          </div>
+                        ) : null}
+
+                        {viewerDirectGrantMutationError ? (
+                          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm leading-7 text-destructive">
+                            {viewerDirectGrantMutationError}
+                          </div>
+                        ) : null}
+
+                        {!viewerGrantEnabledByPlan ? (
+                          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm leading-7 text-amber-200">
+                            New viewer access is blocked by the current entity plan.
+                          </div>
+                        ) : null}
+
+                        {viewerGrantEnabledByPlan && !viewerImmediateGrantAllowed ? (
+                          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm leading-7 text-amber-200">
+                            Direct user-id grants are at the current viewer cap. Use the email pre-approval path instead,
+                            or free an existing viewer seat.
+                          </div>
+                        ) : null}
+
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            onClick={() => void handleGrantViewerDirectAccess()}
+                            disabled={
+                              viewerDirectGrantMutationStatus === "saving"
+                              || !viewerGrantEnabledByPlan
+                              || !viewerImmediateGrantAllowed
+                            }
+                          >
+                            {viewerDirectGrantMutationStatus === "saving" ? "Granting..." : "Grant now"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                              setViewerDirectGrantForm({
                                 userId: "",
                                 accessRole: "viewer",
                                 expiresAt: "",
                               })
                             }
-                            disabled={viewerGrantMutationStatus === "saving"}
+                            disabled={viewerDirectGrantMutationStatus === "saving"}
                           >
                             Clear
                           </Button>
                         </div>
-
-                        {!viewerGrantAllowed ? (
-                          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm leading-7 text-amber-200">
-                            New viewer grants are blocked by the current entity plan or viewer allocation limit.
-                          </div>
-                        ) : null}
-
-                        <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-sm leading-7 text-muted-foreground">
-                          If a user hits an access wall on <span className="font-mono text-foreground">/analytics</span> or a
-                          root report route, tell them to copy the displayed <span className="font-mono text-foreground">User ID</span>
-                          {" "}and send it to the series admin.
-                        </div>
                       </div>
 
                       <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="space-y-1">
-                            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                              Current grants
-                            </p>
-                            <p className="text-sm leading-7 text-muted-foreground">
-                              Active and revoked access rows for this specific series.
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setViewerAccessReloadKey((current) => current + 1)}
-                          >
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                            Refresh
-                          </Button>
+                        <div className="space-y-2">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                            3. Pending requests
+                          </p>
+                          <p className="text-sm leading-7 text-muted-foreground">
+                            Review incoming user requests and invited-email rows that are waiting for a first sign-in.
+                          </p>
                         </div>
 
                         {viewerAccessStatus === "loading" ? (
                           <div className="space-y-3">
-                            <Skeleton className="h-16 w-full" />
-                            <Skeleton className="h-16 w-full" />
-                            <Skeleton className="h-16 w-full" />
+                            <Skeleton className="h-24 w-full" />
+                            <Skeleton className="h-24 w-full" />
                           </div>
                         ) : null}
 
@@ -2864,7 +3843,7 @@ const AnalyticsAdmin = () => {
                             <div className="flex items-start gap-3">
                               <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
                               <div className="space-y-3">
-                                <p className="font-semibold text-destructive">Viewer access grants could not be loaded</p>
+                                <p className="font-semibold text-destructive">Requests could not be loaded</p>
                                 <p className="text-sm leading-6 text-destructive/80">{viewerAccessError}</p>
                               </div>
                             </div>
@@ -2872,84 +3851,202 @@ const AnalyticsAdmin = () => {
                         ) : null}
 
                         {viewerAccessStatus === "success" ? (
-                          (viewerAccess?.grants ?? []).length ? (
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead className="min-w-[220px]">User</TableHead>
-                                  <TableHead className="min-w-[150px]">Role</TableHead>
-                                  <TableHead className="min-w-[180px]">Status</TableHead>
-                                  <TableHead className="min-w-[200px]">Expiry</TableHead>
-                                  <TableHead className="min-w-[160px]">Actions</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {(viewerAccess?.grants ?? []).map((grant) => {
-                                  const grantId = grant.grantId || "";
-                                  const revokeStatus = grantId ? viewerRevokeStatusByGrant[grantId] : undefined;
+                          pendingViewerAccessRequests.length ? (
+                            <div className="space-y-3">
+                              {pendingViewerAccessRequests.map((request) => {
+                                const requestId = request.requestId || "";
+                                const decisionStatus = requestId
+                                  ? accessRequestDecisionStatusByRequest[requestId]
+                                  : undefined;
+                                const canApprove = request.requestType === "self_request" && Boolean(request.requestedUserId);
 
-                                  return (
-                                    <TableRow key={grant.grantId || `${grant.userId}-${grant.createdAt}`}>
-                                      <TableCell className="align-top">
-                                        <div className="space-y-1">
-                                          <p className="break-all font-mono text-xs text-foreground">
-                                            {grant.userId || "-"}
-                                          </p>
-                                          <p className="text-xs leading-6 text-muted-foreground">
-                                            Granted by {grant.grantedByUserId || "-"}
-                                          </p>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="align-top">
-                                        <Badge className={getViewerAccessRoleBadgeClass(grant.accessRole)}>
-                                          {grant.accessRole || "viewer"}
-                                        </Badge>
-                                      </TableCell>
-                                      <TableCell className="align-top">
-                                        <div className="space-y-2">
-                                          <Badge className={getStatusBadgeClass(grant.isExpired ? "warning" : grant.status)}>
-                                            {grant.isExpired ? "expired" : grant.status || "active"}
-                                          </Badge>
-                                          <p className="text-xs leading-6 text-muted-foreground">
-                                            Updated {formatDateTime(grant.updatedAt)}
-                                          </p>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="align-top">
-                                        <p className="text-sm leading-6 text-foreground">
-                                          {grant.expiresAt ? formatDateTime(grant.expiresAt) : "No expiry"}
+                                return (
+                                  <div
+                                    key={request.requestId || `${request.requestedEmail}-${request.createdAt}`}
+                                    className="rounded-2xl border border-border/70 bg-background/60 p-4"
+                                  >
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                      <div className="space-y-1">
+                                        <p className="break-all text-sm font-medium text-foreground">
+                                          {request.requestedEmail || "-"}
                                         </p>
-                                      </TableCell>
-                                      <TableCell className="align-top">
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          disabled={grant.status === "revoked" || revokeStatus === "saving" || !grantId}
-                                          onClick={() => void handleRevokeViewerGrant(grant)}
-                                        >
-                                          {revokeStatus === "saving" ? "Revoking..." : "Revoke"}
-                                        </Button>
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                              </TableBody>
-                            </Table>
+                                        <p className="break-all font-mono text-xs text-muted-foreground">
+                                          {request.requestedUserId || "No user id linked yet"}
+                                        </p>
+                                      </div>
+                                      <Badge className={getStatusBadgeClass(request.requestType)}>
+                                        {request.requestType === "admin_invite" ? "Email pre-approval" : "User request"}
+                                      </Badge>
+                                    </div>
+
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                      <Badge className={getViewerAccessRoleBadgeClass(request.requestedAccessRole)}>
+                                        {request.requestedAccessRole || "viewer"}
+                                      </Badge>
+                                      <Badge className={getStatusBadgeClass(request.requestStatus)}>
+                                        {request.requestType === "admin_invite" && !request.requestedUserId
+                                          ? "Waiting for first login"
+                                          : request.requestStatus || "pending"}
+                                      </Badge>
+                                    </div>
+
+                                    <div className="mt-3 space-y-1 text-xs leading-6 text-muted-foreground">
+                                      <p>Requested {formatDateTime(request.createdAt)}</p>
+                                      {request.requestNote ? <p>{request.requestNote}</p> : null}
+                                    </div>
+
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={!canApprove || decisionStatus === "saving" || !requestId}
+                                        onClick={() => void handleAccessRequestDecision(request, "approve")}
+                                      >
+                                        {decisionStatus === "saving" && canApprove ? "Approving..." : "Approve"}
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={decisionStatus === "saving" || !requestId}
+                                        onClick={() => void handleAccessRequestDecision(request, "decline")}
+                                      >
+                                        Decline
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           ) : (
                             <div className="rounded-2xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground">
-                              No viewer or analyst grants exist for this series yet.
+                              No pending series-user requests exist for this series right now.
                             </div>
                           )
                         ) : null}
                       </div>
                     </div>
 
+                    <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                            Current grants
+                          </p>
+                          <p className="text-sm leading-7 text-muted-foreground">
+                            Active and revoked access rows for this specific series.
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setViewerAccessReloadKey((current) => current + 1)}
+                        >
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Refresh
+                        </Button>
+                      </div>
+
+                      {viewerAccessStatus === "loading" ? (
+                        <div className="space-y-3">
+                          <Skeleton className="h-16 w-full" />
+                          <Skeleton className="h-16 w-full" />
+                          <Skeleton className="h-16 w-full" />
+                        </div>
+                      ) : null}
+
+                      {viewerAccessStatus === "error" && viewerAccessError ? (
+                        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
+                            <div className="space-y-3">
+                              <p className="font-semibold text-destructive">Viewer access grants could not be loaded</p>
+                              <p className="text-sm leading-6 text-destructive/80">{viewerAccessError}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {viewerAccessStatus === "success" ? (
+                        (viewerAccess?.grants ?? []).length ? (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="min-w-[220px]">User</TableHead>
+                                <TableHead className="min-w-[150px]">Role</TableHead>
+                                <TableHead className="min-w-[180px]">Status</TableHead>
+                                <TableHead className="min-w-[200px]">Expiry</TableHead>
+                                <TableHead className="min-w-[160px]">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {(viewerAccess?.grants ?? []).map((grant) => {
+                                const grantId = grant.grantId || "";
+                                const revokeStatus = grantId ? viewerRevokeStatusByGrant[grantId] : undefined;
+
+                                return (
+                                  <TableRow key={grant.grantId || `${grant.userId}-${grant.createdAt}`}>
+                                    <TableCell className="align-top">
+                                      <div className="space-y-1">
+                                        <p className="break-all font-mono text-xs text-foreground">
+                                          {grant.userId || "-"}
+                                        </p>
+                                        <p className="text-xs leading-6 text-muted-foreground">
+                                          Granted by {grant.grantedByUserId || "-"}
+                                        </p>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="align-top">
+                                      <Badge className={getViewerAccessRoleBadgeClass(grant.accessRole)}>
+                                        {grant.accessRole || "viewer"}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="align-top">
+                                      <div className="space-y-2">
+                                        <Badge className={getStatusBadgeClass(grant.isExpired ? "warning" : grant.status)}>
+                                          {grant.isExpired ? "expired" : grant.status || "active"}
+                                        </Badge>
+                                        <p className="text-xs leading-6 text-muted-foreground">
+                                          Updated {formatDateTime(grant.updatedAt)}
+                                        </p>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="align-top">
+                                      <p className="text-sm leading-6 text-foreground">
+                                        {grant.expiresAt ? formatDateTime(grant.expiresAt) : "No expiry"}
+                                      </p>
+                                    </TableCell>
+                                    <TableCell className="align-top">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={grant.status === "revoked" || revokeStatus === "saving" || !grantId}
+                                        onClick={() => void handleRevokeViewerGrant(grant)}
+                                      >
+                                        {revokeStatus === "saving" ? "Revoking..." : "Revoke"}
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        ) : (
+                          <div className="rounded-2xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground">
+                            No viewer or analyst grants exist for this series yet.
+                          </div>
+                        )
+                      ) : null}
+                    </div>
+
                     <div className="flex flex-col gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 md:flex-row md:items-start md:justify-between">
                       <div className="space-y-1 text-sm leading-7 text-muted-foreground">
                         <p>
-                          Viewer access here controls who can use the Game-Changrs analytics and report surface for this
-                          series. The existing report runtime remains the underlying source of truth.
+                          These controls decide who can use the Game-Changrs analytics and report routes for this
+                          series.
                         </p>
                       </div>
 
@@ -2964,18 +4061,20 @@ const AnalyticsAdmin = () => {
                           <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                             Live now
                           </p>
-                          <p className="mt-2 text-sm text-foreground">Root-app access checks</p>
+                          <p className="mt-2 text-sm text-foreground">Email pre-approval on first login</p>
                         </div>
                         <div className="rounded-xl border border-border/70 bg-background/60 p-3">
                           <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                            Deferred
+                            Live now
                           </p>
-                          <p className="mt-2 text-sm text-foreground">Invite-by-email and hard backend lock</p>
+                          <p className="mt-2 text-sm text-foreground">Pending request approval workflow</p>
                         </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
+                  </>
+                ) : null}
               </div>
             ) : null}
           </div>

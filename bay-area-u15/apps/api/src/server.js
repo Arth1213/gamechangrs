@@ -15,6 +15,7 @@ const {
   renderSeriesIndexPage,
 } = require("./render/pages");
 const {
+  createSeries,
   createManualRefreshRequest,
   getMatchOpsPayload,
   getSetupPayload,
@@ -24,10 +25,14 @@ const {
   updateTuning,
 } = require("./services/adminService");
 const {
+  applySeriesAccessRequestDecision,
+  createSeriesAccessRequest,
+  disableEntityAdminMembership,
   getAdminSeriesCatalog,
   getViewerSeriesCatalog,
   listSeriesViewerGrants,
   revokeSeriesViewerGrant,
+  upsertEntityAdminMembership,
   upsertSeriesViewerGrant,
 } = require("./services/accessService");
 const {
@@ -323,6 +328,38 @@ app.get("/api/admin/series", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
+app.post("/api/admin/series", asyncHandler(async (req, res) => {
+  const actor = await requireAuthenticatedCricketUser(req);
+  const payload = await createSeries({
+    actorUserId: actor.userId,
+    body: req.body,
+    dryRun: parseDryRun(req),
+  });
+  res.json(payload);
+}));
+
+app.post("/api/admin/entities/:entityId/admins", asyncHandler(async (req, res) => {
+  const actor = await requireAuthenticatedCricketUser(req);
+  const payload = await upsertEntityAdminMembership({
+    actorUserId: actor.userId,
+    entityId: req.params.entityId,
+    body: req.body,
+    dryRun: parseDryRun(req),
+  });
+  res.json(payload);
+}));
+
+app.delete("/api/admin/entities/:entityId/admins/:userId", asyncHandler(async (req, res) => {
+  const actor = await requireAuthenticatedCricketUser(req);
+  const payload = await disableEntityAdminMembership({
+    actorUserId: actor.userId,
+    entityId: req.params.entityId,
+    targetUserId: req.params.userId,
+    dryRun: parseDryRun(req),
+  });
+  res.json(payload);
+}));
+
 app.get("/api/viewer/series", asyncHandler(async (req, res) => {
   const actor = await requireAuthenticatedCricketUser(req);
   const payload = await getViewerSeriesCatalog({
@@ -400,6 +437,18 @@ app.get("/api/series/:seriesConfigKey/players/search", asyncHandler(async (req, 
     seriesConfigKey: req.params.seriesConfigKey,
     query: req.query.query ?? req.query.q ?? "",
     limit: req.query.limit,
+  });
+  res.json(payload);
+}));
+
+app.post("/api/series/:seriesConfigKey/access-requests", asyncHandler(async (req, res) => {
+  const actor = await requireAuthenticatedCricketUser(req);
+  const payload = await createSeriesAccessRequest({
+    actorUserId: actor.userId,
+    actorEmail: actor.email,
+    seriesConfigKey: req.params.seriesConfigKey,
+    body: req.body,
+    dryRun: parseDryRun(req),
   });
   res.json(payload);
 }));
@@ -517,6 +566,17 @@ app.post("/api/series/:seriesConfigKey/admin/viewers", requireSeriesAdmin, async
   const payload = await upsertSeriesViewerGrant({
     actorUserId: req.cricketActor.userId,
     seriesConfigKey: req.params.seriesConfigKey,
+    body: req.body,
+    dryRun: parseDryRun(req),
+  });
+  res.json(payload);
+}));
+
+app.patch("/api/series/:seriesConfigKey/admin/viewer-requests/:requestId", requireSeriesAdmin, asyncHandler(async (req, res) => {
+  const payload = await applySeriesAccessRequestDecision({
+    actorUserId: req.cricketActor.userId,
+    seriesConfigKey: req.params.seriesConfigKey,
+    requestId: req.params.requestId,
     body: req.body,
     dryRun: parseDryRun(req),
   });

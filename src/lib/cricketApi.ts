@@ -85,12 +85,32 @@ export type CricketDashboardSummaryResponse = {
   } | null;
 };
 
+export type CricketAdminEntityMembership = {
+  membershipId?: string;
+  entityId?: string;
+  userId?: string;
+  role?: string;
+  status?: string;
+  invitedByUserId?: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  isOwner?: boolean;
+  canRemove?: boolean;
+};
+
 export type CricketAdminSeriesEntity = {
   entityId?: string;
   entitySlug?: string;
   entityName?: string;
+  ownerUserId?: string;
   accessRole?: string;
   seriesCount?: number | null;
+  subscriptionPlanKey?: string;
+  subscriptionStatus?: string;
+  maxAdminUsers?: number | null;
+  activeAdminUsers?: number | null;
+  remainingAdminUsers?: number | null;
+  admins?: CricketAdminEntityMembership[];
 };
 
 export type CricketAdminSeriesItem = {
@@ -172,15 +192,37 @@ export type CricketAdminViewerGrant = {
 };
 
 export type CricketAdminViewerGrantPayload = {
-  userId: string;
+  userId?: string;
+  email?: string;
   accessRole?: "viewer" | "analyst";
   expiresAt?: string | null;
+};
+
+export type CricketAdminSeriesAccessRequest = {
+  requestId?: string;
+  entityId?: string;
+  seriesSourceConfigId?: number | null;
+  requestedEmail?: string;
+  requestedUserId?: string;
+  requestedAccessRole?: string;
+  requestType?: string;
+  requestStatus?: string;
+  requestNote?: string;
+  adminResponseNote?: string;
+  requestedByUserId?: string;
+  reviewedByUserId?: string;
+  requestedExpiresAt?: string | null;
+  resolvedGrantId?: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  resolvedAt?: string | null;
 };
 
 export type CricketAdminViewerGrantMutationResponse = {
   message?: string;
   dryRun?: boolean;
   grant?: CricketAdminViewerGrant;
+  request?: CricketAdminSeriesAccessRequest | null;
 };
 
 export type CricketAdminViewerGrantsResponse = {
@@ -206,8 +248,75 @@ export type CricketAdminViewerGrantsResponse = {
     activeViewers?: number | null;
     activeAnalysts?: number | null;
     revokedGrants?: number | null;
+    totalRequests?: number | null;
+    pendingRequests?: number | null;
+    approvedRequests?: number | null;
+    declinedRequests?: number | null;
   };
   grants?: CricketAdminViewerGrant[];
+  requests?: CricketAdminSeriesAccessRequest[];
+};
+
+export type CricketAdminCreateSeriesPayload = {
+  entityId: string;
+  sourceSetup?: {
+    name?: string;
+    sourceSystem?: string;
+    seriesUrl?: string;
+    expectedLeagueName?: string;
+    expectedSeriesName?: string;
+    seasonYear?: number | null;
+    targetAgeGroup?: string;
+    scrapeCompletedOnly?: boolean;
+    includeBallByBall?: boolean;
+    includePlayerProfiles?: boolean;
+    enableAutoDiscovery?: boolean;
+    isActive?: boolean;
+    notes?: string;
+  };
+  reportProfileKey?: string;
+};
+
+export type CricketAdminCreateSeriesResponse = {
+  message?: string;
+  dryRun?: boolean;
+  series?: CricketAdminSeriesItem;
+  payload?: CricketAdminSetupResponse;
+};
+
+export type CricketAdminEntityMembershipPayload = {
+  userId: string;
+  role?: "admin";
+};
+
+export type CricketAdminEntityMembershipMutationResponse = {
+  message?: string;
+  dryRun?: boolean;
+  entity?: {
+    entityId?: string;
+    entityName?: string;
+    entitySlug?: string;
+    ownerUserId?: string;
+  };
+  membership?: CricketAdminEntityMembership | null;
+};
+
+export type CricketSeriesAccessRequestPayload = {
+  accessRole?: "viewer" | "analyst";
+  requestNote?: string;
+};
+
+export type CricketSeriesAccessRequestMutationResponse = {
+  message?: string;
+  dryRun?: boolean;
+  accessGranted?: boolean;
+  request?: CricketAdminSeriesAccessRequest | null;
+  grant?: CricketAdminViewerGrant | null;
+};
+
+export type CricketAdminAccessRequestDecisionPayload = {
+  action: "approve" | "decline";
+  responseNote?: string;
 };
 
 export type CricketAdminSubscriptionSummaryResponse = {
@@ -681,6 +790,14 @@ export function getAnalyticsAdminRoute(seriesConfigKey?: string | null) {
   return getAnalyticsRoute("/analytics/admin", undefined, seriesConfigKey);
 }
 
+export function getAnalyticsPlatformAdminRoute() {
+  return "/analytics/admin/platform";
+}
+
+export function getAnalyticsSeriesAdminRoute(seriesConfigKey?: string | null) {
+  return getAnalyticsRoute("/analytics/admin/series", undefined, seriesConfigKey);
+}
+
 async function readApiErrorMessage(response: Response, fallbackMessage: string) {
   let message = fallbackMessage;
 
@@ -767,6 +884,105 @@ export async function fetchCricketAdminSeries(accessToken: string, signal?: Abor
   }
 
   return (await response.json()) as CricketAdminSeriesResponse;
+}
+
+export async function createCricketAdminSeries(
+  accessToken: string,
+  body: CricketAdminCreateSeriesPayload,
+  options?: {
+    dryRun?: boolean;
+    signal?: AbortSignal;
+  }
+) {
+  const url = new URL(getCricketApiUrl("/api/admin/series"), window.location.origin);
+
+  if (options?.dryRun) {
+    url.searchParams.set("dryRun", "true");
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    signal: options?.signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Create series request failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketAdminCreateSeriesResponse;
+}
+
+export async function assignCricketAdminEntityMembership(
+  entityId: string,
+  accessToken: string,
+  body: CricketAdminEntityMembershipPayload,
+  options?: {
+    dryRun?: boolean;
+    signal?: AbortSignal;
+  }
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/admin/entities/${encodeURIComponent(entityId)}/admins`),
+    window.location.origin
+  );
+
+  if (options?.dryRun) {
+    url.searchParams.set("dryRun", "true");
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    signal: options?.signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Entity admin assignment failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketAdminEntityMembershipMutationResponse;
+}
+
+export async function removeCricketAdminEntityMembership(
+  entityId: string,
+  userId: string,
+  accessToken: string,
+  options?: {
+    dryRun?: boolean;
+    signal?: AbortSignal;
+  }
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/admin/entities/${encodeURIComponent(entityId)}/admins/${encodeURIComponent(userId)}`),
+    window.location.origin
+  );
+
+  if (options?.dryRun) {
+    url.searchParams.set("dryRun", "true");
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "DELETE",
+    signal: options?.signal,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Entity admin removal failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketAdminEntityMembershipMutationResponse;
 }
 
 export async function fetchCricketViewerSeries(accessToken: string, signal?: AbortSignal) {
@@ -964,6 +1180,42 @@ export async function createCricketAdminViewerGrant(
   return (await response.json()) as CricketAdminViewerGrantMutationResponse;
 }
 
+export async function decideCricketAdminAccessRequest(
+  seriesConfigKey: string,
+  requestId: string,
+  accessToken: string,
+  body: CricketAdminAccessRequestDecisionPayload,
+  options?: {
+    dryRun?: boolean;
+    signal?: AbortSignal;
+  }
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(seriesConfigKey)}/admin/viewer-requests/${encodeURIComponent(requestId)}`),
+    window.location.origin
+  );
+
+  if (options?.dryRun) {
+    url.searchParams.set("dryRun", "true");
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "PATCH",
+    signal: options?.signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Access-request decision failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketSeriesAccessRequestMutationResponse;
+}
+
 export async function revokeCricketAdminViewerGrant(
   seriesConfigKey: string,
   grantId: string,
@@ -1030,6 +1282,41 @@ export async function createCricketAdminRefreshRequest(
   }
 
   return (await response.json()) as CricketAdminRefreshRequestMutationResponse;
+}
+
+export async function createCricketSeriesAccessRequest(
+  seriesConfigKey: string,
+  accessToken: string,
+  body: CricketSeriesAccessRequestPayload,
+  options?: {
+    dryRun?: boolean;
+    signal?: AbortSignal;
+  }
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(seriesConfigKey)}/access-requests`),
+    window.location.origin
+  );
+
+  if (options?.dryRun) {
+    url.searchParams.set("dryRun", "true");
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    signal: options?.signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Series access request failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketSeriesAccessRequestMutationResponse;
 }
 
 export async function updateCricketAdminSelectionOverride(

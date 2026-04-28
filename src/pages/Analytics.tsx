@@ -31,6 +31,7 @@ import {
   fetchCricketDashboardSummary,
   fetchCricketViewerSeries,
   getAnalyticsAdminRoute,
+  getAnalyticsPlatformAdminRoute,
   getAnalyticsWorkspaceRoute,
   getCricketPlayerReportUrl,
   getRootCricketPlayerReportRoute,
@@ -97,19 +98,6 @@ const LANDING_HERO_STRIP = [
     value: "CricClubs First",
     description: "Built to extend later to ESPNcricinfo and Cricbuzz.",
   },
-];
-const LANDING_GOALS = [
-  "See beyond raw stats.",
-  "Weight strong opposition correctly.",
-  "See pressure performance.",
-  "Compare peers fairly.",
-  "Make faster, better calls.",
-];
-const LANDING_NON_NEGOTIABLES = [
-  "Private access only.",
-  "Trusted data first.",
-  "Explainable scores.",
-  "Portable into the private Git repo.",
 ];
 const LANDING_OUTCOMES = [
   {
@@ -959,8 +947,10 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     () => getAnalyticsAdminRoute(selectedSeriesKey || undefined),
     [selectedSeriesKey]
   );
+  const platformAdminRoute = getAnalyticsPlatformAdminRoute();
   const analyticsRoute = "/analytics";
   const hasSeriesAccess = seriesCards.length > 0;
+  const isPlatformAdminViewer = viewerCatalog?.actor?.isPlatformAdmin === true;
 
   async function runSearch(trimmedQuery: string, seriesConfigKey: string) {
     activeRequestRef.current?.abort();
@@ -1291,18 +1281,30 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                     <ShieldCheck className="h-7 w-7" />
                   </div>
                   <div className="space-y-2">
-                    <CardTitle className="font-display text-4xl text-foreground">Analytics access is private</CardTitle>
+                    <CardTitle className="font-display text-4xl text-foreground">
+                      {isPlatformAdminViewer ? "No series are configured yet" : "Analytics access is private"}
+                    </CardTitle>
                     <CardDescription className="max-w-2xl text-sm leading-7">
-                      Your account is signed in, but it has not been granted access to any cricket analytics series yet.
+                      {isPlatformAdminViewer
+                        ? "This platform-admin account can access every series automatically, but no series are currently visible in the analytics dataset."
+                        : "Your account is signed in, but it has not been granted access to any cricket analytics series yet."}
                     </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
                   <div className="rounded-2xl border border-border/80 bg-background/60 p-5">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-primary">Send this to your admin</p>
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-primary">
+                      {isPlatformAdminViewer ? "Platform-admin scope" : "Send this to your admin"}
+                    </p>
                     <p className="mt-4 text-sm leading-7 text-muted-foreground">
-                      Ask the series admin to open <span className="font-mono text-foreground">/analytics/admin</span> and
-                      grant viewer or analyst access to your user id below.
+                      {isPlatformAdminViewer ? (
+                        "Platform admins automatically inherit series-admin and report-view access across every series. They do not need viewer grants and do not consume entity viewer seats."
+                      ) : (
+                        <>
+                          Ask the series admin to open <span className="font-mono text-foreground">/analytics/admin</span> and
+                          grant viewer or analyst access to your user id below.
+                        </>
+                      )}
                     </p>
                     <div className="mt-4 rounded-2xl border border-border/80 bg-background/70 p-4">
                       <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">User ID</p>
@@ -1315,16 +1317,31 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                   <div className="rounded-2xl border border-border/80 bg-background/60 p-5">
                     <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">What happens next</p>
                     <div className="mt-4 space-y-3 text-sm leading-7 text-muted-foreground">
-                      <p>1. Sign in once to Game-Changrs.</p>
-                      <p>2. Share your user id with the series admin.</p>
-                      <p>3. The admin grants access inside the cricket admin shell.</p>
-                      <p>4. Refresh this page to load your series workspace.</p>
+                      {isPlatformAdminViewer ? (
+                        <>
+                          <p>1. Use the platform admin console to create or inspect entities and series.</p>
+                          <p>2. Once a series exists, it will appear here automatically.</p>
+                          <p>3. Open the series workspace or series console directly without any viewer grant.</p>
+                        </>
+                      ) : (
+                        <>
+                          <p>1. Sign in once to Game-Changrs.</p>
+                          <p>2. Share your user id with the series admin.</p>
+                          <p>3. The admin grants access inside the cricket admin shell.</p>
+                          <p>4. Refresh this page to load your series workspace.</p>
+                        </>
+                      )}
                     </div>
                     <div className="mt-5 flex flex-wrap gap-3">
                       <Button type="button" variant="outline" onClick={handleRetryViewerAccess}>
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Recheck Access
                       </Button>
+                      {isPlatformAdminViewer ? (
+                        <Button asChild variant="outline">
+                          <Link to={platformAdminRoute}>Open Platform Console</Link>
+                        </Button>
+                      ) : null}
                       <Button asChild variant="outline">
                         <Link to={analyticsRoute}>Return to Analytics</Link>
                       </Button>
@@ -1358,6 +1375,14 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                     >
                       Analytics
                     </Badge>
+                    {isPlatformAdminViewer ? (
+                      <Badge
+                        variant="outline"
+                        className="border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-cyan-200"
+                      >
+                        Platform Admin
+                      </Badge>
+                    ) : null}
                     <Badge
                       variant="outline"
                       className="border-border/80 bg-card/70 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-foreground"
@@ -1373,13 +1398,27 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                       Review each series boundary, tracked match volume, reconciliation load, and latest live match context
                       without crowding the selector landing page.
                     </p>
+                    {isPlatformAdminViewer ? (
+                      <p className="max-w-3xl text-sm leading-7 text-cyan-100/85">
+                        Platform-admin scope is global. You can move into any series workspace, any series console, and
+                        any player report without consuming viewer seats.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
                 <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
+                  {isPlatformAdminViewer ? (
+                    <Button asChild variant="outline" className="w-full md:w-auto">
+                      <Link to={platformAdminRoute}>
+                        Platform Console
+                        <ShieldCheck className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  ) : null}
                   <Button asChild variant="outline" className="w-full md:w-auto">
                     <Link to={adminRoute}>
-                      Admin Console
+                      {isPlatformAdminViewer ? "Series Console" : "Admin Console"}
                       <ShieldCheck className="ml-2 h-4 w-4" />
                     </Link>
                   </Button>
@@ -1436,9 +1475,17 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
               </div>
 
               <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
+                {isPlatformAdminViewer ? (
+                  <Button asChild variant="outline" className="w-full md:w-auto">
+                    <Link to={platformAdminRoute}>
+                      Platform Console
+                      <ShieldCheck className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                ) : null}
                 <Button asChild variant="outline" className="w-full md:w-auto">
                   <Link to={adminRoute}>
-                    Admin Console
+                    {isPlatformAdminViewer ? "Series Console" : "Admin Console"}
                     <ShieldCheck className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
@@ -1451,90 +1498,45 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
               </div>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.16fr_0.84fr]">
-              <Card className="border-border/80 bg-card/85 shadow-xl">
-                <CardContent className="space-y-6 p-8">
-                  <div className="space-y-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-primary">What This App Really Is</p>
-                    <h1 className="max-w-5xl font-display text-4xl font-bold leading-[0.96] text-foreground md:text-5xl lg:text-6xl">
-                      From raw cricket site data to{" "}
-                      <span className="text-primary">trusted analytics intelligence</span>, starting with{" "}
-                      <span className="text-sky-400">CricClubs</span>.
-                    </h1>
-                    <p className="max-w-3xl text-lg leading-8 text-muted-foreground">
-                      A private decision-support app that turns raw cricket data into{" "}
-                      <span className="font-semibold text-foreground">fairer player evaluation</span>.
-                    </p>
-                    <div className="border-l-4 border-primary pl-4 text-lg leading-8 text-cyan-100/90">
-                      CricClubs shows <span className="font-semibold text-foreground">what happened</span>. This app
-                      shows <span className="font-semibold text-foreground">what matters</span>.
-                    </div>
+            <Card className="border-border/80 bg-card/85 shadow-xl">
+              <CardContent className="space-y-8 p-8 lg:p-10">
+                <div className="space-y-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-primary">What This App Really Is</p>
+                  <h1 className="max-w-6xl font-display text-4xl font-bold leading-[0.96] text-foreground md:text-5xl lg:text-6xl">
+                    From raw cricket site data to{" "}
+                    <span className="text-primary">trusted analytics intelligence</span>, starting with{" "}
+                    <span className="text-sky-400">CricClubs</span>.
+                  </h1>
+                  <p className="max-w-4xl text-lg leading-8 text-muted-foreground">
+                    A private decision-support app that turns raw cricket data into{" "}
+                    <span className="font-semibold text-foreground">fairer player evaluation</span>.
+                  </p>
+                  <div className="max-w-4xl border-l-4 border-primary pl-4 text-lg leading-8 text-cyan-100/90">
+                    CricClubs shows <span className="font-semibold text-foreground">what happened</span>. This app
+                    shows <span className="font-semibold text-foreground">what matters</span>.
                   </div>
+                </div>
 
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    {LANDING_HERO_STRIP.map((item) => (
-                      <div
-                        key={item.label}
-                        className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/40 p-4 shadow-sm backdrop-blur"
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  {LANDING_HERO_STRIP.map((item) => (
+                    <div
+                      key={item.label}
+                      className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/40 p-4 shadow-sm backdrop-blur"
+                    >
+                      <p className="min-h-[2.2rem] text-[11px] uppercase leading-5 tracking-[0.16em] text-muted-foreground">
+                        {item.label}
+                      </p>
+                      <p
+                        className={`mt-2 min-h-[3.2rem] font-display text-2xl leading-[1.02] text-primary md:min-h-[3.5rem] ${item.valueClassName ?? ""}`}
                       >
-                        <p className="min-h-[2.2rem] text-[11px] uppercase leading-5 tracking-[0.16em] text-muted-foreground">
-                          {item.label}
-                        </p>
-                        <p
-                          className={`mt-2 min-h-[3.2rem] font-display text-2xl leading-[1.02] text-primary md:min-h-[3.5rem] ${item.valueClassName ?? ""}`}
-                        >
-                          {item.value}
-                        </p>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="space-y-4">
-                <Card className="border-border/80 bg-card/85 shadow-xl">
-                  <CardContent className="space-y-4 p-6">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                      Success Definition
-                    </p>
-                    <div className="font-display text-7xl leading-none text-emerald-300">1</div>
-                    <p className="text-base leading-7 text-muted-foreground">
-                      <span className="font-semibold text-foreground">One coach-trusted player report</span> from real
-                      match data.
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/80 bg-card/85 shadow-xl">
-                  <CardContent className="space-y-4 p-6">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-sky-300">
-                      What You Are Really Trying To Do
-                    </p>
-                    <div className="space-y-3">
-                      {LANDING_GOALS.map((item) => (
-                        <div key={item} className="text-sm leading-6 text-muted-foreground">
-                          {item}
-                        </div>
-                      ))}
+                        {item.value}
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
                     </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/80 bg-card/85 shadow-xl">
-                  <CardContent className="space-y-4 p-6">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-sky-300">Non-Negotiables</p>
-                    <div className="space-y-3">
-                      {LANDING_NON_NEGOTIABLES.map((item) => (
-                        <div key={item} className="text-sm leading-6 text-muted-foreground">
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
             <div className="space-y-4">
               <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">

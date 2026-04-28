@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Loader2, MessageSquareText, SendHorizontal, Sparkles, User } from "lucide-react";
+import { Bot, Loader2, MessageSquareText, SendHorizontal, User } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,8 +57,8 @@ function buildIntroMessage(playerName: string, seriesName?: string | null): Play
     id: "intro",
     role: "assistant",
     content: seriesName
-      ? `Ask about ${playerName}'s selector profile, match evidence, commentary clips, or deeper series context within ${seriesName}.`
-      : `Ask about ${playerName}'s selector profile, match evidence, commentary clips, or deeper series context from the cricket dataset.`,
+      ? `Ask about ${playerName}'s report, evidence, clips, or series context in ${seriesName}.`
+      : `Ask about ${playerName}'s report, evidence, clips, or series context.`,
     includeInHistory: false,
   };
 }
@@ -250,20 +250,9 @@ const PlayerReportChat = ({
           <SheetHeader className="border-b border-border/80 px-6 py-5 text-left">
             <div className="flex items-start justify-between gap-3 pr-8">
               <div className="space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  <Badge className="gap-1 border border-cyan-400/25 bg-cyan-400/10 text-cyan-100 hover:bg-cyan-400/10">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Report Q&amp;A
-                  </Badge>
-                  <Badge variant="outline" className="border-border/80 bg-background/40 text-muted-foreground">
-                    Database-backed cricket context
-                  </Badge>
-                </div>
                 <SheetTitle className="font-display text-2xl text-foreground">{playerName}</SheetTitle>
                 <SheetDescription className="max-w-lg text-sm leading-6 text-muted-foreground">
-                  Ask follow-up questions about the current player report, including selector rationale, peer context,
-                  match evidence, phase splits, commentary clips, and broader series data pulled through the cricket
-                  analytics service.
+                  Ask about the report, match evidence, clips, or series context.
                 </SheetDescription>
               </div>
             </div>
@@ -281,17 +270,17 @@ const PlayerReportChat = ({
               ) : null}
               {matchEvidenceCount > 0 ? (
                 <Badge variant="outline" className="border-emerald-400/20 bg-emerald-400/10 text-emerald-100">
-                  {matchEvidenceCount} match evidence item{matchEvidenceCount === 1 ? "" : "s"}
+                  {matchEvidenceCount} match{matchEvidenceCount === 1 ? "" : "es"}
                 </Badge>
               ) : null}
               {commentaryCount > 0 ? (
                 <Badge variant="outline" className="border-cyan-400/20 bg-cyan-400/10 text-cyan-100">
-                  {commentaryCount} commentary clip{commentaryCount === 1 ? "" : "s"}
+                  {commentaryCount} clip{commentaryCount === 1 ? "" : "s"}
                 </Badge>
               ) : null}
               {peerCount > 0 ? (
                 <Badge variant="outline" className="border-amber-400/20 bg-amber-400/10 text-amber-100">
-                  {peerCount} peer comparison row{peerCount === 1 ? "" : "s"}
+                  {peerCount} peer{peerCount === 1 ? "" : "s"}
                 </Badge>
               ) : null}
             </div>
@@ -301,8 +290,7 @@ const PlayerReportChat = ({
             <div className="space-y-4 px-6 py-5">
               {!canChat ? (
                 <div className="rounded-3xl border border-border/80 bg-background/40 p-5 text-sm leading-7 text-muted-foreground">
-                  The assistant will enable once the player route resolves with a valid series and player id. The
-                  embedded standalone report below remains usable in the meantime.
+                  Chat will enable once the player route resolves.
                 </div>
               ) : null}
 
@@ -384,7 +372,7 @@ const PlayerReportChat = ({
 
               {canChat && messages.length <= 1 && starterQuestions.length > 0 ? (
                 <div className="rounded-3xl border border-border/80 bg-background/40 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Suggested prompts</p>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Try asking</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {starterQuestions.map((prompt) => (
                       <Button
@@ -407,7 +395,7 @@ const PlayerReportChat = ({
                 <div className="rounded-3xl border border-cyan-400/15 bg-background/50 px-4 py-4">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Reading the live player report and generating a grounded answer.
+                    Reviewing the live report.
                   </div>
                 </div>
               ) : null}
@@ -429,7 +417,7 @@ const PlayerReportChat = ({
                 onChange={(event) => setInput(event.target.value)}
                 placeholder={
                   canChat
-                    ? "Ask about opponent-adjusted value, peer comparison, match evidence, commentary clips, or series context."
+                    ? "Ask about the report, evidence, clips, or series context."
                     : "Waiting for live report summary..."
                 }
                 disabled={!canChat || isSubmitting}
@@ -443,8 +431,7 @@ const PlayerReportChat = ({
               />
               <div className="flex items-center justify-between gap-3">
                 <p className="max-w-md text-xs leading-5 text-muted-foreground">
-                  Answers stay limited to the player report plus the stored cricket analytics context available for this
-                  series and player route.
+                  Answers use the live report and stored series context.
                 </p>
                 <Button type="submit" disabled={!canChat || isSubmitting || input.trim().length === 0}>
                   {isSubmitting ? (

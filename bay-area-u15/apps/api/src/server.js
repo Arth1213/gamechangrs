@@ -25,7 +25,9 @@ const {
   updateTuning,
 } = require("./services/adminService");
 const {
+  applyEntityAdminAccessRequestDecision,
   applySeriesAccessRequestDecision,
+  createSeriesAdminAccessRequest,
   createSeriesAccessRequest,
   disableEntityAdminMembership,
   getAdminSeriesCatalog,
@@ -349,6 +351,18 @@ app.post("/api/admin/entities/:entityId/admins", asyncHandler(async (req, res) =
   res.json(payload);
 }));
 
+app.post("/api/admin/entities/:entityId/admin-access-requests/:requestId/decision", asyncHandler(async (req, res) => {
+  const actor = await requireAuthenticatedCricketUser(req);
+  const payload = await applyEntityAdminAccessRequestDecision({
+    actorUserId: actor.userId,
+    entityId: req.params.entityId,
+    requestId: req.params.requestId,
+    body: req.body,
+    dryRun: parseDryRun(req),
+  });
+  res.json(payload);
+}));
+
 app.delete("/api/admin/entities/:entityId/admins/:userId", asyncHandler(async (req, res) => {
   const actor = await requireAuthenticatedCricketUser(req);
   const payload = await disableEntityAdminMembership({
@@ -444,6 +458,18 @@ app.get("/api/series/:seriesConfigKey/players/search", asyncHandler(async (req, 
 app.post("/api/series/:seriesConfigKey/access-requests", asyncHandler(async (req, res) => {
   const actor = await requireAuthenticatedCricketUser(req);
   const payload = await createSeriesAccessRequest({
+    actorUserId: actor.userId,
+    actorEmail: actor.email,
+    seriesConfigKey: req.params.seriesConfigKey,
+    body: req.body,
+    dryRun: parseDryRun(req),
+  });
+  res.json(payload);
+}));
+
+app.post("/api/series/:seriesConfigKey/admin-access-requests", asyncHandler(async (req, res) => {
+  const actor = await requireAuthenticatedCricketUser(req);
+  const payload = await createSeriesAdminAccessRequest({
     actorUserId: actor.userId,
     actorEmail: actor.email,
     seriesConfigKey: req.params.seriesConfigKey,

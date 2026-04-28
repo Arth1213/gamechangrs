@@ -45,7 +45,9 @@ import {
   assignCricketAdminEntityMembership,
   createCricketAdminSeries,
   createCricketAdminRefreshRequest,
+  createCricketSeriesAdminAccessRequest,
   createCricketAdminViewerGrant,
+  CricketAdminEntityAccessRequest,
   CricketAdminEntityMembership,
   CricketAdminCreateSeriesPayload,
   CricketAdminMatchOpsMatch,
@@ -59,6 +61,7 @@ import {
   CricketAdminSubscriptionSummaryResponse,
   CricketAdminViewerGrant,
   CricketAdminViewerGrantsResponse,
+  decideCricketAdminEntityAccessRequest,
   decideCricketAdminAccessRequest,
   fetchCricketAdminSeries,
   fetchCricketAdminMatchOps,
@@ -100,6 +103,10 @@ type ViewerDirectGrantFormState = {
   userId: string;
   accessRole: "viewer" | "analyst";
   expiresAt: string;
+};
+
+type SeriesAdminInviteFormState = {
+  email: string;
 };
 
 type SeriesCreationFormState = {
@@ -485,6 +492,15 @@ const AnalyticsAdmin = () => {
   const [entityAdminMessages, setEntityAdminMessages] = useState<Record<string, string>>({});
   const [entityAdminErrors, setEntityAdminErrors] = useState<Record<string, string>>({});
   const [activeEntityAdminMutationKey, setActiveEntityAdminMutationKey] = useState<string | null>(null);
+  const [seriesAdminInviteForm, setSeriesAdminInviteForm] = useState<SeriesAdminInviteFormState>({
+    email: "",
+  });
+  const [seriesAdminInviteMutationStatus, setSeriesAdminInviteMutationStatus] = useState<MutationStatus>("idle");
+  const [seriesAdminInviteMutationMessage, setSeriesAdminInviteMutationMessage] = useState<string | null>(null);
+  const [seriesAdminInviteMutationError, setSeriesAdminInviteMutationError] = useState<string | null>(null);
+  const [entityAdminRequestDecisionStatusByRequest, setEntityAdminRequestDecisionStatusByRequest] = useState<Record<string, MutationStatus>>({});
+  const [seriesAdminSelfRequestStatus, setSeriesAdminSelfRequestStatus] = useState<MutationStatus>("idle");
+  const [seriesAdminSelfRequestMessage, setSeriesAdminSelfRequestMessage] = useState<string | null>(null);
 
   const accessToken = session?.access_token || "";
   const selectedSeriesKey = searchParams.get("series")?.trim() || "";
@@ -541,6 +557,8 @@ const AnalyticsAdmin = () => {
       )
     : false;
   const pendingViewerAccessRequests = viewerAccess?.requests?.filter((request) => request.requestStatus === "pending") ?? [];
+  const pendingEntityAdminRequests =
+    (selectedEntity?.adminRequests ?? []).filter((request) => request.requestStatus === "pending");
 
   useEffect(() => {
     if (!accessToken) {
@@ -844,6 +862,15 @@ const AnalyticsAdmin = () => {
     setViewerDirectGrantMutationError(null);
     setViewerRevokeStatusByGrant({});
     setAccessRequestDecisionStatusByRequest({});
+    setSeriesAdminInviteForm({
+      email: "",
+    });
+    setSeriesAdminInviteMutationStatus("idle");
+    setSeriesAdminInviteMutationMessage(null);
+    setSeriesAdminInviteMutationError(null);
+    setEntityAdminRequestDecisionStatusByRequest({});
+    setSeriesAdminSelfRequestStatus("idle");
+    setSeriesAdminSelfRequestMessage(null);
   }, [selectedSeries?.configKey]);
 
   async function refreshAdminCatalogSnapshot() {
@@ -861,6 +888,152 @@ const AnalyticsAdmin = () => {
       setCatalogError(error instanceof Error ? error.message : "Admin series access could not be loaded.");
     }
   }
+
+  const handleSeriesAdminInviteFieldChange = (field: keyof SeriesAdminInviteFormState, value: string) => {
+    setSeriesAdminInviteForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const handleInviteEntityAdmin = async () => {
+    if (!accessToken || !selectedEntity?.entityId) {
+      return;
+    }
+
+    const email = seriesAdminInviteForm.email.trim();
+    if (!email) {
+      const message = "Enter the email address that should be pre-approved for series-admin access.";
+      setSeriesAdminInviteMutationStatus("error");
+      setSeriesAdminInviteMutationError(message);
+      setSeriesAdminInviteMutationMessage(null);
+      toast({
+        title: "Series-admin invite failed",
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSeriesAdminInviteMutationStatus("saving");
+    setSeriesAdminInviteMutationError(null);
+    setSeriesAdminInviteMutationMessage(null);
+
+    try {
+      const result = await assignCricketAdminEntityMembership(selectedEntity.entityId, accessToken, {
+        email,
+        role: "admin",
+      });
+
+      await refreshAdminCatalogSnapshot();
+      setSeriesAdminInviteForm({ email: "" });
+      setSeriesAdminInviteMutationStatus("success");
+      setSeriesAdminInviteMutationMessage(
+        result.message || "Series-admin email invite saved."
+      );
+
+      toast({
+        title: "Series-admin invite saved",
+        description: result.message || "Series-admin email invite saved.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Series-admin invite failed unexpectedly.";
+      setSeriesAdminInviteMutationStatus("error");
+      setSeriesAdminInviteMutationError(message);
+      setSeriesAdminInviteMutationMessage(null);
+      toast({
+        title: "Series-admin invite failed",
+        description: message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEntityAdminRequestDecision = async (
+    request: CricketAdminEntityAccessRequest,
+    action: "approve" | "decline",
+  ) => {
+    if (!accessToken || !selectedEntity?.entityId) {
+      return;
+    }
+
+    const requestId = request.requestId || "";
+    if (!requestId) {
+      return;
+    }
+
+    setEntityAdminRequestDecisionStatusByRequest((current) => ({
+      ...current,
+      [requestId]: "saving",
+    }));
+
+    try {
+      const result = await decideCricketAdminEntityAccessRequest(
+        selectedEntity.entityId,
+        requestId,
+        accessToken,
+        {
+          action,
+        },
+      );
+
+      await refreshAdminCatalogSnapshot();
+      setEntityAdminRequestDecisionStatusByRequest((current) => ({
+        ...current,
+        [requestId]: "success",
+      }));
+
+      toast({
+        title: action === "approve" ? "Series-admin request approved" : "Series-admin request declined",
+        description:
+          result.message
+          || (action === "approve" ? "Series-admin request approved." : "Series-admin request declined."),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Series-admin request decision failed unexpectedly.";
+      setEntityAdminRequestDecisionStatusByRequest((current) => ({
+        ...current,
+        [requestId]: "error",
+      }));
+      toast({
+        title: "Series-admin request decision failed",
+        description: message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRequestSeriesAdminAccess = async () => {
+    if (!accessToken || !selectedSeriesKey) {
+      const message = "Open the series admin console from a specific series so the request can be routed correctly.";
+      setSeriesAdminSelfRequestStatus("error");
+      setSeriesAdminSelfRequestMessage(message);
+      return;
+    }
+
+    setSeriesAdminSelfRequestStatus("saving");
+    setSeriesAdminSelfRequestMessage(null);
+
+    try {
+      const result = await createCricketSeriesAdminAccessRequest(selectedSeriesKey, accessToken, {
+        requestNote: "User requested series-admin access from the series admin console.",
+      });
+
+      if (result.accessGranted) {
+        setCatalogReloadKey((current) => current + 1);
+        setSeriesAdminSelfRequestStatus("success");
+        setSeriesAdminSelfRequestMessage(result.message || "Series-admin access is now active.");
+        return;
+      }
+
+      setSeriesAdminSelfRequestStatus("success");
+      setSeriesAdminSelfRequestMessage(result.message || "Series-admin request submitted for review.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Series-admin request could not be submitted.";
+      setSeriesAdminSelfRequestStatus("error");
+      setSeriesAdminSelfRequestMessage(message);
+    }
+  };
 
   const handleSelectSeries = (configKey?: string) => {
     const normalizedKey = configKey?.trim();
@@ -1931,12 +2104,45 @@ const AnalyticsAdmin = () => {
                     console and should use the analytics workspace instead.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <Button asChild variant="outline">
-                    <Link to="/analytics">
-                      Back to Analytics
-                    </Link>
-                  </Button>
+                <CardContent className="space-y-5">
+                  <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">User ID</p>
+                    <p className="mt-2 break-all font-mono text-sm text-foreground">
+                      {catalog?.actor?.userId || user?.id || "Unavailable"}
+                    </p>
+                  </div>
+
+                  {seriesAdminSelfRequestMessage ? (
+                    <div
+                      className={`rounded-2xl border p-4 text-sm leading-7 ${
+                        seriesAdminSelfRequestStatus === "error"
+                          ? "border-destructive/30 bg-destructive/5 text-destructive"
+                          : "border-cyan-400/20 bg-cyan-400/5 text-cyan-100"
+                      }`}
+                    >
+                      {seriesAdminSelfRequestMessage}
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      type="button"
+                      onClick={() => void handleRequestSeriesAdminAccess()}
+                      disabled={seriesAdminSelfRequestStatus === "saving" || !selectedSeriesKey}
+                    >
+                      {seriesAdminSelfRequestStatus === "saving" ? "Submitting request..." : "Request series admin access"}
+                    </Button>
+                    <Button asChild variant="outline">
+                      <Link to="/analytics">
+                        Back to Analytics
+                      </Link>
+                    </Button>
+                  </div>
+                  {!selectedSeriesKey ? (
+                    <p className="text-sm leading-6 text-amber-100/80">
+                      Open this route from a specific series so the request can be sent to the correct series-admin team.
+                    </p>
+                  ) : null}
                 </CardContent>
               </Card>
             ) : null}
@@ -2575,135 +2781,317 @@ const AnalyticsAdmin = () => {
                         </div>
                       </div>
 
-                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
-                        <div className="space-y-1">
-                          <p className="text-sm font-semibold text-foreground">Current series admins</p>
-                          <p className="text-xs leading-6 text-muted-foreground">
-                            Owner transfer stays locked. Additional admins inherit access across this entity.
-                          </p>
-                        </div>
-
-                        {(selectedEntity?.admins ?? []).length ? (
+                      <div className="grid gap-4">
+                        <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
                           <div className="space-y-3">
-                            {(selectedEntity?.admins ?? []).map((membership) => {
-                              const removeKey = `remove:${selectedEntity?.entityId}:${membership.userId}`;
-                              const isRemoving = activeEntityAdminMutationKey === removeKey;
+                            <Badge variant="outline" className="w-fit border-border/80 bg-card/70 text-foreground">
+                              Step 1
+                            </Badge>
+                            <div>
+                              <p className="font-display text-xl text-foreground">Pre-approve by email</p>
+                              <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                                Best when the future series admin has not signed in yet. The request will stay pending
+                                until that email signs in and requests admin access.
+                              </p>
+                            </div>
+                          </div>
 
-                              return (
-                                <div
-                                  key={`${membership.userId}-${membership.role}`}
-                                  className="flex flex-col gap-3 rounded-xl border border-border/70 bg-background/55 p-4 md:flex-row md:items-center md:justify-between"
-                                >
-                                  <div className="space-y-1">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <p className="font-medium text-foreground">
-                                        {membership.isOwner ? "Entity owner" : "Series admin"}
-                                      </p>
-                                      <Badge className={getEntityAdminMembershipTone(membership)}>
-                                        {membership.isOwner ? "owner" : membership.role || "admin"}
-                                      </Badge>
+                          <div className="space-y-2">
+                            <Label htmlFor="series-admin-invite-email">Series admin email</Label>
+                            <Input
+                              id="series-admin-invite-email"
+                              type="email"
+                              placeholder="admin@example.com"
+                              value={seriesAdminInviteForm.email}
+                              onChange={(event) => handleSeriesAdminInviteFieldChange("email", event.target.value)}
+                            />
+                          </div>
+
+                          {seriesAdminInviteMutationMessage ? (
+                            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-7 text-emerald-200">
+                              {seriesAdminInviteMutationMessage}
+                            </div>
+                          ) : null}
+
+                          {seriesAdminInviteMutationError ? (
+                            <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm leading-7 text-destructive">
+                              {seriesAdminInviteMutationError}
+                            </div>
+                          ) : null}
+
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              onClick={() => void handleInviteEntityAdmin()}
+                              disabled={seriesAdminInviteMutationStatus === "saving" || !selectedEntity?.entityId}
+                            >
+                              {seriesAdminInviteMutationStatus === "saving" ? "Saving..." : "Save pre-approval"}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setSeriesAdminInviteForm({ email: "" })}
+                              disabled={seriesAdminInviteMutationStatus === "saving"}
+                            >
+                              Clear
+                            </Button>
+                          </div>
+                        </div>
+
+                        <form
+                          className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5"
+                          onSubmit={(event) =>
+                            selectedEntity?.entityId ? void handleAssignEntityAdmin(event, selectedEntity.entityId) : undefined
+                          }
+                        >
+                          <div className="space-y-3">
+                            <Badge variant="outline" className="w-fit border-border/80 bg-card/70 text-foreground">
+                              Step 2
+                            </Badge>
+                            <div>
+                              <p className="font-display text-xl text-foreground">Grant immediately by user ID</p>
+                              <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                                Use when the person already has a Game-Changrs account. This grants series-admin access
+                                across every series owned by {selectedEntity?.entityName || "the selected entity"}.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor={`entity-admin-user-${selectedEntity?.entityId || "selected"}`}>
+                              Series admin user ID
+                            </Label>
+                            <Input
+                              id={`entity-admin-user-${selectedEntity?.entityId || "selected"}`}
+                              value={selectedEntity?.entityId ? entityAdminDrafts[selectedEntity.entityId] || "" : ""}
+                              onChange={(event) => {
+                                const entityId = selectedEntity?.entityId || "";
+                                setEntityAdminDrafts((current) => ({
+                                  ...current,
+                                  [entityId]: event.target.value,
+                                }));
+                                setEntityAdminErrors((current) => ({
+                                  ...current,
+                                  [entityId]: "",
+                                }));
+                              }}
+                              placeholder="Supabase auth user ID"
+                              className="font-mono text-xs"
+                              autoComplete="off"
+                              disabled={!selectedEntity?.entityId}
+                            />
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="submit"
+                              disabled={Boolean(activeEntityAdminMutationKey) || !selectedEntity?.entityId}
+                              className="md:min-w-[14rem]"
+                            >
+                              {activeEntityAdminMutationKey === `assign:${selectedEntity?.entityId}` ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <UserPlus className="mr-2 h-4 w-4" />
+                              )}
+                              Grant series admin
+                            </Button>
+                          </div>
+
+                          {selectedEntity?.entityId && entityAdminMessages[selectedEntity.entityId] ? (
+                            <p className="text-sm leading-6 text-emerald-300">
+                              {entityAdminMessages[selectedEntity.entityId]}
+                            </p>
+                          ) : null}
+
+                          {selectedEntity?.entityId && entityAdminErrors[selectedEntity.entityId] ? (
+                            <p className="text-sm leading-6 text-destructive">
+                              {entityAdminErrors[selectedEntity.entityId]}
+                            </p>
+                          ) : null}
+                        </form>
+
+                        <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                          <div className="space-y-3">
+                            <Badge variant="outline" className="w-fit border-border/80 bg-card/70 text-foreground">
+                              Step 3
+                            </Badge>
+                            <div>
+                              <p className="font-display text-xl text-foreground">Review pending requests</p>
+                              <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                                Approve self-service admin requests or manage email invites that are still waiting for
+                                first login.
+                              </p>
+                            </div>
+                          </div>
+
+                          {pendingEntityAdminRequests.length ? (
+                            <div className="space-y-3">
+                              {pendingEntityAdminRequests.map((request) => {
+                                const requestId = request.requestId || "";
+                                const decisionStatus = requestId
+                                  ? entityAdminRequestDecisionStatusByRequest[requestId]
+                                  : undefined;
+                                const canApprove = request.requestType === "self_request" && Boolean(request.requestedUserId);
+                                const requestStatusLabel =
+                                  request.requestType === "admin_invite" && !request.requestedUserId
+                                    ? "Waiting for first login"
+                                    : request.requestStatus || "pending";
+
+                                return (
+                                  <div
+                                    key={request.requestId || `${request.requestedEmail}-${request.createdAt}`}
+                                    className="rounded-2xl border border-border/70 bg-background/60 p-5"
+                                  >
+                                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                      <div className="space-y-4">
+                                        <div className="flex flex-wrap gap-2">
+                                          <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                                            {request.requestType === "admin_invite" ? "Email pre-approval" : "User request"}
+                                          </Badge>
+                                          <Badge className={getStatusBadgeClass(request.requestStatus)}>
+                                            {requestStatusLabel}
+                                          </Badge>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                          <p className="break-all text-base font-semibold text-foreground">
+                                            {request.requestedEmail || "-"}
+                                          </p>
+                                          <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
+                                            {request.requestedUserId || "No user ID linked yet"}
+                                          </p>
+                                        </div>
+
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                              Requested
+                                            </p>
+                                            <p className="mt-2 text-sm leading-6 text-foreground">
+                                              {formatDateTime(request.createdAt)}
+                                            </p>
+                                          </div>
+                                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                              Approval state
+                                            </p>
+                                            <p className="mt-2 text-sm leading-6 text-foreground">
+                                              {canApprove ? "Ready for decision" : "Waiting for user link"}
+                                            </p>
+                                          </div>
+                                        </div>
+
+                                        {request.requestNote ? (
+                                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                              Request note
+                                            </p>
+                                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                              {request.requestNote}
+                                            </p>
+                                          </div>
+                                        ) : null}
+                                      </div>
+
+                                      <div className="flex flex-wrap gap-2 lg:justify-end">
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          disabled={!canApprove || decisionStatus === "saving" || !requestId}
+                                          onClick={() => void handleEntityAdminRequestDecision(request, "approve")}
+                                        >
+                                          {decisionStatus === "saving" && canApprove ? "Approving..." : "Approve"}
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          disabled={decisionStatus === "saving" || !requestId}
+                                          onClick={() => void handleEntityAdminRequestDecision(request, "decline")}
+                                        >
+                                          Decline
+                                        </Button>
+                                      </div>
                                     </div>
-                                    <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
-                                      {membership.userId || "No user ID"}
-                                    </p>
                                   </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="rounded-2xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground">
+                              No pending series-admin requests for this entity.
+                            </div>
+                          )}
+                        </div>
 
-                                  {membership.canRemove ? (
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      disabled={Boolean(activeEntityAdminMutationKey) || !selectedEntity?.entityId}
-                                      onClick={() =>
-                                        selectedEntity?.entityId && membership.userId
-                                          ? void handleRemoveEntityAdmin(selectedEntity.entityId, membership.userId)
-                                          : undefined
-                                      }
-                                      className="border-destructive/25 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                    >
-                                      {isRemoving ? (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                      )}
-                                      Remove
-                                    </Button>
-                                  ) : (
-                                    <div className="text-xs leading-6 text-muted-foreground">Locked</div>
-                                  )}
-                                </div>
-                              );
-                            })}
+                        <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                          <div className="space-y-1">
+                            <p className="text-sm font-semibold text-foreground">Current series admins</p>
+                            <p className="text-xs leading-6 text-muted-foreground">
+                              Owner transfer stays locked. Additional admins inherit access across this entity.
+                            </p>
                           </div>
-                        ) : (
-                          <div className="rounded-xl border border-border/70 bg-background/55 p-4 text-sm leading-7 text-muted-foreground">
-                            No entity-admin assignments are active yet for this series owner.
-                          </div>
-                        )}
+
+                          {(selectedEntity?.admins ?? []).length ? (
+                            <div className="space-y-3">
+                              {(selectedEntity?.admins ?? []).map((membership) => {
+                                const removeKey = `remove:${selectedEntity?.entityId}:${membership.userId}`;
+                                const isRemoving = activeEntityAdminMutationKey === removeKey;
+
+                                return (
+                                  <div
+                                    key={`${membership.userId}-${membership.role}`}
+                                    className="flex flex-col gap-3 rounded-xl border border-border/70 bg-background/55 p-4 md:flex-row md:items-center md:justify-between"
+                                  >
+                                    <div className="space-y-1">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <p className="font-medium text-foreground">
+                                          {membership.isOwner ? "Entity owner" : "Series admin"}
+                                        </p>
+                                        <Badge className={getEntityAdminMembershipTone(membership)}>
+                                          {membership.isOwner ? "owner" : membership.role || "admin"}
+                                        </Badge>
+                                      </div>
+                                      <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
+                                        {membership.userId || "No user ID"}
+                                      </p>
+                                    </div>
+
+                                    {membership.canRemove ? (
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={Boolean(activeEntityAdminMutationKey) || !selectedEntity?.entityId}
+                                        onClick={() =>
+                                          selectedEntity?.entityId && membership.userId
+                                            ? void handleRemoveEntityAdmin(selectedEntity.entityId, membership.userId)
+                                            : undefined
+                                        }
+                                        className="border-destructive/25 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                      >
+                                        {isRemoving ? (
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                        )}
+                                        Remove
+                                      </Button>
+                                    ) : (
+                                      <div className="text-xs leading-6 text-muted-foreground">Locked</div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="rounded-xl border border-border/70 bg-background/55 p-4 text-sm leading-7 text-muted-foreground">
+                              No entity-admin assignments are active yet for this series owner.
+                            </div>
+                          )}
+                        </div>
                       </div>
-
-                      <form
-                        className="rounded-2xl border border-border/80 bg-background/55 p-5"
-                        onSubmit={(event) =>
-                          selectedEntity?.entityId ? void handleAssignEntityAdmin(event, selectedEntity.entityId) : undefined
-                        }
-                      >
-                        <div className="space-y-2">
-                          <Label htmlFor={`entity-admin-user-${selectedEntity?.entityId || "selected"}`}>
-                            Grant series-admin access by user ID
-                          </Label>
-                          <p className="text-sm leading-7 text-muted-foreground">
-                            Enter the Game-Changrs auth user ID. This grants series-admin access for all series owned
-                            by {selectedEntity?.entityName || "the selected entity"}.
-                          </p>
-                        </div>
-
-                        <div className="mt-3 flex flex-col gap-3 md:flex-row">
-                          <Input
-                            id={`entity-admin-user-${selectedEntity?.entityId || "selected"}`}
-                            value={selectedEntity?.entityId ? entityAdminDrafts[selectedEntity.entityId] || "" : ""}
-                            onChange={(event) => {
-                              const entityId = selectedEntity?.entityId || "";
-                              setEntityAdminDrafts((current) => ({
-                                ...current,
-                                [entityId]: event.target.value,
-                              }));
-                              setEntityAdminErrors((current) => ({
-                                ...current,
-                                [entityId]: "",
-                              }));
-                            }}
-                            placeholder="Supabase auth user ID"
-                            className="font-mono text-xs"
-                            autoComplete="off"
-                            disabled={!selectedEntity?.entityId}
-                          />
-                          <Button
-                            type="submit"
-                            disabled={Boolean(activeEntityAdminMutationKey) || !selectedEntity?.entityId}
-                            className="md:min-w-[14rem]"
-                          >
-                            {activeEntityAdminMutationKey === `assign:${selectedEntity?.entityId}` ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                              <UserPlus className="mr-2 h-4 w-4" />
-                            )}
-                            Grant series admin
-                          </Button>
-                        </div>
-
-                        {selectedEntity?.entityId && entityAdminMessages[selectedEntity.entityId] ? (
-                          <p className="mt-3 text-sm leading-6 text-emerald-300">
-                            {entityAdminMessages[selectedEntity.entityId]}
-                          </p>
-                        ) : null}
-
-                        {selectedEntity?.entityId && entityAdminErrors[selectedEntity.entityId] ? (
-                          <p className="mt-3 text-sm leading-6 text-destructive">
-                            {entityAdminErrors[selectedEntity.entityId]}
-                          </p>
-                        ) : null}
-                      </form>
                     </CardContent>
                   </Card>
                 ) : null}

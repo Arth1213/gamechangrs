@@ -5,6 +5,7 @@ const { assertSubscriptionActionAllowed } = require("./subscriptionService");
 const { normalizeText, toInteger } = require("../lib/utils");
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ADMIN_ACCESS_ROLES = new Set(["admin"]);
 const VIEWER_ACCESS_ROLES = new Set(["viewer", "analyst"]);
 const ACCESS_REQUEST_TYPES = new Set(["self_request", "admin_invite"]);
 const ACCESS_REQUEST_STATUSES = new Set(["pending", "approved", "declined", "canceled"]);
@@ -17,6 +18,11 @@ function normalizeUuid(value) {
 function normalizeViewerAccessRole(value) {
   const normalized = normalizeText(value).toLowerCase();
   return VIEWER_ACCESS_ROLES.has(normalized) ? normalized : "";
+}
+
+function normalizeAdminAccessRole(value) {
+  const normalized = normalizeText(value).toLowerCase();
+  return ADMIN_ACCESS_ROLES.has(normalized) ? normalized : "";
 }
 
 function normalizeEmail(value) {
@@ -139,6 +145,34 @@ async function getEntityAccessReadiness(client) {
   };
 }
 
+async function hasEntityAdminAccessRequestTable(client) {
+  const row = await fetchOne(
+    client,
+    `
+      select exists (
+        select 1
+        from information_schema.tables
+        where table_schema = 'public'
+          and table_name = 'entity_admin_access_request'
+      ) as has_table
+    `
+  );
+
+  return row?.has_table === true;
+}
+
+async function assertEntityAdminAccessRequestReady(client) {
+  if (await hasEntityAdminAccessRequestTable(client)) {
+    return;
+  }
+
+  const error = new Error(
+    "Phase 10 series-admin access request storage is not available in the database yet. Apply the entity-admin access request migration first."
+  );
+  error.statusCode = 503;
+  throw error;
+}
+
 function mapSeriesRow(row) {
   const configKey = normalizeText(row.config_key);
 
@@ -199,6 +233,26 @@ function mapAccessRequestRow(row) {
     reviewedByUserId: normalizeText(row.reviewed_by_user_id),
     requestedExpiresAt: row.requested_expires_at || null,
     resolvedGrantId: normalizeText(row.resolved_grant_id),
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+    resolvedAt: row.resolved_at || null,
+  };
+}
+
+function mapEntityAdminRequestRow(row) {
+  return {
+    requestId: normalizeText(row.id),
+    entityId: normalizeText(row.entity_id),
+    requestedEmail: normalizeText(row.requested_email),
+    requestedUserId: normalizeText(row.requested_user_id),
+    requestedRole: normalizeText(row.requested_role),
+    requestType: normalizeText(row.request_type),
+    requestStatus: normalizeText(row.request_status),
+    requestNote: normalizeText(row.request_note),
+    adminResponseNote: normalizeText(row.admin_response_note),
+    requestedByUserId: normalizeText(row.requested_by_user_id),
+    reviewedByUserId: normalizeText(row.reviewed_by_user_id),
+    resolvedMembershipId: normalizeText(row.resolved_membership_id),
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
     resolvedAt: row.resolved_at || null,
@@ -305,6 +359,7 @@ async function listManagedEntities(client, input) {
           ? null
           : Math.max(maxAdminUsers - activeAdminUsers, 0),
       admins: [],
+      adminRequests: [],
     };
   });
 }
@@ -360,6 +415,79 @@ async function listManagedEntityAdminMemberships(client, input) {
       );
 
   return result.rows.map(mapEntityAdminMembershipRow);
+}
+
+async function listManagedEntityAdminRequests(client, input) {
+  if (!(await hasEntityAdminAccessRequestTable(client))) {
+    return [];
+  }
+
+  const result = input.isPlatformAdmin
+    ? await client.query(
+        `
+          select
+            ear.id,
+            ear.entity_id,
+            ear.requested_email,
+            ear.requested_user_id,
+            ear.requested_role,
+            ear.request_type,
+            ear.request_status,
+            ear.request_note,
+            ear.admin_response_note,
+            ear.requested_by_user_id,
+            ear.reviewed_by_user_id,
+            ear.resolved_membership_id,
+            ear.created_at,
+            ear.updated_at,
+            ear.resolved_at
+          from public.entity_admin_access_request ear
+          join public.entity e on e.id = ear.entity_id
+          order by
+            e.display_name,
+            case when ear.request_status = 'pending' then 0 else 1 end,
+            ear.created_at desc,
+            ear.requested_email
+        `
+      )
+    : await client.query(
+        `
+          select
+            ear.id,
+            ear.entity_id,
+            ear.requested_email,
+            ear.requested_user_id,
+            ear.requested_role,
+            ear.request_type,
+            ear.request_status,
+            ear.request_note,
+            ear.admin_response_note,
+            ear.requested_by_user_id,
+            ear.reviewed_by_user_id,
+            ear.resolved_membership_id,
+            ear.created_at,
+            ear.updated_at,
+            ear.resolved_at
+          from public.entity_admin_access_request ear
+          join public.entity e on e.id = ear.entity_id
+          where exists (
+            select 1
+            from public.entity_membership em_access
+            where em_access.entity_id = ear.entity_id
+              and em_access.user_id = $1
+              and em_access.status = 'active'
+              and em_access.role in ('owner', 'admin')
+          )
+          order by
+            e.display_name,
+            case when ear.request_status = 'pending' then 0 else 1 end,
+            ear.created_at desc,
+            ear.requested_email
+        `,
+        [input.userId]
+      );
+
+  return result.rows.map(mapEntityAdminRequestRow);
 }
 
 async function loadEntityManagementSnapshot(client, input) {
@@ -921,6 +1049,335 @@ async function getEntityManagementAccess(input) {
   });
 }
 
+async function loadEntityAdminGrantContext(client, entityIdInput) {
+  const entityId = normalizeUuid(entityIdInput);
+  if (!entityId) {
+    const error = new Error("entityId must be a valid UUID.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const entity = await fetchOne(
+    client,
+    `
+      select
+        e.id as entity_id,
+        e.slug as entity_slug,
+        e.display_name as entity_name,
+        e.owner_user_id,
+        es.plan_key as subscription_plan_key,
+        es.status as subscription_status,
+        es.max_admin_users,
+        count(
+          distinct case
+            when em.status = 'active' and em.role in ('owner', 'admin') then em.user_id
+            else null
+          end
+        )::int as active_admin_user_count
+      from public.entity e
+      left join public.entity_subscription es on es.entity_id = e.id
+      left join public.entity_membership em on em.entity_id = e.id
+      where e.id = $1
+      group by e.id, es.plan_key, es.status, es.max_admin_users
+      limit 1
+    `,
+    [entityId]
+  );
+
+  if (!entity) {
+    const error = new Error(`Entity not found for id: ${entityId}`);
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return {
+    entityId: normalizeText(entity.entity_id),
+    entitySlug: normalizeText(entity.entity_slug),
+    entityName: normalizeText(entity.entity_name),
+    ownerUserId: normalizeText(entity.owner_user_id),
+    subscriptionPlanKey: normalizeText(entity.subscription_plan_key),
+    subscriptionStatus: normalizeText(entity.subscription_status),
+    maxAdminUsers: toInteger(entity.max_admin_users),
+    activeAdminUsers: toInteger(entity.active_admin_user_count) || 0,
+  };
+}
+
+async function fetchEntityAdminMembershipRow(client, entityId, targetUserId) {
+  return fetchOne(
+    client,
+    `
+      select
+        em.id as membership_id,
+        em.entity_id,
+        em.user_id,
+        em.role,
+        em.status,
+        em.invited_by_user_id,
+        em.created_at,
+        em.updated_at,
+        (e.owner_user_id = em.user_id) as is_owner
+      from public.entity_membership em
+      join public.entity e on e.id = em.entity_id
+      where em.entity_id = $1
+        and em.user_id = $2
+      limit 1
+    `,
+    [entityId, targetUserId]
+  );
+}
+
+async function resolvePendingEntityAdminRequestsForMembership(client, input) {
+  const targetUserId = normalizeUuid(input.targetUserId);
+  if (!targetUserId) {
+    return;
+  }
+
+  await client.query(
+    `
+      update public.entity_admin_access_request
+      set
+        requested_user_id = coalesce(requested_user_id, $2),
+        request_status = 'approved',
+        reviewed_by_user_id = $3,
+        admin_response_note = coalesce(
+          nullif(admin_response_note, ''),
+          $4
+        ),
+        resolved_membership_id = $5,
+        resolved_at = coalesce(resolved_at, now()),
+        updated_at = now()
+      where entity_id = $1
+        and requested_user_id = $2
+        and request_status = 'pending'
+    `,
+    [
+      input.entityId,
+      targetUserId,
+      normalizeUuid(input.reviewedByUserId) || null,
+      normalizeText(input.adminResponseNote) || "Approved while granting series-admin access directly.",
+      normalizeUuid(input.resolvedMembershipId) || null,
+    ]
+  );
+}
+
+async function grantEntityAdminMembership(client, input) {
+  const context = await loadEntityAdminGrantContext(client, input.entityId);
+  const targetUserId = normalizeUuid(input.targetUserId);
+
+  if (!targetUserId) {
+    const error = new Error("userId must be a valid UUID.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const existing = await fetchEntityAdminMembershipRow(client, context.entityId, targetUserId);
+  const existingRole = normalizeText(existing?.role);
+  const existingStatus = normalizeText(existing?.status);
+  const isTargetEntityOwner = context.ownerUserId === targetUserId;
+  const isExistingOwner = existing?.is_owner === true || existingRole === "owner" || isTargetEntityOwner;
+
+  if (isExistingOwner && existingStatus === "active") {
+    return {
+      context,
+      membership: existing ? mapEntityAdminMembershipRow(existing) : null,
+      existingRole,
+      existingStatus,
+      isExistingOwner: true,
+      wasAlreadyActive: true,
+    };
+  }
+
+  const wouldConsumeSeat = !(existingStatus === "active" && (existingRole === "owner" || existingRole === "admin"));
+  if (
+    wouldConsumeSeat
+    && context.maxAdminUsers !== null
+    && context.activeAdminUsers >= context.maxAdminUsers
+  ) {
+    const error = new Error(
+      `Admin allocation is at limit for this entity (${context.activeAdminUsers}/${context.maxAdminUsers}).`
+    );
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const roleToPersist = isTargetEntityOwner ? "owner" : "admin";
+  const row = await fetchOne(
+    client,
+    `
+      insert into public.entity_membership (
+        entity_id,
+        user_id,
+        role,
+        status,
+        invited_by_user_id
+      )
+      values ($1, $2, $3, 'active', $4)
+      on conflict (entity_id, user_id)
+      do update set
+        role = case
+          when public.entity_membership.role = 'owner' then public.entity_membership.role
+          else excluded.role
+        end,
+        status = 'active',
+        invited_by_user_id = coalesce(public.entity_membership.invited_by_user_id, excluded.invited_by_user_id),
+        updated_at = now()
+      returning
+        id as membership_id,
+        entity_id,
+        user_id,
+        role,
+        status,
+        invited_by_user_id,
+        created_at,
+        updated_at,
+        ($3 = 'owner') as is_owner
+    `,
+    [context.entityId, targetUserId, roleToPersist, normalizeUuid(input.invitedByUserId) || null]
+  );
+
+  await resolvePendingEntityAdminRequestsForMembership(client, {
+    entityId: context.entityId,
+    targetUserId,
+    reviewedByUserId: input.reviewedByUserId || input.invitedByUserId || null,
+    resolvedMembershipId: row?.membership_id || row?.id || null,
+    adminResponseNote: input.adminResponseNote,
+  });
+
+  return {
+    context,
+    membership: mapEntityAdminMembershipRow(row),
+    existingRole,
+    existingStatus,
+    isExistingOwner: roleToPersist === "owner",
+    wasAlreadyActive: existingStatus === "active" && (existingRole === "owner" || existingRole === "admin"),
+  };
+}
+
+async function upsertPendingEntityAdminRequestRow(client, input) {
+  await assertEntityAdminAccessRequestReady(client);
+
+  const requestType = normalizeAccessRequestType(input.requestType) || "self_request";
+  const requestedEmail = normalizeEmail(input.requestedEmail);
+  const requestedRole = normalizeAdminAccessRole(input.requestedRole) || "admin";
+
+  if (!requestedEmail) {
+    const error = new Error("A valid email address is required for series-admin access requests.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  let existing = null;
+
+  if (requestType === "admin_invite") {
+    existing = await fetchOne(
+      client,
+      `
+        select *
+        from public.entity_admin_access_request
+        where entity_id = $1
+          and lower(requested_email) = lower($2)
+          and requested_role = $3
+          and request_type = 'admin_invite'
+          and request_status = 'pending'
+        order by created_at desc, id desc
+        limit 1
+      `,
+      [input.entityId, requestedEmail, requestedRole]
+    );
+  } else if (input.requestedUserId) {
+    existing = await fetchOne(
+      client,
+      `
+        select *
+        from public.entity_admin_access_request
+        where entity_id = $1
+          and requested_user_id = $2
+          and requested_role = $3
+          and request_type = 'self_request'
+          and request_status = 'pending'
+        order by created_at desc, id desc
+        limit 1
+      `,
+      [input.entityId, input.requestedUserId, requestedRole]
+    );
+  }
+
+  if (existing) {
+    const updated = await fetchOne(
+      client,
+      `
+        update public.entity_admin_access_request
+        set
+          requested_email = $2,
+          requested_user_id = coalesce($3, requested_user_id),
+          request_note = case
+            when $4 <> '' then $4
+            when request_status = 'pending' then request_note
+            else null
+          end,
+          requested_by_user_id = coalesce($5, requested_by_user_id),
+          admin_response_note = case
+            when request_status = 'pending' then null
+            else admin_response_note
+          end,
+          reviewed_by_user_id = case
+            when request_status = 'pending' then null
+            else reviewed_by_user_id
+          end,
+          resolved_membership_id = case
+            when request_status = 'pending' then null
+            else resolved_membership_id
+          end,
+          resolved_at = case
+            when request_status = 'pending' then null
+            else resolved_at
+          end,
+          updated_at = now()
+        where id = $1
+        returning *
+      `,
+      [
+        existing.id,
+        requestedEmail,
+        normalizeUuid(input.requestedUserId) || null,
+        normalizeText(input.requestNote),
+        normalizeUuid(input.requestedByUserId) || null,
+      ]
+    );
+
+    return mapEntityAdminRequestRow(updated);
+  }
+
+  const inserted = await fetchOne(
+    client,
+    `
+      insert into public.entity_admin_access_request (
+        entity_id,
+        requested_email,
+        requested_user_id,
+        requested_role,
+        request_type,
+        request_status,
+        request_note,
+        requested_by_user_id
+      )
+      values ($1, $2, $3, $4, $5, 'pending', $6, $7)
+      returning *
+    `,
+    [
+      input.entityId,
+      requestedEmail,
+      normalizeUuid(input.requestedUserId) || null,
+      requestedRole,
+      requestType,
+      normalizeText(input.requestNote),
+      normalizeUuid(input.requestedByUserId) || null,
+    ]
+  );
+
+  return mapEntityAdminRequestRow(inserted);
+}
+
 async function loadManagedEntityAdminContext(client, input) {
   const readiness = await getEntityAccessReadiness(client);
 
@@ -1025,118 +1482,343 @@ async function upsertEntityAdminMembership(input) {
       });
 
       const targetUserId = normalizeUuid(input.body?.userId);
-      if (!targetUserId) {
-        const error = new Error("userId must be a valid UUID.");
-        error.statusCode = 400;
-        throw error;
-      }
+      const targetEmail = normalizeEmail(input.body?.email);
 
       const requestedRole = normalizeText(input.body?.role).toLowerCase() || "admin";
       if (requestedRole !== "admin") {
-        const error = new Error("Only direct series-admin assignment is supported in this phase.");
+        const error = new Error("Only the series-admin role is supported in this phase.");
         error.statusCode = 400;
         throw error;
       }
 
-      const existing = await fetchOne(
-        client,
-        `
-          select
-            em.id as membership_id,
-            em.entity_id,
-            em.user_id,
-            em.role,
-            em.status,
-            em.invited_by_user_id,
-            em.created_at,
-            em.updated_at,
-            (e.owner_user_id = em.user_id) as is_owner
-          from public.entity_membership em
-          join public.entity e on e.id = em.entity_id
-          where em.entity_id = $1
-            and em.user_id = $2
-          limit 1
-        `,
-        [context.entityId, targetUserId]
-      );
+      if (!targetUserId && !targetEmail) {
+        const error = new Error("Provide either a valid userId or an email address.");
+        error.statusCode = 400;
+        throw error;
+      }
 
-      const existingRole = normalizeText(existing?.role);
-      const existingStatus = normalizeText(existing?.status);
-      const isExistingOwner = existing?.is_owner === true || existingRole === "owner" || context.ownerUserId === targetUserId;
+      if (targetEmail && !targetUserId) {
+        const request = await upsertPendingEntityAdminRequestRow(client, {
+          entityId: context.entityId,
+          requestedEmail: targetEmail,
+          requestedUserId: null,
+          requestedRole: "admin",
+          requestType: "admin_invite",
+          requestNote:
+            "Pre-approved by a series admin. Access will activate automatically the first time this email signs in to request series-admin access.",
+          requestedByUserId: context.actorUserId,
+        });
 
-      if (isExistingOwner && existingStatus === "active") {
         return {
           message: input.dryRun === true
-            ? "Dry-run confirmed. This user already has owner access for the entity."
-            : "This user already has owner access for the entity.",
+            ? "Dry-run series-admin email invite validated."
+            : "Series-admin email invite saved. Access will activate the first time this email signs in and requests it.",
           entity: {
             entityId: context.entityId,
             entityName: context.entityName,
             entitySlug: context.entitySlug,
             ownerUserId: context.ownerUserId,
           },
-          membership: existing ? mapEntityAdminMembershipRow(existing) : null,
+          membership: null,
+          request,
         };
       }
 
-      const wouldConsumeSeat = !(existingStatus === "active" && (existingRole === "owner" || existingRole === "admin"));
-      if (
-        wouldConsumeSeat
-        && context.maxAdminUsers !== null
-        && context.activeAdminUsers >= context.maxAdminUsers
-      ) {
+      const granted = await grantEntityAdminMembership(client, {
+        entityId: context.entityId,
+        targetUserId,
+        invitedByUserId: context.actorUserId,
+        reviewedByUserId: context.actorUserId,
+        adminResponseNote: "Approved while granting series-admin access directly.",
+      });
+
+      return {
+        message: granted.isExistingOwner
+          ? (
+              input.dryRun === true
+                ? "Dry-run confirmed. This user already has owner access for the entity."
+                : "This user already has owner access for the entity."
+            )
+          : (
+              input.dryRun === true
+                ? "Dry-run entity admin assignment validated."
+                : "Entity admin access granted."
+            ),
+        entity: {
+          entityId: granted.context.entityId,
+          entityName: granted.context.entityName,
+          entitySlug: granted.context.entitySlug,
+          ownerUserId: granted.context.ownerUserId,
+        },
+        membership: granted.membership,
+        request: null,
+      };
+    },
+    { dryRun: input.dryRun === true }
+  );
+}
+
+async function createSeriesAdminAccessRequest(input) {
+  const actorUserId = normalizeUuid(input.actorUserId);
+  const actorEmail = normalizeEmail(input.actorEmail);
+  const requestNote = normalizeText(input.body?.requestNote);
+
+  if (!actorUserId) {
+    const error = new Error("A valid actor user id is required to create a series-admin access request.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!actorEmail) {
+    const error = new Error("A signed-in user email is required before requesting series-admin access.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return withTransaction(
+    async (client) => {
+      await assertEntityAdminAccessRequestReady(client);
+
+      const access = await loadSeriesAccessSnapshot(client, {
+        userId: actorUserId,
+        seriesConfigKey: input.seriesConfigKey,
+      });
+
+      if (!access.authFoundationReady) {
         const error = new Error(
-          `Admin allocation is at limit for this entity (${context.activeAdminUsers}/${context.maxAdminUsers}).`
+          "Phase 10 entity auth foundation is not available in the database yet. Apply the tenant-foundation migration first."
+        );
+        error.statusCode = 503;
+        throw error;
+      }
+
+      if (!access.entityId) {
+        const error = new Error(
+          `Series ${access.seriesConfigKey} is not attached to an owning entity yet.`
+        );
+        error.statusCode = 503;
+        throw error;
+      }
+
+      if (access.canManage) {
+        return {
+          message: input.dryRun
+            ? "Dry-run series-admin access request validated. Access is already active."
+            : "Series-admin access is already active for this user.",
+          accessGranted: true,
+          request: null,
+          membership: null,
+        };
+      }
+
+      const pendingInvite = await fetchOne(
+        client,
+        `
+          select *
+          from public.entity_admin_access_request
+          where entity_id = $1
+            and lower(requested_email) = lower($2)
+            and request_type = 'admin_invite'
+            and request_status = 'pending'
+          order by created_at desc, id desc
+          limit 1
+        `,
+        [access.entityId, actorEmail]
+      );
+
+      if (pendingInvite) {
+        const granted = await grantEntityAdminMembership(client, {
+          entityId: access.entityId,
+          targetUserId: actorUserId,
+          invitedByUserId: normalizeUuid(pendingInvite.requested_by_user_id) || null,
+          reviewedByUserId: normalizeUuid(pendingInvite.requested_by_user_id) || null,
+          adminResponseNote: "Series-admin access auto-activated when the approved email signed in.",
+        });
+
+        const resolvedRequest = await fetchOne(
+          client,
+          `
+            update public.entity_admin_access_request
+            set
+              requested_user_id = $2,
+              request_status = 'approved',
+              reviewed_by_user_id = coalesce(reviewed_by_user_id, requested_by_user_id),
+              admin_response_note = coalesce(
+                nullif(admin_response_note, ''),
+                'Series-admin access auto-activated when the approved email signed in.'
+              ),
+              resolved_membership_id = $3,
+              resolved_at = coalesce(resolved_at, now()),
+              updated_at = now()
+            where id = $1
+            returning *
+          `,
+          [pendingInvite.id, actorUserId, granted.membership?.membershipId || null]
+        );
+
+        return {
+          message: input.dryRun
+            ? "Dry-run series-admin request validated against an approved email invite."
+            : "Series-admin access granted from the approved email invite.",
+          accessGranted: true,
+          request: mapEntityAdminRequestRow(resolvedRequest),
+          membership: granted.membership,
+        };
+      }
+
+      const request = await upsertPendingEntityAdminRequestRow(client, {
+        entityId: access.entityId,
+        requestedEmail: actorEmail,
+        requestedUserId: actorUserId,
+        requestedRole: "admin",
+        requestType: "self_request",
+        requestNote: requestNote || "User requested series-admin access from the analytics admin gateway.",
+        requestedByUserId: actorUserId,
+      });
+
+      return {
+        message: input.dryRun
+          ? "Dry-run series-admin request validated."
+          : "Series-admin request submitted for review.",
+        accessGranted: false,
+        request,
+        membership: null,
+      };
+    },
+    { dryRun: input.dryRun === true }
+  );
+}
+
+async function applyEntityAdminAccessRequestDecision(input) {
+  const actorUserId = normalizeUuid(input.actorUserId);
+  const requestId = normalizeUuid(input.requestId);
+  const action = normalizeText(input.body?.action).toLowerCase();
+  const adminResponseNote = normalizeText(input.body?.responseNote);
+
+  if (!actorUserId) {
+    const error = new Error("A valid actor user id is required to review a series-admin request.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!requestId) {
+    const error = new Error("requestId must be a valid UUID.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!["approve", "decline"].includes(action)) {
+    const error = new Error("action must be either approve or decline.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return withTransaction(
+    async (client) => {
+      await assertEntityAdminAccessRequestReady(client);
+
+      const context = await loadManagedEntityAdminContext(client, {
+        actorUserId,
+        entityId: input.entityId,
+      });
+
+      const request = await fetchOne(
+        client,
+        `
+          select *
+          from public.entity_admin_access_request
+          where id = $1
+            and entity_id = $2
+          limit 1
+        `,
+        [requestId, context.entityId]
+      );
+
+      if (!request) {
+        const error = new Error("Series-admin request not found for this entity.");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      if (action === "decline") {
+        const declined = await fetchOne(
+          client,
+          `
+            update public.entity_admin_access_request
+            set
+              request_status = 'declined',
+              reviewed_by_user_id = $2,
+              admin_response_note = $3,
+              resolved_at = coalesce(resolved_at, now()),
+              updated_at = now()
+            where id = $1
+            returning *
+          `,
+          [requestId, actorUserId, adminResponseNote || "Request declined by a series admin."]
+        );
+
+        return {
+          message: input.dryRun ? "Dry-run decline validated." : "Series-admin request declined.",
+          entity: {
+            entityId: context.entityId,
+            entityName: context.entityName,
+            entitySlug: context.entitySlug,
+            ownerUserId: context.ownerUserId,
+          },
+          request: mapEntityAdminRequestRow(declined),
+          membership: null,
+        };
+      }
+
+      const targetUserId = normalizeUuid(request.requested_user_id);
+      if (!targetUserId) {
+        const error = new Error(
+          "This request is waiting for the invited email to sign in. It will auto-activate once the invited user signs in and requests access."
         );
         error.statusCode = 409;
         throw error;
       }
 
-      const row = await fetchOne(
+      const granted = await grantEntityAdminMembership(client, {
+        entityId: context.entityId,
+        targetUserId,
+        invitedByUserId: actorUserId,
+        reviewedByUserId: actorUserId,
+        adminResponseNote: adminResponseNote || "Approved by a series admin.",
+      });
+
+      const approved = await fetchOne(
         client,
         `
-          insert into public.entity_membership (
-            entity_id,
-            user_id,
-            role,
-            status,
-            invited_by_user_id
-          )
-          values ($1, $2, 'admin', 'active', $3)
-          on conflict (entity_id, user_id)
-          do update set
-            role = case
-              when public.entity_membership.role = 'owner' then public.entity_membership.role
-              else 'admin'
-            end,
-            status = 'active',
-            invited_by_user_id = coalesce(public.entity_membership.invited_by_user_id, excluded.invited_by_user_id),
+          update public.entity_admin_access_request
+          set
+            request_status = 'approved',
+            reviewed_by_user_id = $2,
+            admin_response_note = $3,
+            resolved_membership_id = $4,
+            resolved_at = coalesce(resolved_at, now()),
             updated_at = now()
-          returning
-            id as membership_id,
-            entity_id,
-            user_id,
-            role,
-            status,
-            invited_by_user_id,
-            created_at,
-            updated_at,
-            false as is_owner
+          where id = $1
+          returning *
         `,
-        [context.entityId, targetUserId, context.actorUserId]
+        [
+          requestId,
+          actorUserId,
+          adminResponseNote || "Approved by a series admin.",
+          granted.membership?.membershipId || null,
+        ]
       );
 
       return {
-        message: input.dryRun === true
-          ? "Dry-run entity admin assignment validated."
-          : "Entity admin access granted.",
+        message: input.dryRun ? "Dry-run approval validated." : "Series-admin request approved.",
         entity: {
           entityId: context.entityId,
           entityName: context.entityName,
           entitySlug: context.entitySlug,
           ownerUserId: context.ownerUserId,
         },
-        membership: mapEntityAdminMembershipRow(row),
+        request: mapEntityAdminRequestRow(approved),
+        membership: granted.membership,
       };
     },
     { dryRun: input.dryRun === true }
@@ -1287,6 +1969,10 @@ async function getAdminSeriesCatalog(input) {
       userId: input.userId,
       isPlatformAdmin,
     });
+    const adminRequests = await listManagedEntityAdminRequests(client, {
+      userId: input.userId,
+      isPlatformAdmin,
+    });
 
     const membershipsByEntity = new Map();
     for (const membership of adminMemberships) {
@@ -1297,6 +1983,16 @@ async function getAdminSeriesCatalog(input) {
       const bucket = membershipsByEntity.get(entityId) || [];
       bucket.push(membership);
       membershipsByEntity.set(entityId, bucket);
+    }
+    const requestsByEntity = new Map();
+    for (const request of adminRequests) {
+      const entityId = normalizeText(request.entityId);
+      if (!entityId) {
+        continue;
+      }
+      const bucket = requestsByEntity.get(entityId) || [];
+      bucket.push(request);
+      requestsByEntity.set(entityId, bucket);
     }
 
     return {
@@ -1312,6 +2008,7 @@ async function getAdminSeriesCatalog(input) {
       entities: entities.map((entity) => ({
         ...entity,
         admins: membershipsByEntity.get(entity.entityId) || [],
+        adminRequests: requestsByEntity.get(entity.entityId) || [],
       })),
       series,
     };
@@ -1941,7 +2638,9 @@ async function revokeSeriesViewerGrant(input) {
 }
 
 module.exports = {
+  applyEntityAdminAccessRequestDecision,
   applySeriesAccessRequestDecision,
+  createSeriesAdminAccessRequest,
   createSeriesAccessRequest,
   disableEntityAdminMembership,
   getAdminSeriesCatalog,

@@ -9,12 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  createCricketSeriesAdminAccessRequest,
   fetchCricketAdminSeries,
   getAnalyticsPlatformAdminRoute,
   getAnalyticsSeriesAdminRoute,
 } from "@/lib/cricketApi";
 
 type GatewayStatus = "loading" | "redirecting" | "error" | "no_access";
+type AdminRequestStatus = "idle" | "saving" | "success" | "error";
 
 const AnalyticsAdminGateway = () => {
   const { session, user } = useAuth();
@@ -22,6 +24,9 @@ const AnalyticsAdminGateway = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<GatewayStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [adminRequestStatus, setAdminRequestStatus] = useState<AdminRequestStatus>("idle");
+  const [adminRequestMessage, setAdminRequestMessage] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const accessToken = session?.access_token || "";
   const requestedSeriesKey = searchParams.get("series")?.trim() || "";
 
@@ -74,7 +79,37 @@ const AnalyticsAdminGateway = () => {
     return () => {
       controller.abort();
     };
-  }, [accessToken, navigate, requestedSeriesKey]);
+  }, [accessToken, navigate, reloadKey, requestedSeriesKey]);
+
+  async function handleRequestSeriesAdminAccess() {
+    if (!accessToken || !requestedSeriesKey) {
+      setAdminRequestStatus("error");
+      setAdminRequestMessage("Open the admin console from a specific series so the request can be routed correctly.");
+      return;
+    }
+
+    setAdminRequestStatus("saving");
+    setAdminRequestMessage(null);
+
+    try {
+      const result = await createCricketSeriesAdminAccessRequest(requestedSeriesKey, accessToken, {
+        requestNote: "User requested series-admin access from the analytics admin gateway.",
+      });
+
+      if (result.accessGranted) {
+        navigate(getAnalyticsSeriesAdminRoute(requestedSeriesKey), { replace: true });
+        return;
+      }
+
+      setAdminRequestStatus("success");
+      setAdminRequestMessage(result.message || "Series-admin request submitted for review.");
+    } catch (error) {
+      setAdminRequestStatus("error");
+      setAdminRequestMessage(
+        error instanceof Error ? error.message : "Series-admin request could not be submitted right now."
+      );
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -159,6 +194,41 @@ const AnalyticsAdminGateway = () => {
                         <p className="text-sm leading-6 text-amber-100/80">
                           This account does not currently have platform-admin or series-admin access.
                         </p>
+                        <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">User ID</p>
+                          <p className="mt-2 break-all font-mono text-sm text-foreground">
+                            {user?.id || "Unavailable"}
+                          </p>
+                        </div>
+                        {adminRequestMessage ? (
+                          <div
+                            className={`rounded-2xl border p-4 text-sm leading-7 ${
+                              adminRequestStatus === "error"
+                                ? "border-destructive/30 bg-destructive/5 text-destructive"
+                                : "border-cyan-400/20 bg-cyan-400/5 text-cyan-100"
+                            }`}
+                          >
+                            {adminRequestMessage}
+                          </div>
+                        ) : null}
+                        <div className="flex flex-wrap gap-3">
+                          <Button
+                            type="button"
+                            onClick={() => void handleRequestSeriesAdminAccess()}
+                            disabled={adminRequestStatus === "saving" || !requestedSeriesKey}
+                          >
+                            {adminRequestStatus === "saving" ? "Submitting request..." : "Request series admin access"}
+                          </Button>
+                          <Button type="button" variant="outline" onClick={() => setReloadKey((current) => current + 1)}>
+                            <Loader2 className={`mr-2 h-4 w-4 ${status === "loading" ? "animate-spin" : ""}`} />
+                            Recheck access
+                          </Button>
+                        </div>
+                        {!requestedSeriesKey ? (
+                          <p className="text-sm leading-6 text-amber-100/80">
+                            Open this route from a specific series so the request can be sent to the right series-admin team.
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </div>

@@ -1307,7 +1307,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                       ) : (
                         <>
                           Ask the series admin to open <span className="font-mono text-foreground">/analytics/admin</span> and
-                          grant viewer or analyst access to your user id below.
+                          either pre-approve your email or grant viewer or analyst access to your user id below.
                         </>
                       )}
                     </p>
@@ -1331,7 +1331,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                       ) : (
                         <>
                           <p>1. Sign in once to Game-Changrs.</p>
-                          <p>2. Share your user id with the series admin.</p>
+                          <p>2. Share your user id with the series admin, or ask them to pre-approve your email.</p>
                           <p>3. The admin grants access inside the cricket admin shell.</p>
                           <p>4. Refresh this page to load your series workspace.</p>
                         </>

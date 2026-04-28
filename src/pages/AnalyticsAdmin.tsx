@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -82,6 +82,7 @@ type MatchOpsStatus = "idle" | "loading" | "success" | "error";
 type ViewerAccessStatus = "idle" | "loading" | "success" | "error";
 type SubscriptionStatus = "idle" | "loading" | "success" | "error";
 type SeriesEntryMode = "edit" | "create";
+type PendingRequestFilter = "all" | "ready" | "waiting";
 
 type RefreshRequestFormState = {
   matchUrl: string;
@@ -301,6 +302,22 @@ function getEntityAdminMembershipTone(membership: CricketAdminEntityMembership) 
   return "border-amber-500/25 bg-amber-500/10 text-amber-300";
 }
 
+function getPendingRequestReadiness(requestType?: string | null, requestedUserId?: string | null) {
+  return requestType === "self_request" && Boolean(requestedUserId) ? "ready" : "waiting";
+}
+
+function matchesPendingRequestFilter(
+  filter: PendingRequestFilter,
+  requestType?: string | null,
+  requestedUserId?: string | null,
+) {
+  if (filter === "all") {
+    return true;
+  }
+
+  return getPendingRequestReadiness(requestType, requestedUserId) === filter;
+}
+
 function getPendingOpsCount(match?: CricketAdminMatchOpsMatch | null) {
   if (!match) {
     return 0;
@@ -499,6 +516,10 @@ const AnalyticsAdmin = () => {
   const [seriesAdminInviteMutationMessage, setSeriesAdminInviteMutationMessage] = useState<string | null>(null);
   const [seriesAdminInviteMutationError, setSeriesAdminInviteMutationError] = useState<string | null>(null);
   const [entityAdminRequestDecisionStatusByRequest, setEntityAdminRequestDecisionStatusByRequest] = useState<Record<string, MutationStatus>>({});
+  const [entityAdminRequestFilter, setEntityAdminRequestFilter] = useState<PendingRequestFilter>("all");
+  const [entityAdminRequestQuery, setEntityAdminRequestQuery] = useState("");
+  const [viewerRequestFilter, setViewerRequestFilter] = useState<PendingRequestFilter>("all");
+  const [viewerRequestQuery, setViewerRequestQuery] = useState("");
   const [seriesAdminSelfRequestStatus, setSeriesAdminSelfRequestStatus] = useState<MutationStatus>("idle");
   const [seriesAdminSelfRequestMessage, setSeriesAdminSelfRequestMessage] = useState<string | null>(null);
 
@@ -559,6 +580,71 @@ const AnalyticsAdmin = () => {
   const pendingViewerAccessRequests = viewerAccess?.requests?.filter((request) => request.requestStatus === "pending") ?? [];
   const pendingEntityAdminRequests =
     (selectedEntity?.adminRequests ?? []).filter((request) => request.requestStatus === "pending");
+  const filteredPendingEntityAdminRequests = useMemo(() => {
+    const normalizedQuery = entityAdminRequestQuery.trim().toLowerCase();
+    return pendingEntityAdminRequests.filter((request) => {
+      if (!matchesPendingRequestFilter(entityAdminRequestFilter, request.requestType, request.requestedUserId)) {
+        return false;
+      }
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      const haystack = [
+        request.requestedEmail,
+        request.requestedUserId,
+        request.requestNote,
+        request.requestType,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(normalizedQuery);
+    });
+  }, [entityAdminRequestFilter, entityAdminRequestQuery, pendingEntityAdminRequests]);
+  const filteredPendingViewerAccessRequests = useMemo(() => {
+    const normalizedQuery = viewerRequestQuery.trim().toLowerCase();
+    return pendingViewerAccessRequests.filter((request) => {
+      if (!matchesPendingRequestFilter(viewerRequestFilter, request.requestType, request.requestedUserId)) {
+        return false;
+      }
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      const haystack = [
+        request.requestedEmail,
+        request.requestedUserId,
+        request.requestNote,
+        request.requestType,
+        request.requestedAccessRole,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(normalizedQuery);
+    });
+  }, [pendingViewerAccessRequests, viewerRequestFilter, viewerRequestQuery]);
+  const readyEntityAdminRequestCount = useMemo(
+    () => pendingEntityAdminRequests.filter((request) => getPendingRequestReadiness(request.requestType, request.requestedUserId) === "ready").length,
+    [pendingEntityAdminRequests]
+  );
+  const waitingEntityAdminRequestCount = useMemo(
+    () => pendingEntityAdminRequests.filter((request) => getPendingRequestReadiness(request.requestType, request.requestedUserId) === "waiting").length,
+    [pendingEntityAdminRequests]
+  );
+  const readyViewerRequestCount = useMemo(
+    () => pendingViewerAccessRequests.filter((request) => getPendingRequestReadiness(request.requestType, request.requestedUserId) === "ready").length,
+    [pendingViewerAccessRequests]
+  );
+  const waitingViewerRequestCount = useMemo(
+    () => pendingViewerAccessRequests.filter((request) => getPendingRequestReadiness(request.requestType, request.requestedUserId) === "waiting").length,
+    [pendingViewerAccessRequests]
+  );
 
   useEffect(() => {
     if (!accessToken) {
@@ -869,6 +955,10 @@ const AnalyticsAdmin = () => {
     setSeriesAdminInviteMutationMessage(null);
     setSeriesAdminInviteMutationError(null);
     setEntityAdminRequestDecisionStatusByRequest({});
+    setEntityAdminRequestFilter("all");
+    setEntityAdminRequestQuery("");
+    setViewerRequestFilter("all");
+    setViewerRequestQuery("");
     setSeriesAdminSelfRequestStatus("idle");
     setSeriesAdminSelfRequestMessage(null);
   }, [selectedSeries?.configKey]);
@@ -2924,9 +3014,41 @@ const AnalyticsAdmin = () => {
                             </div>
                           </div>
 
-                          {pendingEntityAdminRequests.length ? (
+                          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                            <div className="space-y-2">
+                              <Label htmlFor="entity-admin-request-search">Search requests</Label>
+                              <Input
+                                id="entity-admin-request-search"
+                                value={entityAdminRequestQuery}
+                                onChange={(event) => setEntityAdminRequestQuery(event.target.value)}
+                                placeholder="Search by email, user ID, or note"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Show</Label>
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  { value: "all", label: `All (${formatNumber(pendingEntityAdminRequests.length)})` },
+                                  { value: "ready", label: `Ready (${formatNumber(readyEntityAdminRequestCount)})` },
+                                  { value: "waiting", label: `Waiting (${formatNumber(waitingEntityAdminRequestCount)})` },
+                                ].map((item) => (
+                                  <Button
+                                    key={item.value}
+                                    type="button"
+                                    size="sm"
+                                    variant={entityAdminRequestFilter === item.value ? "default" : "outline"}
+                                    onClick={() => setEntityAdminRequestFilter(item.value as PendingRequestFilter)}
+                                  >
+                                    {item.label}
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {filteredPendingEntityAdminRequests.length ? (
                             <div className="space-y-3">
-                              {pendingEntityAdminRequests.map((request) => {
+                              {filteredPendingEntityAdminRequests.map((request) => {
                                 const requestId = request.requestId || "";
                                 const decisionStatus = requestId
                                   ? entityAdminRequestDecisionStatusByRequest[requestId]
@@ -3020,7 +3142,7 @@ const AnalyticsAdmin = () => {
                             </div>
                           ) : (
                             <div className="rounded-2xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground">
-                              No pending series-admin requests for this entity.
+                              No pending series-admin requests match the current filter.
                             </div>
                           )}
                         </div>
@@ -4647,6 +4769,38 @@ const AnalyticsAdmin = () => {
                           </div>
                         </div>
 
+                        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                          <div className="space-y-2">
+                            <Label htmlFor="viewer-request-search">Search requests</Label>
+                            <Input
+                              id="viewer-request-search"
+                              value={viewerRequestQuery}
+                              onChange={(event) => setViewerRequestQuery(event.target.value)}
+                              placeholder="Search by email, user ID, role, or note"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Show</Label>
+                            <div className="flex flex-wrap gap-2">
+                              {[
+                                { value: "all", label: `All (${formatNumber(pendingViewerAccessRequests.length)})` },
+                                { value: "ready", label: `Ready (${formatNumber(readyViewerRequestCount)})` },
+                                { value: "waiting", label: `Waiting (${formatNumber(waitingViewerRequestCount)})` },
+                              ].map((item) => (
+                                <Button
+                                  key={item.value}
+                                  type="button"
+                                  size="sm"
+                                  variant={viewerRequestFilter === item.value ? "default" : "outline"}
+                                  onClick={() => setViewerRequestFilter(item.value as PendingRequestFilter)}
+                                >
+                                  {item.label}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
                         {viewerAccessStatus === "loading" ? (
                           <div className="space-y-3">
                             <Skeleton className="h-24 w-full" />
@@ -4667,9 +4821,9 @@ const AnalyticsAdmin = () => {
                         ) : null}
 
                         {viewerAccessStatus === "success" ? (
-                          pendingViewerAccessRequests.length ? (
+                          filteredPendingViewerAccessRequests.length ? (
                             <div className="space-y-3">
-                              {pendingViewerAccessRequests.map((request) => {
+                              {filteredPendingViewerAccessRequests.map((request) => {
                                 const requestId = request.requestId || "";
                                 const decisionStatus = requestId
                                   ? accessRequestDecisionStatusByRequest[requestId]
@@ -4766,7 +4920,7 @@ const AnalyticsAdmin = () => {
                             </div>
                           ) : (
                             <div className="rounded-2xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground">
-                              No pending requests for this series.
+                              No pending viewer requests match the current filter.
                             </div>
                           )
                         ) : null}

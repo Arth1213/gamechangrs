@@ -19,17 +19,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import {
   assignCricketAdminEntityMembership,
+  CricketAdminEntityAccessRequest,
   CricketAdminEntityMembership,
   CricketAdminSeriesItem,
   CricketAdminSeriesResponse,
+  decideCricketAdminEntityAccessRequest,
   fetchCricketAdminSeries,
   getAnalyticsSeriesAdminRoute,
   removeCricketAdminEntityMembership,
 } from "@/lib/cricketApi";
 
 type PlatformStatus = "loading" | "success" | "error";
+type RequestDecisionStatus = "idle" | "saving" | "success" | "error";
+type PendingRequestFilter = "all" | "ready" | "waiting";
 
 function formatNumber(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value)) {
@@ -59,8 +64,54 @@ function getMembershipTone(membership: CricketAdminEntityMembership) {
   return "border-amber-500/25 bg-amber-500/10 text-amber-300";
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString();
+}
+
+function getStatusBadgeClass(status?: string | null) {
+  const normalized = status?.trim().toLowerCase();
+
+  if (!normalized) {
+    return "border-border/80 bg-card/70 text-foreground";
+  }
+
+  if (["computed", "complete", "completed", "ok", "ready", "success", "active"].includes(normalized)) {
+    return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+  }
+
+  if (["warn", "warning", "pending", "queued", "review", "watch"].includes(normalized)) {
+    return "border-amber-500/25 bg-amber-500/10 text-amber-300";
+  }
+
+  if (["error", "failed", "invalid", "blocked", "risk"].includes(normalized)) {
+    return "border-destructive/30 bg-destructive/10 text-destructive";
+  }
+
+  return "border-border/80 bg-card/70 text-foreground";
+}
+
+function getRequestReadinessState(request: CricketAdminEntityAccessRequest) {
+  return request.requestType === "self_request" && Boolean(request.requestedUserId) ? "ready" : "waiting";
+}
+
+function getRequestStatusLabel(request: CricketAdminEntityAccessRequest) {
+  return request.requestType === "admin_invite" && !request.requestedUserId
+    ? "Waiting for first login"
+    : request.requestStatus || "pending";
+}
+
 const AnalyticsPlatformAdmin = () => {
   const { session, user } = useAuth();
+  const { toast } = useToast();
   const [status, setStatus] = useState<PlatformStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<CricketAdminSeriesResponse | null>(null);
@@ -68,6 +119,9 @@ const AnalyticsPlatformAdmin = () => {
   const [entityMessages, setEntityMessages] = useState<Record<string, string>>({});
   const [entityErrors, setEntityErrors] = useState<Record<string, string>>({});
   const [activeMutationKey, setActiveMutationKey] = useState<string | null>(null);
+  const [requestQuery, setRequestQuery] = useState("");
+  const [requestFilter, setRequestFilter] = useState<PendingRequestFilter>("all");
+  const [requestDecisionStatusByRequest, setRequestDecisionStatusByRequest] = useState<Record<string, RequestDecisionStatus>>({});
   const accessToken = session?.access_token || "";
 
   async function loadCatalog(options?: {
@@ -141,6 +195,74 @@ const AnalyticsPlatformAdmin = () => {
 
     return mapping;
   }, [series]);
+  const allPendingEntityAdminRows = useMemo(() => {
+    return entities.flatMap((entity) => {
+      const entityId = entity.entityId?.trim() || "";
+      const entitySeries = seriesByEntity.get(entityId || "__unassigned__") ?? [];
+      const seriesRoute = entitySeries[0]?.configKey ? getAnalyticsSeriesAdminRoute(entitySeries[0].configKey) : null;
+
+      return (entity.adminRequests ?? [])
+        .filter((request) => request.requestStatus === "pending")
+        .map((request) => {
+          const readiness = getRequestReadinessState(request);
+          return {
+            entity,
+            request,
+            readiness,
+            seriesRoute,
+          };
+        });
+    });
+  }, [entities, seriesByEntity]);
+  const pendingEntityAdminRows = useMemo(() => {
+    const normalizedQuery = requestQuery.trim().toLowerCase();
+
+    return allPendingEntityAdminRows
+      .filter((row) => {
+        if (requestFilter !== "all" && row.readiness !== requestFilter) {
+          return false;
+        }
+
+        if (!normalizedQuery) {
+          return true;
+        }
+
+        const haystack = [
+          row.entity.entityName,
+          row.entity.entitySlug,
+          row.request.requestedEmail,
+          row.request.requestedUserId,
+          row.request.requestNote,
+          row.request.requestType,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return haystack.includes(normalizedQuery);
+      })
+      .sort((left, right) => {
+        if (left.readiness !== right.readiness) {
+          return left.readiness === "ready" ? -1 : 1;
+        }
+
+        const leftTime = left.request.createdAt ? new Date(left.request.createdAt).getTime() : 0;
+        const rightTime = right.request.createdAt ? new Date(right.request.createdAt).getTime() : 0;
+        return rightTime - leftTime;
+      });
+  }, [allPendingEntityAdminRows, requestFilter, requestQuery]);
+  const pendingEntityAdminRequestCount = useMemo(
+    () => entities.reduce((sum, entity) => sum + ((entity.adminRequests ?? []).filter((request) => request.requestStatus === "pending").length), 0),
+    [entities]
+  );
+  const readyEntityAdminRequestCount = useMemo(
+    () => allPendingEntityAdminRows.filter((row) => row.readiness === "ready").length,
+    [allPendingEntityAdminRows]
+  );
+  const waitingEntityAdminRequestCount = useMemo(
+    () => allPendingEntityAdminRows.filter((row) => row.readiness === "waiting").length,
+    [allPendingEntityAdminRows]
+  );
 
   const isPlatformAdmin = catalog?.actor?.isPlatformAdmin === true;
 
@@ -220,6 +342,46 @@ const AnalyticsPlatformAdmin = () => {
       }));
     } finally {
       setActiveMutationKey(null);
+    }
+  }
+
+  async function handleEntityAdminRequestDecision(
+    entityId: string,
+    request: CricketAdminEntityAccessRequest,
+    action: "approve" | "decline",
+  ) {
+    const requestId = request.requestId?.trim();
+    if (!entityId || !requestId) {
+      return;
+    }
+
+    setRequestDecisionStatusByRequest((current) => ({
+      ...current,
+      [requestId]: "saving",
+    }));
+
+    try {
+      const result = await decideCricketAdminEntityAccessRequest(entityId, requestId, accessToken, { action });
+      await loadCatalog({ silent: true });
+      setRequestDecisionStatusByRequest((current) => ({
+        ...current,
+        [requestId]: "success",
+      }));
+      toast({
+        title: action === "approve" ? "Series-admin request approved" : "Series-admin request declined",
+        description: result.message || "The request decision was saved.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The request decision failed.";
+      setRequestDecisionStatusByRequest((current) => ({
+        ...current,
+        [requestId]: "error",
+      }));
+      toast({
+        title: "Series-admin request update failed",
+        description: message,
+        variant: "destructive",
+      });
     }
   }
 
@@ -704,6 +866,177 @@ const AnalyticsPlatformAdmin = () => {
                       ) : (
                         <div className="rounded-2xl border border-border/70 bg-background/60 p-5 text-sm leading-7 text-muted-foreground">
                           No series are visible yet in this platform-admin scope.
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-border/80 bg-card/85 shadow-xl">
+                    <CardHeader>
+                      <CardTitle className="font-display text-2xl text-foreground">Pending series-admin requests</CardTitle>
+                      <CardDescription>
+                        Review self-service admin requests across every entity without dropping into each series first.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Pending total</p>
+                          <div className="mt-3 font-display text-4xl text-foreground">
+                            {formatNumber(pendingEntityAdminRequestCount)}
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Ready to approve</p>
+                          <div className="mt-3 font-display text-4xl text-foreground">
+                            {formatNumber(readyEntityAdminRequestCount)}
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Waiting for login</p>
+                          <div className="mt-3 font-display text-4xl text-foreground">
+                            {formatNumber(waitingEntityAdminRequestCount)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                        <div className="space-y-2">
+                          <Label htmlFor="platform-admin-request-search">Search requests</Label>
+                          <Input
+                            id="platform-admin-request-search"
+                            value={requestQuery}
+                            onChange={(event) => setRequestQuery(event.target.value)}
+                            placeholder="Search by entity, email, user ID, or note"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Show</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { value: "all", label: "All pending" },
+                              { value: "ready", label: "Ready" },
+                              { value: "waiting", label: "Waiting" },
+                            ].map((item) => (
+                              <Button
+                                key={item.value}
+                                type="button"
+                                size="sm"
+                                variant={requestFilter === item.value ? "default" : "outline"}
+                                onClick={() => setRequestFilter(item.value as PendingRequestFilter)}
+                              >
+                                {item.label}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {pendingEntityAdminRows.length ? (
+                        <div className="space-y-3">
+                          {pendingEntityAdminRows.map(({ entity, request, readiness, seriesRoute }) => {
+                            const requestId = request.requestId || "";
+                            const decisionStatus = requestId ? requestDecisionStatusByRequest[requestId] : undefined;
+                            const canApprove = readiness === "ready";
+
+                            return (
+                              <div
+                                key={request.requestId || `${entity.entityId}-${request.requestedEmail}-${request.createdAt}`}
+                                className="rounded-2xl border border-border/70 bg-background/60 p-5"
+                              >
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                  <div className="space-y-4">
+                                    <div className="flex flex-wrap gap-2">
+                                      <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                                        {entity.entityName || entity.entitySlug || "Entity"}
+                                      </Badge>
+                                      <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                                        {request.requestType === "admin_invite" ? "Email pre-approval" : "User request"}
+                                      </Badge>
+                                      <Badge className={getStatusBadgeClass(request.requestStatus)}>
+                                        {getRequestStatusLabel(request)}
+                                      </Badge>
+                                      <Badge className={getStatusBadgeClass(readiness === "ready" ? "ready" : "waiting")}>
+                                        {readiness === "ready" ? "Ready for decision" : "Waiting for first login"}
+                                      </Badge>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                      <p className="break-all text-base font-semibold text-foreground">
+                                        {request.requestedEmail || "-"}
+                                      </p>
+                                      <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
+                                        {request.requestedUserId || "No user ID linked yet"}
+                                      </p>
+                                    </div>
+
+                                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                      <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Requested</p>
+                                        <p className="mt-2 text-sm leading-6 text-foreground">
+                                          {formatDateTime(request.createdAt)}
+                                        </p>
+                                      </div>
+                                      <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Entity scope</p>
+                                        <p className="mt-2 text-sm leading-6 text-foreground">
+                                          {formatNumber(entity.seriesCount)} series
+                                        </p>
+                                      </div>
+                                      <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Current admins</p>
+                                        <p className="mt-2 text-sm leading-6 text-foreground">
+                                          {formatNumber(entity.activeAdminUsers)}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {request.requestNote ? (
+                                      <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Request note</p>
+                                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                          {request.requestNote}
+                                        </p>
+                                      </div>
+                                    ) : null}
+                                  </div>
+
+                                  <div className="flex flex-wrap gap-2 lg:max-w-[16rem] lg:justify-end">
+                                    {seriesRoute ? (
+                                      <Button asChild type="button" variant="outline" size="sm">
+                                        <Link to={seriesRoute}>
+                                          Open series console
+                                          <ExternalLink className="ml-2 h-4 w-4" />
+                                        </Link>
+                                      </Button>
+                                    ) : null}
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={!canApprove || decisionStatus === "saving" || !requestId}
+                                      onClick={() => entity.entityId && void handleEntityAdminRequestDecision(entity.entityId, request, "approve")}
+                                    >
+                                      {decisionStatus === "saving" && canApprove ? "Approving..." : "Approve"}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={decisionStatus === "saving" || !requestId}
+                                      onClick={() => entity.entityId && void handleEntityAdminRequestDecision(entity.entityId, request, "decline")}
+                                    >
+                                      Decline
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-border/70 bg-background/60 p-5 text-sm leading-7 text-muted-foreground">
+                          No pending series-admin requests match the current filter.
                         </div>
                       )}
                     </CardContent>

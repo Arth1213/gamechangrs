@@ -4,6 +4,7 @@ import { Link, useLocation, useParams, useSearchParams } from "react-router-dom"
 
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
+import PlayerReportChat from "@/components/analytics/PlayerReportChat";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -866,6 +867,16 @@ const AnalyticsReport = () => {
           </div>
         </div>
       </section>
+
+      <PlayerReportChat
+        report={reportSummary}
+        playerName={title}
+        playerId={numericPlayerId}
+        seriesConfigKey={effectiveSeriesKey}
+        seriesName={seriesName}
+        divisionId={divisionId}
+        divisionLabel={divisionCoverageLabel}
+      />
 
       <Footer />
     </div>

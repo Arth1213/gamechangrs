@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.cricclubs-player-analytics]
 verify_jwt = false
+
+[functions.analytics-player-report-chat]
+verify_jwt = true

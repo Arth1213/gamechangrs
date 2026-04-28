@@ -3,7 +3,7 @@
 const path = require("path");
 
 const { loadEnvFile } = require("./env");
-const { getSeriesAdminAccess } = require("../services/accessService");
+const { getSeriesAdminAccess, getSeriesViewerAccess } = require("../services/accessService");
 const { normalizeText, toInteger } = require("./utils");
 
 loadEnvFile(path.resolve(process.cwd(), ".env"));
@@ -98,7 +98,7 @@ async function requireAuthenticatedCricketUser(req) {
 
   const accessToken = extractBearerToken(req);
   if (!accessToken) {
-    const error = new Error("Authentication is required for cricket admin routes.");
+    const error = new Error("Authentication is required for this cricket route.");
     error.statusCode = 401;
     throw error;
   }
@@ -162,9 +162,56 @@ async function requireSeriesAdminAccess(req) {
   return req.cricketActor;
 }
 
+async function requireSeriesViewerAccess(req) {
+  const actor = await requireAuthenticatedCricketUser(req);
+
+  const access = await getSeriesViewerAccess({
+    userId: actor.userId,
+    seriesConfigKey: req.params.seriesConfigKey,
+  });
+
+  if (!access.authFoundationReady) {
+    const error = new Error(
+      "Phase 10 entity auth foundation is not available in the database yet. Apply the tenant-foundation migration first."
+    );
+    error.statusCode = 503;
+    throw error;
+  }
+
+  if (!access.entityId) {
+    const error = new Error(
+      `Series ${access.seriesConfigKey} is not attached to an owning entity yet.`
+    );
+    error.statusCode = 503;
+    throw error;
+  }
+
+  if (!access.canView) {
+    const error = new Error("You do not have viewer access to this series.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  req.cricketActor = {
+    userId: actor.userId,
+    email: actor.email,
+    seriesConfigKey: access.seriesConfigKey,
+    seriesName: access.seriesName,
+    entityId: access.entityId,
+    isPlatformAdmin: access.isPlatformAdmin,
+    isEntityAdmin: access.isEntityAdmin,
+    canManage: access.canManage,
+    canView: access.canView,
+    accessRole: access.accessRole,
+  };
+
+  return req.cricketActor;
+}
+
 module.exports = {
   extractBearerToken,
   fetchSupabaseUser,
   requireAuthenticatedCricketUser,
   requireSeriesAdminAccess,
+  requireSeriesViewerAccess,
 };

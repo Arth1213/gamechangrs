@@ -686,6 +686,101 @@ export type CricketPlayerStandardStat = {
   detail?: string;
 };
 
+export type CricketPlayerReportMatchEvidence = {
+  matchId?: number | null;
+  matchDate?: string;
+  matchDateLabel?: string;
+  matchTitle?: string;
+  score?: number | null;
+  note?: string;
+};
+
+export type CricketPlayerReportPeerComparisonItem = {
+  playerId?: number;
+  divisionId?: number | null;
+  displayName?: string;
+  teamName?: string;
+  roleLabel?: string;
+  compositeScore?: number | null;
+  percentileRank?: number | null;
+  note?: string;
+};
+
+export type CricketPlayerReportTrendPoint = {
+  label?: string;
+  value?: number | null;
+};
+
+export type CricketPlayerReportTrend = {
+  title?: string;
+  status?: string;
+  values?: CricketPlayerReportTrendPoint[];
+  note?: string;
+};
+
+export type CricketPlayerReportMatchupSplit = {
+  opponentPlayerId?: number | null;
+  opponentName?: string;
+  balls?: number | null;
+  runs?: number | null;
+  runsConceded?: number | null;
+  strikeRate?: number | null;
+  economy?: number | null;
+  dotPct?: number | null;
+  boundaryPct?: number | null;
+  dismissals?: number | null;
+  wickets?: number | null;
+};
+
+export type CricketPlayerReportCommentaryEvidence = {
+  matchId?: number | null;
+  matchDate?: string;
+  matchDateLabel?: string;
+  matchTitle?: string;
+  inningsNo?: number | null;
+  ballLabel?: string;
+  phase?: string;
+  involvementType?: string;
+  strikerName?: string;
+  bowlerName?: string;
+  playerOutName?: string;
+  batterRuns?: number | null;
+  totalRuns?: number | null;
+  wicketFlag?: boolean;
+  dismissalType?: string;
+  leverageScore?: number | null;
+  totalEventWeight?: number | null;
+  commentaryText?: string;
+};
+
+export type CricketPlayerReportOverEvidence = {
+  matchId?: number | null;
+  matchDate?: string;
+  matchDateLabel?: string;
+  matchTitle?: string;
+  overNo?: number | null;
+  balls?: number | null;
+  runs?: number | null;
+  wickets?: number | null;
+  boundaries?: number | null;
+  stateText?: string;
+};
+
+export type CricketPlayerReportPhasePerformance = {
+  batting?: {
+    overall?: CricketPlayerReportMatchupSplit[];
+    powerplay?: CricketPlayerReportMatchupSplit[];
+    middle?: CricketPlayerReportMatchupSplit[];
+    death?: CricketPlayerReportMatchupSplit[];
+  };
+  bowling?: {
+    overall?: CricketPlayerReportMatchupSplit[];
+    powerplay?: CricketPlayerReportMatchupSplit[];
+    middle?: CricketPlayerReportMatchupSplit[];
+    death?: CricketPlayerReportMatchupSplit[];
+  };
+};
+
 export type CricketPlayerReportResponse = {
   meta?: {
     generatedAt?: string;
@@ -745,6 +840,21 @@ export type CricketPlayerReportResponse = {
   visualReadout?: CricketPlayerReportMetric[];
   contextPerformance?: CricketPlayerReportMetric[];
   selectorInterpretation?: CricketPlayerReportMetric[];
+  matchEvidence?: CricketPlayerReportMatchEvidence[];
+  peerComparison?: CricketPlayerReportPeerComparisonItem[];
+  trends?: CricketPlayerReportTrend[];
+  drilldowns?: {
+    battingVsBowlers?: CricketPlayerReportMatchupSplit[];
+    bowlingVsBatters?: CricketPlayerReportMatchupSplit[];
+    commentaryEvidence?: CricketPlayerReportCommentaryEvidence[];
+    dismissalFieldingLog?: Array<Record<string, unknown>>;
+    overEvidence?: {
+      batting?: CricketPlayerReportOverEvidence[];
+      bowlingBest?: CricketPlayerReportOverEvidence[];
+      bowlingExpensive?: CricketPlayerReportOverEvidence[];
+    };
+    phasePerformance?: CricketPlayerReportPhasePerformance;
+  };
   selectorTakeaway?: string;
   standardStats?: {
     currentSeries?: {

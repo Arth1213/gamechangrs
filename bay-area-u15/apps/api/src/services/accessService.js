@@ -1040,6 +1040,15 @@ async function getSeriesAdminAccess(input) {
   });
 }
 
+async function getSeriesViewerAccess(input) {
+  return withClient(async (client) => {
+    return loadSeriesAccessSnapshot(client, {
+      userId: input.userId,
+      seriesConfigKey: input.seriesConfigKey,
+    });
+  });
+}
+
 async function getEntityManagementAccess(input) {
   return withClient(async (client) => {
     return loadEntityManagementSnapshot(client, {
@@ -2647,6 +2656,7 @@ module.exports = {
   getEntityManagementAccess,
   getEntityAccessReadiness,
   getSeriesAdminAccess,
+  getSeriesViewerAccess,
   getViewerSeriesCatalog,
   loadEntityManagementSnapshot,
   listSeriesViewerGrants,

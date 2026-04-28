@@ -2,7 +2,7 @@
 
 const express = require("express");
 
-const { requireAuthenticatedCricketUser, requireSeriesAdminAccess } = require("./lib/auth");
+const { requireAuthenticatedCricketUser, requireSeriesAdminAccess, requireSeriesViewerAccess } = require("./lib/auth");
 const { closePool, testConnection } = require("./lib/connection");
 const { normalizeText, toBoolean, toInteger } = require("./lib/utils");
 const {
@@ -41,6 +41,9 @@ const {
 const {
   getSeriesSubscriptionSummary,
 } = require("./services/subscriptionService");
+const {
+  getPlayerChatContext,
+} = require("./services/chatContextService");
 const {
   withClient,
 } = require("./services/seriesService");
@@ -147,6 +150,11 @@ function sendHtml(res, html, statusCode = 200) {
 
 const requireSeriesAdmin = asyncHandler(async (req, res, next) => {
   await requireSeriesAdminAccess(req);
+  next();
+});
+
+const requireSeriesViewer = asyncHandler(async (req, res, next) => {
+  await requireSeriesViewerAccess(req);
   next();
 });
 
@@ -485,6 +493,16 @@ app.get("/api/series/:seriesConfigKey/players/:playerId/report", asyncHandler(as
     seriesConfigKey: req.params.seriesConfigKey,
     playerId: req.params.playerId,
     divisionId: req.query.divisionId,
+  });
+  res.json(payload);
+}));
+
+app.post("/api/series/:seriesConfigKey/players/:playerId/chat-context", requireSeriesViewer, asyncHandler(async (req, res) => {
+  const payload = await getPlayerChatContext({
+    seriesConfigKey: req.params.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.body?.divisionId ?? req.query.divisionId,
+    question: req.body?.question ?? "",
   });
   res.json(payload);
 }));

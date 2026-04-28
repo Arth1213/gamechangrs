@@ -87,7 +87,6 @@ type SeriesWorkspaceCard = {
 };
 
 const EXAMPLE_SEARCHES = ["Shreyak Porecha", "Nikhil Natarajan"];
-const LANDING_PILLS = ["Private App", "Coach Intelligence", "Selector Ready", "Multi-Source Ready"];
 const LANDING_HERO_STRIP = [
   {
     label: "First Use Case",
@@ -151,33 +150,6 @@ const LANDING_FLOW = [
     description: "Publish private dashboards and reports that explain the rating.",
   },
 ];
-const LANDING_FOUNDATION_TAGS = ["Multi-Series", "Private By Design", "Retrofit-Friendly", "Multi-Source Ready"];
-const LANDING_FOUNDATION_MINIS = [
-  {
-    title: "Keep",
-    badge: "In Place",
-    toneClass: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
-    description: "Raw artifacts, versioned scoring, and admin setup make the model adaptable.",
-  },
-  {
-    title: "Trust First",
-    badge: "Critical",
-    toneClass: "border-amber-500/25 bg-amber-500/10 text-amber-300",
-    description: "Reconciliation and player identity cleanup must stay ahead of scoring polish.",
-  },
-  {
-    title: "First Win",
-    badge: "Focused",
-    toneClass: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
-    description: "One believable report matters more than a wide but shaky platform.",
-  },
-  {
-    title: "User Simplicity",
-    badge: "Keep",
-    toneClass: "border-amber-500/25 bg-amber-500/10 text-amber-300",
-    description: "Basic setup should stay simple, while deeper tuning remains optional.",
-  },
-];
 const LANDING_FOOTER_TAGS = [
   "Structured Data",
   "Opponent Context",
@@ -205,6 +177,33 @@ function getFreshnessBadgeClass(tone?: string) {
   }
 
   return "border-amber-500/25 bg-amber-500/12 text-amber-700";
+}
+
+function getAnalyticsProfileTone(role: "platform" | "series-admin" | "series-user") {
+  if (role === "platform") {
+    return {
+      border: "border-cyan-400/25",
+      panel: "bg-cyan-400/10",
+      badge: "border-cyan-400/25 bg-cyan-400/10 text-cyan-200",
+      icon: "text-cyan-200",
+    };
+  }
+
+  if (role === "series-admin") {
+    return {
+      border: "border-emerald-500/25",
+      panel: "bg-emerald-500/10",
+      badge: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+      icon: "text-emerald-300",
+    };
+  }
+
+  return {
+    border: "border-border/80",
+    panel: "bg-background/40",
+    badge: "border-border/80 bg-background/40 text-foreground",
+    icon: "text-primary",
+  };
 }
 
 function getScoreSortValue(value: number | null | undefined) {
@@ -1167,6 +1166,72 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     () => (isPlatformAdminViewer ? seriesAdminRoute : getAnalyticsAdminRoute(selectedSeriesKey || undefined)),
     [isPlatformAdminViewer, selectedSeriesKey, seriesAdminRoute]
   );
+  const userDisplayName =
+    user?.user_metadata?.full_name?.trim()
+    || user?.user_metadata?.name?.trim()
+    || user?.email?.split("@")[0]
+    || "User";
+  const accessibleSeriesCount = viewerCatalog?.series?.length ?? 0;
+  const manageableSeriesCount = viewerCatalog?.series?.filter((series) => series.canManage === true).length ?? 0;
+  const analyticsProfiles = useMemo(() => {
+    const profiles: Array<{
+      key: "platform" | "series-admin" | "series-user";
+      title: string;
+      summary: string;
+      href: string;
+      actionLabel: string;
+      meta: string;
+    }> = [];
+
+    if (isPlatformAdminViewer) {
+      profiles.push({
+        key: "platform",
+        title: "Platform Admin",
+        summary: "Global entity and series administration across the analytics system.",
+        href: platformAdminRoute,
+        actionLabel: "Open Platform Console",
+        meta: "Full platform scope",
+      });
+    }
+
+    if (isPlatformAdminViewer || manageableSeriesCount > 0) {
+      profiles.push({
+        key: "series-admin",
+        title: "Series Admin",
+        summary: "Manage series setup, viewer access, and series operations for the series you administer.",
+        href: seriesAdminRoute,
+        actionLabel: "Open Series Console",
+        meta:
+          manageableSeriesCount > 0
+            ? `${manageableSeriesCount} admin ${manageableSeriesCount === 1 ? "series" : "series"}`
+            : "Inherited from platform scope",
+      });
+    }
+
+    if (hasSeriesAccess) {
+      profiles.push({
+        key: "series-user",
+        title: "Series User",
+        summary: "Use live player search, series workspace, and player reports inside your approved series.",
+        href: workspaceRoute,
+        actionLabel: "Open Series Workspace",
+        meta:
+          accessibleSeriesCount > 0
+            ? `${accessibleSeriesCount} accessible ${accessibleSeriesCount === 1 ? "series" : "series"}`
+            : "Viewer access active",
+      });
+    }
+
+    return profiles;
+  }, [
+    accessibleSeriesCount,
+    hasSeriesAccess,
+    isPlatformAdminViewer,
+    manageableSeriesCount,
+    platformAdminRoute,
+    seriesAdminRoute,
+    workspaceRoute,
+  ]);
 
   useEffect(() => {
     if (!hasSeriesAccess && !isPlatformAdminViewer) {
@@ -1747,48 +1812,105 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
       <section className="bg-gradient-hero pt-32 pb-20">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-6xl space-y-8">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="flex flex-wrap gap-2">
-                {LANDING_PILLS.map((pill) => (
-                  <Badge
-                    key={pill}
-                    variant="outline"
-                    className="border-border/80 bg-card/70 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-foreground"
-                  >
-                    {pill}
-                  </Badge>
-                ))}
-              </div>
+            <Card className="border-border/80 bg-card/85 shadow-xl">
+              <CardContent className="space-y-8 p-8 lg:p-10">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Analytics Home</p>
+                    <div className="space-y-2">
+                      <h1 className="font-display text-4xl font-bold leading-[0.96] text-foreground md:text-5xl lg:text-6xl">
+                        Welcome back, {userDisplayName}
+                      </h1>
+                      <p className="max-w-3xl text-base leading-7 text-muted-foreground">
+                        Signed in as {user?.email || "this account"}.
+                        {selectedSeries
+                          ? ` Current live series: ${selectedSeries.seriesName}.`
+                          : " Your analytics access is active."}
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
-                {isPlatformAdminViewer ? (
-                  <Button asChild variant="outline" className="w-full md:w-auto">
-                    <Link to={platformAdminRoute}>
-                      Platform Console
-                      <ShieldCheck className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                ) : null}
-                {!isPlatformAdminViewer ? (
-                  <Button type="button" variant="outline" className="w-full md:w-auto" onClick={() => setShowRequestPanel((current) => !current)}>
-                    Request Access
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                ) : null}
-                <Button asChild variant="outline" className="w-full md:w-auto">
-                  <Link to={adminRoute}>
-                    {isPlatformAdminViewer ? "Series Console" : "Admin Console"}
-                    <ShieldCheck className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" className="w-full md:w-auto">
-                  <Link to={workspaceRoute}>
-                    Series Workspace
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
+                  <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row lg:flex-col">
+                    {!isPlatformAdminViewer ? (
+                      <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setShowRequestPanel((current) => !current)}>
+                        {showRequestPanel ? "Hide Access Request" : "Request Access"}
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    ) : null}
+                    <Button asChild variant="outline" className="w-full sm:w-auto">
+                      <Link to={workspaceRoute}>
+                        Series Workspace
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="rounded-2xl border border-border/80 bg-background/40 p-5">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Accessible series</p>
+                    <p className="mt-3 font-display text-3xl text-foreground">{formatNumber(accessibleSeriesCount)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-border/80 bg-background/40 p-5">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Admin scope</p>
+                    <p className="mt-3 font-display text-3xl text-foreground">
+                      {isPlatformAdminViewer ? "Global" : formatNumber(manageableSeriesCount)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-border/80 bg-background/40 p-5">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Current series</p>
+                    <p className="mt-3 font-display text-xl text-foreground">
+                      {selectedSeries?.seriesName || "Analytics"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {analyticsProfiles.map((profile) => {
+                    const tone = getAnalyticsProfileTone(profile.key);
+                    const icon =
+                      profile.key === "platform"
+                        ? <ShieldCheck className={`h-5 w-5 ${tone.icon}`} />
+                        : profile.key === "series-admin"
+                          ? <Layers3 className={`h-5 w-5 ${tone.icon}`} />
+                          : <Users className={`h-5 w-5 ${tone.icon}`} />;
+
+                    return (
+                      <div
+                        key={profile.key}
+                        className={`rounded-2xl border ${tone.border} ${tone.panel} p-5`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-background/60">
+                              {icon}
+                            </div>
+                            <div>
+                              <p className="font-display text-2xl text-foreground">{profile.title}</p>
+                              <p className="mt-1 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                {profile.meta}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className={tone.badge}>
+                            Active
+                          </Badge>
+                        </div>
+                        <p className="mt-4 text-sm leading-7 text-muted-foreground">{profile.summary}</p>
+                        <div className="mt-5">
+                          <Button asChild variant="outline">
+                            <Link to={profile.href}>
+                              {profile.actionLabel}
+                              <ArrowRight className="ml-2 h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
 
             {showRequestPanel && !isPlatformAdminViewer ? (
               requestableSeriesCards.length > 0 ? (
@@ -1893,55 +2015,6 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                     </CardContent>
                   </Card>
                 ))}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                <h2 className="font-display text-3xl text-foreground md:text-4xl">Foundation Check</h2>
-                <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-                  Strong base. Keep the first build disciplined.
-                </p>
-              </div>
-
-              <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-                <Card className="overflow-hidden border-border/80 bg-card/85 shadow-xl">
-                  <CardContent className="space-y-5 p-6">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-sky-300">Current Read</p>
-                    <div className="font-display text-8xl leading-none text-emerald-300">86</div>
-                    <h3 className="max-w-md font-display text-3xl text-foreground">Built the right way to scale.</h3>
-                    <p className="max-w-md text-sm leading-7 text-muted-foreground">
-                      The foundation already fits the real goal: trusted player intelligence, not just a scraping demo.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {LANDING_FOUNDATION_TAGS.map((item) => (
-                        <Badge
-                          key={item}
-                          variant="outline"
-                          className="border-border/80 bg-background/40 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-foreground"
-                        >
-                          {item}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  {LANDING_FOUNDATION_MINIS.map((item) => (
-                    <Card key={item.title} className="border-border/80 bg-card/80 shadow-sm">
-                      <CardContent className="space-y-4 p-5">
-                        <div className="flex items-center justify-between gap-3">
-                          <h3 className="text-base font-semibold text-foreground">{item.title}</h3>
-                          <Badge variant="outline" className={item.toneClass}>
-                            {item.badge}
-                          </Badge>
-                        </div>
-                        <p className="text-sm leading-7 text-muted-foreground">{item.description}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
               </div>
             </div>
 

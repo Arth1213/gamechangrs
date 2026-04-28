@@ -1,10 +1,17 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { format } from "date-fns";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { 
-  ShoppingBag, Heart, Search, Filter, ChevronDown, 
-  Plus, Tag, MapPin, Package, Mail, AlertTriangle, CheckCircle, ArrowUpRight, ShieldCheck
+import {
+  Search,
+  Plus,
+  Package,
+  Mail,
+  AlertTriangle,
+  CheckCircle,
+  ArrowUpRight,
+  ShieldCheck,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,17 +32,18 @@ import {
 
 interface Listing {
   id: string;
-  title: string;
+  title: string | null;
   description: string | null;
   price: number | null;
   original_price: number | null;
-  condition: string;
+  condition: string | null;
   location: string | null;
   image_url: string | null;
-  category: string;
-  listing_type: string;
+  category: string | null;
+  listing_type: string | null;
   is_owner: boolean | null;
-  is_active: boolean;
+  is_active: boolean | null;
+  created_at: string | null;
 }
 
 const featuredRetailPartner = {
@@ -63,15 +71,18 @@ const Marketplace = () => {
   const fetchListings = async () => {
     setIsLoading(true);
     try {
-      // Use secure view that provides is_owner flag instead of exposing user_id
       const { data, error } = await supabase
         .from("public_marketplace_listings")
-        .select("id, title, description, price, original_price, condition, location, image_url, category, listing_type, is_owner, is_active")
+        .select(
+          "id, title, description, price, original_price, condition, location, image_url, category, listing_type, is_owner, is_active, created_at",
+        )
         .eq("is_active", true)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setListings(data || []);
+
+      const nextListings = (data || []) as Listing[];
+      setListings(nextListings);
     } catch (error) {
       console.error("Error fetching listings:", error);
     } finally {
@@ -81,14 +92,18 @@ const Marketplace = () => {
 
   useEffect(() => {
     fetchListings();
-  }, []);
+  }, [user?.id]);
 
-  const filteredListings = listings.filter(listing => {
+  const filteredListings = listings.filter((listing) => {
     const matchesCategory = category === "All" || listing.category === category;
-    const matchesSearch = listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (listing.description?.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesSearch =
+      (listing.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (listing.description || "").toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  const ownerListings = filteredListings.filter((listing) => listing.is_owner);
+  const marketplaceListings = filteredListings.filter((listing) => !listing.is_owner);
 
   const handleContact = (listing: Listing) => {
     if (!requireAuth("contact sellers")) return;
@@ -122,35 +137,93 @@ const Marketplace = () => {
     }
   };
 
+  const renderMarketplaceCard = (listing: Listing) => (
+    <div
+      key={listing.id}
+      className="overflow-hidden rounded-xl border border-border bg-gradient-card transition-all duration-300 hover:border-primary/30 group"
+    >
+      <div className="relative aspect-[4/3] overflow-hidden bg-secondary/50">
+        {listing.image_url ? (
+          <img
+            src={listing.image_url}
+            alt={listing.title || "Marketplace listing"}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <Package className="h-10 w-10 text-muted-foreground/30" />
+          </div>
+        )}
+
+        <div
+          className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+            listing.listing_type === "donation"
+              ? "bg-green-500/90 text-white"
+              : "bg-primary/90 text-primary-foreground"
+          }`}
+        >
+          {listing.listing_type === "donation" ? "Free" : "Sale"}
+        </div>
+      </div>
+
+      <div className="p-3">
+        <h3 className="mb-1 line-clamp-1 text-sm font-medium text-foreground">{listing.title}</h3>
+
+        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+            {listing.condition}
+          </span>
+          <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            {listing.category}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            {listing.listing_type === "donation" ? (
+              <span className="text-sm font-bold text-green-500">FREE</span>
+            ) : (
+              <span className="text-sm font-bold text-foreground">${listing.price?.toLocaleString()}</span>
+            )}
+          </div>
+
+          <Button variant="hero" size="sm" className="h-7 px-2 text-xs" onClick={() => handleContact(listing)}>
+            <Mail className="mr-1 h-3 w-3" />
+            {listing.listing_type === "donation" ? "Get" : "Buy"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
-      {/* Compact Hero */}
-      <section className="pt-24 pb-6 bg-gradient-hero">
+
+      <section className="bg-gradient-hero pb-6 pt-24">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+          <div className="mx-auto max-w-4xl">
+            <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
+                <h1 className="font-display text-2xl font-bold text-foreground md:text-3xl">
                   Gear <span className="text-gradient-accent">Marketplace</span>
                 </h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Quality sports equipment at affordable prices
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Your listings first.
                 </p>
               </div>
               <Button variant="accent" size="default" onClick={handleCreateListing}>
-                <Plus className="w-4 h-4" />
+                <Plus className="h-4 w-4" />
                 Donate or Sell Gear
               </Button>
             </div>
-            
-            {/* Compact Notice */}
-            <div className="bg-secondary/50 border border-border rounded-lg p-3 text-left">
+
+            <div className="rounded-lg border border-border bg-secondary/50 p-3 text-left">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 text-amber-500" />
                 <p className="text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">Connection Platform Only:</span> We connect buyers and sellers directly. Arrange transactions via email safely.
+                  <span className="font-medium text-foreground">Connection Platform Only:</span> We connect buyers
+                  and sellers directly. Arrange transactions via email safely.
                 </p>
               </div>
             </div>
@@ -158,25 +231,24 @@ const Marketplace = () => {
         </div>
       </section>
 
-      {/* Filters */}
-      <section className="py-4 border-b border-border bg-card">
+      <section className="border-b border-border bg-card py-4">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex flex-col gap-3 md:flex-row">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search for gear..."
-                className="w-full h-10 pl-10 pr-4 rounded-lg bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                className="h-10 w-full rounded-lg border border-border bg-secondary pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
             <div className="flex gap-3">
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="h-10 px-4 rounded-lg bg-secondary border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                onChange={(event) => setCategory(event.target.value)}
+                className="h-10 rounded-lg border border-border bg-secondary px-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option>All</option>
                 <option>Cricket</option>
@@ -191,131 +263,164 @@ const Marketplace = () => {
         </div>
       </section>
 
-      {/* Products Grid */}
+      {user && (
+        <section className="border-b border-border py-8">
+          <div className="container mx-auto px-4">
+            <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Owner view</p>
+                <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">Your Listings</h2>
+              </div>
+              <Button variant="outline" onClick={handleCreateListing}>
+                <Plus className="h-4 w-4" />
+                Add Another Listing
+              </Button>
+            </div>
+
+            {isLoading ? (
+              <div className="rounded-3xl border border-border bg-gradient-card p-8 text-sm text-muted-foreground">
+                Loading your listings...
+              </div>
+            ) : ownerListings.length === 0 ? (
+              <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                <h3 className="font-display text-xl font-bold text-foreground">No active listings yet</h3>
+                <div className="mt-6">
+                  <Button onClick={handleCreateListing}>
+                    <Plus className="h-4 w-4" />
+                    List Your Gear
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-6 lg:grid-cols-2">
+                {ownerListings.map((listing) => {
+                  return (
+                    <div key={listing.id} className="overflow-hidden rounded-3xl border border-border bg-gradient-card">
+                      <div className="grid gap-0 md:grid-cols-[0.95fr_1.05fr]">
+                        <div className="relative min-h-[240px] bg-secondary/40">
+                          {listing.image_url ? (
+                            <img
+                              src={listing.image_url}
+                              alt={listing.title || "Your listing"}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full min-h-[240px] w-full items-center justify-center">
+                              <Package className="h-12 w-12 text-muted-foreground/30" />
+                            </div>
+                          )}
+                          <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+                            <span
+                              className={`rounded-full px-3 py-1 text-[11px] font-medium ${
+                                listing.listing_type === "donation"
+                                  ? "bg-green-500/90 text-white"
+                                  : "bg-primary/90 text-primary-foreground"
+                              }`}
+                            >
+                              {listing.listing_type === "donation" ? "Donation" : "For Sale"}
+                            </span>
+                            <span className="rounded-full bg-background/90 px-3 py-1 text-[11px] font-medium text-foreground">
+                              Your listing
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="p-6">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h3 className="font-display text-2xl font-bold text-foreground">{listing.title}</h3>
+                              <p className="mt-2 text-sm text-muted-foreground">
+                                {listing.created_at ? `Listed ${format(new Date(listing.created_at), "MMM d, yyyy")}` : "Recently listed"}
+                              </p>
+                            </div>
+                            <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-right">
+                              <p className="font-display text-2xl font-bold text-foreground">
+                                {listing.listing_type === "donation" ? "Free" : `$${listing.price?.toLocaleString()}`}
+                              </p>
+                              <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                                {listing.listing_type === "donation" ? "Donation" : "Price"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+                            <span className="rounded-full border border-border px-3 py-1 text-muted-foreground">
+                              {listing.condition}
+                            </span>
+                            <span className="rounded-full border border-border px-3 py-1 text-muted-foreground">
+                              {listing.category}
+                            </span>
+                            <span className="rounded-full border border-border px-3 py-1 text-muted-foreground">
+                              {listing.listing_type === "donation" ? "Free" : `$${listing.price?.toLocaleString()}`}
+                            </span>
+                          </div>
+
+                          {listing.description ? (
+                            <p className="mt-5 line-clamp-4 text-sm leading-6 text-muted-foreground">{listing.description}</p>
+                          ) : null}
+
+                          <div className="mt-5 flex gap-3">
+                            <Button variant="outline" onClick={() => setDelistingId(listing.id)}>
+                              Mark as Sold
+                            </Button>
+                            <Button variant="ghost" onClick={fetchListings}>
+                              Refresh
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       <section className="py-6">
         <div className="container mx-auto px-4">
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Marketplace feed</p>
+              <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">Browse Gear</h2>
+            </div>
+          </div>
+
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading listings...</div>
-          ) : filteredListings.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground mb-4">No listings found.</p>
+            <div className="py-8 text-center text-muted-foreground">Loading listings...</div>
+          ) : marketplaceListings.length === 0 ? (
+            <div className="py-8 text-center">
+              <p className="mb-4 text-muted-foreground">No marketplace listings found.</p>
               <Button variant="outline" size="sm" onClick={handleCreateListing}>
-                <Plus className="w-4 h-4 mr-2" />
-                Be the first to list!
+                <Plus className="mr-2 h-4 w-4" />
+                Be the first to list
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {filteredListings.map((listing) => (
-                <div
-                  key={listing.id}
-                  className="rounded-xl bg-gradient-card border border-border overflow-hidden hover:border-primary/30 transition-all duration-300 group"
-                >
-                  {/* Compact Image */}
-                  <div className="aspect-[4/3] bg-secondary/50 overflow-hidden relative">
-                    {listing.image_url ? (
-                      <img 
-                        src={listing.image_url} 
-                        alt={listing.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Package className="w-10 h-10 text-muted-foreground/30" />
-                      </div>
-                    )}
-                    {/* Listing type badge */}
-                    <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                      listing.listing_type === "donation" 
-                        ? "bg-green-500/90 text-white" 
-                        : "bg-primary/90 text-primary-foreground"
-                    }`}>
-                      {listing.listing_type === "donation" ? "Free" : "Sale"}
-                    </div>
-                    {/* Owner badge */}
-                    {listing.is_owner && (
-                      <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-background/90 text-[10px] font-medium text-foreground flex items-center gap-0.5">
-                        <CheckCircle className="w-2.5 h-2.5" />
-                        Yours
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Compact Content */}
-                  <div className="p-3">
-                    <h3 className="font-medium text-sm text-foreground mb-1 line-clamp-1">
-                      {listing.title}
-                    </h3>
-                    
-                    <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-                      <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium">
-                        {listing.condition}
-                      </span>
-                      <span className="px-1.5 py-0.5 rounded bg-secondary text-muted-foreground text-[10px]">
-                        {listing.category}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        {listing.listing_type === "donation" ? (
-                          <span className="font-bold text-sm text-green-500">FREE</span>
-                        ) : (
-                          <span className="font-bold text-sm text-foreground">
-                            ${listing.price?.toLocaleString()}
-                          </span>
-                        )}
-                      </div>
-                      
-                      {listing.is_owner ? (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="h-7 text-xs px-2"
-                          onClick={() => setDelistingId(listing.id)}
-                        >
-                          Sold
-                        </Button>
-                      ) : (
-                        <Button 
-                          variant="hero" 
-                          size="sm"
-                          className="h-7 text-xs px-2"
-                          onClick={() => handleContact(listing)}
-                        >
-                          <Mail className="w-3 h-3 mr-1" />
-                          {listing.listing_type === "donation" ? "Get" : "Buy"}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {marketplaceListings.map(renderMarketplaceCard)}
             </div>
           )}
         </div>
       </section>
 
-      {/* Compact Donate CTA */}
-      <section className="py-10 bg-gradient-card border-t border-border">
+      <section className="border-t border-border bg-gradient-card py-10">
         <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto text-center">
-            <h2 className="font-display text-xl md:text-2xl font-bold text-foreground mb-2">
-              Have Gear to Share?
-            </h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Your old equipment could help young athletes. Upload a photo and our AI auto-fills the details!
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">Have Gear to Share?</h2>
+            <p className="mb-4 mt-2 text-sm text-muted-foreground">
+              Your old equipment could help young athletes. Upload a photo and our AI auto-fills the details.
             </p>
             <Button variant="hero" size="default" onClick={handleCreateListing}>
-              <Plus className="w-4 h-4" />
+              <Plus className="h-4 w-4" />
               List Your Gear
             </Button>
           </div>
         </div>
       </section>
 
-      {/* Featured Retail Partner */}
-      <section className="py-6 border-t border-border bg-background">
+      <section className="border-t border-border bg-background py-6">
         <div className="container mx-auto px-4">
           <div className="overflow-hidden rounded-[28px] border border-border bg-[linear-gradient(135deg,rgba(14,19,28,0.98),rgba(18,30,26,0.94)_45%,rgba(24,16,10,0.94))]">
             <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
@@ -330,10 +435,10 @@ const Marketplace = () => {
                   </div>
 
                   <div className="mt-5 max-w-2xl">
-                    <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground">
+                    <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">
                       {featuredRetailPartner.title}
                     </h2>
-                    <p className="mt-3 max-w-xl text-sm md:text-base leading-relaxed text-muted-foreground">
+                    <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
                       {featuredRetailPartner.description}
                     </p>
                   </div>
@@ -349,24 +454,14 @@ const Marketplace = () => {
                     ))}
                   </div>
 
-                  <div className="mt-7 flex flex-col sm:flex-row gap-3">
-                    <a
-                      href={featuredRetailPartner.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex"
-                    >
+                  <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                    <a href={featuredRetailPartner.href} target="_blank" rel="noreferrer" className="inline-flex">
                       <Button variant="hero" size="default">
                         Shop East Bay
-                        <ArrowUpRight className="w-4 h-4" />
+                        <ArrowUpRight className="h-4 w-4" />
                       </Button>
                     </a>
-                    <a
-                      href={featuredRetailPartner.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex"
-                    >
+                    <a href={featuredRetailPartner.href} target="_blank" rel="noreferrer" className="inline-flex">
                       <Button variant="outline" size="default" className="border-white/15 bg-background/30">
                         View New Bats
                       </Button>
@@ -402,24 +497,17 @@ const Marketplace = () => {
 
       <Footer />
 
-      {/* Create Listing Dialog */}
-      <CreateListingDialog 
-        open={createDialogOpen} 
-        onOpenChange={setCreateDialogOpen}
-        onSuccess={fetchListings}
-      />
+      <CreateListingDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} onSuccess={fetchListings} />
 
-      {/* Contact Seller Dialog */}
       {contactListing && (
         <ContactSellerDialog
           open={!!contactListing}
           onOpenChange={(open) => !open && setContactListing(null)}
           listingId={contactListing.id}
-          listingTitle={contactListing.title}
+          listingTitle={contactListing.title || "Gear Listing"}
         />
       )}
 
-      {/* Delist Confirmation Dialog */}
       <AlertDialog open={!!delistingId} onOpenChange={() => setDelistingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -430,9 +518,7 @@ const Marketplace = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelist}>
-              Remove Listing
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDelist}>Remove Listing</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

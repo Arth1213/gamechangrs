@@ -361,10 +361,7 @@ export const UserDashboard = () => {
               <h1 className="font-display text-3xl font-bold text-foreground md:text-4xl lg:text-5xl">
                 Welcome back, <span className="text-gradient-primary">{userName}</span>
               </h1>
-              <p className="text-lg text-muted-foreground">
-                Choose a service and jump into its full landing page. The home view now stays organized by the four
-                core Game-Changrs offerings instead of centering everything around coaching roles.
-              </p>
+              <p className="text-lg text-muted-foreground">Choose a service.</p>
             </div>
 
             {!loading && (coachProfile || playerProfile) ? (
@@ -401,9 +398,6 @@ export const UserDashboard = () => {
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Video analysis</p>
                   <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Technique AI</h2>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    Upload batting clips, review scored movement analysis, and track technical improvement.
-                  </p>
                 </div>
                 <div className="rounded-2xl border border-primary/15 bg-background/40 p-4">
                   <p className="font-display text-3xl font-bold text-foreground">{analyses.length}</p>
@@ -436,16 +430,10 @@ export const UserDashboard = () => {
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-emerald-300/80">Selector intelligence</p>
                   <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Analytics</h2>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    Open live player search, series workspace intelligence, and executive selector reports.
-                  </p>
                 </div>
                 <div className="rounded-2xl border border-emerald-400/15 bg-background/40 p-4">
-                  <p className="font-display text-xl font-bold text-foreground">Live report workspace</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Current landing page</p>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Search players, review series coverage, and move into selector-ready reports.
-                  </p>
+                  <p className="font-display text-xl font-bold text-foreground">Live player reports</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Series workspace</p>
                 </div>
                 <div className="flex items-center justify-between text-sm font-medium text-emerald-300">
                   <span>Open Analytics</span>
@@ -469,15 +457,12 @@ export const UserDashboard = () => {
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-accent/80">Coach and player network</p>
                   <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Coaching Marketplace</h2>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    Browse coaches, manage player and coach profiles, and coordinate sessions and connections.
-                  </p>
                 </div>
                 <div className="rounded-2xl border border-accent/15 bg-background/40 p-4">
                   <p className="font-display text-3xl font-bold text-foreground">{coachingProfilesCount}</p>
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Active profiles</p>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {loading ? "Loading coaching workspace..." : hasCoachingActivity ? `${coachingStatus}. ${coachingDetail}` : "No coaching workspace yet. Try Coaching Marketplace."}
+                    {loading ? "Loading..." : hasCoachingActivity ? coachingDetail : "Not started"}
                   </p>
                 </div>
                 <div className="flex items-center justify-between text-sm font-medium text-accent">
@@ -502,17 +487,14 @@ export const UserDashboard = () => {
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-amber-300/80">Buy, sell, donate</p>
                   <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Gear Marketplace</h2>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    Browse equipment, manage your listings, and move between community gear and retail options.
-                  </p>
                 </div>
                 <div className="rounded-2xl border border-amber-400/15 bg-background/40 p-4">
                   <p className="font-display text-3xl font-bold text-foreground">{activeListingsCount}</p>
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Active listings</p>
                   <p className="mt-2 text-sm text-muted-foreground">
                     {latestListing
-                      ? `Latest listing: ${latestListing.title}`
-                      : "No gear activity yet. Try Gear Marketplace."}
+                      ? latestListing.title
+                      : "Not started"}
                   </p>
                 </div>
                 <div className="flex items-center justify-between text-sm font-medium text-amber-300">
@@ -531,9 +513,6 @@ export const UserDashboard = () => {
               <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">
                 Coaching Marketplace
               </h2>
-              <p className="mt-2 max-w-3xl text-muted-foreground">
-                Profiles, connections, and schedule stay here, separate from the four main service launch tiles above.
-              </p>
             </div>
             <Button variant="outline" asChild>
               <Link to="/coaching-marketplace">
@@ -891,10 +870,6 @@ export const UserDashboard = () => {
           <div>
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Service activity</p>
             <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">Recent Activity</h2>
-            <p className="mt-2 max-w-3xl text-muted-foreground">
-              Technique AI and Gear Marketplace activity stay grouped here, so the logged-in home reads by service
-              rather than as one mixed dashboard.
-            </p>
           </div>
         </div>
 

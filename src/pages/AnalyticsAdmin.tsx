@@ -371,6 +371,34 @@ function createSeriesCreationForm(entityId = ""): SeriesCreationFormState {
   };
 }
 
+const mandatoryCaptureSwitches = [
+  {
+    key: "scrapeCompletedOnly" as const,
+    label: "Completed matches only",
+    body: "Ignore fixtures that are still live or incomplete until the final scorecard is stable.",
+  },
+  {
+    key: "includeBallByBall" as const,
+    label: "Include ball-by-ball",
+    body: "Store commentary and delivery-level events so the series can support deeper analytics and evidence.",
+  },
+  {
+    key: "includePlayerProfiles" as const,
+    label: "Include player profiles",
+    body: "Pull available public player-profile details from the source when they exist.",
+  },
+  {
+    key: "enableAutoDiscovery" as const,
+    label: "Auto-discover linked pages",
+    body: "Let the extractor follow the main source page to find linked results, divisions, and scorecards.",
+  },
+  {
+    key: "isActive" as const,
+    label: "Active in live analytics",
+    body: "Show this series in the live analytics workspace as soon as the source setup is ready.",
+  },
+];
+
 const AnalyticsAdmin = () => {
   const { session, user } = useAuth();
   const { toast } = useToast();
@@ -1548,10 +1576,10 @@ const AnalyticsAdmin = () => {
               </div>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[1.12fr_0.88fr]" id="access-overview">
+            <div id="access-overview">
               <Card className="border-border/80 bg-card/85 shadow-xl">
-                <CardContent className="space-y-6 p-6">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+                <CardContent className="space-y-5 p-6">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
                       <p className="text-[11px] uppercase tracking-[0.16em] text-primary">Control overview</p>
                       <div className="font-display text-2xl text-foreground">
@@ -1562,14 +1590,19 @@ const AnalyticsAdmin = () => {
                           User ID: <span className="font-mono text-foreground">{catalog.actor.userId}</span>
                         </p>
                       ) : null}
-                      <p className="text-sm leading-6 text-muted-foreground">
-                        The signed-in Game-Changrs session is the authority for admin access on this page.
-                      </p>
                     </div>
 
-                    <Badge className={getAccessTone(catalog?.actor?.accessLabel)}>
-                      {catalog?.actor?.isPlatformAdmin ? "Platform admin in series console" : "Series admin"}
-                    </Badge>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge className={getAccessTone(catalog?.actor?.accessLabel)}>
+                        {catalog?.actor?.isPlatformAdmin ? "Platform admin in series console" : "Series admin"}
+                      </Badge>
+                      <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                        {selectedSeriesDisplayName}
+                      </Badge>
+                      <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                        {planStatusLabel}
+                      </Badge>
+                    </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1595,39 +1628,25 @@ const AnalyticsAdmin = () => {
                       ) : null}
                     </div>
                     <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Plan status</p>
-                      <div className="mt-3 text-base font-semibold leading-6 text-foreground">{planStatusLabel}</div>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{planSummaryLabel}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-border/80 bg-card/85 shadow-xl">
-                <CardContent className="space-y-5 p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
-                      <ShieldCheck className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">Operating order</p>
-                      <p className="font-display text-2xl text-foreground">Required first. Optional after.</p>
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Plan</p>
+                      <div className="mt-3 text-base font-semibold leading-6 text-foreground">{planSummaryLabel}</div>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{planStatusLabel}</p>
                     </div>
                   </div>
 
-                  <div className="grid gap-3">
+                  <div className="grid gap-3 md:grid-cols-3">
                     {[
                       {
-                        title: "Confirm scope",
-                        body: "Check the signed-in role, selected series, and plan status.",
+                        title: "1. Required setup",
+                        body: "Source URL, series identity, and capture behavior come first.",
                       },
                       {
-                        title: "Finish required setup",
-                        body: "Source URL, series identity, and capture flags come first.",
+                        title: "2. Series users",
+                        body: "Approve viewer access after the required setup is stable.",
                       },
                       {
-                        title: "Move downward",
-                        body: "Series users next. Optional tuning and match ops stay below.",
+                        title: "3. Optional controls",
+                        body: "Tuning and match operations stay lower on the page.",
                       },
                     ].map((item) => (
                       <div key={item.title} className="rounded-2xl border border-border/70 bg-background/55 p-4">
@@ -1643,10 +1662,10 @@ const AnalyticsAdmin = () => {
             <div className="flex flex-wrap gap-2">
               {[
                 { href: "#access-overview", label: "Overview" },
-                { href: "#plan-controls", label: "Plan + gates" },
                 { href: "#series-entry", label: "Mandatory setup" },
-                { href: "#series-switcher", label: "Series switcher" },
                 { href: "#series-users", label: "Series users" },
+                { href: "#plan-controls", label: "Plan + gates" },
+                { href: "#series-switcher", label: "Series switcher" },
                 { href: "#series-setup", label: "Optional tuning" },
                 { href: "#match-ops", label: "Optional match ops" },
               ].map((item) => (
@@ -1659,237 +1678,6 @@ const AnalyticsAdmin = () => {
                 </a>
               ))}
             </div>
-
-            {selectedSeries ? (
-              <Card className="border-border/80 bg-card/85 shadow-xl" id="plan-controls">
-                <CardContent className="space-y-5 p-6">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Database className="h-4 w-4 text-cyan-200" />
-                        <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                          Plan + enforcement
-                        </p>
-                      </div>
-                      <div>
-                        <h2 className="font-display text-2xl text-foreground">{planSummaryLabel}</h2>
-                        <p className="text-sm leading-7 text-muted-foreground">
-                          This section explains what the current entity plan allows on this page and whether those rules
-                          are advisory or enforced.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <Badge className={getStatusBadgeClass(subscriptionSummary?.subscription?.status)}>
-                        {subscriptionSummary?.subscription?.status || "unconfigured"}
-                      </Badge>
-                      <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
-                        {subscriptionSummary?.subscription?.billingProvider || "internal"}
-                      </Badge>
-                      <Badge
-                        variant="outline"
-                        className={
-                          isHardSubscriptionEnforcement
-                            ? "border-amber-500/25 bg-amber-500/10 text-amber-300"
-                            : "border-cyan-400/25 bg-cyan-400/10 text-cyan-200"
-                        }
-                      >
-                        {subscriptionSummary?.subscription?.enforcementMode || "hard"} enforcement
-                      </Badge>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSubscriptionReloadKey((current) => current + 1)}
-                      >
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Refresh plan
-                      </Button>
-                    </div>
-                  </div>
-
-                  {subscriptionStatus === "loading" ? (
-                    <div className="grid gap-4 lg:grid-cols-3">
-                      <Skeleton className="h-24 w-full" />
-                      <Skeleton className="h-24 w-full" />
-                      <Skeleton className="h-24 w-full" />
-                    </div>
-                  ) : null}
-
-                  {subscriptionStatus === "error" ? (
-                    <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
-                        <div className="space-y-3">
-                          <p className="font-semibold text-destructive">Subscription summary could not be loaded</p>
-                          <p className="text-sm leading-6 text-destructive/80">{subscriptionError}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {subscriptionStatus === "success" && subscriptionSummary ? (
-                    <>
-                      <div className="grid gap-3 lg:grid-cols-3">
-                        <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Selected series</p>
-                          <p className="mt-3 font-semibold text-foreground">{selectedSeriesDisplayName}</p>
-                          {selectedSeriesContext ? (
-                            <p className="mt-1 text-sm leading-6 text-muted-foreground">{selectedSeriesContext}</p>
-                          ) : null}
-                        </div>
-                        <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Enforcement mode</p>
-                          <p className="mt-3 font-semibold text-foreground">
-                            {isHardSubscriptionEnforcement ? "Hard enforcement" : "Advisory mode"}
-                          </p>
-                          <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                            {isHardSubscriptionEnforcement
-                              ? "If a feature is not allowed by the plan, this page blocks the action."
-                              : "Unavailable features are flagged, but not hard-blocked."}
-                          </p>
-                        </div>
-                        <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">What this controls</p>
-                          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                            Viewer grants, manual refresh requests, and future paid-series controls all read from this plan.
-                          </p>
-                          <p className="mt-3 text-sm leading-6 text-cyan-100/85">
-                            Platform-admin access sits above this allocation model. Platform admins can enter any series
-                            console or report route without consuming viewer seats.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-                        <div className="grid gap-3 md:grid-cols-3">
-                          <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
-                            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Series usage</p>
-                            <p className="mt-3 text-2xl font-semibold text-foreground">
-                              {formatNumber(subscriptionSummary.usage?.seriesCount ?? 0)}
-                              {subscriptionSummary.limits?.maxSeries !== null && subscriptionSummary.limits?.maxSeries !== undefined
-                                ? ` / ${formatNumber(subscriptionSummary.limits?.maxSeries)}`
-                                : ""}
-                            </p>
-                          </div>
-                          <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
-                            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Admin usage</p>
-                            <p className="mt-3 text-2xl font-semibold text-foreground">
-                              {formatNumber(subscriptionSummary.usage?.adminUserCount ?? 0)}
-                              {subscriptionSummary.limits?.maxAdminUsers !== null && subscriptionSummary.limits?.maxAdminUsers !== undefined
-                                ? ` / ${formatNumber(subscriptionSummary.limits?.maxAdminUsers)}`
-                                : ""}
-                            </p>
-                          </div>
-                          <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
-                            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Viewer usage</p>
-                            <p className="mt-3 text-2xl font-semibold text-foreground">
-                              {formatNumber(subscriptionSummary.usage?.viewerUserCount ?? 0)}
-                              {subscriptionSummary.limits?.maxViewerUsers !== null && subscriptionSummary.limits?.maxViewerUsers !== undefined
-                                ? ` / ${formatNumber(subscriptionSummary.limits?.maxViewerUsers)}`
-                                : ""}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Feature gates</p>
-                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                            {[
-                              {
-                                label: "Manual refresh",
-                                enabled: subscriptionSummary.entitlements?.manualRefreshEnabled === true,
-                              },
-                              {
-                                label: "Scheduled refresh",
-                                enabled: subscriptionSummary.entitlements?.scheduledRefreshEnabled === true,
-                              },
-                              {
-                                label: "Weight tuning",
-                                enabled: subscriptionSummary.entitlements?.weightTuningEnabled === true,
-                              },
-                              {
-                                label: "Viewer grants",
-                                enabled: subscriptionSummary.entitlements?.viewerGrantEnabled === true,
-                              },
-                            ].map((item) => (
-                              <div
-                                key={item.label}
-                                className="flex items-center justify-between rounded-xl border border-border/70 bg-background/60 p-3"
-                              >
-                                <p className="text-sm text-foreground">{item.label}</p>
-                                <Badge
-                                  className={
-                                    item.enabled
-                                      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
-                                      : "border-amber-500/25 bg-amber-500/10 text-amber-300"
-                                  }
-                                >
-                                  {item.enabled ? "Enabled" : "Locked"}
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-                        <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                            Billing references
-                          </p>
-                          <div className="mt-4 space-y-3 text-sm leading-7 text-muted-foreground">
-                            <p>
-                              <span className="font-semibold text-foreground">Plan key:</span>{" "}
-                              {subscriptionSummary.subscription?.planKey || "-"}
-                            </p>
-                            <p>
-                              <span className="font-semibold text-foreground">Billing provider:</span>{" "}
-                              {subscriptionSummary.subscription?.billingProvider || "-"}
-                            </p>
-                            <p>
-                              <span className="font-semibold text-foreground">Contract owner:</span>{" "}
-                              {subscriptionSummary.subscription?.contractOwnerEmail || "-"}
-                            </p>
-                            <p>
-                              <span className="font-semibold text-foreground">Customer ref:</span>{" "}
-                              {subscriptionSummary.subscription?.billingCustomerRef || "-"}
-                            </p>
-                            <p>
-                              <span className="font-semibold text-foreground">Subscription ref:</span>{" "}
-                              {subscriptionSummary.subscription?.billingSubscriptionRef || "-"}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                            Enforcement warnings
-                          </p>
-                          <div className="mt-4 space-y-3">
-                            {(subscriptionSummary.warnings ?? []).length ? (
-                              (subscriptionSummary.warnings ?? []).map((warning) => (
-                                <div
-                                  key={warning}
-                                  className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-sm leading-6 text-amber-200"
-                                >
-                                  {warning}
-                                </div>
-                              ))
-                            ) : (
-                              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-sm leading-6 text-emerald-200">
-                                No subscription warnings are currently active for this entity.
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  ) : null}
-                </CardContent>
-              </Card>
-            ) : null}
 
             {catalogStatus === "loading" ? (
               <div className="grid gap-4 lg:grid-cols-[1fr_1.08fr]">
@@ -1958,8 +1746,8 @@ const AnalyticsAdmin = () => {
                 <CardHeader>
                   <CardTitle>No series exist for this entity yet</CardTitle>
                   <CardDescription>
-                    Start with the mandatory setup card below. Once the first series is created, the series-user and
-                    optional-control sections will attach to it automatically.
+                    Start with the mandatory setup below. The access and optional-control sections will attach after
+                    the first series is created.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -2002,9 +1790,8 @@ const AnalyticsAdmin = () => {
                         <div>
                           <h2 className="font-display text-2xl text-foreground">Create or update the required series setup</h2>
                           <p className="text-sm leading-7 text-muted-foreground">
-                            Start here. Enter the source URL, series identity, coverage flags, and activation fields
-                            needed for extract, ball-by-ball capture, and report generation. Series-user access comes
-                            next. Optional tuning stays lower on the page.
+                            Enter the source URL, series identity, and capture switches needed to run the series.
+                            Series-user access and optional controls stay below.
                           </p>
                         </div>
                       </div>
@@ -2034,190 +1821,210 @@ const AnalyticsAdmin = () => {
                       <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
                         {seriesEntryMode === "create" ? (
                           <>
-                            <div className="grid gap-3 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label>Owning entity</Label>
-                                <Select
-                                  value={createSeriesForm.entityId || "__none__"}
-                                  onValueChange={(value) =>
-                                    setCreateSeriesForm((current) => ({
-                                      ...current,
-                                      entityId: value === "__none__" ? "" : value,
-                                    }))
-                                  }
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select the entity that owns this series" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="__none__">Select entity</SelectItem>
-                                    {entities.map((entity) => (
-                                      <SelectItem key={entity.entityId || entity.entityName} value={entity.entityId || ""}>
-                                        {entity.entityName || entity.entitySlug || entity.entityId}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <p className="text-xs leading-6 text-muted-foreground">
-                                  This decides which admin team owns the series and which plan limits apply.
-                                </p>
-                              </div>
+                            <div className="space-y-5">
+                              <div className="rounded-2xl border border-border/70 bg-background/60 p-5">
+                                <div className="space-y-1">
+                                  <p className="text-[11px] uppercase tracking-[0.16em] text-primary">
+                                    1. Series identity
+                                  </p>
+                                  <p className="text-sm leading-7 text-muted-foreground">
+                                    Define who owns the series and what coaches should see as the series label.
+                                  </p>
+                                </div>
 
-                              <div className="space-y-2">
-                                <Label htmlFor="create-series-name">Series display name</Label>
-                                <Input
-                                  id="create-series-name"
-                                  value={createSeriesForm.sourceSetup.name}
-                                  onChange={(event) =>
-                                    handleCreateSeriesSourceFieldChange("name", event.target.value)
-                                  }
-                                  placeholder="2026 Bay Area USAC Hub"
-                                />
-                                <p className="text-xs leading-6 text-muted-foreground">
-                                  Coach-facing series label used in dashboards, reports, and admin lists.
-                                </p>
-                              </div>
-                            </div>
+                                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                  <div className="space-y-2">
+                                    <Label>Owning entity</Label>
+                                    <Select
+                                      value={createSeriesForm.entityId || "__none__"}
+                                      onValueChange={(value) =>
+                                        setCreateSeriesForm((current) => ({
+                                          ...current,
+                                          entityId: value === "__none__" ? "" : value,
+                                        }))
+                                      }
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select the entity that owns this series" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="__none__">Select entity</SelectItem>
+                                        {entities.map((entity) => (
+                                          <SelectItem key={entity.entityId || entity.entityName} value={entity.entityId || ""}>
+                                            {entity.entityName || entity.entitySlug || entity.entityId}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <p className="text-xs leading-6 text-muted-foreground">
+                                      This decides which admin team owns the series and which package limits apply.
+                                    </p>
+                                  </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="create-series-url">Primary source URL</Label>
-                              <Input
-                                id="create-series-url"
-                                value={createSeriesForm.sourceSetup.seriesUrl}
-                                onChange={(event) =>
-                                  handleCreateSeriesSourceFieldChange("seriesUrl", event.target.value)
-                                }
-                                placeholder="https://cricclubs.com/USACricketJunior/viewLeague.do?league=434&clubId=40319"
-                              />
-                              <p className="text-xs leading-6 text-muted-foreground">
-                                Paste the CricClubs league page. This is the anchor used to discover results, scorecards,
-                                and ball-by-ball coverage.
-                              </p>
-                            </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="create-series-name">Series display name</Label>
+                                    <Input
+                                      id="create-series-name"
+                                      value={createSeriesForm.sourceSetup.name}
+                                      onChange={(event) =>
+                                        handleCreateSeriesSourceFieldChange("name", event.target.value)
+                                      }
+                                      placeholder="2026 Bay Area USAC Hub"
+                                    />
+                                    <p className="text-xs leading-6 text-muted-foreground">
+                                      Coach-facing label used in dashboards, reports, and admin lists.
+                                    </p>
+                                  </div>
 
-                            <div className="grid gap-3 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label htmlFor="create-expected-league-name">League namespace</Label>
-                                <Input
-                                  id="create-expected-league-name"
-                                  value={createSeriesForm.sourceSetup.expectedLeagueName}
-                                  onChange={(event) =>
-                                    handleCreateSeriesSourceFieldChange("expectedLeagueName", event.target.value)
-                                  }
-                                  placeholder="USACricketJunior"
-                                />
-                                <p className="text-xs leading-6 text-muted-foreground">
-                                  Usually the path segment in the CricClubs URL. It helps validate match and results links.
-                                </p>
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label htmlFor="create-expected-series-name">Expected source series name</Label>
-                                <Input
-                                  id="create-expected-series-name"
-                                  value={createSeriesForm.sourceSetup.expectedSeriesName}
-                                  onChange={(event) =>
-                                    handleCreateSeriesSourceFieldChange("expectedSeriesName", event.target.value)
-                                  }
-                                  placeholder="Bay Area USAC Hub"
-                                />
-                                <p className="text-xs leading-6 text-muted-foreground">
-                                  Use the source-site label you expect the extractor to find. It helps with sanity checks.
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="grid gap-3 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label htmlFor="create-season-year">Season year</Label>
-                                <Input
-                                  id="create-season-year"
-                                  inputMode="numeric"
-                                  value={createSeriesForm.sourceSetup.seasonYear}
-                                  onChange={(event) =>
-                                    handleCreateSeriesSourceFieldChange("seasonYear", event.target.value)
-                                  }
-                                />
-                                <p className="text-xs leading-6 text-muted-foreground">
-                                  Used for naming, report context, and grouping the right season data together.
-                                </p>
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label htmlFor="create-target-age-group">Target age group</Label>
-                                <Input
-                                  id="create-target-age-group"
-                                  value={createSeriesForm.sourceSetup.targetAgeGroup}
-                                  onChange={(event) =>
-                                    handleCreateSeriesSourceFieldChange("targetAgeGroup", event.target.value)
-                                  }
-                                  placeholder="U15"
-                                />
-                                <p className="text-xs leading-6 text-muted-foreground">
-                                  Keeps age groups separated and is shown directly in reports and workspace labels.
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="grid gap-3 md:grid-cols-2">
-                              {[
-                                {
-                                  key: "scrapeCompletedOnly" as const,
-                                  label: "Completed matches only",
-                                  body: "Use this when the extract should ignore fixtures that are still live or incomplete.",
-                                },
-                                {
-                                  key: "includeBallByBall" as const,
-                                  label: "Include ball-by-ball",
-                                  body: "Turn this on when commentary and over-by-over events should be stored and scored.",
-                                },
-                                {
-                                  key: "includePlayerProfiles" as const,
-                                  label: "Include player profiles",
-                                  body: "Adds public player-profile metadata when that source exposes it.",
-                                },
-                                {
-                                  key: "enableAutoDiscovery" as const,
-                                  label: "Auto-discover linked pages",
-                                  body: "Lets the extractor discover division pages, results pages, and related links from the source URL.",
-                                },
-                                {
-                                  key: "isActive" as const,
-                                  label: "Mark series active now",
-                                  body: "Active series appear immediately in the managed analytics flow. Leave this off until the source is ready.",
-                                },
-                              ].map((item) => (
-                                <div key={item.key} className="rounded-2xl border border-border/70 bg-background/60 p-4">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="space-y-1">
-                                      <p className="font-medium text-foreground">{item.label}</p>
-                                      <p className="text-xs leading-6 text-muted-foreground">{item.body}</p>
-                                    </div>
-                                    <Switch
-                                      checked={createSeriesForm.sourceSetup[item.key]}
-                                      onCheckedChange={(checked) =>
-                                        handleCreateSeriesSourceFieldChange(item.key, checked)
+                                  <div className="space-y-2">
+                                    <Label htmlFor="create-season-year">Season year</Label>
+                                    <Input
+                                      id="create-season-year"
+                                      inputMode="numeric"
+                                      value={createSeriesForm.sourceSetup.seasonYear}
+                                      onChange={(event) =>
+                                        handleCreateSeriesSourceFieldChange("seasonYear", event.target.value)
                                       }
                                     />
+                                    <p className="text-xs leading-6 text-muted-foreground">
+                                      Used for naming, report context, and grouping the correct season data.
+                                    </p>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label htmlFor="create-target-age-group">Target age group</Label>
+                                    <Input
+                                      id="create-target-age-group"
+                                      value={createSeriesForm.sourceSetup.targetAgeGroup}
+                                      onChange={(event) =>
+                                        handleCreateSeriesSourceFieldChange("targetAgeGroup", event.target.value)
+                                      }
+                                      placeholder="U15"
+                                    />
+                                    <p className="text-xs leading-6 text-muted-foreground">
+                                      Keeps age groups separated and appears directly in reports and workspace labels.
+                                    </p>
                                   </div>
                                 </div>
-                              ))}
-                            </div>
+                              </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="create-series-notes">Operator notes</Label>
-                              <Textarea
-                                id="create-series-notes"
-                                className="min-h-[104px]"
-                                value={createSeriesForm.sourceSetup.notes}
-                                onChange={(event) =>
-                                  handleCreateSeriesSourceFieldChange("notes", event.target.value)
-                                }
-                                placeholder="Internal notes for the admin team"
-                              />
-                              <p className="text-xs leading-6 text-muted-foreground">
-                                Optional internal notes only. These do not show up in player-facing or viewer-facing reports.
-                              </p>
+                              <div className="rounded-2xl border border-border/70 bg-background/60 p-5">
+                                <div className="space-y-1">
+                                  <p className="text-[11px] uppercase tracking-[0.16em] text-primary">
+                                    2. Source capture
+                                  </p>
+                                  <p className="text-sm leading-7 text-muted-foreground">
+                                    Enter the source page and the validation labels the extractor should match.
+                                  </p>
+                                </div>
+
+                                <div className="mt-4 space-y-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="create-series-url">Primary source URL</Label>
+                                    <Input
+                                      id="create-series-url"
+                                      value={createSeriesForm.sourceSetup.seriesUrl}
+                                      onChange={(event) =>
+                                        handleCreateSeriesSourceFieldChange("seriesUrl", event.target.value)
+                                      }
+                                      placeholder="https://cricclubs.com/USACricketJunior/viewLeague.do?league=434&clubId=40319"
+                                    />
+                                    <p className="text-xs leading-6 text-muted-foreground">
+                                      Paste the main CricClubs league page. This is the anchor used to discover results,
+                                      scorecards, and ball-by-ball coverage.
+                                    </p>
+                                  </div>
+
+                                  <div className="grid gap-3 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                      <Label htmlFor="create-expected-league-name">League namespace</Label>
+                                      <Input
+                                        id="create-expected-league-name"
+                                        value={createSeriesForm.sourceSetup.expectedLeagueName}
+                                        onChange={(event) =>
+                                          handleCreateSeriesSourceFieldChange("expectedLeagueName", event.target.value)
+                                        }
+                                        placeholder="USACricketJunior"
+                                      />
+                                      <p className="text-xs leading-6 text-muted-foreground">
+                                        Usually the path segment in the source URL. It helps validate results and match links.
+                                      </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <Label htmlFor="create-expected-series-name">Expected source series name</Label>
+                                      <Input
+                                        id="create-expected-series-name"
+                                        value={createSeriesForm.sourceSetup.expectedSeriesName}
+                                        onChange={(event) =>
+                                          handleCreateSeriesSourceFieldChange("expectedSeriesName", event.target.value)
+                                        }
+                                        placeholder="Bay Area USAC Hub"
+                                      />
+                                      <p className="text-xs leading-6 text-muted-foreground">
+                                        Use the source-site label you expect the extractor and validators to match.
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="rounded-2xl border border-border/70 bg-background/60 p-5">
+                                <div className="space-y-1">
+                                  <p className="text-[11px] uppercase tracking-[0.16em] text-primary">
+                                    3. Extraction behavior
+                                  </p>
+                                  <p className="text-sm leading-7 text-muted-foreground">
+                                    Control what gets pulled, stored, and exposed in the live analytics workspace.
+                                  </p>
+                                </div>
+
+                                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                  {mandatoryCaptureSwitches.map((item) => (
+                                    <div key={item.key} className="rounded-2xl border border-border/70 bg-background/55 p-4">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="space-y-1">
+                                          <p className="font-medium text-foreground">{item.label}</p>
+                                          <p className="text-xs leading-6 text-muted-foreground">{item.body}</p>
+                                        </div>
+                                        <Switch
+                                          checked={createSeriesForm.sourceSetup[item.key]}
+                                          onCheckedChange={(checked) =>
+                                            handleCreateSeriesSourceFieldChange(item.key, checked)
+                                          }
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="rounded-2xl border border-border/70 bg-background/60 p-5">
+                                <div className="space-y-1">
+                                  <p className="text-[11px] uppercase tracking-[0.16em] text-primary">
+                                    4. Admin notes
+                                  </p>
+                                  <p className="text-sm leading-7 text-muted-foreground">
+                                    Internal-only notes for source caveats, reminders, or manual follow-up.
+                                  </p>
+                                </div>
+
+                                <div className="mt-4 space-y-2">
+                                  <Label htmlFor="create-series-notes">Operator notes</Label>
+                                  <Textarea
+                                    id="create-series-notes"
+                                    className="min-h-[104px]"
+                                    value={createSeriesForm.sourceSetup.notes}
+                                    onChange={(event) =>
+                                      handleCreateSeriesSourceFieldChange("notes", event.target.value)
+                                    }
+                                    placeholder="Internal notes for the admin team"
+                                  />
+                                  <p className="text-xs leading-6 text-muted-foreground">
+                                    These notes do not appear in player-facing or viewer-facing reports.
+                                  </p>
+                                </div>
+                              </div>
                             </div>
 
                             {createSeriesMessage ? (
@@ -2273,168 +2080,200 @@ const AnalyticsAdmin = () => {
 
                             {setupStatus === "success" && formState ? (
                               <>
-                                <div className="grid gap-3 md:grid-cols-2">
-                                  <div className="space-y-2">
-                                    <Label htmlFor="entry-series-name">Series display name</Label>
-                                    <Input
-                                      id="entry-series-name"
-                                      value={formState.sourceSetup.name}
-                                      onChange={(event) => handleSourceFieldChange("name", event.target.value)}
-                                    />
-                                    <p className="text-xs leading-6 text-muted-foreground">
-                                      Coach-facing label for this series and the default report heading.
-                                    </p>
-                                  </div>
+                                <div className="space-y-5">
+                                  <div className="rounded-2xl border border-border/70 bg-background/60 p-5">
+                                    <div className="space-y-1">
+                                      <p className="text-[11px] uppercase tracking-[0.16em] text-primary">
+                                        1. Series identity
+                                      </p>
+                                      <p className="text-sm leading-7 text-muted-foreground">
+                                        Keep the working series label, season, and age bracket aligned with what coaches see.
+                                      </p>
+                                    </div>
 
-                                  <div className="space-y-2">
-                                    <Label htmlFor="entry-target-age-group">Target age group</Label>
-                                    <Input
-                                      id="entry-target-age-group"
-                                      value={formState.sourceSetup.targetAgeGroup}
-                                      onChange={(event) => handleSourceFieldChange("targetAgeGroup", event.target.value)}
-                                    />
-                                    <p className="text-xs leading-6 text-muted-foreground">
-                                      Keeps the workspace aligned to the right age bracket and report label.
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label htmlFor="entry-series-url">Primary source URL</Label>
-                                  <Input
-                                    id="entry-series-url"
-                                    value={formState.sourceSetup.seriesUrl}
-                                    onChange={(event) => handleSourceFieldChange("seriesUrl", event.target.value)}
-                                  />
-                                  <p className="text-xs leading-6 text-muted-foreground">
-                                    Main source URL used to discover results, scorecards, and linked CricClubs pages.
-                                  </p>
-                                </div>
-
-                                <div className="grid gap-3 md:grid-cols-2">
-                                  <div className="space-y-2">
-                                    <Label htmlFor="entry-league-name">League namespace</Label>
-                                    <Input
-                                      id="entry-league-name"
-                                      value={formState.sourceSetup.expectedLeagueName}
-                                      onChange={(event) =>
-                                        handleSourceFieldChange("expectedLeagueName", event.target.value)
-                                      }
-                                    />
-                                    <p className="text-xs leading-6 text-muted-foreground">
-                                      Validates that the extracted match links stay inside the expected CricClubs namespace.
-                                    </p>
-                                  </div>
-
-                                  <div className="space-y-2">
-                                    <Label htmlFor="entry-expected-series-name">Expected source series name</Label>
-                                    <Input
-                                      id="entry-expected-series-name"
-                                      value={formState.sourceSetup.expectedSeriesName}
-                                      onChange={(event) =>
-                                        handleSourceFieldChange("expectedSeriesName", event.target.value)
-                                      }
-                                    />
-                                    <p className="text-xs leading-6 text-muted-foreground">
-                                      Source-side name you expect the extractor and validators to match.
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="grid gap-3 md:grid-cols-2">
-                                  <div className="space-y-2">
-                                    <Label htmlFor="entry-season-year">Season year</Label>
-                                    <Input
-                                      id="entry-season-year"
-                                      inputMode="numeric"
-                                      value={formState.sourceSetup.seasonYear}
-                                      onChange={(event) => handleSourceFieldChange("seasonYear", event.target.value)}
-                                    />
-                                    <p className="text-xs leading-6 text-muted-foreground">
-                                      Groups the series into the correct season and controls naming consistency.
-                                    </p>
-                                  </div>
-
-                                  <div className="space-y-2">
-                                    <Label htmlFor="entry-notes">Operator notes</Label>
-                                    <Input
-                                      id="entry-notes"
-                                      value={formState.sourceSetup.notes}
-                                      onChange={(event) => handleSourceFieldChange("notes", event.target.value)}
-                                    />
-                                    <p className="text-xs leading-6 text-muted-foreground">
-                                      Internal admin note only. Use this for reminders or source-specific caveats.
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="grid gap-3 md:grid-cols-2">
-                                  {[
-                                    {
-                                      key: "scrapeCompletedOnly" as const,
-                                      label: "Completed matches only",
-                                      body: "Ignore incomplete fixtures until they are final.",
-                                    },
-                                    {
-                                      key: "includeBallByBall" as const,
-                                      label: "Include ball-by-ball",
-                                      body: "Store commentary and delivery-level events for advanced analytics.",
-                                    },
-                                    {
-                                      key: "includePlayerProfiles" as const,
-                                      label: "Include player profiles",
-                                      body: "Collect available public player-profile metadata from the source.",
-                                    },
-                                    {
-                                      key: "enableAutoDiscovery" as const,
-                                      label: "Auto-discover linked pages",
-                                      body: "Follow the main source page to find results, standings, and divisions.",
-                                    },
-                                    {
-                                      key: "isActive" as const,
-                                      label: "Active in live analytics",
-                                      body: "Controls whether this series is live in the active analytics surface.",
-                                    },
-                                  ].map((item) => (
-                                    <div key={item.key} className="rounded-2xl border border-border/70 bg-background/60 p-4">
-                                      <div className="flex items-start justify-between gap-3">
-                                        <div className="space-y-1">
-                                          <p className="font-medium text-foreground">{item.label}</p>
-                                          <p className="text-xs leading-6 text-muted-foreground">{item.body}</p>
+                                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                      <div className="space-y-2">
+                                        <Label>Owning entity</Label>
+                                        <div className="rounded-xl border border-border/70 bg-background/55 px-4 py-3 text-sm text-foreground">
+                                          {selectedEntity?.entityName || "No entity selected"}
                                         </div>
-                                        <Switch
-                                          checked={formState.sourceSetup[item.key]}
-                                          onCheckedChange={(checked) => handleSourceFieldChange(item.key, checked)}
+                                        <p className="text-xs leading-6 text-muted-foreground">
+                                          Entity ownership is managed above this page and controls access and billing scope.
+                                        </p>
+                                      </div>
+
+                                      <div className="space-y-2">
+                                        <Label htmlFor="entry-series-name">Series display name</Label>
+                                        <Input
+                                          id="entry-series-name"
+                                          value={formState.sourceSetup.name}
+                                          onChange={(event) => handleSourceFieldChange("name", event.target.value)}
                                         />
+                                        <p className="text-xs leading-6 text-muted-foreground">
+                                          Coach-facing label for this series and the default report heading.
+                                        </p>
+                                      </div>
+
+                                      <div className="space-y-2">
+                                        <Label htmlFor="entry-season-year">Season year</Label>
+                                        <Input
+                                          id="entry-season-year"
+                                          inputMode="numeric"
+                                          value={formState.sourceSetup.seasonYear}
+                                          onChange={(event) => handleSourceFieldChange("seasonYear", event.target.value)}
+                                        />
+                                        <p className="text-xs leading-6 text-muted-foreground">
+                                          Groups the series into the correct season and keeps naming consistent.
+                                        </p>
+                                      </div>
+
+                                      <div className="space-y-2">
+                                        <Label htmlFor="entry-target-age-group">Target age group</Label>
+                                        <Input
+                                          id="entry-target-age-group"
+                                          value={formState.sourceSetup.targetAgeGroup}
+                                          onChange={(event) => handleSourceFieldChange("targetAgeGroup", event.target.value)}
+                                        />
+                                        <p className="text-xs leading-6 text-muted-foreground">
+                                          Keeps the workspace aligned to the right age bracket and report label.
+                                        </p>
                                       </div>
                                     </div>
-                                  ))}
-                                </div>
+                                  </div>
 
-                                <div className="flex flex-wrap gap-2">
-                                  <Button
-                                    variant="outline"
-                                    onClick={() => void handleSave(true)}
-                                    disabled={!isDirty || mutationStatus === "saving"}
-                                  >
-                                    <SlidersHorizontal className="mr-2 h-4 w-4" />
-                                    Dry run
-                                  </Button>
-                                  <Button
-                                    onClick={() => void handleSave(false)}
-                                    disabled={!isDirty || mutationStatus === "saving"}
-                                  >
-                                    <Save className="mr-2 h-4 w-4" />
-                                    Save setup
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={handleResetChanges}
-                                    disabled={!isDirty || mutationStatus === "saving"}
-                                  >
-                                    Reset changes
-                                  </Button>
+                                  <div className="rounded-2xl border border-border/70 bg-background/60 p-5">
+                                    <div className="space-y-1">
+                                      <p className="text-[11px] uppercase tracking-[0.16em] text-primary">
+                                        2. Source capture
+                                      </p>
+                                      <p className="text-sm leading-7 text-muted-foreground">
+                                        Update the main source page and the validation labels that keep extraction inside
+                                        the correct CricClubs namespace.
+                                      </p>
+                                    </div>
+
+                                    <div className="mt-4 space-y-4">
+                                      <div className="space-y-2">
+                                        <Label htmlFor="entry-series-url">Primary source URL</Label>
+                                        <Input
+                                          id="entry-series-url"
+                                          value={formState.sourceSetup.seriesUrl}
+                                          onChange={(event) => handleSourceFieldChange("seriesUrl", event.target.value)}
+                                        />
+                                        <p className="text-xs leading-6 text-muted-foreground">
+                                          Main source URL used to discover results, scorecards, and linked CricClubs pages.
+                                        </p>
+                                      </div>
+
+                                      <div className="grid gap-3 md:grid-cols-2">
+                                        <div className="space-y-2">
+                                          <Label htmlFor="entry-league-name">League namespace</Label>
+                                          <Input
+                                            id="entry-league-name"
+                                            value={formState.sourceSetup.expectedLeagueName}
+                                            onChange={(event) =>
+                                              handleSourceFieldChange("expectedLeagueName", event.target.value)
+                                            }
+                                          />
+                                          <p className="text-xs leading-6 text-muted-foreground">
+                                            Validates that extracted match links stay inside the expected CricClubs namespace.
+                                          </p>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                          <Label htmlFor="entry-expected-series-name">Expected source series name</Label>
+                                          <Input
+                                            id="entry-expected-series-name"
+                                            value={formState.sourceSetup.expectedSeriesName}
+                                            onChange={(event) =>
+                                              handleSourceFieldChange("expectedSeriesName", event.target.value)
+                                            }
+                                          />
+                                          <p className="text-xs leading-6 text-muted-foreground">
+                                            Source-side label you expect the extractor and validators to match.
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="rounded-2xl border border-border/70 bg-background/60 p-5">
+                                    <div className="space-y-1">
+                                      <p className="text-[11px] uppercase tracking-[0.16em] text-primary">
+                                        3. Extraction behavior
+                                      </p>
+                                      <p className="text-sm leading-7 text-muted-foreground">
+                                        Control what gets pulled, stored, and shown in the live analytics workspace.
+                                      </p>
+                                    </div>
+
+                                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                      {mandatoryCaptureSwitches.map((item) => (
+                                        <div key={item.key} className="rounded-2xl border border-border/70 bg-background/55 p-4">
+                                          <div className="flex items-start justify-between gap-3">
+                                            <div className="space-y-1">
+                                              <p className="font-medium text-foreground">{item.label}</p>
+                                              <p className="text-xs leading-6 text-muted-foreground">{item.body}</p>
+                                            </div>
+                                            <Switch
+                                              checked={formState.sourceSetup[item.key]}
+                                              onCheckedChange={(checked) => handleSourceFieldChange(item.key, checked)}
+                                            />
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  <div className="rounded-2xl border border-border/70 bg-background/60 p-5">
+                                    <div className="space-y-1">
+                                      <p className="text-[11px] uppercase tracking-[0.16em] text-primary">
+                                        4. Admin notes
+                                      </p>
+                                      <p className="text-sm leading-7 text-muted-foreground">
+                                        Keep internal notes here for source caveats, reminders, or follow-up actions.
+                                      </p>
+                                    </div>
+
+                                    <div className="mt-4 space-y-2">
+                                      <Label htmlFor="entry-notes">Operator notes</Label>
+                                      <Textarea
+                                        id="entry-notes"
+                                        className="min-h-[104px]"
+                                        value={formState.sourceSetup.notes}
+                                        onChange={(event) => handleSourceFieldChange("notes", event.target.value)}
+                                      />
+                                      <p className="text-xs leading-6 text-muted-foreground">
+                                        These notes stay internal and do not appear in player-facing or viewer-facing reports.
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-wrap gap-2">
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => void handleSave(true)}
+                                      disabled={!isDirty || mutationStatus === "saving"}
+                                    >
+                                      <SlidersHorizontal className="mr-2 h-4 w-4" />
+                                      Dry run
+                                    </Button>
+                                    <Button
+                                      onClick={() => void handleSave(false)}
+                                      disabled={!isDirty || mutationStatus === "saving"}
+                                    >
+                                      <Save className="mr-2 h-4 w-4" />
+                                      Save setup
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      onClick={handleResetChanges}
+                                      disabled={!isDirty || mutationStatus === "saving"}
+                                    >
+                                      Reset changes
+                                    </Button>
+                                  </div>
                                 </div>
                               </>
                             ) : (
@@ -2535,15 +2374,276 @@ const AnalyticsAdmin = () => {
 
                 {series.length ? (
                   <>
-                <Card className="order-2 border-border/80 bg-card/85 shadow-xl" id="series-switcher">
+                {selectedSeries ? (
+                  <Card className="order-3 border-border/80 bg-card/85 shadow-xl" id="plan-controls">
+                    <CardContent className="space-y-5 p-6">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Database className="h-4 w-4 text-cyan-200" />
+                            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                              Plan + enforcement
+                            </p>
+                          </div>
+                          <div>
+                            <h2 className="font-display text-2xl text-foreground">{planSummaryLabel}</h2>
+                            <p className="text-sm leading-7 text-muted-foreground">
+                              Current plan gates viewer grants, manual refresh, and future paid-series controls for this entity.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <Badge className={getStatusBadgeClass(subscriptionSummary?.subscription?.status)}>
+                            {subscriptionSummary?.subscription?.status || "unconfigured"}
+                          </Badge>
+                          <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                            {subscriptionSummary?.subscription?.billingProvider || "internal"}
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className={
+                              isHardSubscriptionEnforcement
+                                ? "border-amber-500/25 bg-amber-500/10 text-amber-300"
+                                : "border-cyan-400/25 bg-cyan-400/10 text-cyan-200"
+                            }
+                          >
+                            {subscriptionSummary?.subscription?.enforcementMode || "hard"} enforcement
+                          </Badge>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSubscriptionReloadKey((current) => current + 1)}
+                          >
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Refresh plan
+                          </Button>
+                        </div>
+                      </div>
+
+                      {subscriptionStatus === "loading" ? (
+                        <div className="grid gap-4 lg:grid-cols-3">
+                          <Skeleton className="h-24 w-full" />
+                          <Skeleton className="h-24 w-full" />
+                          <Skeleton className="h-24 w-full" />
+                        </div>
+                      ) : null}
+
+                      {subscriptionStatus === "error" ? (
+                        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
+                            <div className="space-y-3">
+                              <p className="font-semibold text-destructive">Subscription summary could not be loaded</p>
+                              <p className="text-sm leading-6 text-destructive/80">{subscriptionError}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {subscriptionStatus === "success" && subscriptionSummary ? (
+                        <>
+                          <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+                            <div className="grid gap-3 md:grid-cols-3">
+                              <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Series usage</p>
+                                <p className="mt-3 text-2xl font-semibold text-foreground">
+                                  {formatNumber(subscriptionSummary.usage?.seriesCount ?? 0)}
+                                  {subscriptionSummary.limits?.maxSeries !== null && subscriptionSummary.limits?.maxSeries !== undefined
+                                    ? ` / ${formatNumber(subscriptionSummary.limits?.maxSeries)}`
+                                    : ""}
+                                </p>
+                              </div>
+                              <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Admin usage</p>
+                                <p className="mt-3 text-2xl font-semibold text-foreground">
+                                  {formatNumber(subscriptionSummary.usage?.adminUserCount ?? 0)}
+                                  {subscriptionSummary.limits?.maxAdminUsers !== null && subscriptionSummary.limits?.maxAdminUsers !== undefined
+                                    ? ` / ${formatNumber(subscriptionSummary.limits?.maxAdminUsers)}`
+                                    : ""}
+                                </p>
+                              </div>
+                              <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Viewer usage</p>
+                                <p className="mt-3 text-2xl font-semibold text-foreground">
+                                  {formatNumber(subscriptionSummary.usage?.viewerUserCount ?? 0)}
+                                  {subscriptionSummary.limits?.maxViewerUsers !== null && subscriptionSummary.limits?.maxViewerUsers !== undefined
+                                    ? ` / ${formatNumber(subscriptionSummary.limits?.maxViewerUsers)}`
+                                    : ""}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                              <div className="space-y-3">
+                                <div className="flex flex-wrap gap-2">
+                                  <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                                    {selectedSeriesDisplayName}
+                                  </Badge>
+                                  {selectedSeriesContext ? (
+                                    <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                                      {selectedSeriesContext}
+                                    </Badge>
+                                  ) : null}
+                                  <Badge
+                                    variant="outline"
+                                    className={
+                                      isHardSubscriptionEnforcement
+                                        ? "border-amber-500/25 bg-amber-500/10 text-amber-300"
+                                        : "border-cyan-400/25 bg-cyan-400/10 text-cyan-200"
+                                    }
+                                  >
+                                    {isHardSubscriptionEnforcement ? "Hard enforcement" : "Advisory mode"}
+                                  </Badge>
+                                </div>
+
+                                <p className="text-sm leading-6 text-muted-foreground">
+                                  Platform admins remain outside seat limits. Series-admin actions below still respect the current entity plan.
+                                </p>
+                              </div>
+
+                              <div className="mt-4">
+                                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Feature gates</p>
+                              </div>
+                              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                {[
+                                  {
+                                    label: "Manual refresh",
+                                    enabled: subscriptionSummary.entitlements?.manualRefreshEnabled === true,
+                                  },
+                                  {
+                                    label: "Scheduled refresh",
+                                    enabled: subscriptionSummary.entitlements?.scheduledRefreshEnabled === true,
+                                  },
+                                  {
+                                    label: "Weight tuning",
+                                    enabled: subscriptionSummary.entitlements?.weightTuningEnabled === true,
+                                  },
+                                  {
+                                    label: "Viewer grants",
+                                    enabled: subscriptionSummary.entitlements?.viewerGrantEnabled === true,
+                                  },
+                                ].map((item) => (
+                                  <div
+                                    key={item.label}
+                                    className="flex items-center justify-between rounded-xl border border-border/70 bg-background/60 p-3"
+                                  >
+                                    <p className="text-sm text-foreground">{item.label}</p>
+                                    <Badge
+                                      className={
+                                        item.enabled
+                                          ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
+                                          : "border-amber-500/25 bg-amber-500/10 text-amber-300"
+                                      }
+                                    >
+                                      {item.enabled ? "Enabled" : "Locked"}
+                                    </Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid gap-3 lg:grid-cols-[1.05fr_0.95fr]">
+                            <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                              <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Billing refs</p>
+                              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                {[
+                                  {
+                                    label: "Plan key",
+                                    value: subscriptionSummary.subscription?.planKey || "-",
+                                  },
+                                  {
+                                    label: "Billing provider",
+                                    value: subscriptionSummary.subscription?.billingProvider || "-",
+                                  },
+                                  {
+                                    label: "Contract owner",
+                                    value: subscriptionSummary.subscription?.contractOwnerEmail || "-",
+                                  },
+                                  {
+                                    label: "Customer ref",
+                                    value: subscriptionSummary.subscription?.billingCustomerRef || "-",
+                                  },
+                                  {
+                                    label: "Subscription ref",
+                                    value: subscriptionSummary.subscription?.billingSubscriptionRef || "-",
+                                  },
+                                ].map((item) => (
+                                  <div key={item.label} className="rounded-xl border border-border/70 bg-background/60 p-3">
+                                    <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                      {item.label}
+                                    </p>
+                                    <p className="mt-2 break-all text-sm leading-6 text-foreground">{item.value}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                              <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Warnings</p>
+                              <div className="mt-4 space-y-3">
+                                {(subscriptionSummary.warnings ?? []).length ? (
+                                  (subscriptionSummary.warnings ?? []).map((warning) => (
+                                    <div
+                                      key={warning}
+                                      className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-sm leading-6 text-amber-200"
+                                    >
+                                      {warning}
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-sm leading-6 text-emerald-200">
+                                    No subscription warnings are currently active for this entity.
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      ) : null}
+                    </CardContent>
+                  </Card>
+                ) : null}
+
+                <Card className="order-4 border-border/80 bg-card/85 shadow-xl" id="series-switcher">
                   <CardHeader>
                     <CardTitle className="font-display text-2xl text-foreground">Series switcher</CardTitle>
-                    <CardDescription>
-                      Pick the series you want to work on. The setup, access, and optional control panels all follow
-                      this selection.
-                    </CardDescription>
+                    <CardDescription>Select which series drives the admin sections on this page.</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-4">
+                    {selectedSeries ? (
+                      <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div className="space-y-1">
+                            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                              Current selection
+                            </p>
+                            <p className="font-semibold text-foreground">
+                              {selectedSeries.seriesName || selectedSeries.configKey}
+                            </p>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                              {selectedSeries.entityName || "Unassigned entity"}
+                              {selectedSeries.targetAgeGroup ? ` · ${selectedSeries.targetAgeGroup}` : ""}
+                              {selectedSeries.seasonYear ? ` · ${selectedSeries.seasonYear}` : ""}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Badge className="border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
+                              Current series
+                            </Badge>
+                            {selectedSeries.isActive ? (
+                              <Badge className="border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
+                                Active
+                              </Badge>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
                     {series.map((item) => {
                       const isSelected = item.configKey === selectedSeries?.configKey;
 
@@ -2554,22 +2654,45 @@ const AnalyticsAdmin = () => {
                           onClick={() => handleSelectSeries(item.configKey)}
                           className={`w-full rounded-2xl border p-4 text-left transition ${
                             isSelected
-                              ? "border-primary/40 bg-primary/10 shadow-lg"
+                              ? "border-primary/40 bg-primary/10"
                               : "border-border/80 bg-background/45 hover:border-primary/25 hover:bg-background/70"
                           }`}
                         >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="space-y-1">
-                              <p className="font-display text-2xl text-foreground">
-                                {item.seriesName || item.configKey}
-                              </p>
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                {isSelected ? (
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+                                ) : null}
+                                <p className="text-lg font-semibold text-foreground">
+                                  {item.seriesName || item.configKey}
+                                </p>
+                              </div>
                               <p className="text-sm leading-6 text-muted-foreground">
                                 {item.entityName || "Unassigned entity"}
                                 {item.targetAgeGroup ? ` · ${item.targetAgeGroup}` : ""}
                                 {item.seasonYear ? ` · ${item.seasonYear}` : ""}
                               </p>
+
+                              <div className="flex flex-wrap gap-2">
+                                <Badge variant="outline" className="border-border/80 bg-background/60 text-foreground">
+                                  {formatNumber(item.playerCount)} players
+                                </Badge>
+                                <Badge variant="outline" className="border-border/80 bg-background/60 text-foreground">
+                                  {formatNumber(item.computedMatches)} / {formatNumber(item.matchCount)} matches
+                                </Badge>
+                                <Badge variant="outline" className="border-border/80 bg-background/60 text-foreground">
+                                  {formatNumber(item.warningMatches)} warnings
+                                </Badge>
+                              </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              {isSelected ? (
+                                <Badge className="border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
+                                  Selected
+                                </Badge>
+                              ) : null}
                               <Badge className={getAccessTone(item.accessRole)}>{item.accessRole || "admin"}</Badge>
                               {item.isActive ? (
                                 <Badge className="border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
@@ -2579,37 +2702,20 @@ const AnalyticsAdmin = () => {
                             </div>
                           </div>
 
-                          <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                            <div className="rounded-xl border border-border/70 bg-background/60 p-3">
-                              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Players</p>
-                              <p className="mt-2 text-lg font-semibold text-foreground">{formatNumber(item.playerCount)}</p>
-                            </div>
-                            <div className="rounded-xl border border-border/70 bg-background/60 p-3">
-                              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Matches</p>
-                              <p className="mt-2 text-lg font-semibold text-foreground">
-                                {formatNumber(item.computedMatches)} / {formatNumber(item.matchCount)}
-                              </p>
-                            </div>
-                            <div className="rounded-xl border border-border/70 bg-background/60 p-3">
-                              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Warnings</p>
-                              <p className="mt-2 text-lg font-semibold text-foreground">{formatNumber(item.warningMatches)}</p>
-                            </div>
-                          </div>
                         </button>
                       );
                     })}
                   </CardContent>
                 </Card>
 
-                <Card className="order-4 border-border/80 bg-card/85 shadow-xl" id="series-setup">
+                <Card className="order-5 border-border/80 bg-card/85 shadow-xl" id="series-setup">
                   <CardHeader>
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                       <div className="space-y-2">
                         <CardTitle className="font-display text-2xl text-foreground">Optional tuning and detail controls</CardTitle>
                         <CardDescription>
-                          Use this only after the required setup above is stable. This section is for report profile
-                          selection, division mapping, and validation references. The source URL and capture switches
-                          stay in the mandatory setup block above.
+                          Use this after required setup is stable. This section covers report profile, division
+                          mapping, and validation references.
                         </CardDescription>
                       </div>
 
@@ -2728,12 +2834,12 @@ const AnalyticsAdmin = () => {
 
                     {setupStatus === "success" && formState ? (
                       <>
-                        <div className="grid gap-4 xl:grid-cols-[0.42fr_0.58fr]">
+                        <div className="grid gap-4">
                           <div className="space-y-3 rounded-2xl border border-border/80 bg-background/55 p-4">
                             <div className="flex items-center gap-2">
                               <SlidersHorizontal className="h-4 w-4 text-cyan-200" />
                               <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                                Optional controls
+                                1. Report profile and reference
                               </p>
                             </div>
 
@@ -2769,7 +2875,7 @@ const AnalyticsAdmin = () => {
                                   </SelectContent>
                                 </Select>
                                 <p className="text-xs leading-6 text-muted-foreground">
-                                  Changes the player-report presentation profile without changing the extracted match data.
+                                  Presentation only. Match data stays unchanged.
                                 </p>
                                 {setup?.reportProfile?.options?.length ? (
                                   <p className="text-xs leading-6 text-muted-foreground">
@@ -2782,7 +2888,7 @@ const AnalyticsAdmin = () => {
 
                               <div className="rounded-xl border border-border/70 bg-background/60 p-4">
                                 <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                                  Required setup lives above
+                                  Current source reference
                                 </p>
                                 <div className="mt-3 space-y-3 text-sm">
                                   <div>
@@ -2859,14 +2965,6 @@ const AnalyticsAdmin = () => {
                                     );
                                   })}
                                 </div>
-                                <p className="mt-3 text-xs leading-6 text-muted-foreground">
-                                  Edit these required capture switches in the mandatory setup section above.
-                                </p>
-                              </div>
-
-                              <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-sm leading-7 text-muted-foreground">
-                                Use this optional block for report layout and scoring detail only. Source identity and
-                                extract coverage stay above so there is one clear place to enter required series data.
                               </div>
                             </div>
                           </div>
@@ -2877,12 +2975,11 @@ const AnalyticsAdmin = () => {
                                 <div className="flex items-center gap-2">
                                   <Building2 className="h-4 w-4 text-cyan-200" />
                                   <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                                    Division mappings
+                                    2. Division mappings
                                   </p>
                                 </div>
                                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                                  Update phase/division boundaries, strength tiers, and inclusion flags after the source
-                                  setup is already stable.
+                                  Adjust division labels, weights, and inclusion rules.
                                 </p>
                               </div>
 
@@ -3008,9 +3105,9 @@ const AnalyticsAdmin = () => {
                         {setup?.validationAnchors?.length ? (
                           <div className="space-y-3 rounded-2xl border border-border/80 bg-background/55 p-4">
                             <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                              Validation anchors
+                              3. Validation anchors
                             </p>
-                            <div className="grid gap-3 md:grid-cols-2">
+                            <div className="space-y-3">
                               {setup.validationAnchors.map((anchor) => (
                                 <div
                                   key={anchor.id || `${anchor.entityType}-${anchor.entityName}`}
@@ -3055,15 +3152,12 @@ const AnalyticsAdmin = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="order-5 border-border/80 bg-card/85 shadow-xl" id="match-ops">
+                <Card className="order-6 border-border/80 bg-card/85 shadow-xl" id="match-ops">
                   <CardHeader>
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                       <div className="space-y-2">
                         <CardTitle className="font-display text-2xl text-foreground">Optional match operations</CardTitle>
-                        <CardDescription>
-                          Use these controls only when a series needs manual refresh help or a per-match inclusion
-                          override.
-                        </CardDescription>
+                        <CardDescription>Manual refresh requests and per-match overrides only.</CardDescription>
                       </div>
 
                       <Button
@@ -3132,12 +3226,12 @@ const AnalyticsAdmin = () => {
                       </div>
                     ) : null}
 
-                    <div className="grid gap-4 xl:grid-cols-[0.44fr_0.56fr]">
+                    <div className="grid gap-4">
                       <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
                         <div className="flex items-center gap-2">
                           <Wrench className="h-4 w-4 text-cyan-200" />
                           <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                            Manual refresh request
+                            1. Manual refresh requests
                           </p>
                         </div>
 
@@ -3207,12 +3301,6 @@ const AnalyticsAdmin = () => {
                           </div>
                         ) : null}
 
-                        <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-sm leading-7 text-muted-foreground">
-                          This section keeps orchestration focused: manual refresh requests and per-match overrides are
-                          live here, while full-series extract triggers, weekly schedules, and worker run history remain
-                          deferred until the worker boundary is exposed safely.
-                        </div>
-
                         <div className="space-y-3">
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
@@ -3274,7 +3362,7 @@ const AnalyticsAdmin = () => {
                             </div>
                           ) : (
                             <div className="rounded-2xl border border-border/70 bg-background/60 p-4 text-sm leading-7 text-muted-foreground">
-                              No manual refresh requests have been recorded for this series yet.
+                              No manual refresh requests yet.
                             </div>
                           )}
                         </div>
@@ -3286,12 +3374,11 @@ const AnalyticsAdmin = () => {
                             <div className="flex items-center gap-2">
                               <ListChecks className="h-4 w-4 text-cyan-200" />
                               <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                                Match operations
+                                2. Per-match review and overrides
                               </p>
                             </div>
                             <p className="text-sm leading-6 text-muted-foreground">
-                              Search loaded matches, inspect parse and analytics status, then force include or exclude
-                              decisions when selector review requires it.
+                              Search matches and apply include or exclude overrides.
                             </p>
                           </div>
 
@@ -3574,7 +3661,7 @@ const AnalyticsAdmin = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="order-3 border-border/80 bg-card/85 shadow-xl" id="series-users">
+                <Card className="order-2 border-border/80 bg-card/85 shadow-xl" id="series-users">
                   <CardContent className="space-y-6 p-6">
                     <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                       <div className="space-y-2">
@@ -3587,8 +3674,7 @@ const AnalyticsAdmin = () => {
                         <div>
                           <h2 className="font-display text-2xl text-foreground">Series user access</h2>
                           <p className="text-sm leading-7 text-muted-foreground">
-                            Approve who can view the reports for the currently selected series. Coach and selector users
-                            share the same access model in this phase.
+                            Use one path at a time: pre-approve by email, grant by user ID, or review pending requests.
                           </p>
                         </div>
                       </div>
@@ -3621,16 +3707,18 @@ const AnalyticsAdmin = () => {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 xl:grid-cols-3">
-                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
-                        <div className="space-y-2">
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                            1. Pre-approve by email
-                          </p>
-                          <p className="text-sm leading-7 text-muted-foreground">
-                            Use this before the user has signed in. Access will activate automatically on first login
-                            for the invited email.
-                          </p>
+                    <div className="grid gap-4">
+                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                        <div className="space-y-3">
+                          <Badge variant="outline" className="w-fit border-border/80 bg-card/70 text-foreground">
+                            Step 1
+                          </Badge>
+                          <div>
+                            <p className="font-display text-xl text-foreground">Pre-approve by email</p>
+                            <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                              Best before the person signs in for the first time.
+                            </p>
+                          </div>
                         </div>
 
                         <div className="space-y-2">
@@ -3644,7 +3732,7 @@ const AnalyticsAdmin = () => {
                           />
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                        <div className="grid gap-3 md:grid-cols-2">
                           <div className="space-y-2">
                             <Label htmlFor="viewer-invite-role">Access role</Label>
                             <Select
@@ -3717,14 +3805,17 @@ const AnalyticsAdmin = () => {
                         </div>
                       </div>
 
-                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
-                        <div className="space-y-2">
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                            2. Grant now by user id
-                          </p>
-                          <p className="text-sm leading-7 text-muted-foreground">
-                            Use this when the person already has a Game-Changrs account and has shared their root user id.
-                          </p>
+                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                        <div className="space-y-3">
+                          <Badge variant="outline" className="w-fit border-border/80 bg-card/70 text-foreground">
+                            Step 2
+                          </Badge>
+                          <div>
+                            <p className="font-display text-xl text-foreground">Grant immediately by user ID</p>
+                            <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                              Use when the person already has a Game-Changrs account.
+                            </p>
+                          </div>
                         </div>
 
                         <div className="space-y-2">
@@ -3737,7 +3828,7 @@ const AnalyticsAdmin = () => {
                           />
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                        <div className="grid gap-3 md:grid-cols-2">
                           <div className="space-y-2">
                             <Label htmlFor="viewer-direct-role">Access role</Label>
                             <Select
@@ -3821,14 +3912,17 @@ const AnalyticsAdmin = () => {
                         </div>
                       </div>
 
-                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
-                        <div className="space-y-2">
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                            3. Pending requests
-                          </p>
-                          <p className="text-sm leading-7 text-muted-foreground">
-                            Review incoming user requests and invited-email rows that are waiting for a first sign-in.
-                          </p>
+                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                        <div className="space-y-3">
+                          <Badge variant="outline" className="w-fit border-border/80 bg-card/70 text-foreground">
+                            Step 3
+                          </Badge>
+                          <div>
+                            <p className="font-display text-xl text-foreground">Review pending requests</p>
+                            <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                              Approve self-service requests or check invites waiting for first login.
+                            </p>
+                          </div>
                         </div>
 
                         {viewerAccessStatus === "loading" ? (
@@ -3859,61 +3953,90 @@ const AnalyticsAdmin = () => {
                                   ? accessRequestDecisionStatusByRequest[requestId]
                                   : undefined;
                                 const canApprove = request.requestType === "self_request" && Boolean(request.requestedUserId);
+                                const requestStatusLabel =
+                                  request.requestType === "admin_invite" && !request.requestedUserId
+                                    ? "Waiting for first login"
+                                    : request.requestStatus || "pending";
 
                                 return (
                                   <div
                                     key={request.requestId || `${request.requestedEmail}-${request.createdAt}`}
-                                    className="rounded-2xl border border-border/70 bg-background/60 p-4"
+                                    className="rounded-2xl border border-border/70 bg-background/60 p-5"
                                   >
-                                    <div className="flex flex-wrap items-start justify-between gap-3">
-                                      <div className="space-y-1">
-                                        <p className="break-all text-sm font-medium text-foreground">
-                                          {request.requestedEmail || "-"}
-                                        </p>
-                                        <p className="break-all font-mono text-xs text-muted-foreground">
-                                          {request.requestedUserId || "No user id linked yet"}
-                                        </p>
+                                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                      <div className="space-y-4">
+                                        <div className="flex flex-wrap gap-2">
+                                          <Badge className={getStatusBadgeClass(request.requestType)}>
+                                            {request.requestType === "admin_invite" ? "Email pre-approval" : "User request"}
+                                          </Badge>
+                                          <Badge className={getViewerAccessRoleBadgeClass(request.requestedAccessRole)}>
+                                            {request.requestedAccessRole || "viewer"}
+                                          </Badge>
+                                          <Badge className={getStatusBadgeClass(request.requestStatus)}>
+                                            {requestStatusLabel}
+                                          </Badge>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                          <p className="break-all text-base font-semibold text-foreground">
+                                            {request.requestedEmail || "-"}
+                                          </p>
+                                          <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
+                                            {request.requestedUserId || "No user ID linked yet"}
+                                          </p>
+                                        </div>
+
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                              Requested
+                                            </p>
+                                            <p className="mt-2 text-sm leading-6 text-foreground">
+                                              {formatDateTime(request.createdAt)}
+                                            </p>
+                                          </div>
+                                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                              Approval state
+                                            </p>
+                                            <p className="mt-2 text-sm leading-6 text-foreground">
+                                              {canApprove ? "Ready for decision" : "Waiting for user link"}
+                                            </p>
+                                          </div>
+                                        </div>
+
+                                        {request.requestNote ? (
+                                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                              Request note
+                                            </p>
+                                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                              {request.requestNote}
+                                            </p>
+                                          </div>
+                                        ) : null}
                                       </div>
-                                      <Badge className={getStatusBadgeClass(request.requestType)}>
-                                        {request.requestType === "admin_invite" ? "Email pre-approval" : "User request"}
-                                      </Badge>
-                                    </div>
 
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                      <Badge className={getViewerAccessRoleBadgeClass(request.requestedAccessRole)}>
-                                        {request.requestedAccessRole || "viewer"}
-                                      </Badge>
-                                      <Badge className={getStatusBadgeClass(request.requestStatus)}>
-                                        {request.requestType === "admin_invite" && !request.requestedUserId
-                                          ? "Waiting for first login"
-                                          : request.requestStatus || "pending"}
-                                      </Badge>
-                                    </div>
-
-                                    <div className="mt-3 space-y-1 text-xs leading-6 text-muted-foreground">
-                                      <p>Requested {formatDateTime(request.createdAt)}</p>
-                                      {request.requestNote ? <p>{request.requestNote}</p> : null}
-                                    </div>
-
-                                    <div className="mt-4 flex flex-wrap gap-2">
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={!canApprove || decisionStatus === "saving" || !requestId}
-                                        onClick={() => void handleAccessRequestDecision(request, "approve")}
-                                      >
-                                        {decisionStatus === "saving" && canApprove ? "Approving..." : "Approve"}
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={decisionStatus === "saving" || !requestId}
-                                        onClick={() => void handleAccessRequestDecision(request, "decline")}
-                                      >
-                                        Decline
-                                      </Button>
+                                      <div className="flex flex-wrap gap-2 lg:justify-end">
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          disabled={!canApprove || decisionStatus === "saving" || !requestId}
+                                          onClick={() => void handleAccessRequestDecision(request, "approve")}
+                                        >
+                                          {decisionStatus === "saving" && canApprove ? "Approving..." : "Approve"}
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          disabled={decisionStatus === "saving" || !requestId}
+                                          onClick={() => void handleAccessRequestDecision(request, "decline")}
+                                        >
+                                          Decline
+                                        </Button>
+                                      </div>
                                     </div>
                                   </div>
                                 );
@@ -3921,21 +4044,21 @@ const AnalyticsAdmin = () => {
                             </div>
                           ) : (
                             <div className="rounded-2xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground">
-                              No pending series-user requests exist for this series right now.
+                              No pending requests for this series.
                             </div>
                           )
                         ) : null}
                       </div>
                     </div>
 
-                    <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
+                    <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
                       <div className="flex items-center justify-between gap-3">
                         <div className="space-y-1">
                           <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
                             Current grants
                           </p>
                           <p className="text-sm leading-7 text-muted-foreground">
-                            Active and revoked access rows for this specific series.
+                            Viewer and analyst access for this series.
                           </p>
                         </div>
                         <Button
@@ -3971,54 +4094,65 @@ const AnalyticsAdmin = () => {
 
                       {viewerAccessStatus === "success" ? (
                         (viewerAccess?.grants ?? []).length ? (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="min-w-[220px]">User</TableHead>
-                                <TableHead className="min-w-[150px]">Role</TableHead>
-                                <TableHead className="min-w-[180px]">Status</TableHead>
-                                <TableHead className="min-w-[200px]">Expiry</TableHead>
-                                <TableHead className="min-w-[160px]">Actions</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {(viewerAccess?.grants ?? []).map((grant) => {
-                                const grantId = grant.grantId || "";
-                                const revokeStatus = grantId ? viewerRevokeStatusByGrant[grantId] : undefined;
+                          <div className="space-y-3">
+                            {(viewerAccess?.grants ?? []).map((grant) => {
+                              const grantId = grant.grantId || "";
+                              const revokeStatus = grantId ? viewerRevokeStatusByGrant[grantId] : undefined;
 
-                                return (
-                                  <TableRow key={grant.grantId || `${grant.userId}-${grant.createdAt}`}>
-                                    <TableCell className="align-top">
-                                      <div className="space-y-1">
-                                        <p className="break-all font-mono text-xs text-foreground">
-                                          {grant.userId || "-"}
-                                        </p>
-                                        <p className="text-xs leading-6 text-muted-foreground">
-                                          Granted by {grant.grantedByUserId || "-"}
-                                        </p>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="align-top">
-                                      <Badge className={getViewerAccessRoleBadgeClass(grant.accessRole)}>
-                                        {grant.accessRole || "viewer"}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell className="align-top">
-                                      <div className="space-y-2">
+                              return (
+                                <div
+                                  key={grant.grantId || `${grant.userId}-${grant.createdAt}`}
+                                  className="rounded-2xl border border-border/70 bg-background/60 p-5"
+                                >
+                                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                    <div className="space-y-4">
+                                      <div className="flex flex-wrap gap-2">
+                                        <Badge className={getViewerAccessRoleBadgeClass(grant.accessRole)}>
+                                          {grant.accessRole || "viewer"}
+                                        </Badge>
                                         <Badge className={getStatusBadgeClass(grant.isExpired ? "warning" : grant.status)}>
                                           {grant.isExpired ? "expired" : grant.status || "active"}
                                         </Badge>
-                                        <p className="text-xs leading-6 text-muted-foreground">
-                                          Updated {formatDateTime(grant.updatedAt)}
+                                      </div>
+
+                                      <div className="space-y-1">
+                                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                          User ID
+                                        </p>
+                                        <p className="break-all font-mono text-xs leading-6 text-foreground">
+                                          {grant.userId || "-"}
                                         </p>
                                       </div>
-                                    </TableCell>
-                                    <TableCell className="align-top">
-                                      <p className="text-sm leading-6 text-foreground">
-                                        {grant.expiresAt ? formatDateTime(grant.expiresAt) : "No expiry"}
-                                      </p>
-                                    </TableCell>
-                                    <TableCell className="align-top">
+
+                                      <div className="grid gap-3 sm:grid-cols-3">
+                                        <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                            Granted by
+                                          </p>
+                                          <p className="mt-2 break-all text-sm leading-6 text-foreground">
+                                            {grant.grantedByUserId || "-"}
+                                          </p>
+                                        </div>
+                                        <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                            Updated
+                                          </p>
+                                          <p className="mt-2 text-sm leading-6 text-foreground">
+                                            {formatDateTime(grant.updatedAt)}
+                                          </p>
+                                        </div>
+                                        <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                            Expiry
+                                          </p>
+                                          <p className="mt-2 text-sm leading-6 text-foreground">
+                                            {grant.expiresAt ? formatDateTime(grant.expiresAt) : "No expiry"}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2 lg:justify-end">
                                       <Button
                                         type="button"
                                         variant="outline"
@@ -4028,12 +4162,12 @@ const AnalyticsAdmin = () => {
                                       >
                                         {revokeStatus === "saving" ? "Revoking..." : "Revoke"}
                                       </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                            </TableBody>
-                          </Table>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         ) : (
                           <div className="rounded-2xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground">
                             No viewer or analyst grants exist for this series yet.
@@ -4042,35 +4176,6 @@ const AnalyticsAdmin = () => {
                       ) : null}
                     </div>
 
-                    <div className="flex flex-col gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 md:flex-row md:items-start md:justify-between">
-                      <div className="space-y-1 text-sm leading-7 text-muted-foreground">
-                        <p>
-                          These controls decide who can use the Game-Changrs analytics and report routes for this
-                          series.
-                        </p>
-                      </div>
-
-                      <div className="grid gap-2 sm:grid-cols-3">
-                        <div className="rounded-xl border border-border/70 bg-background/60 p-3">
-                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                            Live now
-                          </p>
-                          <p className="mt-2 text-sm text-foreground">Series viewer grants</p>
-                        </div>
-                        <div className="rounded-xl border border-border/70 bg-background/60 p-3">
-                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                            Live now
-                          </p>
-                          <p className="mt-2 text-sm text-foreground">Email pre-approval on first login</p>
-                        </div>
-                        <div className="rounded-xl border border-border/70 bg-background/60 p-3">
-                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                            Live now
-                          </p>
-                          <p className="mt-2 text-sm text-foreground">Pending request approval workflow</p>
-                        </div>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
                   </>

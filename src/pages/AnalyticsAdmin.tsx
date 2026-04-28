@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -8,12 +8,15 @@ import {
   Database,
   ExternalLink,
   ListChecks,
+  Loader2,
   Plus,
   RefreshCw,
   Save,
   Search,
   ShieldCheck,
   SlidersHorizontal,
+  Trash2,
+  UserPlus,
   Wrench,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -39,9 +42,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import {
+  assignCricketAdminEntityMembership,
   createCricketAdminSeries,
   createCricketAdminRefreshRequest,
   createCricketAdminViewerGrant,
+  CricketAdminEntityMembership,
   CricketAdminCreateSeriesPayload,
   CricketAdminMatchOpsMatch,
   CricketAdminMatchOpsResponse,
@@ -61,6 +66,7 @@ import {
   fetchCricketAdminSetup,
   fetchCricketAdminViewerGrants,
   getAnalyticsPlatformAdminRoute,
+  removeCricketAdminEntityMembership,
   revokeCricketAdminViewerGrant,
   updateCricketAdminSelectionOverride,
   updateCricketAdminSetup,
@@ -280,6 +286,14 @@ function getViewerAccessRoleBadgeClass(role?: string | null) {
   return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
 }
 
+function getEntityAdminMembershipTone(membership: CricketAdminEntityMembership) {
+  if (membership.isOwner) {
+    return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+  }
+
+  return "border-amber-500/25 bg-amber-500/10 text-amber-300";
+}
+
 function getPendingOpsCount(match?: CricketAdminMatchOpsMatch | null) {
   if (!match) {
     return 0;
@@ -467,6 +481,10 @@ const AnalyticsAdmin = () => {
   const [viewerDirectGrantMutationError, setViewerDirectGrantMutationError] = useState<string | null>(null);
   const [viewerRevokeStatusByGrant, setViewerRevokeStatusByGrant] = useState<Record<string, MutationStatus>>({});
   const [accessRequestDecisionStatusByRequest, setAccessRequestDecisionStatusByRequest] = useState<Record<string, MutationStatus>>({});
+  const [entityAdminDrafts, setEntityAdminDrafts] = useState<Record<string, string>>({});
+  const [entityAdminMessages, setEntityAdminMessages] = useState<Record<string, string>>({});
+  const [entityAdminErrors, setEntityAdminErrors] = useState<Record<string, string>>({});
+  const [activeEntityAdminMutationKey, setActiveEntityAdminMutationKey] = useState<string | null>(null);
 
   const accessToken = session?.access_token || "";
   const selectedSeriesKey = searchParams.get("series")?.trim() || "";
@@ -828,6 +846,22 @@ const AnalyticsAdmin = () => {
     setAccessRequestDecisionStatusByRequest({});
   }, [selectedSeries?.configKey]);
 
+  async function refreshAdminCatalogSnapshot() {
+    if (!accessToken) {
+      return;
+    }
+
+    try {
+      const payload = await fetchCricketAdminSeries(accessToken);
+      setCatalog(payload);
+      setCatalogStatus("success");
+      setCatalogError(null);
+    } catch (error) {
+      setCatalogStatus("error");
+      setCatalogError(error instanceof Error ? error.message : "Admin series access could not be loaded.");
+    }
+  }
+
   const handleSelectSeries = (configKey?: string) => {
     const normalizedKey = configKey?.trim();
     if (isDirty && !window.confirm("Unsaved setup changes will be lost. Continue?")) {
@@ -955,6 +989,117 @@ const AnalyticsAdmin = () => {
         description: message,
         variant: "destructive",
       });
+    }
+  };
+
+  const handleAssignEntityAdmin = async (event: FormEvent<HTMLFormElement>, entityId: string) => {
+    event.preventDefault();
+
+    if (!accessToken) {
+      return;
+    }
+
+    const targetUserId = entityAdminDrafts[entityId]?.trim() || "";
+    if (!targetUserId) {
+      setEntityAdminErrors((current) => ({
+        ...current,
+        [entityId]: "Enter the user ID that should become a series admin for this entity.",
+      }));
+      setEntityAdminMessages((current) => ({
+        ...current,
+        [entityId]: "",
+      }));
+      return;
+    }
+
+    setActiveEntityAdminMutationKey(`assign:${entityId}`);
+    setEntityAdminErrors((current) => ({
+      ...current,
+      [entityId]: "",
+    }));
+    setEntityAdminMessages((current) => ({
+      ...current,
+      [entityId]: "",
+    }));
+
+    try {
+      const result = await assignCricketAdminEntityMembership(entityId, accessToken, {
+        userId: targetUserId,
+        role: "admin",
+      });
+
+      await refreshAdminCatalogSnapshot();
+      setEntityAdminDrafts((current) => ({
+        ...current,
+        [entityId]: "",
+      }));
+      setEntityAdminMessages((current) => ({
+        ...current,
+        [entityId]: result.message || "Series admin access granted.",
+      }));
+
+      toast({
+        title: "Series admin access granted",
+        description: result.message || "Series admin access granted.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Series admin access could not be granted.";
+      setEntityAdminErrors((current) => ({
+        ...current,
+        [entityId]: message,
+      }));
+
+      toast({
+        title: "Series admin access failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setActiveEntityAdminMutationKey(null);
+    }
+  };
+
+  const handleRemoveEntityAdmin = async (entityId: string, targetUserId: string) => {
+    if (!accessToken) {
+      return;
+    }
+
+    setActiveEntityAdminMutationKey(`remove:${entityId}:${targetUserId}`);
+    setEntityAdminErrors((current) => ({
+      ...current,
+      [entityId]: "",
+    }));
+    setEntityAdminMessages((current) => ({
+      ...current,
+      [entityId]: "",
+    }));
+
+    try {
+      const result = await removeCricketAdminEntityMembership(entityId, targetUserId, accessToken);
+      await refreshAdminCatalogSnapshot();
+      setEntityAdminMessages((current) => ({
+        ...current,
+        [entityId]: result.message || "Series admin access removed.",
+      }));
+
+      toast({
+        title: "Series admin access removed",
+        description: result.message || "Series admin access removed.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Series admin access could not be removed.";
+      setEntityAdminErrors((current) => ({
+        ...current,
+        [entityId]: message,
+      }));
+
+      toast({
+        title: "Series admin removal failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setActiveEntityAdminMutationKey(null);
     }
   };
 
@@ -1568,8 +1713,8 @@ const AnalyticsAdmin = () => {
                     Series administration
                   </h1>
                   <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-                    Run one series in order: required setup first, series users next, then optional tuning and match
-                    operations.
+                    Run one series in order: required setup first, series admin team next, series users after that,
+                    then optional tuning and match operations.
                   </p>
                 </div>
               </div>
@@ -1650,18 +1795,22 @@ const AnalyticsAdmin = () => {
                     </div>
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     {[
                       {
                         title: "1. Required setup",
                         body: "Source URL, series identity, and capture behavior come first.",
                       },
                       {
-                        title: "2. Series users",
-                        body: "Approve viewer access after the required setup is stable.",
+                        title: "2. Series admins",
+                        body: "Grant operational admin access for the entity that owns this series.",
                       },
                       {
-                        title: "3. Optional controls",
+                        title: "3. Series users",
+                        body: "Approve viewer or analyst access after the admin team is set.",
+                      },
+                      {
+                        title: "4. Optional controls",
                         body: "Tuning and match operations stay lower on the page.",
                       },
                     ].map((item) => (
@@ -1679,6 +1828,7 @@ const AnalyticsAdmin = () => {
               {[
                 { href: "#access-overview", label: "Overview" },
                 { href: "#series-entry", label: "Mandatory setup" },
+                { href: "#series-admins", label: "Series admins" },
                 { href: "#series-users", label: "Series users" },
                 { href: "#plan-controls", label: "Plan + gates" },
                 { href: "#series-switcher", label: "Series switcher" },
@@ -2367,6 +2517,10 @@ const AnalyticsAdmin = () => {
                           <div className="mt-4 grid gap-3">
                             {[
                               {
+                                title: "Series admin team",
+                                body: "Add or remove additional series admins for the entity that owns this series.",
+                              },
+                              {
                                 title: "Series users",
                                 body: "Grant access by email or user id, then approve pending view requests for this series.",
                               },
@@ -2394,7 +2548,168 @@ const AnalyticsAdmin = () => {
                 {series.length ? (
                   <>
                 {selectedSeries ? (
-                  <Card className="order-3 border-border/80 bg-card/85 shadow-xl" id="plan-controls">
+                  <Card className="order-2 border-border/80 bg-card/85 shadow-xl" id="series-admins">
+                    <CardContent className="space-y-6 p-6">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <ShieldCheck className="h-4 w-4 text-cyan-200" />
+                            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                              Series admins
+                            </p>
+                          </div>
+                          <div>
+                            <h2 className="font-display text-2xl text-foreground">Series admin team</h2>
+                            <p className="text-sm leading-7 text-muted-foreground">
+                              Grant or remove series-admin access for the entity that owns this series. Admin access
+                              applies across every series under this entity.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Owning entity</p>
+                          <p className="mt-2 text-sm font-semibold text-foreground">
+                            {selectedEntity?.entityName || "No entity selected"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-foreground">Current series admins</p>
+                          <p className="text-xs leading-6 text-muted-foreground">
+                            Owner transfer stays locked. Additional admins inherit access across this entity.
+                          </p>
+                        </div>
+
+                        {(selectedEntity?.admins ?? []).length ? (
+                          <div className="space-y-3">
+                            {(selectedEntity?.admins ?? []).map((membership) => {
+                              const removeKey = `remove:${selectedEntity?.entityId}:${membership.userId}`;
+                              const isRemoving = activeEntityAdminMutationKey === removeKey;
+
+                              return (
+                                <div
+                                  key={`${membership.userId}-${membership.role}`}
+                                  className="flex flex-col gap-3 rounded-xl border border-border/70 bg-background/55 p-4 md:flex-row md:items-center md:justify-between"
+                                >
+                                  <div className="space-y-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <p className="font-medium text-foreground">
+                                        {membership.isOwner ? "Entity owner" : "Series admin"}
+                                      </p>
+                                      <Badge className={getEntityAdminMembershipTone(membership)}>
+                                        {membership.isOwner ? "owner" : membership.role || "admin"}
+                                      </Badge>
+                                    </div>
+                                    <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
+                                      {membership.userId || "No user ID"}
+                                    </p>
+                                  </div>
+
+                                  {membership.canRemove ? (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={Boolean(activeEntityAdminMutationKey) || !selectedEntity?.entityId}
+                                      onClick={() =>
+                                        selectedEntity?.entityId && membership.userId
+                                          ? void handleRemoveEntityAdmin(selectedEntity.entityId, membership.userId)
+                                          : undefined
+                                      }
+                                      className="border-destructive/25 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                    >
+                                      {isRemoving ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                      )}
+                                      Remove
+                                    </Button>
+                                  ) : (
+                                    <div className="text-xs leading-6 text-muted-foreground">Locked</div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-border/70 bg-background/55 p-4 text-sm leading-7 text-muted-foreground">
+                            No entity-admin assignments are active yet for this series owner.
+                          </div>
+                        )}
+                      </div>
+
+                      <form
+                        className="rounded-2xl border border-border/80 bg-background/55 p-5"
+                        onSubmit={(event) =>
+                          selectedEntity?.entityId ? void handleAssignEntityAdmin(event, selectedEntity.entityId) : undefined
+                        }
+                      >
+                        <div className="space-y-2">
+                          <Label htmlFor={`entity-admin-user-${selectedEntity?.entityId || "selected"}`}>
+                            Grant series-admin access by user ID
+                          </Label>
+                          <p className="text-sm leading-7 text-muted-foreground">
+                            Enter the Game-Changrs auth user ID. This grants series-admin access for all series owned
+                            by {selectedEntity?.entityName || "the selected entity"}.
+                          </p>
+                        </div>
+
+                        <div className="mt-3 flex flex-col gap-3 md:flex-row">
+                          <Input
+                            id={`entity-admin-user-${selectedEntity?.entityId || "selected"}`}
+                            value={selectedEntity?.entityId ? entityAdminDrafts[selectedEntity.entityId] || "" : ""}
+                            onChange={(event) => {
+                              const entityId = selectedEntity?.entityId || "";
+                              setEntityAdminDrafts((current) => ({
+                                ...current,
+                                [entityId]: event.target.value,
+                              }));
+                              setEntityAdminErrors((current) => ({
+                                ...current,
+                                [entityId]: "",
+                              }));
+                            }}
+                            placeholder="Supabase auth user ID"
+                            className="font-mono text-xs"
+                            autoComplete="off"
+                            disabled={!selectedEntity?.entityId}
+                          />
+                          <Button
+                            type="submit"
+                            disabled={Boolean(activeEntityAdminMutationKey) || !selectedEntity?.entityId}
+                            className="md:min-w-[14rem]"
+                          >
+                            {activeEntityAdminMutationKey === `assign:${selectedEntity?.entityId}` ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <UserPlus className="mr-2 h-4 w-4" />
+                            )}
+                            Grant series admin
+                          </Button>
+                        </div>
+
+                        {selectedEntity?.entityId && entityAdminMessages[selectedEntity.entityId] ? (
+                          <p className="mt-3 text-sm leading-6 text-emerald-300">
+                            {entityAdminMessages[selectedEntity.entityId]}
+                          </p>
+                        ) : null}
+
+                        {selectedEntity?.entityId && entityAdminErrors[selectedEntity.entityId] ? (
+                          <p className="mt-3 text-sm leading-6 text-destructive">
+                            {entityAdminErrors[selectedEntity.entityId]}
+                          </p>
+                        ) : null}
+                      </form>
+                    </CardContent>
+                  </Card>
+                ) : null}
+
+                {selectedSeries ? (
+                  <Card className="order-4 border-border/80 bg-card/85 shadow-xl" id="plan-controls">
                     <CardContent className="space-y-5 p-6">
                       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-2">
@@ -2626,7 +2941,7 @@ const AnalyticsAdmin = () => {
                   </Card>
                 ) : null}
 
-                <Card className="order-4 border-border/80 bg-card/85 shadow-xl" id="series-switcher">
+                <Card className="order-5 border-border/80 bg-card/85 shadow-xl" id="series-switcher">
                   <CardHeader>
                     <CardTitle className="font-display text-2xl text-foreground">Series switcher</CardTitle>
                     <CardDescription>Select which series drives the admin sections on this page.</CardDescription>
@@ -2727,7 +3042,7 @@ const AnalyticsAdmin = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="order-5 border-border/80 bg-card/85 shadow-xl" id="series-setup">
+                <Card className="order-6 border-border/80 bg-card/85 shadow-xl" id="series-setup">
                   <CardHeader>
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                       <div className="space-y-2">
@@ -3171,7 +3486,7 @@ const AnalyticsAdmin = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="order-6 border-border/80 bg-card/85 shadow-xl" id="match-ops">
+                <Card className="order-7 border-border/80 bg-card/85 shadow-xl" id="match-ops">
                   <CardHeader>
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                       <div className="space-y-2">
@@ -3680,7 +3995,7 @@ const AnalyticsAdmin = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="order-2 border-border/80 bg-card/85 shadow-xl" id="series-users">
+                <Card className="order-3 border-border/80 bg-card/85 shadow-xl" id="series-users">
                   <CardContent className="space-y-6 p-6">
                     <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                       <div className="space-y-2">

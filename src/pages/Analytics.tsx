@@ -32,6 +32,7 @@ import {
   fetchCricketViewerSeries,
   getAnalyticsAdminRoute,
   getAnalyticsPlatformAdminRoute,
+  getAnalyticsSeriesAdminRoute,
   getAnalyticsWorkspaceRoute,
   getCricketPlayerReportUrl,
   getRootCricketPlayerReportRoute,
@@ -943,14 +944,18 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     () => getAnalyticsWorkspaceRoute(currentUrlQuery || undefined, selectedSeriesKey || undefined),
     [currentUrlQuery, selectedSeriesKey]
   );
-  const adminRoute = useMemo(
-    () => getAnalyticsAdminRoute(selectedSeriesKey || undefined),
-    [selectedSeriesKey]
-  );
   const platformAdminRoute = getAnalyticsPlatformAdminRoute();
   const analyticsRoute = "/analytics";
   const hasSeriesAccess = seriesCards.length > 0;
   const isPlatformAdminViewer = viewerCatalog?.actor?.isPlatformAdmin === true;
+  const seriesAdminRoute = useMemo(
+    () => getAnalyticsSeriesAdminRoute(selectedSeriesKey || undefined),
+    [selectedSeriesKey]
+  );
+  const adminRoute = useMemo(
+    () => (isPlatformAdminViewer ? seriesAdminRoute : getAnalyticsAdminRoute(selectedSeriesKey || undefined)),
+    [isPlatformAdminViewer, selectedSeriesKey, seriesAdminRoute]
+  );
 
   async function runSearch(trimmedQuery: string, seriesConfigKey: string) {
     activeRequestRef.current?.abort();

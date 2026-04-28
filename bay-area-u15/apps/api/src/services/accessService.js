@@ -921,7 +921,7 @@ async function getEntityManagementAccess(input) {
   });
 }
 
-async function loadPlatformManagedEntityContext(client, input) {
+async function loadManagedEntityAdminContext(client, input) {
   const readiness = await getEntityAccessReadiness(client);
 
   if (!readiness.isReady) {
@@ -936,13 +936,6 @@ async function loadPlatformManagedEntityContext(client, input) {
   if (!actorUserId) {
     const error = new Error("A valid actor user id is required.");
     error.statusCode = 400;
-    throw error;
-  }
-
-  const isPlatformAdmin = await getPlatformAdminStatus(client, actorUserId);
-  if (!isPlatformAdmin) {
-    const error = new Error("Only platform admins can manage entity admin access.");
-    error.statusCode = 403;
     throw error;
   }
 
@@ -986,12 +979,36 @@ async function loadPlatformManagedEntityContext(client, input) {
     throw error;
   }
 
+  const isPlatformAdmin = await getPlatformAdminStatus(client, actorUserId);
+  const membership = await fetchOne(
+    client,
+    `
+      select role
+      from public.entity_membership
+      where entity_id = $1
+        and user_id = $2
+        and status = 'active'
+        and role in ('owner', 'admin')
+      limit 1
+    `,
+    [entityId, actorUserId]
+  );
+  const actorRole = normalizeText(membership?.role);
+  const isEntityAdmin = actorRole === "owner" || actorRole === "admin";
+
+  if (!isPlatformAdmin && !isEntityAdmin) {
+    const error = new Error("Only platform admins or active series admins can manage series admin access.");
+    error.statusCode = 403;
+    throw error;
+  }
+
   return {
     actorUserId,
     entityId: normalizeText(entity.entity_id),
     entitySlug: normalizeText(entity.entity_slug),
     entityName: normalizeText(entity.entity_name),
     ownerUserId: normalizeText(entity.owner_user_id),
+    actorAccessRole: isPlatformAdmin ? "platform_admin" : actorRole,
     subscriptionPlanKey: normalizeText(entity.subscription_plan_key),
     subscriptionStatus: normalizeText(entity.subscription_status),
     maxAdminUsers: toInteger(entity.max_admin_users),
@@ -1002,7 +1019,7 @@ async function loadPlatformManagedEntityContext(client, input) {
 async function upsertEntityAdminMembership(input) {
   return withTransaction(
     async (client) => {
-      const context = await loadPlatformManagedEntityContext(client, {
+      const context = await loadManagedEntityAdminContext(client, {
         actorUserId: input.actorUserId,
         entityId: input.entityId,
       });
@@ -1129,7 +1146,7 @@ async function upsertEntityAdminMembership(input) {
 async function disableEntityAdminMembership(input) {
   return withTransaction(
     async (client) => {
-      const context = await loadPlatformManagedEntityContext(client, {
+      const context = await loadManagedEntityAdminContext(client, {
         actorUserId: input.actorUserId,
         entityId: input.entityId,
       });

@@ -16,6 +16,7 @@ const {
 } = require("./render/pages");
 const {
   createSeries,
+  createSeriesOperationRequest,
   createManualRefreshRequest,
   getMatchOpsPayload,
   getSetupPayload,
@@ -564,6 +565,17 @@ app.get("/admin/series/:seriesConfigKey/matches", requireSeriesAdmin, asyncHandl
 app.post("/api/series/:seriesConfigKey/admin/matches/refresh-requests", requireSeriesAdmin, asyncHandler(async (req, res) => {
   const payload = await createManualRefreshRequest({
     seriesConfigKey: req.params.seriesConfigKey,
+    body: req.body,
+    dryRun: parseDryRun(req),
+  });
+  res.json(payload);
+}));
+
+app.post("/api/series/:seriesConfigKey/admin/operations/requests", requireSeriesAdmin, asyncHandler(async (req, res) => {
+  const payload = await createSeriesOperationRequest({
+    seriesConfigKey: req.params.seriesConfigKey,
+    actorUserId: req.cricketActor?.userId,
+    actorEmail: req.cricketActor?.email,
     body: req.body,
     dryRun: parseDryRun(req),
   });

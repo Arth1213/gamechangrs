@@ -538,6 +538,26 @@ export type CricketAdminRefreshRequest = {
   resolutionNote?: string;
 };
 
+export type CricketAdminSeriesOperationKey = "discover_new_matches" | "recompute_series";
+
+export type CricketAdminSeriesOperationRequest = {
+  requestId?: string;
+  operationKey?: string;
+  operationLabel?: string;
+  requestStatus?: string;
+  requestNote?: string;
+  requestedByUserId?: string;
+  requestedByLabel?: string;
+  runnerMode?: string;
+  workerRef?: string;
+  lastWorkerNote?: string;
+  resultSummary?: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+};
+
 export type CricketAdminMatchOpsResponse = {
   series?: {
     configKey?: string;
@@ -555,6 +575,15 @@ export type CricketAdminMatchOpsResponse = {
     computedMatches?: number | null;
     pendingOps?: number | null;
   };
+  operationsSummary?: {
+    totalRequests?: number | null;
+    pendingRequests?: number | null;
+    processingRequests?: number | null;
+    completedRequests?: number | null;
+    failedRequests?: number | null;
+    latestRequestedAt?: string | null;
+  };
+  operationRequests?: CricketAdminSeriesOperationRequest[];
   matches?: CricketAdminMatchOpsMatch[];
   recentRequests?: CricketAdminRefreshRequest[];
 };
@@ -580,6 +609,17 @@ export type CricketAdminRefreshRequestMutationResponse = {
     divisionLabel?: string;
     matchTitle?: string;
   } | null;
+};
+
+export type CricketAdminSeriesOperationRequestPayload = {
+  operationKey: CricketAdminSeriesOperationKey;
+  requestNote?: string;
+};
+
+export type CricketAdminSeriesOperationRequestMutationResponse = {
+  message?: string;
+  dryRun?: boolean;
+  request?: CricketAdminSeriesOperationRequest | null;
 };
 
 export type CricketAdminMatchSelectionOverride = "auto" | "force_include" | "force_exclude";
@@ -1357,6 +1397,41 @@ export async function createCricketAdminRefreshRequest(
   }
 
   return (await response.json()) as CricketAdminRefreshRequestMutationResponse;
+}
+
+export async function createCricketAdminSeriesOperationRequest(
+  seriesConfigKey: string,
+  accessToken: string,
+  body: CricketAdminSeriesOperationRequestPayload,
+  options?: {
+    dryRun?: boolean;
+    signal?: AbortSignal;
+  }
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(seriesConfigKey)}/admin/operations/requests`),
+    window.location.origin
+  );
+
+  if (options?.dryRun) {
+    url.searchParams.set("dryRun", "true");
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    signal: options?.signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Series operation request failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketAdminSeriesOperationRequestMutationResponse;
 }
 
 export async function createCricketSeriesAccessRequest(

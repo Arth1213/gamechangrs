@@ -250,6 +250,10 @@ async function assertSubscriptionActionAllowed(client, input) {
     throw buildEntitlementError("Manual refresh is disabled for the current entity plan.");
   }
 
+  if (input.action === "scheduled_refresh" && !summary.entitlements.scheduledRefreshEnabled && hardEnforced) {
+    throw buildEntitlementError("Scheduled refresh is disabled for the current entity plan.");
+  }
+
   if (input.action === "weight_tuning" && !summary.entitlements.weightTuningEnabled && hardEnforced) {
     throw buildEntitlementError("Weight tuning is disabled for the current entity plan.");
   }

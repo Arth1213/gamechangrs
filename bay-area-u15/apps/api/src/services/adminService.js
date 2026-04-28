@@ -613,6 +613,105 @@ async function getMatchOpsPayload(input) {
   });
 }
 
+async function createSeriesOperationRequest(input) {
+  return withTransaction(
+    async (client) => {
+      await assertSubscriptionActionAllowed(client, {
+        seriesConfigKey: input.seriesConfigKey,
+        action: "scheduled_refresh",
+      });
+
+      const context = await resolveSeriesContext(client, input.seriesConfigKey);
+      if (!context) {
+        const error = new Error(`Series not found for config key: ${input.seriesConfigKey}`);
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const operationKey = normalizeSeriesOperationKey(input.body?.operationKey);
+      if (!["discover_new_matches", "recompute_series"].includes(operationKey)) {
+        const error = new Error("operationKey must be one of discover_new_matches or recompute_series.");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const existingPending = await fetchOne(
+        client,
+        `
+          select id, operation_key, created_at
+          from public.series_operation_request
+          where series_source_config_id = $1
+            and operation_key = $2
+            and request_status in ('pending', 'processing')
+          order by created_at desc, id desc
+          limit 1
+        `,
+        [context.row.id, operationKey]
+      );
+
+      if (existingPending) {
+        const error = new Error(
+          `${getSeriesOperationLabel(operationKey)} is already queued for this series. Wait for the current request to finish or be cleared first.`
+        );
+        error.statusCode = 409;
+        throw error;
+      }
+
+      const requestRow = await fetchOne(
+        client,
+        `
+          insert into public.series_operation_request (
+            entity_id,
+            series_source_config_id,
+            operation_key,
+            request_status,
+            request_note,
+            requested_by_user_id,
+            requested_by_label,
+            runner_mode
+          )
+          values ($1,$2,$3,$4,$5,$6,$7,$8)
+          returning *
+        `,
+        [
+          context.row.entity_id,
+          context.row.id,
+          operationKey,
+          "pending",
+          nullableText(input.body?.requestNote),
+          nullableText(input.actorUserId),
+          nullableText(input.actorEmail) || nullableText(input.actorUserId) || "series-admin",
+          "deferred",
+        ]
+      );
+
+      return {
+        message: input.dryRun
+          ? `${getSeriesOperationLabel(operationKey)} dry-run validated.`
+          : `${getSeriesOperationLabel(operationKey)} queued.`,
+        request: {
+          requestId: normalizeText(requestRow.id),
+          operationKey,
+          operationLabel: getSeriesOperationLabel(operationKey),
+          requestStatus: normalizeText(requestRow.request_status) || "pending",
+          requestNote: normalizeText(requestRow.request_note),
+          requestedByUserId: normalizeText(requestRow.requested_by_user_id),
+          requestedByLabel: normalizeText(requestRow.requested_by_label),
+          runnerMode: normalizeText(requestRow.runner_mode),
+          workerRef: normalizeText(requestRow.worker_ref),
+          lastWorkerNote: normalizeText(requestRow.last_worker_note),
+          resultSummary: normalizeText(requestRow.result_summary),
+          createdAt: requestRow.created_at || null,
+          updatedAt: requestRow.updated_at || null,
+          startedAt: requestRow.started_at || null,
+          finishedAt: requestRow.finished_at || null,
+        },
+      };
+    },
+    { dryRun: input.dryRun }
+  );
+}
+
 async function createManualRefreshRequest(input) {
   return withTransaction(
     async (client) => {
@@ -1215,6 +1314,51 @@ async function getMatchOpsPayloadWithClient(client, context, input) {
     resolutionNote: normalizeText(row.resolution_note),
   }));
 
+  const operationsSummary = await fetchOne(
+    client,
+    `
+      select
+        count(*)::int as total_requests,
+        count(*) filter (where request_status = 'pending')::int as pending_requests,
+        count(*) filter (where request_status = 'processing')::int as processing_requests,
+        count(*) filter (where request_status = 'completed')::int as completed_requests,
+        count(*) filter (where request_status = 'failed')::int as failed_requests,
+        max(created_at) as latest_requested_at
+      from public.series_operation_request
+      where series_source_config_id = $1
+    `,
+    [context.row.id]
+  );
+
+  const operationRequests = (
+    await client.query(
+      `
+        select *
+        from public.series_operation_request
+        where series_source_config_id = $1
+        order by created_at desc, id desc
+        limit 10
+      `,
+      [context.row.id]
+    )
+  ).rows.map((row) => ({
+    requestId: normalizeText(row.id),
+    operationKey: normalizeText(row.operation_key),
+    operationLabel: getSeriesOperationLabel(row.operation_key),
+    requestStatus: normalizeText(row.request_status) || "pending",
+    requestNote: normalizeText(row.request_note),
+    requestedByUserId: normalizeText(row.requested_by_user_id),
+    requestedByLabel: normalizeText(row.requested_by_label),
+    runnerMode: normalizeText(row.runner_mode),
+    workerRef: normalizeText(row.worker_ref),
+    lastWorkerNote: normalizeText(row.last_worker_note),
+    resultSummary: normalizeText(row.result_summary),
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+    startedAt: row.started_at || null,
+    finishedAt: row.finished_at || null,
+  }));
+
   return {
     series: {
       configKey: context.configKey,
@@ -1232,9 +1376,36 @@ async function getMatchOpsPayloadWithClient(client, context, input) {
       computedMatches: toInteger(summary?.computed_matches) || 0,
       pendingOps: toInteger(summary?.pending_ops) || 0,
     },
+    operationsSummary: {
+      totalRequests: toInteger(operationsSummary?.total_requests) || 0,
+      pendingRequests: toInteger(operationsSummary?.pending_requests) || 0,
+      processingRequests: toInteger(operationsSummary?.processing_requests) || 0,
+      completedRequests: toInteger(operationsSummary?.completed_requests) || 0,
+      failedRequests: toInteger(operationsSummary?.failed_requests) || 0,
+      latestRequestedAt: operationsSummary?.latest_requested_at || null,
+    },
+    operationRequests,
     matches,
     recentRequests: requests,
   };
+}
+
+function normalizeSeriesOperationKey(value) {
+  return normalizeLabel(value);
+}
+
+function getSeriesOperationLabel(value) {
+  const normalized = normalizeSeriesOperationKey(value);
+
+  if (normalized === "discover_new_matches") {
+    return "Pull new matches";
+  }
+
+  if (normalized === "recompute_series") {
+    return "Recompute series";
+  }
+
+  return normalized || "Series operation";
 }
 
 async function assignReportProfile(client, seriesId, reportProfileKey) {
@@ -1874,6 +2045,7 @@ function nullableText(value) {
 
 module.exports = {
   createSeries,
+  createSeriesOperationRequest,
   createManualRefreshRequest,
   getMatchOpsPayload,
   getSetupPayload,

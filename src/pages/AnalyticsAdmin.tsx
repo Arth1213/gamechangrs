@@ -44,6 +44,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   assignCricketAdminEntityMembership,
   createCricketAdminSeries,
+  createCricketAdminSeriesOperationRequest,
   createCricketAdminRefreshRequest,
   createCricketSeriesAdminAccessRequest,
   createCricketAdminViewerGrant,
@@ -53,6 +54,7 @@ import {
   CricketAdminMatchOpsMatch,
   CricketAdminMatchOpsResponse,
   CricketAdminMatchSelectionOverride,
+  CricketAdminSeriesOperationKey,
   CricketAdminSeriesAccessRequest,
   CricketAdminSeriesItem,
   CricketAdminSeriesResponse,
@@ -87,6 +89,10 @@ type PendingRequestFilter = "all" | "ready" | "waiting";
 type RefreshRequestFormState = {
   matchUrl: string;
   reason: string;
+};
+
+type SeriesOperationRequestFormState = {
+  requestNote: string;
 };
 
 type MatchOverrideDraft = {
@@ -326,6 +332,28 @@ function getPendingOpsCount(match?: CricketAdminMatchOpsMatch | null) {
   return [match.needsRescrape, match.needsReparse, match.needsRecompute].filter(Boolean).length;
 }
 
+function getSeriesOperationLabel(operationKey?: string | null) {
+  const normalized = operationKey?.trim().toLowerCase();
+
+  if (normalized === "discover_new_matches") {
+    return "Pull new matches";
+  }
+
+  if (normalized === "recompute_series") {
+    return "Recompute series";
+  }
+
+  return "Series operation";
+}
+
+function getSeriesOperationHelperText(operationKey: CricketAdminSeriesOperationKey) {
+  if (operationKey === "discover_new_matches") {
+    return "Queue a protected request to discover and ingest newly available matches for this series.";
+  }
+
+  return "Queue a protected request to rerun the series-level compute path after upstream fixes or tuning changes.";
+}
+
 function createSetupForm(setup: CricketAdminSetupResponse): SetupFormState {
   return {
     sourceSetup: {
@@ -481,6 +509,13 @@ const AnalyticsAdmin = () => {
   const [refreshStatus, setRefreshStatus] = useState<MutationStatus>("idle");
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [seriesOperationForm, setSeriesOperationForm] = useState<SeriesOperationRequestFormState>({
+    requestNote: "",
+  });
+  const [seriesOperationStatus, setSeriesOperationStatus] = useState<MutationStatus>("idle");
+  const [seriesOperationMessage, setSeriesOperationMessage] = useState<string | null>(null);
+  const [seriesOperationError, setSeriesOperationError] = useState<string | null>(null);
+  const [activeSeriesOperationKey, setActiveSeriesOperationKey] = useState<CricketAdminSeriesOperationKey | null>(null);
   const [overrideDrafts, setOverrideDrafts] = useState<Record<number, MatchOverrideDraft>>({});
   const [overrideMutationStatusByMatch, setOverrideMutationStatusByMatch] = useState<
     Record<number, MutationStatus>
@@ -568,6 +603,9 @@ const AnalyticsAdmin = () => {
   const manualRefreshAllowed = subscriptionReady
     ? (subscriptionSummary?.entitlements?.manualRefreshEnabled !== false || !isHardSubscriptionEnforcement)
     : false;
+  const scheduledRefreshAllowed = subscriptionReady
+    ? (subscriptionSummary?.entitlements?.scheduledRefreshEnabled !== false || !isHardSubscriptionEnforcement)
+    : false;
   const viewerGrantEnabledByPlan = subscriptionReady
     ? (subscriptionSummary?.entitlements?.viewerGrantEnabled !== false || !isHardSubscriptionEnforcement)
     : false;
@@ -653,6 +691,13 @@ const AnalyticsAdmin = () => {
   const loadedMatchCount = matchOps?.matches?.length ?? 0;
   const recentRefreshCount = matchOps?.recentRequests?.length ?? 0;
   const latestRefreshRequest = matchOps?.recentRequests?.[0] ?? null;
+  const totalSeriesOperationRequests = matchOps?.operationsSummary?.totalRequests ?? 0;
+  const pendingSeriesOperationRequests = matchOps?.operationsSummary?.pendingRequests ?? 0;
+  const processingSeriesOperationRequests = matchOps?.operationsSummary?.processingRequests ?? 0;
+  const completedSeriesOperationRequests = matchOps?.operationsSummary?.completedRequests ?? 0;
+  const failedSeriesOperationRequests = matchOps?.operationsSummary?.failedRequests ?? 0;
+  const latestSeriesOperationRequestedAt = matchOps?.operationsSummary?.latestRequestedAt ?? null;
+  const latestSeriesOperationRequest = matchOps?.operationRequests?.[0] ?? null;
   const computedCoveragePercent = totalSeriesMatches > 0
     ? Math.round((computedSeriesMatches / totalSeriesMatches) * 100)
     : 0;
@@ -686,6 +731,24 @@ const AnalyticsAdmin = () => {
       .slice(0, 3),
     [matchOps]
   );
+  const seriesOperationQueueLabel = processingSeriesOperationRequests > 0
+    ? "Processing"
+    : pendingSeriesOperationRequests > 0
+      ? "Queued"
+      : failedSeriesOperationRequests > 0
+        ? "Needs review"
+        : completedSeriesOperationRequests > 0
+          ? "Completed"
+          : "Idle";
+  const seriesOperationQueueTone = processingSeriesOperationRequests > 0
+    ? "warning"
+    : pendingSeriesOperationRequests > 0
+      ? "watch"
+      : failedSeriesOperationRequests > 0
+        ? "risk"
+        : completedSeriesOperationRequests > 0
+          ? "good"
+          : "pending";
 
   useEffect(() => {
     if (!accessToken) {
@@ -967,6 +1030,13 @@ const AnalyticsAdmin = () => {
       matchUrl: "",
       reason: "",
     });
+    setSeriesOperationForm({
+      requestNote: "",
+    });
+    setSeriesOperationStatus("idle");
+    setSeriesOperationMessage(null);
+    setSeriesOperationError(null);
+    setActiveSeriesOperationKey(null);
     setMatchQueryInput(matchQuery);
   }, [matchQuery, selectedSeries?.configKey]);
 
@@ -1587,6 +1657,65 @@ const AnalyticsAdmin = () => {
         description: message,
         variant: "destructive",
       });
+    }
+  };
+
+  const handleCreateSeriesOperationRequest = async (operationKey: CricketAdminSeriesOperationKey) => {
+    if (!selectedSeries?.configKey || !accessToken) {
+      return;
+    }
+
+    if (!scheduledRefreshAllowed) {
+      const message = "Series-wide operation requests are disabled by the current entity plan.";
+      setSeriesOperationStatus("error");
+      setSeriesOperationError(message);
+      toast({
+        title: `${getSeriesOperationLabel(operationKey)} blocked`,
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSeriesOperationStatus("saving");
+    setSeriesOperationError(null);
+    setSeriesOperationMessage(null);
+    setActiveSeriesOperationKey(operationKey);
+
+    try {
+      const response = await createCricketAdminSeriesOperationRequest(
+        selectedSeries.configKey,
+        accessToken,
+        {
+          operationKey,
+          requestNote: seriesOperationForm.requestNote.trim() || undefined,
+        },
+      );
+
+      const message = response.message || `${getSeriesOperationLabel(operationKey)} queued.`;
+      setSeriesOperationStatus("success");
+      setSeriesOperationMessage(message);
+      setSeriesOperationForm({
+        requestNote: "",
+      });
+      setMatchOpsReloadKey((current) => current + 1);
+
+      toast({
+        title: `${getSeriesOperationLabel(operationKey)} queued`,
+        description: message,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : `${getSeriesOperationLabel(operationKey)} failed unexpectedly.`;
+      setSeriesOperationStatus("error");
+      setSeriesOperationError(message);
+
+      toast({
+        title: `${getSeriesOperationLabel(operationKey)} failed`,
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setActiveSeriesOperationKey(null);
     }
   };
 
@@ -4113,15 +4242,15 @@ const AnalyticsAdmin = () => {
                       </div>
                       <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
                         <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                          Recent refreshes
+                          Operation queue
                         </p>
                         <div className="mt-3 font-display text-3xl text-foreground">
-                          {matchOps ? formatNumber(recentRefreshCount) : "-"}
+                          {matchOps ? formatNumber(pendingSeriesOperationRequests + processingSeriesOperationRequests) : "-"}
                         </div>
                         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                          {latestRefreshRequest?.requestedAt
-                            ? `Latest request ${formatDateTime(latestRefreshRequest.requestedAt)}.`
-                            : "No manual refresh activity recorded yet."}
+                          {latestSeriesOperationRequestedAt
+                            ? `Latest series-wide request ${formatDateTime(latestSeriesOperationRequestedAt)}.`
+                            : "No series-wide operation requests recorded yet."}
                         </p>
                       </div>
                     </div>
@@ -4155,7 +4284,7 @@ const AnalyticsAdmin = () => {
                               <div>
                                 <p className="text-sm font-semibold text-foreground">Scheduled refresh</p>
                                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                                  Entitlement is visible here, but the trigger surface is still deferred.
+                                  Series-wide refresh requests are plan-gated through this entitlement.
                                 </p>
                               </div>
                               <Badge className={getStatusBadgeClass(subscriptionSummary?.entitlements?.scheduledRefreshEnabled ? "active" : "pending")}>
@@ -4167,13 +4296,13 @@ const AnalyticsAdmin = () => {
                           <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
                             <div className="flex items-start justify-between gap-3">
                               <div>
-                                <p className="text-sm font-semibold text-foreground">Full-series pull</p>
+                                <p className="text-sm font-semibold text-foreground">Series-wide requests</p>
                                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                                  Intentionally deferred until the protected worker control plane is hardened.
+                                  Queue protected pull or recompute requests without invoking the worker directly from the browser.
                                 </p>
                               </div>
-                              <Badge className={getStatusBadgeClass("pending")}>
-                                Deferred
+                              <Badge className={getStatusBadgeClass(seriesOperationQueueTone)}>
+                                {seriesOperationQueueLabel}
                               </Badge>
                             </div>
                           </div>
@@ -4192,6 +4321,70 @@ const AnalyticsAdmin = () => {
                             </div>
                           </div>
                         </div>
+
+                        <div className="space-y-3 rounded-2xl border border-border/70 bg-background/60 p-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="series-operation-note">Series-wide request note</Label>
+                            <Textarea
+                              id="series-operation-note"
+                              className="min-h-[104px]"
+                              placeholder="Optional note for operators. Example: pull results after weekend round or recompute after weight changes."
+                              value={seriesOperationForm.requestNote}
+                              onChange={(event) =>
+                                setSeriesOperationForm({
+                                  requestNote: event.target.value,
+                                })
+                              }
+                            />
+                          </div>
+
+                          {seriesOperationMessage ? (
+                            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-7 text-emerald-200">
+                              {seriesOperationMessage}
+                            </div>
+                          ) : null}
+
+                          {seriesOperationError ? (
+                            <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm leading-7 text-destructive">
+                              {seriesOperationError}
+                            </div>
+                          ) : null}
+
+                          <div className="grid gap-3 md:grid-cols-2">
+                            {(["discover_new_matches", "recompute_series"] as CricketAdminSeriesOperationKey[]).map((operationKey) => (
+                              <div
+                                key={operationKey}
+                                className="rounded-2xl border border-border/70 bg-background/55 p-4"
+                              >
+                                <p className="text-sm font-semibold text-foreground">
+                                  {getSeriesOperationLabel(operationKey)}
+                                </p>
+                                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                  {getSeriesOperationHelperText(operationKey)}
+                                </p>
+                                <Button
+                                  className="mt-4 w-full"
+                                  variant={operationKey === "recompute_series" ? "outline" : "default"}
+                                  disabled={
+                                    seriesOperationStatus === "saving"
+                                    || !scheduledRefreshAllowed
+                                  }
+                                  onClick={() => void handleCreateSeriesOperationRequest(operationKey)}
+                                >
+                                  {seriesOperationStatus === "saving" && activeSeriesOperationKey === operationKey
+                                    ? "Queuing..."
+                                    : getSeriesOperationLabel(operationKey)}
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+
+                          {!scheduledRefreshAllowed ? (
+                            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm leading-7 text-amber-200">
+                              Series-wide operation requests are disabled by the current entity plan.
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
 
                       <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
@@ -4205,6 +4398,22 @@ const AnalyticsAdmin = () => {
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
                             <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                              Latest series request
+                            </p>
+                            <p className="mt-3 text-sm font-semibold text-foreground">
+                              {latestSeriesOperationRequest
+                                ? latestSeriesOperationRequest.operationLabel || getSeriesOperationLabel(latestSeriesOperationRequest.operationKey)
+                                : "No series-wide requests yet"}
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                              {latestSeriesOperationRequest?.createdAt
+                                ? formatDateTime(latestSeriesOperationRequest.createdAt)
+                                : "Queue the first protected request from the control center."}
+                            </p>
+                          </div>
+
+                          <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                               Latest refresh
                             </p>
                             <p className="mt-3 text-sm font-semibold text-foreground">
@@ -4215,23 +4424,82 @@ const AnalyticsAdmin = () => {
                             <p className="mt-2 text-sm leading-6 text-muted-foreground">
                               {latestRefreshRequest?.requestedAt
                                 ? formatDateTime(latestRefreshRequest.requestedAt)
-                                : "Create the first request from the control below."}
+                                : "Create the first refresh request from the control below."}
                             </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-semibold text-foreground">Series-wide request queue</p>
+                            <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                              {matchOps ? formatNumber(totalSeriesOperationRequests) : "-"} total
+                            </Badge>
                           </div>
 
-                          <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
-                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                              Review queue focus
-                            </p>
-                            <p className="mt-3 text-sm font-semibold text-foreground">
-                              {reviewQueueMatches.length
-                                ? `${reviewQueueMatches.length} flagged matches in the loaded queue`
-                                : "No flagged matches in the loaded queue"}
-                            </p>
-                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                              Warnings, pending ops, row errors, and selector overrides surface here first.
-                            </p>
-                          </div>
+                          {(matchOps?.operationRequests ?? []).length ? (
+                            <div className="space-y-3">
+                              {(matchOps?.operationRequests ?? []).slice(0, 5).map((request) => (
+                                <div
+                                  key={request.requestId || `${request.operationKey}-${request.createdAt}`}
+                                  className="rounded-2xl border border-border/70 bg-background/60 p-4"
+                                >
+                                  <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div className="space-y-1">
+                                      <p className="font-semibold text-foreground">
+                                        {request.operationLabel || getSeriesOperationLabel(request.operationKey)}
+                                      </p>
+                                      <p className="text-sm leading-6 text-muted-foreground">
+                                        Requested {formatDateTime(request.createdAt)}
+                                      </p>
+                                    </div>
+                                    <Badge className={getStatusBadgeClass(request.requestStatus)}>
+                                      {request.requestStatus || "pending"}
+                                    </Badge>
+                                  </div>
+
+                                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                        Requested by
+                                      </p>
+                                      <p className="mt-2 text-sm leading-6 text-foreground">
+                                        {request.requestedByLabel || request.requestedByUserId || "-"}
+                                      </p>
+                                    </div>
+                                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                        Runner mode
+                                      </p>
+                                      <p className="mt-2 text-sm leading-6 text-foreground">
+                                        {request.runnerMode || "deferred"}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {request.requestNote ? (
+                                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{request.requestNote}</p>
+                                  ) : null}
+
+                                  {request.lastWorkerNote ? (
+                                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                      Worker note: {request.lastWorkerNote}
+                                    </p>
+                                  ) : null}
+
+                                  {request.resultSummary ? (
+                                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                      Result: {request.resultSummary}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="rounded-2xl border border-border/70 bg-background/60 p-4 text-sm leading-7 text-muted-foreground">
+                              No series-wide operation requests yet.
+                            </div>
+                          )}
                         </div>
 
                         <div className="space-y-3">
@@ -4349,7 +4617,7 @@ const AnalyticsAdmin = () => {
 
                         <p className="text-sm leading-6 text-muted-foreground">
                           Use this when one specific match is missing, stale, or needs recompute help. The series-wide
-                          pull button is intentionally deferred to the next control-plane slice.
+                          queue now lives above, while automated worker execution is still deferred.
                         </p>
 
                         <div className="space-y-3">
@@ -4722,9 +4990,9 @@ const AnalyticsAdmin = () => {
                     <div className="flex flex-col gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 md:flex-row md:items-start md:justify-between">
                       <div className="space-y-1 text-sm leading-7 text-muted-foreground">
                         <p>
-                          This page is the live operations surface for single-match refresh and review. Series-wide
-                          pull controls, scheduler actions, and durable worker audit history stay in the next
-                          control-plane slice.
+                          This page now covers single-match refresh, series-wide request queuing, and per-match review.
+                          Automated worker execution, scheduler actions, and durable worker audit history stay in the
+                          next control-plane slice.
                         </p>
                       </div>
 
@@ -4749,9 +5017,9 @@ const AnalyticsAdmin = () => {
                         </div>
                         <div className="rounded-xl border border-border/70 bg-background/60 p-3">
                           <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                            Next slice
+                            Live now
                           </p>
-                          <p className="mt-2 text-sm text-foreground">Series-wide pull and scheduler</p>
+                          <p className="mt-2 text-sm text-foreground">Series-wide request queue</p>
                         </div>
                       </div>
                     </div>

@@ -865,6 +865,22 @@ const AnalyticsAdmin = () => {
     setCreateSeriesError(null);
   };
 
+  const handleStartCreateSeries = () => {
+    if (isDirty && !window.confirm("Unsaved setup changes in the selected series will be lost. Continue?")) {
+      return;
+    }
+
+    handleResetCreateSeriesForm();
+    setSeriesEntryMode("create");
+  };
+
+  const handleStartEditSeries = () => {
+    setSeriesEntryMode("edit");
+    setCreateSeriesStatus("idle");
+    setCreateSeriesMessage(null);
+    setCreateSeriesError(null);
+  };
+
   const handleCreateSeries = async (dryRun = false) => {
     if (!accessToken) {
       return;
@@ -1800,7 +1816,7 @@ const AnalyticsAdmin = () => {
                         <Button
                           type="button"
                           variant={seriesEntryMode === "create" ? "default" : "outline"}
-                          onClick={() => setSeriesEntryMode("create")}
+                          onClick={handleStartCreateSeries}
                         >
                           <Plus className="mr-2 h-4 w-4" />
                           New series
@@ -1808,7 +1824,7 @@ const AnalyticsAdmin = () => {
                         <Button
                           type="button"
                           variant={seriesEntryMode === "edit" ? "default" : "outline"}
-                          onClick={() => setSeriesEntryMode("edit")}
+                          onClick={handleStartEditSeries}
                           disabled={!selectedSeries}
                         >
                           <Save className="mr-2 h-4 w-4" />
@@ -1818,7 +1834,10 @@ const AnalyticsAdmin = () => {
                     </div>
 
                     <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                      <div
+                        key={seriesEntryMode}
+                        className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5"
+                      >
                         {seriesEntryMode === "create" ? (
                           <>
                             <div className="space-y-5">

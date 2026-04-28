@@ -338,17 +338,6 @@ const PlayerReportChat = ({
                       </div>
                     ) : null}
 
-                    {message.limitations?.length ? (
-                      <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-3">
-                        <p className="text-[11px] uppercase tracking-[0.18em] text-amber-200">Context limits</p>
-                        <div className="mt-2 space-y-1 text-sm leading-6 text-amber-50/90">
-                          {message.limitations.map((item) => (
-                            <p key={`${message.id}-${item}`}>{item}</p>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-
                     {message.followUps?.length ? (
                       <div className="flex flex-wrap gap-2">
                         {message.followUps.map((prompt) => (

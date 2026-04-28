@@ -914,6 +914,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
   const currentUrlQuery = searchParams.get("q")?.trim() ?? "";
   const currentUrlSeries = searchParams.get("series")?.trim() ?? "";
   const accessibleFallbackCards = useMemo(() => normalizeViewerSeriesCards(viewerCatalog), [viewerCatalog]);
+  const requestableSeriesCards = useMemo(() => normalizeSeriesCards(dashboardSummary), [dashboardSummary]);
   const seriesCards = useMemo(() => {
     const accessibleSeries = viewerCatalog?.series ?? [];
     if (!accessibleSeries.length) {
@@ -948,9 +949,18 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
   const analyticsRoute = "/analytics";
   const hasSeriesAccess = seriesCards.length > 0;
   const isPlatformAdminViewer = viewerCatalog?.actor?.isPlatformAdmin === true;
+  const recommendedRequestSeriesKey =
+    (currentUrlSeries && requestableSeriesCards.some((card) => card.configKey === currentUrlSeries) ? currentUrlSeries : "")
+    || requestableSeriesCards.find((card) => card.isActive)?.configKey
+    || requestableSeriesCards[0]?.configKey
+    || "";
   const seriesAdminRoute = useMemo(
     () => getAnalyticsSeriesAdminRoute(selectedSeriesKey || undefined),
     [selectedSeriesKey]
+  );
+  const requestAdminRoute = useMemo(
+    () => getAnalyticsAdminRoute(recommendedRequestSeriesKey || undefined),
+    [recommendedRequestSeriesKey]
   );
   const adminRoute = useMemo(
     () => (isPlatformAdminViewer ? seriesAdminRoute : getAnalyticsAdminRoute(selectedSeriesKey || undefined)),
@@ -1292,7 +1302,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                     <CardDescription className="max-w-2xl text-sm leading-7">
                       {isPlatformAdminViewer
                         ? "This platform-admin account can access every series automatically, but no series are currently visible in the analytics dataset."
-                        : "Your account is signed in, but it has not been granted access to any cricket analytics series yet."}
+                        : "Your account is signed in, but it has not been granted access to any cricket analytics series yet. You can request the right series-admin path directly from this page."}
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -1306,8 +1316,8 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                         "Platform admins automatically inherit series-admin and report-view access across every series. They do not need viewer grants and do not consume entity viewer seats."
                       ) : (
                         <>
-                          Ask the series admin to open <span className="font-mono text-foreground">/analytics/admin</span> and
-                          either pre-approve your email or grant viewer or analyst access to your user id below.
+                          Choose the series below and open the request flow directly from analytics. That sends you into the
+                          correct admin gateway for the selected series instead of making you copy a separate URL.
                         </>
                       )}
                     </p>
@@ -1317,10 +1327,33 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                         {viewerCatalog?.actor?.userId || user?.id || "Unavailable"}
                       </p>
                     </div>
+                    {!isPlatformAdminViewer ? (
+                      <div className="mt-5 flex flex-wrap gap-3">
+                        {recommendedRequestSeriesKey ? (
+                          <Button asChild>
+                            <Link to={requestAdminRoute}>
+                              Request series admin access
+                              <ArrowRight className="ml-2 h-4 w-4" />
+                            </Link>
+                          </Button>
+                        ) : (
+                          <Button type="button" disabled>
+                            Request series admin access
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button type="button" variant="outline" onClick={handleRetryViewerAccess}>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Recheck Access
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="rounded-2xl border border-border/80 bg-background/60 p-5">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">What happens next</p>
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                      {isPlatformAdminViewer ? "What happens next" : "Request against a series"}
+                    </p>
                     <div className="mt-4 space-y-3 text-sm leading-7 text-muted-foreground">
                       {isPlatformAdminViewer ? (
                         <>
@@ -1330,18 +1363,58 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                         </>
                       ) : (
                         <>
-                          <p>1. Sign in once to Game-Changrs.</p>
-                          <p>2. Share your user id with the series admin, or ask them to pre-approve your email.</p>
-                          <p>3. The admin grants access inside the cricket admin shell.</p>
-                          <p>4. Refresh this page to load your series workspace.</p>
+                          <p>1. Choose the series you want below.</p>
+                          <p>2. Submit the series-admin request from the gateway page.</p>
+                          <p>3. The current series admin reviews it in pending admin requests.</p>
+                          <p>4. After approval, return here and refresh to load the series workspace.</p>
                         </>
                       )}
                     </div>
+                    {!isPlatformAdminViewer ? (
+                      <div className="mt-5 space-y-3">
+                        {requestableSeriesCards.length > 0 ? (
+                          requestableSeriesCards.map((seriesCard) => (
+                            <div
+                              key={seriesCard.configKey}
+                              className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between"
+                            >
+                              <div className="space-y-1">
+                                <p className="font-semibold text-foreground">{seriesCard.seriesName}</p>
+                                <p className="text-xs leading-6 text-muted-foreground">
+                                  {joinCoverageLabels(
+                                    [seriesCard.targetAgeGroup, ...seriesCard.divisionLabels].filter(
+                                      (value): value is string => Boolean(value)
+                                    ),
+                                    "Series"
+                                  )}
+                                </p>
+                              </div>
+                              <Button asChild size="sm" variant="outline">
+                                <Link to={getAnalyticsAdminRoute(seriesCard.configKey)}>Open Request</Link>
+                              </Button>
+                            </div>
+                          ))
+                        ) : summaryStatus === "loading" ? (
+                          <div className="flex items-start gap-3 rounded-2xl border border-border/80 bg-background/70 p-4">
+                            <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+                            <p className="text-sm leading-6 text-muted-foreground">
+                              Loading the current series list so you can submit a request from analytics.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="rounded-2xl border border-border/80 bg-background/70 p-4 text-sm leading-6 text-muted-foreground">
+                            No requestable series are visible yet. Ask a platform admin to finish series setup first.
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
                     <div className="mt-5 flex flex-wrap gap-3">
-                      <Button type="button" variant="outline" onClick={handleRetryViewerAccess}>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Recheck Access
-                      </Button>
+                      {isPlatformAdminViewer ? (
+                        <Button type="button" variant="outline" onClick={handleRetryViewerAccess}>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Recheck Access
+                        </Button>
+                      ) : null}
                       {isPlatformAdminViewer ? (
                         <Button asChild variant="outline">
                           <Link to={platformAdminRoute}>Open Platform Console</Link>

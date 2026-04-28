@@ -433,7 +433,7 @@ const AnalyticsPlatformAdmin = () => {
                   </Card>
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
+                <div className="grid gap-4">
                   <Card className="border-border/80 bg-card/85 shadow-xl">
                     <CardHeader>
                       <CardTitle className="font-display text-2xl text-foreground">Entity admin access</CardTitle>

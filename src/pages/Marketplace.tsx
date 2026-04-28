@@ -51,8 +51,7 @@ const featuredRetailPartner = {
   href: "https://eastbaycricshop.com/#new-bats",
   eyebrow: "Featured Retail Partner",
   title: "Need Fresh Cricket Gear?",
-  description:
-    "Browse a stronger retail option alongside community listings. We kept the marketplace focused on peer-to-peer gear, but added a clean route out to East Bay Cricket Shop for players who want new bats and retail-ready equipment.",
+  description: "Retail option for new gear alongside community listings.",
   highlights: ["New bats", "Retail cricket gear", "Quick external checkout"],
 };
 
@@ -208,9 +207,6 @@ const Marketplace = () => {
                 <h1 className="font-display text-2xl font-bold text-foreground md:text-3xl">
                   Gear <span className="text-gradient-accent">Marketplace</span>
                 </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Your listings first.
-                </p>
               </div>
               <Button variant="accent" size="default" onClick={handleCreateListing}>
                 <Plus className="h-4 w-4" />
@@ -222,8 +218,7 @@ const Marketplace = () => {
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 flex-shrink-0 text-amber-500" />
                 <p className="text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">Connection Platform Only:</span> We connect buyers
-                  and sellers directly. Arrange transactions via email safely.
+                  <span className="font-medium text-foreground">Connection only:</span> buyers and sellers connect by email.
                 </p>
               </div>
             </div>
@@ -410,7 +405,7 @@ const Marketplace = () => {
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">Have Gear to Share?</h2>
             <p className="mb-4 mt-2 text-sm text-muted-foreground">
-              Your old equipment could help young athletes. Upload a photo and our AI auto-fills the details.
+              List gear in minutes.
             </p>
             <Button variant="hero" size="default" onClick={handleCreateListing}>
               <Plus className="h-4 w-4" />

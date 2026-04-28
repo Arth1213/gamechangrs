@@ -52,11 +52,7 @@ const App = () => (
                 <TechniqueAI />
               </ProtectedRoute>
             } />
-            <Route path="/analytics" element={
-              <ProtectedRoute>
-                <Analytics />
-              </ProtectedRoute>
-            } />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/analytics/workspace" element={
               <ProtectedRoute>
                 <AnalyticsWorkspacePage />

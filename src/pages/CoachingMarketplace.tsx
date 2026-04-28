@@ -102,16 +102,8 @@ const CoachingMarketplace = () => {
   }, [user]);
 
   useEffect(() => {
-    setActiveMode((currentMode) => {
-      if (hasCoachProfile && !hasPlayerProfile) {
-        return "coach";
-      }
-      if (!hasCoachProfile) {
-        return "player";
-      }
-      return currentMode;
-    });
-  }, [hasCoachProfile, hasPlayerProfile]);
+    setActiveMode(hasCoachProfile ? "coach" : "player");
+  }, [hasCoachProfile]);
 
   useEffect(() => {
     if (isCoachMode) {
@@ -501,8 +493,8 @@ const CoachingMarketplace = () => {
 
   const workspaceTitle = isCoachMode ? "Coach Workspace" : "Player Workspace";
   const workspaceDescription = isCoachMode
-    ? "Review connected players, discover new matches, and move into your coaching workflow."
-    : "Find coaches, review recommended matches, and move into booking or profile actions.";
+    ? "Players, matches, and schedule."
+    : "Coaches, matches, and booking.";
 
   return (
     <div className="min-h-screen bg-background">
@@ -519,7 +511,7 @@ const CoachingMarketplace = () => {
               Coach and Player <span className="text-gradient-primary">Workspace</span>
             </h1>
             <p className="mx-auto mt-6 max-w-3xl text-lg text-muted-foreground">
-              Use one landing page to manage your coaching persona, player persona, matching flow, and session schedule.
+              Coach, player, and schedule.
             </p>
             {!user && (
               <div className="mt-8 flex flex-wrap justify-center gap-4">
@@ -541,11 +533,7 @@ const CoachingMarketplace = () => {
             <div className="mx-auto max-w-6xl">
               <div className="mb-6">
                 <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Your personas</p>
-                <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">Role Overview</h2>
-                <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-                  The landing page now shows exactly which personas are active for your account and routes you into the
-                  right workspace or dashboard from here.
-                </p>
+                <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">Your Roles</h2>
               </div>
 
               <div className="grid gap-6 lg:grid-cols-2">
@@ -576,7 +564,7 @@ const CoachingMarketplace = () => {
                   <p className="mt-5 text-sm leading-6 text-muted-foreground">
                     {coachProfile
                       ? `${coachProfile.years_experience} years coaching • ${connectedPlayerIds.size} connected player${connectedPlayerIds.size === 1 ? "" : "s"}`
-                      : "Create a coach profile to manage students, review player matches, and run the coach side of the marketplace."}
+                      : "Create a coach profile."}
                   </p>
 
                   <div className="mt-6 flex flex-wrap gap-3">
@@ -625,14 +613,10 @@ const CoachingMarketplace = () => {
                   <p className="mt-5 text-sm leading-6 text-muted-foreground">
                     {playerProfile
                       ? `${connectedCoachIds.size} connected coach${connectedCoachIds.size === 1 ? "" : "es"} • ${playerUpcomingSessions.length} upcoming session${playerUpcomingSessions.length === 1 ? "" : "s"}`
-                      : "Create a player profile to unlock recommendations, coach matching, and direct booking from this landing page."}
+                      : "Create a player profile."}
                   </p>
 
                   <div className="mt-6 flex flex-wrap gap-3">
-                    <Button onClick={() => activateWorkspace("player")}>
-                      Open Player Workspace
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
                     {playerProfile ? (
                       <Button variant="outline" asChild>
                         <Link to="/coaching-marketplace/player-dashboard">Player Dashboard</Link>
@@ -653,8 +637,7 @@ const CoachingMarketplace = () => {
       {coachProfile &&
         renderScheduleSection({
           title: "Coach Schedule",
-          subtitle:
-            "Your coaching calendar and upcoming student sessions stay visible right on the landing page.",
+          subtitle: "Calendar and upcoming sessions.",
           sessions: coachSessions,
           userType: "coach",
           players: coachStudents,
@@ -670,8 +653,7 @@ const CoachingMarketplace = () => {
       {playerProfile &&
         renderScheduleSection({
           title: "Player Schedule",
-          subtitle:
-            "Review upcoming coaching sessions and the full player calendar without leaving the marketplace landing page.",
+          subtitle: "Upcoming sessions and calendar.",
           sessions: playerSessions,
           userType: "player",
           coaches: playerCoaches,
@@ -684,39 +666,23 @@ const CoachingMarketplace = () => {
           secondaryValue: `${connectedCoachIds.size}`,
         })}
 
+      {coachProfile ? (
       <section id="coaching-marketplace-workspace" className="border-t border-border py-10">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-6xl">
-            <div className="mb-8 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Marketplace workspace</p>
-                <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">{workspaceTitle}</h2>
-                <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{workspaceDescription}</p>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  variant={isCoachMode ? "default" : "outline"}
-                  onClick={() => activateWorkspace("coach")}
-                  disabled={!coachProfile}
-                >
-                  Coach
-                </Button>
-                <Button
-                  variant={!isCoachMode ? "default" : "outline"}
-                  onClick={() => activateWorkspace("player")}
-                >
-                  Player
-                </Button>
-              </div>
+              <div className="mb-8 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Workspace</p>
+                  <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">{workspaceTitle}</h2>
+                  <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{workspaceDescription}</p>
+                </div>
             </div>
 
             {isCoachMode && !coachProfile ? (
               <div className="rounded-3xl border border-border bg-gradient-card p-8">
                 <h3 className="font-display text-2xl font-bold text-foreground">Set up your coach persona first</h3>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  The coach workspace is where you manage player matching and connected students. Add a coach profile
-                  first, then come back here to use that side of the marketplace.
+                  Create a coach profile to use this workspace.
                 </p>
                 <div className="mt-6">
                   <Button asChild>
@@ -731,10 +697,6 @@ const CoachingMarketplace = () => {
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <h3 className="font-display text-xl font-bold text-foreground">Complete your player persona</h3>
-                        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                          You can already browse coaches here, but a player profile unlocks better matching, direct
-                          booking flow, and stronger recommendations.
-                        </p>
                       </div>
                       <Button asChild>
                         <Link to="/coaching-marketplace/player-signup">Create Player Profile</Link>
@@ -1138,6 +1100,7 @@ const CoachingMarketplace = () => {
           </div>
         </div>
       </section>
+      ) : null}
 
       <Footer />
     </div>

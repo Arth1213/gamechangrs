@@ -66,14 +66,13 @@ const TechniqueAI = () => {
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6">
               <Sparkles className="w-4 h-4 text-accent" />
-              <span className="text-sm font-medium text-accent">Batting AI Tracker</span>
+              <span className="text-sm font-medium text-accent">Technique AI</span>
             </div>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-              <span className="text-gradient-primary">Technique AI</span> Batting Analysis
+              <span className="text-gradient-primary">Technique AI</span>
             </h1>
             <p className="text-lg text-muted-foreground">
-              Upload a cricket batting clip to get pose-driven scoring, phase-by-phase feedback,
-              and drills that replace the old AI video analysis flow.
+              Upload a batting clip for scored feedback and drills.
             </p>
           </div>
         </div>
@@ -87,11 +86,8 @@ const TechniqueAI = () => {
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Your Technique AI library</p>
                   <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">
-                    Uploaded Videos & Reports
+                    Saved Reports
                   </h2>
-                  <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-                    Every saved upload stays here so you can reopen the report without searching through the app.
-                  </p>
                 </div>
                 <Button variant="outline" asChild>
                   <Link to="/analysis-history">
@@ -103,20 +99,19 @@ const TechniqueAI = () => {
 
               {authLoading || historyLoading ? (
                 <div className="rounded-3xl border border-border bg-background/70 p-8 text-sm text-muted-foreground">
-                  Loading your saved uploads...
+                  Loading reports...
                 </div>
               ) : analyses.length === 0 ? (
                 <div className="grid gap-6 rounded-3xl border border-border bg-background/70 p-8 lg:grid-cols-[0.85fr_1.15fr]">
                   <div>
                     <div className="inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-primary">
-                      No saved reports yet
+                      Start here
                     </div>
                     <h3 className="mt-4 font-display text-2xl font-bold text-foreground">
-                      You have not performed any video analysis yet.
+                      No saved reports yet.
                     </h3>
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      Upload your first batting clip below. Once the analysis is saved, this page will show the video
-                      history and direct links back into each report.
+                      Run your first analysis below.
                     </p>
                   </div>
                   <div className="grid gap-4 md:grid-cols-3">
@@ -139,7 +134,7 @@ const TechniqueAI = () => {
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl border border-primary/20 bg-primary/10 p-5">
                       <p className="font-display text-3xl font-bold text-foreground">{analyses.length}</p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Recent uploads shown</p>
+                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Reports shown</p>
                     </div>
                     <div className="rounded-2xl border border-border bg-gradient-card p-5">
                       <p className="font-display text-3xl font-bold text-foreground">{latestAnalysis?.overall_score ?? "--"}</p>
@@ -149,7 +144,7 @@ const TechniqueAI = () => {
                       <p className="font-display text-lg font-bold text-foreground">
                         {latestAnalysis ? format(new Date(latestAnalysis.created_at), "MMM d, yyyy") : "--"}
                       </p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Latest upload date</p>
+                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Latest upload</p>
                     </div>
                   </div>
 
@@ -231,10 +226,7 @@ const TechniqueAI = () => {
                 <BarChart3 className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h2 className="font-display text-2xl font-bold text-foreground">Run a New Video Analysis</h2>
-                <p className="text-sm text-muted-foreground">
-                  Upload a fresh clip and save the result so it appears in your Technique AI history above.
-                </p>
+                <h2 className="font-display text-2xl font-bold text-foreground">New Analysis</h2>
               </div>
             </div>
             <TechniqueAIComponent />

@@ -346,7 +346,7 @@ export const UserDashboard = () => {
         : "No coaching profile yet";
   const coachingDetail = coachProfile || playerProfile
     ? `${totalConnections} active connection${totalConnections === 1 ? "" : "s"} • ${upcomingSessions.length} upcoming session${upcomingSessions.length === 1 ? "" : "s"}`
-    : "Create a coach or player profile to manage sessions, matches, and connections.";
+    : "Create a coach or player profile.";
 
   return (
     <section className="pt-32 pb-16">
@@ -547,8 +547,7 @@ export const UserDashboard = () => {
                 <div className="max-w-2xl">
                   <h3 className="font-display text-xl font-bold text-foreground">Set up your coaching workspace</h3>
                   <p className="mt-2 text-muted-foreground">
-                    Add a coach profile, a player profile, or both. That unlocks session management, connection
-                    requests, and coaching marketplace recommendations.
+                    Add a coach profile, a player profile, or both.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-3">

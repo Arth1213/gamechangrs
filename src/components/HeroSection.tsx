@@ -22,20 +22,20 @@ export const HeroSection = () => {
             <div className="text-center lg:text-left">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8 animate-fade-in">
                 <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-sm font-medium text-primary">AI-Powered Sports Analytics</span>
+                <span className="text-sm font-medium text-primary">Game-Changrs</span>
               </div>
 
               <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight mb-6 animate-slide-up">
-                Transform Your Game with{" "}
+                Transform Your Cricket with{" "}
                 <span className="text-gradient-primary">Intelligent</span>{" "}
-                Analytics
+                Tools
               </h1>
 
               <p
                 className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 mb-10 animate-slide-up"
                 style={{ animationDelay: "0.1s" }}
               >
-                The AI platform powering youth cricket: analyze your game, train smarter with coaches curated for you, and ingest real-time match intelligence.
+                Technique AI, cricket analytics, coaching workflows, and gear access in one platform.
               </p>
 
               <div
@@ -44,7 +44,7 @@ export const HeroSection = () => {
               >
                 <Link to="/auth">
                   <Button variant="hero" size="xl">
-                    Sign In For Technique AI
+                    Sign In
                     <ArrowRight className="w-5 h-5" />
                   </Button>
                 </Link>
@@ -62,28 +62,28 @@ export const HeroSection = () => {
               {
                 icon: Video,
                 title: "Technique AI",
-                description: "Upload batting video and get scored technical feedback and drills",
+                description: "Video scoring, feedback, drills",
                 link: "/techniqueai",
                 color: "primary",
               },
               {
                 icon: Users,
                 title: "Coaching Marketplace",
-                description: "Find coaches curated for your development goals",
+                description: "Coach and player matching",
                 link: "/coaching-marketplace",
                 color: "accent",
               },
               {
                 icon: BarChart3,
                 title: "Analytics",
-                description: "Real-time youth cricket insights and match intelligence",
+                description: "Live series search and reports",
                 link: "/analytics",
                 color: "primary",
               },
               {
                 icon: ShoppingBag,
                 title: "Gear Marketplace",
-                description: "Community gear listings plus trusted cricket retail access",
+                description: "Community gear and retail access",
                 link: "/marketplace",
                 color: "primary",
               },

@@ -40,7 +40,7 @@ const Index = () => {
                   Our <span className="text-gradient-primary">Platform</span>
                 </h2>
                 <p className="text-muted-foreground max-w-2xl mx-auto">
-                  Everything you need to analyze, improve, and excel in your cricket journey.
+                  Four connected cricket services.
                 </p>
               </div>
 
@@ -55,7 +55,7 @@ const Index = () => {
                       Technique AI
                     </h3>
                     <p className="text-muted-foreground mb-4 leading-relaxed">
-                      Upload your cricket batting videos and receive scored technique analysis, direct feedback, and drills based on the observed movement.
+                      Video scoring, feedback, and drills.
                     </p>
                     <div className="flex items-center text-primary font-medium">
                       Sign In To Analyze
@@ -74,7 +74,7 @@ const Index = () => {
                       Coaching Marketplace
                     </h3>
                     <p className="text-muted-foreground mb-4 leading-relaxed">
-                      Discover coaches, book sessions, and build a training setup around the areas your game needs most.
+                      Discover coaches, book sessions, and manage training.
                     </p>
                     <div className="flex items-center text-accent font-medium">
                       Find Coaches
@@ -93,7 +93,7 @@ const Index = () => {
                       Analytics
                     </h3>
                     <p className="text-muted-foreground mb-4 leading-relaxed">
-                      Track your progress over time with detailed performance metrics, trend analysis, and data-driven improvement recommendations.
+                      Series search, player reports, and selector views.
                     </p>
                     <div className="flex items-center text-primary font-medium">
                       View Analytics
@@ -112,7 +112,7 @@ const Index = () => {
                       Gear Marketplace
                     </h3>
                     <p className="text-muted-foreground mb-4 leading-relaxed">
-                      Buy, sell, and trade quality cricket gear. Every purchase supports our mission to provide equipment to underprivileged young athletes.
+                      Buy, sell, and donate cricket gear.
                     </p>
                     <div className="flex items-center text-primary font-medium">
                       Browse Gear
@@ -132,7 +132,7 @@ const Index = () => {
                   Why Choose <span className="text-gradient-primary">GameChangrs</span>?
                 </h2>
                 <p className="text-muted-foreground max-w-2xl mx-auto">
-                  We combine cutting-edge AI technology with deep sports expertise to deliver insights that actually improve performance.
+                  Built to turn action into decisions.
                 </p>
               </div>
 
@@ -141,32 +141,32 @@ const Index = () => {
                   {
                     icon: Target,
                     title: "Precision Analysis",
-                    description: "Frame-by-frame video analysis identifies technique flaws invisible to the human eye.",
+                    description: "Frame-by-frame movement review.",
                   },
                   {
                     icon: TrendingUp,
                     title: "Performance Tracking",
-                    description: "Track progress over time with detailed metrics and improvement recommendations.",
+                    description: "Progress history and report trends.",
                   },
                   {
                     icon: Users,
                     title: "Community Impact",
-                    description: "Every purchase supports our mission to provide gear to underprivileged young athletes.",
+                    description: "Gear reuse with athlete impact.",
                   },
                   {
                     icon: Shield,
                     title: "Trusted by Coaches",
-                    description: "Used by youth league coaches across the country for data-driven decision making.",
+                    description: "Built for practical coaching workflows.",
                   },
                   {
                     icon: Sparkles,
                     title: "AI-Powered Insights",
-                    description: "Advanced machine learning models trained on professional athlete data.",
+                    description: "AI turns raw inputs into usable guidance.",
                   },
                   {
                     icon: ChevronRight,
                     title: "Instant Feedback",
-                    description: "Get actionable recommendations within seconds of uploading your video.",
+                    description: "Fast reports and clear next steps.",
                   },
                 ].map((feature) => (
                   <div
@@ -196,12 +196,12 @@ const Index = () => {
                   Ready to Elevate Your Game?
                 </h2>
                 <p className="text-muted-foreground text-lg mb-8">
-                  Join thousands of athletes and coaches who are using AI to unlock their full potential.
+                  Sign in and open the service you need.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link to="/auth">
                     <Button variant="hero" size="xl">
-                      Sign In For Technique AI
+                      Sign In
                       <ArrowRight className="w-5 h-5" />
                     </Button>
                   </Link>

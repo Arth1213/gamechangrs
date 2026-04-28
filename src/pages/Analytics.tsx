@@ -681,12 +681,7 @@ function SeriesWorkspaceOverview({
       <Card className="border-border/80 bg-card/85 shadow-xl">
         <CardContent className="flex items-start gap-3 p-6 text-sm text-muted-foreground">
           <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
-          <div className="space-y-1">
-            <p>Loading live series coverage from the cricket analytics dataset.</p>
-            <p className="text-xs text-muted-foreground/80">
-              The workspace is resolving coverage boundaries, tracked matches, and current reconciliation state.
-            </p>
-          </div>
+          <p>Loading live series coverage.</p>
         </CardContent>
       </Card>
     );
@@ -699,7 +694,7 @@ function SeriesWorkspaceOverview({
           <div className="flex items-start gap-3">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <div className="space-y-1">
-              <p>Live series coverage could not be loaded for the workspace view.</p>
+              <p>Live series coverage could not be loaded.</p>
               <p className="text-destructive/80">{summaryError}</p>
             </div>
           </div>
@@ -722,12 +717,7 @@ function SeriesWorkspaceOverview({
         <Card className="border-border/80 bg-card/75 shadow-sm">
           <CardContent className="flex items-start gap-3 p-5 text-sm text-muted-foreground">
             <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
-            <div className="space-y-1">
-              <p>Refreshing live series coverage detail.</p>
-              <p className="text-xs text-muted-foreground/80">
-                Accessible series are already loaded, so the workspace stays usable while detail metrics refresh.
-              </p>
-            </div>
+            <p>Refreshing live series coverage.</p>
           </CardContent>
         </Card>
       ) : null}
@@ -735,13 +725,13 @@ function SeriesWorkspaceOverview({
       {summaryStatus === "error" && summaryError ? (
         <Card className="border-amber-500/30 bg-amber-500/10 shadow-sm">
           <CardContent className="flex flex-col gap-4 p-5 text-sm text-amber-200 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <div className="space-y-1">
-                <p>Series detail refresh failed, but your accessible series workspace is still available.</p>
-                <p className="text-amber-100/80">{summaryError}</p>
-              </div>
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="space-y-1">
+              <p>Series detail refresh failed.</p>
+              <p className="text-amber-100/80">{summaryError}</p>
             </div>
+          </div>
             <Button type="button" variant="outline" size="sm" onClick={onRetrySummary}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Retry Summary
@@ -1023,10 +1013,9 @@ function SeriesAccessRequestPanel({
           </Badge>
         </div>
         <div className="space-y-2">
-          <CardTitle className="font-display text-2xl text-foreground">Request access to any series</CardTitle>
+          <CardTitle className="font-display text-2xl text-foreground">Request series access</CardTitle>
           <CardDescription className="max-w-3xl text-sm leading-7">
-            Pick the series first, then choose whether you want report-view access or series-admin access. Nothing is
-            granted automatically unless an admin already pre-approved your account.
+            Choose a series and request viewer or series-admin access.
           </CardDescription>
         </div>
       </CardHeader>
@@ -1076,8 +1065,8 @@ function SeriesAccessRequestPanel({
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{selectedSeriesSummary}</p>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             {requestKind === "admin"
-              ? "Series-admin approval is handled by the entity that owns this series. Once approved, admin access applies across that entity's series."
-              : "Viewer approval unlocks player reports and series analytics for the selected series after the current series-admin team approves it."}
+              ? "Series-admin approval is handled by the owning entity."
+              : "Viewer approval unlocks reports for the selected series."}
           </p>
         </div>
 
@@ -1095,9 +1084,122 @@ function SeriesAccessRequestPanel({
   );
 }
 
+function AnalyticsLandingSections() {
+  return (
+    <>
+      <Card className="border-border/80 bg-card/85 shadow-xl">
+        <CardContent className="space-y-8 p-8 lg:p-10">
+          <div className="space-y-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-primary">What This App Really Is</p>
+            <h1 className="max-w-6xl font-display text-4xl font-bold leading-[0.96] text-foreground md:text-5xl lg:text-6xl">
+              From raw cricket site data to{" "}
+              <span className="text-primary">trusted analytics intelligence</span>, starting with{" "}
+              <span className="text-sky-400">CricClubs</span>.
+            </h1>
+            <p className="max-w-4xl text-lg leading-8 text-muted-foreground">
+              A private decision-support app that turns raw cricket data into{" "}
+              <span className="font-semibold text-foreground">fairer player evaluation</span>.
+            </p>
+            <div className="max-w-4xl border-l-4 border-primary pl-4 text-lg leading-8 text-cyan-100/90">
+              CricClubs shows <span className="font-semibold text-foreground">what happened</span>. This app shows{" "}
+              <span className="font-semibold text-foreground">what matters</span>.
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {LANDING_HERO_STRIP.map((item) => (
+              <div
+                key={item.label}
+                className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/40 p-4 shadow-sm backdrop-blur"
+              >
+                <p className="min-h-[2.2rem] text-[11px] uppercase leading-5 tracking-[0.16em] text-muted-foreground">
+                  {item.label}
+                </p>
+                <p
+                  className={`mt-2 min-h-[3.2rem] font-display text-2xl leading-[1.02] text-primary md:min-h-[3.5rem] ${item.valueClassName ?? ""}`}
+                >
+                  {item.value}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="space-y-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="font-display text-3xl text-foreground md:text-4xl">Key Outcomes You Should Expect</h2>
+          </div>
+          <p className="max-w-xl text-sm leading-6 text-muted-foreground">
+            Faster understanding. Better trust. Fairer comparison.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          {LANDING_OUTCOMES.map((item) => (
+            <Card key={item.step} className="border-border/80 bg-card/80 shadow-sm">
+              <CardContent className="space-y-3 p-6">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-sky-400 text-sm font-black text-slate-950">
+                  {item.step}
+                </div>
+                <h3 className="font-display text-2xl text-foreground">{item.title}</h3>
+                <p className="text-sm leading-7 text-muted-foreground">{item.description}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <h2 className="font-display text-3xl text-foreground md:text-4xl">How The App Creates Meaning</h2>
+          <p className="max-w-xl text-sm leading-6 text-muted-foreground">Messy web pages in. Trusted decisions out.</p>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-4">
+          {LANDING_FLOW.map((item) => (
+            <Card key={item.stage} className="border-border/80 bg-card/80 shadow-sm">
+              <CardContent className="space-y-3 p-6">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-primary">{item.stage}</p>
+                <h3 className="font-display text-2xl text-foreground">{item.title}</h3>
+                <p className="text-sm leading-7 text-muted-foreground">{item.description}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      <Card className="border-border/80 bg-gradient-to-r from-primary/15 to-sky-400/10 shadow-xl">
+        <CardContent className="grid gap-6 p-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div className="space-y-3">
+            <h2 className="font-display text-3xl text-foreground">The outcome you are really buying</h2>
+            <p className="text-sm leading-7 text-muted-foreground">
+              A private internal system for{" "}
+              <span className="font-semibold text-foreground">better, faster, fairer player judgments</span>.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 lg:justify-end">
+            {LANDING_FOOTER_TAGS.map((item) => (
+              <Badge
+                key={item}
+                variant="outline"
+                className="border-border/80 bg-background/40 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-foreground"
+              >
+                {item}
+              </Badge>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
 const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
   const isWorkspaceView = view === "workspace";
-  const { session, user } = useAuth();
+  const { session, user, loading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<SearchStatus>("idle");
@@ -1166,6 +1268,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     () => (isPlatformAdminViewer ? seriesAdminRoute : getAnalyticsAdminRoute(selectedSeriesKey || undefined)),
     [isPlatformAdminViewer, selectedSeriesKey, seriesAdminRoute]
   );
+  const isAuthenticated = Boolean(user && accessToken);
   const userDisplayName =
     user?.user_metadata?.full_name?.trim()
     || user?.user_metadata?.name?.trim()
@@ -1187,7 +1290,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
       profiles.push({
         key: "platform",
         title: "Platform Admin",
-        summary: "Global entity and series administration across the analytics system.",
+        summary: "Global analytics access.",
         href: platformAdminRoute,
         actionLabel: "Open Platform Console",
         meta: "Full platform scope",
@@ -1198,7 +1301,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
       profiles.push({
         key: "series-admin",
         title: "Series Admin",
-        summary: "Manage series setup, viewer access, and series operations for the series you administer.",
+        summary: "Manage series setup, access, and operations.",
         href: seriesAdminRoute,
         actionLabel: "Open Series Console",
         meta:
@@ -1212,7 +1315,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
       profiles.push({
         key: "series-user",
         title: "Series User",
-        summary: "Use live player search, series workspace, and player reports inside your approved series.",
+        summary: "Search players and open reports.",
         href: workspaceRoute,
         actionLabel: "Open Series Workspace",
         meta:
@@ -1281,10 +1384,19 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
   }
 
   useEffect(() => {
+    if (loading) {
+      return;
+    }
+
     if (!accessToken) {
       setViewerCatalog(null);
-      setViewerStatus("error");
-      setViewerError("A signed-in session is required before analytics access can be checked.");
+      if (!isAuthenticated && !isWorkspaceView) {
+        setViewerStatus("success");
+        setViewerError(null);
+      } else {
+        setViewerStatus("error");
+        setViewerError("A signed-in session is required before analytics access can be checked.");
+      }
       return;
     }
 
@@ -1316,9 +1428,16 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     return () => {
       controller.abort();
     };
-  }, [accessToken, viewerReloadKey]);
+  }, [accessToken, isAuthenticated, isWorkspaceView, loading, viewerReloadKey]);
 
   useEffect(() => {
+    if (!isAuthenticated && !isWorkspaceView) {
+      setSummaryStatus("success");
+      setSummaryError(null);
+      setDashboardSummary(null);
+      return;
+    }
+
     const controller = new AbortController();
 
     setSummaryStatus("loading");
@@ -1347,7 +1466,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     return () => {
       controller.abort();
     };
-  }, [summaryReloadKey]);
+  }, [isAuthenticated, isWorkspaceView, summaryReloadKey]);
 
   useEffect(() => {
     if (!isWorkspaceView) {
@@ -1496,6 +1615,47 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     setSearchParams(buildAnalyticsSearchParams(currentUrlQuery, seriesConfigKey));
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+
+        <section className="bg-gradient-hero pb-20 pt-32">
+          <div className="container mx-auto px-4">
+            <div className="mx-auto max-w-3xl">
+              <Card className="border-border/80 bg-card/85 shadow-xl">
+                <CardContent className="flex items-start gap-3 p-6 text-sm text-muted-foreground">
+                  <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+                  <p>Loading analytics.</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated && !isWorkspaceView) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+
+        <section className="bg-gradient-hero pt-32 pb-20">
+          <div className="container mx-auto px-4">
+            <div className="mx-auto max-w-6xl space-y-8">
+              <AnalyticsLandingSections />
+            </div>
+          </div>
+        </section>
+
+        <Footer />
+      </div>
+    );
+  }
+
   if (viewerStatus === "loading") {
     return (
       <div className="min-h-screen bg-background">
@@ -1507,12 +1667,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
               <Card className="border-border/80 bg-card/85 shadow-xl">
                 <CardContent className="flex items-start gap-3 p-6 text-sm text-muted-foreground">
                   <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
-                  <div className="space-y-1">
-                    <p>Checking your analytics access.</p>
-                    <p className="text-xs text-muted-foreground/80">
-                      Game-Changrs is resolving the series you are allowed to view before loading the selector workspace.
-                    </p>
-                  </div>
+                  <p>Checking your analytics access.</p>
                 </CardContent>
               </Card>
             </div>
@@ -1578,8 +1733,8 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                     </CardTitle>
                     <CardDescription className="max-w-2xl text-sm leading-7">
                       {isPlatformAdminViewer
-                        ? "This platform-admin account can access every series automatically, but no series are currently visible in the analytics dataset."
-                        : "Your account is signed in, but it has not been granted access to any cricket analytics series yet. You can request viewer or series-admin access directly from this page."}
+                        ? "This platform-admin account can access every series automatically, but no series are visible yet."
+                        : "Your account does not have series access yet. Request viewer or series-admin access here."}
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -1590,12 +1745,9 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                     </p>
                     <p className="mt-4 text-sm leading-7 text-muted-foreground">
                       {isPlatformAdminViewer ? (
-                        "Platform admins automatically inherit series-admin and report-view access across every series. They do not need viewer grants and do not consume entity viewer seats."
+                        "Platform admins automatically inherit series-admin and viewer access across every series."
                       ) : (
-                        <>
-                          Use the request panel to choose any series and ask for viewer access or series-admin access.
-                          Approval still stays with the current admins for that series.
-                        </>
+                        <>Use the request panel to request access for a specific series.</>
                       )}
                     </p>
                     <div className="mt-4 rounded-2xl border border-border/80 bg-background/70 p-4">
@@ -1622,15 +1774,15 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                       {isPlatformAdminViewer ? (
                         <>
                           <p>1. Use the platform admin console to create or inspect entities and series.</p>
-                          <p>2. Once a series exists, it will appear here automatically.</p>
-                          <p>3. Open the series workspace or series console directly without any viewer grant.</p>
+                          <p>2. New series appear here automatically.</p>
+                          <p>3. Open the workspace or console directly.</p>
                         </>
                       ) : (
                         <>
-                          <p>1. Choose the series you want below.</p>
-                          <p>2. Choose whether you want viewer access or series-admin access.</p>
-                          <p>3. Submit the request directly from this analytics page.</p>
-                          <p>4. The current series admin reviews it and approval unlocks access.</p>
+                          <p>1. Choose the series.</p>
+                          <p>2. Choose viewer or series-admin.</p>
+                          <p>3. Submit the request.</p>
+                          <p>4. Wait for approval.</p>
                         </>
                       )}
                     </div>
@@ -1647,12 +1799,12 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                           <div className="flex items-start gap-3 rounded-2xl border border-border/80 bg-background/70 p-4">
                             <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
                             <p className="text-sm leading-6 text-muted-foreground">
-                              Loading the current series list so you can submit a request from analytics.
+                              Loading the series list.
                             </p>
                           </div>
                         ) : (
                           <div className="rounded-2xl border border-border/80 bg-background/70 p-4 text-sm leading-6 text-muted-foreground">
-                            No requestable series are visible yet. Ask a platform admin to finish series setup first.
+                            No requestable series are visible yet.
                           </div>
                         )}
                       </div>
@@ -1722,13 +1874,11 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                       Series workspace
                     </h1>
                     <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-                      Review each series boundary, tracked match volume, reconciliation load, and latest live match context
-                      without crowding the selector landing page.
+                      Review the live series boundary and search within it.
                     </p>
                     {isPlatformAdminViewer ? (
                       <p className="max-w-3xl text-sm leading-7 text-cyan-100/85">
-                        Platform-admin scope is global. You can move into any series workspace, any series console, and
-                        any player report without consuming viewer seats.
+                        Platform-admin scope is global.
                       </p>
                     ) : null}
                   </div>
@@ -1773,7 +1923,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                   <Card className="border-border/80 bg-card/85 shadow-xl">
                     <CardContent className="flex items-start gap-3 p-6 text-sm text-muted-foreground">
                       <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
-                      <p>Loading the current series list so you can request access from the workspace.</p>
+                      <p>Loading the series list.</p>
                     </CardContent>
                   </Card>
                 )
@@ -1822,10 +1972,9 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                         Welcome back, {userDisplayName}
                       </h1>
                       <p className="max-w-3xl text-base leading-7 text-muted-foreground">
-                        Signed in as {user?.email || "this account"}.
                         {selectedSeries
-                          ? ` Current live series: ${selectedSeries.seriesName}.`
-                          : " Your analytics access is active."}
+                          ? `${selectedSeries.seriesName} is active for this account.`
+                          : `Signed in as ${user?.email || "this account"}.`}
                       </p>
                     </div>
                   </div>
@@ -1921,125 +2070,16 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                   onAccessActivated={handleAccessActivated}
                 />
               ) : (
-                <Card className="border-border/80 bg-card/85 shadow-xl">
-                  <CardContent className="flex items-start gap-3 p-6 text-sm text-muted-foreground">
-                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
-                    <p>Loading the current series list so you can request access from analytics.</p>
-                  </CardContent>
-                </Card>
+                    <Card className="border-border/80 bg-card/85 shadow-xl">
+                      <CardContent className="flex items-start gap-3 p-6 text-sm text-muted-foreground">
+                        <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+                        <p>Loading the series list.</p>
+                      </CardContent>
+                    </Card>
               )
             ) : null}
 
-            <Card className="border-border/80 bg-card/85 shadow-xl">
-              <CardContent className="space-y-8 p-8 lg:p-10">
-                <div className="space-y-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-primary">What This App Really Is</p>
-                  <h1 className="max-w-6xl font-display text-4xl font-bold leading-[0.96] text-foreground md:text-5xl lg:text-6xl">
-                    From raw cricket site data to{" "}
-                    <span className="text-primary">trusted analytics intelligence</span>, starting with{" "}
-                    <span className="text-sky-400">CricClubs</span>.
-                  </h1>
-                  <p className="max-w-4xl text-lg leading-8 text-muted-foreground">
-                    A private decision-support app that turns raw cricket data into{" "}
-                    <span className="font-semibold text-foreground">fairer player evaluation</span>.
-                  </p>
-                  <div className="max-w-4xl border-l-4 border-primary pl-4 text-lg leading-8 text-cyan-100/90">
-                    CricClubs shows <span className="font-semibold text-foreground">what happened</span>. This app
-                    shows <span className="font-semibold text-foreground">what matters</span>.
-                  </div>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  {LANDING_HERO_STRIP.map((item) => (
-                    <div
-                      key={item.label}
-                      className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/40 p-4 shadow-sm backdrop-blur"
-                    >
-                      <p className="min-h-[2.2rem] text-[11px] uppercase leading-5 tracking-[0.16em] text-muted-foreground">
-                        {item.label}
-                      </p>
-                      <p
-                        className={`mt-2 min-h-[3.2rem] font-display text-2xl leading-[1.02] text-primary md:min-h-[3.5rem] ${item.valueClassName ?? ""}`}
-                      >
-                        {item.value}
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-4">
-              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <h2 className="font-display text-3xl text-foreground md:text-4xl">
-                    Key Outcomes You Should Expect
-                  </h2>
-                </div>
-                <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-                  Faster understanding. Better trust. Fairer comparison.
-                </p>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                {LANDING_OUTCOMES.map((item) => (
-                  <Card key={item.step} className="border-border/80 bg-card/80 shadow-sm">
-                    <CardContent className="space-y-3 p-6">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-sky-400 text-sm font-black text-slate-950">
-                        {item.step}
-                      </div>
-                      <h3 className="font-display text-2xl text-foreground">{item.title}</h3>
-                      <p className="text-sm leading-7 text-muted-foreground">{item.description}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                <h2 className="font-display text-3xl text-foreground md:text-4xl">How The App Creates Meaning</h2>
-                <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-                  Messy web pages in. Trusted decisions out.
-                </p>
-              </div>
-
-              <div className="grid gap-4 xl:grid-cols-4">
-                {LANDING_FLOW.map((item) => (
-                  <Card key={item.stage} className="border-border/80 bg-card/80 shadow-sm">
-                    <CardContent className="space-y-3 p-6">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-primary">{item.stage}</p>
-                      <h3 className="font-display text-2xl text-foreground">{item.title}</h3>
-                      <p className="text-sm leading-7 text-muted-foreground">{item.description}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-
-            <Card className="border-border/80 bg-gradient-to-r from-primary/15 to-sky-400/10 shadow-xl">
-              <CardContent className="grid gap-6 p-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-                <div className="space-y-3">
-                  <h2 className="font-display text-3xl text-foreground">The outcome you are really buying</h2>
-                  <p className="text-sm leading-7 text-muted-foreground">
-                    A private internal system for{" "}
-                    <span className="font-semibold text-foreground">better, faster, fairer player judgments</span>.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2 lg:justify-end">
-                  {LANDING_FOOTER_TAGS.map((item) => (
-                    <Badge
-                      key={item}
-                      variant="outline"
-                      className="border-border/80 bg-background/40 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-foreground"
-                    >
-                      {item}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <AnalyticsLandingSections />
 
           </div>
         </div>

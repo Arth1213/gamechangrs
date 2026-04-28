@@ -13,26 +13,15 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
-import type { CricketPlayerReportResponse } from "@/lib/cricketApi";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  askCricketPlayerReportChat,
+  type CricketPlayerReportChatEvidenceItem,
+  type CricketPlayerReportChatHistoryMessage,
+  type CricketPlayerReportChatResponse,
+  type CricketPlayerReportResponse,
+} from "@/lib/cricketApi";
 import { cn } from "@/lib/utils";
-
-type PlayerReportChatHistoryMessage = {
-  role: "user" | "assistant";
-  content: string;
-};
-
-type PlayerReportChatEvidenceItem = {
-  label?: string;
-  detail?: string;
-};
-
-type PlayerReportChatResponse = {
-  answer?: string;
-  evidence?: PlayerReportChatEvidenceItem[];
-  followUps?: string[];
-  limitations?: string[];
-};
 
 type PlayerReportChatMessage = {
   id: string;
@@ -77,7 +66,7 @@ function buildIntroMessage(playerName: string, seriesName?: string | null): Play
 function buildHistory(messages: PlayerReportChatMessage[]) {
   return messages
     .filter((message): message is PlayerReportChatMessage & { role: "assistant" | "user" } => message.includeInHistory !== false)
-    .map<PlayerReportChatHistoryMessage>((message) => ({
+    .map<CricketPlayerReportChatHistoryMessage>((message) => ({
       role: message.role,
       content: message.content,
     }))
@@ -115,6 +104,7 @@ const PlayerReportChat = ({
   divisionId,
   divisionLabel,
 }: PlayerReportChatProps) => {
+  const { session } = useAuth();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -168,6 +158,20 @@ const PlayerReportChat = ({
       return;
     }
 
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: getMessageId(),
+          role: "assistant",
+          content: "Sign in again before using the report assistant.",
+          error: true,
+        },
+      ]);
+      return;
+    }
+
     const userMessage: PlayerReportChatMessage = {
       id: getMessageId(),
       role: "user",
@@ -180,20 +184,17 @@ const PlayerReportChat = ({
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke<PlayerReportChatResponse>("analytics-player-report-chat", {
-        body: {
+      const data = await askCricketPlayerReportChat(
+        seriesConfigKey,
+        resolvedPlayerId,
+        accessToken,
+        {
           question,
           history: buildHistory(nextMessages),
-          seriesConfigKey,
-          playerId: resolvedPlayerId,
           divisionId: divisionId ?? report?.meta?.player?.divisionId ?? null,
           report,
-        },
-      });
-
-      if (error) {
-        throw new Error(error.message || "The player report assistant request failed.");
-      }
+        }
+      );
 
       if (!data?.answer?.trim()) {
         throw new Error("The player report assistant returned an empty answer.");

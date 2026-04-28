@@ -45,6 +45,9 @@ const {
   getPlayerChatContext,
 } = require("./services/chatContextService");
 const {
+  answerPlayerReportChat,
+} = require("./services/playerChatService");
+const {
   withClient,
 } = require("./services/seriesService");
 const {
@@ -503,6 +506,18 @@ app.post("/api/series/:seriesConfigKey/players/:playerId/chat-context", requireS
     playerId: req.params.playerId,
     divisionId: req.body?.divisionId ?? req.query.divisionId,
     question: req.body?.question ?? "",
+  });
+  res.json(payload);
+}));
+
+app.post("/api/series/:seriesConfigKey/players/:playerId/chat", requireSeriesViewer, asyncHandler(async (req, res) => {
+  const payload = await answerPlayerReportChat({
+    seriesConfigKey: req.params.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.body?.divisionId ?? req.query.divisionId,
+    question: req.body?.question ?? "",
+    history: req.body?.history,
+    report: req.body?.report,
   });
   res.json(payload);
 }));

@@ -883,6 +883,23 @@ export type CricketPlayerReportResponse = {
   };
 };
 
+export type CricketPlayerReportChatHistoryMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type CricketPlayerReportChatEvidenceItem = {
+  label?: string;
+  detail?: string;
+};
+
+export type CricketPlayerReportChatResponse = {
+  answer?: string;
+  evidence?: CricketPlayerReportChatEvidenceItem[];
+  followUps?: string[];
+  limitations?: string[];
+};
+
 export function getCricketApiBase() {
   const configuredBase = import.meta.env.VITE_CRICKET_API_BASE?.trim();
   if (configuredBase) {
@@ -1247,6 +1264,39 @@ export async function fetchCricketViewerSeries(accessToken: string, signal?: Abo
   }
 
   return (await response.json()) as CricketViewerSeriesResponse;
+}
+
+export async function askCricketPlayerReportChat(
+  seriesConfigKey: string,
+  playerId: number,
+  accessToken: string,
+  body: {
+    question: string;
+    history?: CricketPlayerReportChatHistoryMessage[];
+    divisionId?: number | null;
+    report?: CricketPlayerReportResponse | null;
+  },
+  signal?: AbortSignal
+) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(seriesConfigKey)}/players/${playerId}/chat`),
+    window.location.origin
+  );
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Player report chat failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketPlayerReportChatResponse;
 }
 
 export async function fetchCricketAdminSetup(

@@ -536,14 +536,27 @@ export type CricketAdminRefreshRequest = {
   requestedAt?: string;
   status?: string;
   resolutionNote?: string;
+  processedAt?: string | null;
 };
 
 export type CricketAdminSeriesOperationKey = "discover_new_matches" | "recompute_series";
 
-export type CricketAdminSeriesOperationRequest = {
-  requestId?: string;
+export type CricketAdminSeriesOperationAvailability = {
   operationKey?: string;
   operationLabel?: string;
+  supportStatus?: string;
+  queueEnabled?: boolean;
+  runnerMode?: string;
+  supportNote?: string;
+};
+
+export type CricketAdminSeriesOperationRequest = {
+  operationKey?: string;
+  operationLabel?: string;
+  supportStatus?: string;
+  queueEnabled?: boolean;
+  supportNote?: string;
+  requestId?: string;
   requestStatus?: string;
   requestNote?: string;
   requestedByUserId?: string;
@@ -583,6 +596,15 @@ export type CricketAdminMatchOpsResponse = {
     failedRequests?: number | null;
     latestRequestedAt?: string | null;
   };
+  refreshSummary?: {
+    totalRequests?: number | null;
+    pendingRequests?: number | null;
+    processingRequests?: number | null;
+    completedRequests?: number | null;
+    failedRequests?: number | null;
+    latestRequestedAt?: string | null;
+  };
+  availableOperations?: CricketAdminSeriesOperationAvailability[];
   operationRequests?: CricketAdminSeriesOperationRequest[];
   matches?: CricketAdminMatchOpsMatch[];
   recentRequests?: CricketAdminRefreshRequest[];

@@ -565,6 +565,8 @@ app.get("/admin/series/:seriesConfigKey/matches", requireSeriesAdmin, asyncHandl
 app.post("/api/series/:seriesConfigKey/admin/matches/refresh-requests", requireSeriesAdmin, asyncHandler(async (req, res) => {
   const payload = await createManualRefreshRequest({
     seriesConfigKey: req.params.seriesConfigKey,
+    actorUserId: req.cricketActor?.userId,
+    actorEmail: req.cricketActor?.email,
     body: req.body,
     dryRun: parseDryRun(req),
   });

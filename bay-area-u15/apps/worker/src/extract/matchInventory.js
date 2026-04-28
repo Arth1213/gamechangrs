@@ -43,7 +43,10 @@ async function enumerateMatches(seriesConfig, discovery, options = {}) {
 
     for (const division of divisionPages) {
       const page = await context.newPage();
-      await page.goto(division.href, { waitUntil: "domcontentloaded" });
+      await page.goto(division.resultsUrl || division.href, {
+        waitUntil: "domcontentloaded",
+        timeout: 60000,
+      });
       await page.waitForTimeout(4000);
 
       const html = await page.content();
@@ -55,6 +58,9 @@ async function enumerateMatches(seriesConfig, discovery, options = {}) {
           const teams = node.querySelector(".schedule-text h3");
           const resultText = node.querySelectorAll(".schedule-text h4")[1];
           const scorecardLink = node.querySelector('a[href*="viewScorecard.do"]');
+          const ballByBallLink =
+            node.querySelector('a[href*="ballbyball.do"]') ||
+            node.querySelector('a[href*="fullScorecard.do"]');
           const teamLinks = [...node.querySelectorAll('.schedule-logo a[href*="viewTeam.do"]')];
 
           return {
@@ -72,6 +78,7 @@ async function enumerateMatches(seriesConfig, discovery, options = {}) {
               overs: item.querySelector("p")?.textContent?.trim() || null,
             })),
             scorecardUrl: scorecardLink ? scorecardLink.href : null,
+            ballByBallUrl: ballByBallLink ? ballByBallLink.href : null,
             teamUrls: teamLinks.map((link) => link.href),
           };
         }),
@@ -107,6 +114,7 @@ async function enumerateMatches(seriesConfig, discovery, options = {}) {
 
 function normalizeMatchCard(card, division) {
   const scorecardUrl = card.scorecardUrl ? makeAbsoluteUrl(card.scorecardUrl) : null;
+  const ballByBallUrl = card.ballByBallUrl ? makeAbsoluteUrl(card.ballByBallUrl) : null;
   const matchId = extractMatchId(scorecardUrl);
 
   if (!matchId) {
@@ -133,7 +141,7 @@ function normalizeMatchCard(card, division) {
     result_text: card.resultText,
     scorecard_url: scorecardUrl,
     match_page_url: scorecardUrl,
-    ball_by_ball_url: scorecardUrl,
+    ball_by_ball_url: ballByBallUrl || scorecardUrl,
     team_urls: (card.teamUrls || []).map((url) => makeAbsoluteUrl(url)),
     raw_card: card,
   };
@@ -154,6 +162,11 @@ function splitTeams(value) {
   const direct = normalized.split(/\s+v\s+/i);
   if (direct.length === 2) {
     return direct.map((entry) => entry.trim());
+  }
+
+  const condensedUppercase = normalized.match(/^(.+?)V\s+(.+)$/);
+  if (condensedUppercase && condensedUppercase[1] && condensedUppercase[2]) {
+    return [condensedUppercase[1].trim(), condensedUppercase[2].trim()];
   }
 
   return [normalized, null];

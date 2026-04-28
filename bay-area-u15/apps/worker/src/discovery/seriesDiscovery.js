@@ -16,9 +16,22 @@ function makeAbsoluteUrl(href) {
   return new URL(href, ROOT_URL).toString();
 }
 
+function extractClubId(url) {
+  if (!url) {
+    return null;
+  }
+
+  try {
+    return new URL(url).searchParams.get("clubId");
+  } catch (_) {
+    return null;
+  }
+}
+
 function getClubId(seriesConfig) {
   return String(
-    seriesConfig.source_hints?.legacy_club_id ||
+    extractClubId(seriesConfig.series_url) ||
+      seriesConfig.source_hints?.legacy_club_id ||
       seriesConfig.source_hints?.club_id ||
       DEFAULT_CLUB_ID,
   );
@@ -40,6 +53,14 @@ function buildLegacyRoutes(leagueId, clubId) {
   };
 }
 
+function buildDivisionResultsUrl(leagueId, clubId) {
+  return `${ROOT_URL}/USACricketJunior/viewLeagueResults.do?league=${leagueId}&clubId=${clubId}`;
+}
+
+function buildDivisionStatsUrl(leagueId, clubId) {
+  return `${ROOT_URL}/USACricketJunior/viewLeague.do?league=${leagueId}&clubId=${clubId}`;
+}
+
 async function discoverSeries(seriesConfig, options = {}) {
   const outDir = options.outDir || path.resolve(process.cwd(), "storage/exports/discovery");
   ensureDir(outDir);
@@ -47,7 +68,10 @@ async function discoverSeries(seriesConfig, options = {}) {
 
   return withBrowser(async (context) => {
     const configuredSeriesPage = await context.newPage();
-    await configuredSeriesPage.goto(seriesConfig.series_url, { waitUntil: "domcontentloaded" });
+    await configuredSeriesPage.goto(seriesConfig.series_url, {
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
+    });
     await configuredSeriesPage.waitForTimeout(3000);
     writeTextFile(
       path.join(outDir, "raw", "configured_series_url.html"),
@@ -57,6 +81,7 @@ async function discoverSeries(seriesConfig, options = {}) {
     const leagueIndexPage = await context.newPage();
     await leagueIndexPage.goto(`${ROOT_URL}/USACricketJunior/viewAllLeagues.do?clubId=${clubId}`, {
       waitUntil: "domcontentloaded",
+      timeout: 60000,
     });
     await leagueIndexPage.waitForTimeout(4000);
 
@@ -73,17 +98,31 @@ async function discoverSeries(seriesConfig, options = {}) {
     writeJsonFile(path.join(outDir, "raw", "league_index_links.json"), seriesCandidates);
 
     const desiredSeries = normalizeLabel(seriesConfig.label);
-    const bayAreaCandidates = seriesCandidates
-      .filter((entry) => normalizeLabel(entry.label).includes("bay area"))
-      .sort((left, right) => {
-        const leftScore = normalizeLabel(left.label) === desiredSeries ? 2 : 0;
-        const rightScore = normalizeLabel(right.label) === desiredSeries ? 2 : 0;
-        return rightScore - leftScore || left.label.length - right.label.length;
-      });
-    const matchedSeries = bayAreaCandidates[0];
+    const rankedCandidates = seriesCandidates
+      .map((entry) => {
+        const normalizedEntryLabel = normalizeLabel(entry.label);
+        let score = 0;
+
+        if (normalizedEntryLabel === desiredSeries) {
+          score += 5;
+        } else if (desiredSeries && normalizedEntryLabel.includes(desiredSeries)) {
+          score += 4;
+        } else if (desiredSeries && desiredSeries.includes(normalizedEntryLabel)) {
+          score += 3;
+        }
+
+        return {
+          ...entry,
+          normalizedEntryLabel,
+          score,
+        };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((left, right) => right.score - left.score || left.label.length - right.label.length);
+    const matchedSeries = rankedCandidates[0];
 
     if (!matchedSeries) {
-      throw new Error(`Unable to find a public Bay Area series link for "${seriesConfig.label}".`);
+      throw new Error(`Unable to find a public series link for "${seriesConfig.label}".`);
     }
 
     const leagueId = extractLeagueId(matchedSeries.href);
@@ -94,7 +133,10 @@ async function discoverSeries(seriesConfig, options = {}) {
     const legacyRoutes = buildLegacyRoutes(leagueId, clubId);
 
     const leaguePage = await context.newPage();
-    await leaguePage.goto(legacyRoutes.leagueUrl, { waitUntil: "domcontentloaded" });
+    await leaguePage.goto(legacyRoutes.leagueUrl, {
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
+    });
     await leaguePage.waitForTimeout(4000);
 
     const seriesMeta = await leaguePage.evaluate(() => {
@@ -112,7 +154,10 @@ async function discoverSeries(seriesConfig, options = {}) {
     writeTextFile(path.join(outDir, "raw", "series_page.html"), await leaguePage.content());
 
     const resultsPage = await context.newPage();
-    await resultsPage.goto(legacyRoutes.resultsUrl, { waitUntil: "domcontentloaded" });
+    await resultsPage.goto(legacyRoutes.resultsUrl, {
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
+    });
     await resultsPage.waitForTimeout(4000);
 
     const divisionOptions = await resultsPage.locator('li[role="presentation"] a').evaluateAll((nodes) =>
@@ -134,11 +179,18 @@ async function discoverSeries(seriesConfig, options = {}) {
 
     const discoveredTargetDivisions = divisionOptions
       .filter((entry) => targetDivisionLabels.has(normalizeLabel(entry.label)))
-      .map((entry) => ({
-        label: entry.label,
-        href: entry.href,
-        leagueId: extractLeagueId(entry.href),
-      }));
+      .map((entry) => {
+        const divisionLeagueId = extractLeagueId(entry.href);
+        const resultsUrl = buildDivisionResultsUrl(divisionLeagueId, clubId);
+        return {
+          label: entry.label,
+          href: resultsUrl,
+          sourceHref: entry.href,
+          leagueId: divisionLeagueId,
+          resultsUrl,
+          statsUrl: buildDivisionStatsUrl(divisionLeagueId, clubId),
+        };
+      });
 
     const result = {
       series: {

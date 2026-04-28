@@ -3,7 +3,9 @@
     "api:start": "node apps/api/src/server.js",
     "worker:discover": "node apps/worker/src/index.js discover --config config/leagues.yaml --series bay-area-usac-hub-2026",
     "worker:inventory": "node apps/worker/src/index.js inventory --config config/leagues.yaml --series bay-area-usac-hub-2026",
-    "worker:run": "node apps/worker/src/index.js run --config config/leagues.yaml --series bay-area-usac-hub-2026"
+    "worker:run": "node apps/worker/src/index.js run --config config/leagues.yaml --series bay-area-usac-hub-2026",
+    "worker:process-queue": "node apps/worker/src/index.js process-queue --limit 1",
+    "worker:process-manual-refresh-queue": "node apps/worker/src/index.js process-manual-refresh-queue --limit 1"
   },
   "dependencies": {
     "express": "^5.2.1",

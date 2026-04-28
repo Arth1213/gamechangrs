@@ -635,6 +635,16 @@ async function createSeriesOperationRequest(input) {
         throw error;
       }
 
+      const operationAvailability = getSeriesOperationAvailability(operationKey);
+      if (!operationAvailability.queueEnabled) {
+        const error = new Error(
+          operationAvailability.supportNote
+            || `${getSeriesOperationLabel(operationKey)} is not available yet.`
+        );
+        error.statusCode = 409;
+        throw error;
+      }
+
       const existingPending = await fetchOne(
         client,
         `
@@ -681,7 +691,7 @@ async function createSeriesOperationRequest(input) {
           nullableText(input.body?.requestNote),
           nullableText(input.actorUserId),
           nullableText(input.actorEmail) || nullableText(input.actorUserId) || "series-admin",
-          "deferred",
+          normalizeText(operationAvailability.runnerMode) || "deferred",
         ]
       );
 
@@ -728,6 +738,28 @@ async function createManualRefreshRequest(input) {
       }
 
       const normalized = normalizeMatchUrl(input.body?.matchUrl, context.row.expected_league_name);
+      const existingPending = await fetchOne(
+        client,
+        `
+          select id, status, requested_at
+          from manual_match_refresh_request
+          where series_source_config_id = $1
+            and request_source_match_id = $2
+            and status in ('pending', 'processing')
+          order by requested_at desc, id desc
+          limit 1
+        `,
+        [context.row.id, normalized.sourceMatchId]
+      );
+
+      if (existingPending) {
+        const error = new Error(
+          `A refresh request for match ${normalized.sourceMatchId} is already ${normalizeText(existingPending.status) || "pending"}.`
+        );
+        error.statusCode = 409;
+        throw error;
+      }
+
       const existingMatch = await fetchOne(
         client,
         `
@@ -772,7 +804,10 @@ async function createManualRefreshRequest(input) {
           normalized.normalizedUrl,
           normalized.sourceMatchId,
           nullableText(input.body?.reason),
-          nullableText(input.body?.requestedBy) || "phase8-api",
+          nullableText(input.actorEmail)
+            || nullableText(input.actorUserId)
+            || nullableText(input.body?.requestedBy)
+            || "series-admin",
           "pending",
         ]
       );
@@ -798,7 +833,7 @@ async function createManualRefreshRequest(input) {
       return {
         message: input.dryRun
           ? "Dry-run refresh request validated."
-          : "Manual refresh request created.",
+          : "Manual refresh request queued.",
         request: {
           requestId: toInteger(requestRow.id),
           normalizedMatchUrl: normalized.normalizedUrl,
@@ -1292,6 +1327,7 @@ async function getMatchOpsPayloadWithClient(client, context, input) {
           mmrr.requested_at,
           mmrr.status,
           mmrr.resolution_note,
+          mmrr.processed_at,
           m.source_match_id as linked_source_match_id
         from manual_match_refresh_request mmrr
         left join match m on m.id = mmrr.match_id
@@ -1312,7 +1348,24 @@ async function getMatchOpsPayloadWithClient(client, context, input) {
     requestedAt: row.requested_at,
     status: normalizeText(row.status),
     resolutionNote: normalizeText(row.resolution_note),
+    processedAt: row.processed_at || null,
   }));
+
+  const refreshSummary = await fetchOne(
+    client,
+    `
+      select
+        count(*)::int as total_requests,
+        count(*) filter (where status = 'pending')::int as pending_requests,
+        count(*) filter (where status = 'processing')::int as processing_requests,
+        count(*) filter (where status = 'completed')::int as completed_requests,
+        count(*) filter (where status = 'failed')::int as failed_requests,
+        max(requested_at) as latest_requested_at
+      from manual_match_refresh_request
+      where series_source_config_id = $1
+    `,
+    [context.row.id]
+  );
 
   const operationsSummary = await fetchOne(
     client,
@@ -1342,6 +1395,7 @@ async function getMatchOpsPayloadWithClient(client, context, input) {
       [context.row.id]
     )
   ).rows.map((row) => ({
+    ...getSeriesOperationAvailability(row.operation_key),
     requestId: normalizeText(row.id),
     operationKey: normalizeText(row.operation_key),
     operationLabel: getSeriesOperationLabel(row.operation_key),
@@ -1384,6 +1438,15 @@ async function getMatchOpsPayloadWithClient(client, context, input) {
       failedRequests: toInteger(operationsSummary?.failed_requests) || 0,
       latestRequestedAt: operationsSummary?.latest_requested_at || null,
     },
+    refreshSummary: {
+      totalRequests: toInteger(refreshSummary?.total_requests) || 0,
+      pendingRequests: toInteger(refreshSummary?.pending_requests) || 0,
+      processingRequests: toInteger(refreshSummary?.processing_requests) || 0,
+      completedRequests: toInteger(refreshSummary?.completed_requests) || 0,
+      failedRequests: toInteger(refreshSummary?.failed_requests) || 0,
+      latestRequestedAt: refreshSummary?.latest_requested_at || null,
+    },
+    availableOperations: getSeriesOperationCatalog(),
     operationRequests,
     matches,
     recentRequests: requests,
@@ -1406,6 +1469,49 @@ function getSeriesOperationLabel(value) {
   }
 
   return normalized || "Series operation";
+}
+
+function getSeriesOperationAvailability(value) {
+  const normalized = normalizeSeriesOperationKey(value);
+
+  if (normalized === "discover_new_matches") {
+    return {
+      operationKey: normalized,
+      operationLabel: getSeriesOperationLabel(normalized),
+      supportStatus: "ready",
+      queueEnabled: true,
+      runnerMode: "worker",
+      supportNote:
+        "Runs live division discovery plus match inventory persistence through the worker-backed queue.",
+    };
+  }
+
+  if (normalized === "recompute_series") {
+    return {
+      operationKey: normalized,
+      operationLabel: getSeriesOperationLabel(normalized),
+      supportStatus: "deferred",
+      queueEnabled: false,
+      runnerMode: "deferred",
+      supportNote:
+        "Deferred until full scorecard/commentary persistence exists. Do not treat recompute as available yet.",
+    };
+  }
+
+  return {
+    operationKey: normalized,
+    operationLabel: getSeriesOperationLabel(normalized),
+    supportStatus: "unknown",
+    queueEnabled: false,
+    runnerMode: "deferred",
+    supportNote: "Operation support has not been defined.",
+  };
+}
+
+function getSeriesOperationCatalog() {
+  return ["discover_new_matches", "recompute_series"].map((operationKey) =>
+    getSeriesOperationAvailability(operationKey)
+  );
 }
 
 async function assignReportProfile(client, seriesId, reportProfileKey) {

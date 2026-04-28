@@ -54,6 +54,7 @@ import {
   CricketAdminMatchOpsMatch,
   CricketAdminMatchOpsResponse,
   CricketAdminMatchSelectionOverride,
+  CricketAdminSeriesOperationAvailability,
   CricketAdminSeriesOperationKey,
   CricketAdminSeriesAccessRequest,
   CricketAdminSeriesItem,
@@ -247,7 +248,7 @@ function getStatusBadgeClass(status?: string | null) {
     return "border-border/80 bg-card/70 text-foreground";
   }
 
-  if (["computed", "complete", "completed", "ok", "ready", "success", "active"].includes(normalized)) {
+  if (["computed", "complete", "completed", "ok", "ready", "success", "active", "good"].includes(normalized)) {
     return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
   }
 
@@ -346,13 +347,115 @@ function getSeriesOperationLabel(operationKey?: string | null) {
   return "Series operation";
 }
 
-function getSeriesOperationHelperText(operationKey: CricketAdminSeriesOperationKey) {
+function getSeriesOperationSupportLabel(status?: string | null) {
+  const normalized = status?.trim().toLowerCase();
+
+  if (normalized === "ready") {
+    return "Ready";
+  }
+
+  if (normalized === "deferred") {
+    return "Deferred";
+  }
+
+  return "Unknown";
+}
+
+function getSeriesOperationSupportBadgeClass(status?: string | null) {
+  const normalized = status?.trim().toLowerCase();
+
+  if (normalized === "ready") {
+    return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+  }
+
+  if (normalized === "deferred") {
+    return "border-amber-500/25 bg-amber-500/10 text-amber-300";
+  }
+
+  return "border-border/80 bg-card/70 text-foreground";
+}
+
+function getSeriesOperationHelperText(
+  operationKey: CricketAdminSeriesOperationKey,
+  supportNote?: string | null,
+) {
+  const note = supportNote?.trim();
+  if (note) {
+    return note;
+  }
+
   if (operationKey === "discover_new_matches") {
     return "Queue a protected request to discover and ingest newly available matches for this series.";
   }
 
   return "Queue a protected request to rerun the series-level compute path after upstream fixes or tuning changes.";
 }
+
+function getSeriesOperationModeLabel(runnerMode?: string | null) {
+  const normalized = runnerMode?.trim().toLowerCase();
+
+  if (normalized === "worker") {
+    return "Worker-backed";
+  }
+
+  if (normalized === "manual") {
+    return "Manual";
+  }
+
+  if (normalized === "deferred") {
+    return "Deferred";
+  }
+
+  return runnerMode?.trim() || "-";
+}
+
+function formatRequestDuration(startedAt?: string | null, finishedAt?: string | null) {
+  if (!startedAt) {
+    return "-";
+  }
+
+  const start = new Date(startedAt);
+  const end = finishedAt ? new Date(finishedAt) : new Date();
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return "-";
+  }
+
+  const totalSeconds = Math.max(0, Math.round((end.getTime() - start.getTime()) / 1000));
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`;
+  }
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes < 60) {
+    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+}
+
+const defaultSeriesOperations: CricketAdminSeriesOperationAvailability[] = [
+  {
+    operationKey: "discover_new_matches",
+    operationLabel: "Pull new matches",
+    supportStatus: "ready",
+    queueEnabled: true,
+    runnerMode: "worker",
+    supportNote:
+      "Runs live division discovery plus match inventory persistence through the worker-backed queue.",
+  },
+  {
+    operationKey: "recompute_series",
+    operationLabel: "Recompute series",
+    supportStatus: "deferred",
+    queueEnabled: false,
+    runnerMode: "deferred",
+    supportNote:
+      "Deferred until full scorecard/commentary persistence exists. Do not treat recompute as available yet.",
+  },
+];
 
 function createSetupForm(setup: CricketAdminSetupResponse): SetupFormState {
   return {
@@ -689,15 +792,74 @@ const AnalyticsAdmin = () => {
   const overriddenSeriesMatches = matchOps?.summary?.overriddenMatches ?? 0;
   const pendingSeriesOps = matchOps?.summary?.pendingOps ?? 0;
   const loadedMatchCount = matchOps?.matches?.length ?? 0;
-  const recentRefreshCount = matchOps?.recentRequests?.length ?? 0;
-  const latestRefreshRequest = matchOps?.recentRequests?.[0] ?? null;
+  const refreshRequests = matchOps?.recentRequests ?? [];
+  const recentRefreshCount = refreshRequests.length;
+  const totalRefreshRequests = matchOps?.refreshSummary?.totalRequests ?? 0;
+  const pendingRefreshRequests = matchOps?.refreshSummary?.pendingRequests ?? 0;
+  const processingRefreshRequests = matchOps?.refreshSummary?.processingRequests ?? 0;
+  const completedRefreshRequests = matchOps?.refreshSummary?.completedRequests ?? 0;
+  const failedRefreshRequests = matchOps?.refreshSummary?.failedRequests ?? 0;
+  const latestRefreshRequestedAt = matchOps?.refreshSummary?.latestRequestedAt ?? null;
+  const latestRefreshRequest = refreshRequests[0] ?? null;
+  const activeRefreshRequest = useMemo(
+    () => refreshRequests.find((request) => {
+      const status = request.status?.trim().toLowerCase();
+      return ["pending", "processing"].includes(status || "");
+    }) ?? null,
+    [refreshRequests]
+  );
+  const latestResolvedRefreshRequest = useMemo(
+    () => refreshRequests.find((request) => {
+      const status = request.status?.trim().toLowerCase();
+      return Boolean(request.processedAt) || ["completed", "failed", "canceled"].includes(status || "");
+    }) ?? null,
+    [refreshRequests]
+  );
   const totalSeriesOperationRequests = matchOps?.operationsSummary?.totalRequests ?? 0;
   const pendingSeriesOperationRequests = matchOps?.operationsSummary?.pendingRequests ?? 0;
   const processingSeriesOperationRequests = matchOps?.operationsSummary?.processingRequests ?? 0;
   const completedSeriesOperationRequests = matchOps?.operationsSummary?.completedRequests ?? 0;
   const failedSeriesOperationRequests = matchOps?.operationsSummary?.failedRequests ?? 0;
   const latestSeriesOperationRequestedAt = matchOps?.operationsSummary?.latestRequestedAt ?? null;
-  const latestSeriesOperationRequest = matchOps?.operationRequests?.[0] ?? null;
+  const seriesOperationRequests = matchOps?.operationRequests ?? [];
+  const latestSeriesOperationRequest = seriesOperationRequests[0] ?? null;
+  const availableSeriesOperations = (matchOps?.availableOperations?.length
+    ? matchOps.availableOperations
+    : defaultSeriesOperations) as CricketAdminSeriesOperationAvailability[];
+  const operationAvailabilityByKey = useMemo(
+    () => new Map(
+      availableSeriesOperations
+        .map((operation) => [operation.operationKey, operation] as const)
+        .filter((entry): entry is readonly [string, CricketAdminSeriesOperationAvailability] => Boolean(entry[0]))
+    ),
+    [availableSeriesOperations]
+  );
+  const activeSeriesOperationRequestByKey = useMemo(() => {
+    const next = new Map<string, (typeof seriesOperationRequests)[number]>();
+    for (const request of seriesOperationRequests) {
+      const key = request.operationKey?.trim().toLowerCase();
+      const status = request.requestStatus?.trim().toLowerCase();
+      if (!key || !status || !["pending", "processing"].includes(status) || next.has(key)) {
+        continue;
+      }
+      next.set(key, request);
+    }
+    return next;
+  }, [seriesOperationRequests]);
+  const latestResolvedSeriesOperationRequest = useMemo(
+    () => seriesOperationRequests.find((request) => {
+      const status = request.requestStatus?.trim().toLowerCase();
+      return Boolean(request.finishedAt) || ["completed", "failed", "canceled"].includes(status || "");
+    }) ?? null,
+    [seriesOperationRequests]
+  );
+  const activeSeriesOperationRequest = useMemo(
+    () => seriesOperationRequests.find((request) => {
+      const status = request.requestStatus?.trim().toLowerCase();
+      return ["pending", "processing"].includes(status || "");
+    }) ?? null,
+    [seriesOperationRequests]
+  );
   const computedCoveragePercent = totalSeriesMatches > 0
     ? Math.round((computedSeriesMatches / totalSeriesMatches) * 100)
     : 0;
@@ -747,6 +909,24 @@ const AnalyticsAdmin = () => {
       : failedSeriesOperationRequests > 0
         ? "risk"
         : completedSeriesOperationRequests > 0
+          ? "good"
+          : "pending";
+  const refreshQueueLabel = processingRefreshRequests > 0
+    ? "Processing"
+    : pendingRefreshRequests > 0
+      ? "Queued"
+      : failedRefreshRequests > 0
+        ? "Needs review"
+        : completedRefreshRequests > 0
+          ? "Completed"
+          : "Idle";
+  const refreshQueueTone = processingRefreshRequests > 0
+    ? "warning"
+    : pendingRefreshRequests > 0
+      ? "watch"
+      : failedRefreshRequests > 0
+        ? "risk"
+        : completedRefreshRequests > 0
           ? "good"
           : "pending";
 
@@ -1634,7 +1814,7 @@ const AnalyticsAdmin = () => {
         },
       );
 
-      const message = response.message || "Manual refresh request created.";
+      const message = response.message || "Manual refresh request queued.";
       setRefreshStatus("success");
       setRefreshMessage(message);
       setRefreshForm({
@@ -1644,7 +1824,7 @@ const AnalyticsAdmin = () => {
       setMatchOpsReloadKey((current) => current + 1);
 
       toast({
-        title: "Refresh request created",
+        title: "Refresh request queued",
         description: message,
       });
     } catch (error) {
@@ -1662,6 +1842,33 @@ const AnalyticsAdmin = () => {
 
   const handleCreateSeriesOperationRequest = async (operationKey: CricketAdminSeriesOperationKey) => {
     if (!selectedSeries?.configKey || !accessToken) {
+      return;
+    }
+
+    const operationAvailability = operationAvailabilityByKey.get(operationKey);
+    const activeRequest = activeSeriesOperationRequestByKey.get(operationKey);
+
+    if (operationAvailability?.queueEnabled === false) {
+      const message = operationAvailability.supportNote || `${getSeriesOperationLabel(operationKey)} is not available yet.`;
+      setSeriesOperationStatus("error");
+      setSeriesOperationError(message);
+      toast({
+        title: `${getSeriesOperationLabel(operationKey)} deferred`,
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (activeRequest) {
+      const message = `${getSeriesOperationLabel(operationKey)} already has an active ${activeRequest.requestStatus || "pending"} request for this series.`;
+      setSeriesOperationStatus("error");
+      setSeriesOperationError(message);
+      toast({
+        title: `${getSeriesOperationLabel(operationKey)} already active`,
+        description: message,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -4351,32 +4558,73 @@ const AnalyticsAdmin = () => {
                           ) : null}
 
                           <div className="grid gap-3 md:grid-cols-2">
-                            {(["discover_new_matches", "recompute_series"] as CricketAdminSeriesOperationKey[]).map((operationKey) => (
-                              <div
-                                key={operationKey}
-                                className="rounded-2xl border border-border/70 bg-background/55 p-4"
-                              >
-                                <p className="text-sm font-semibold text-foreground">
-                                  {getSeriesOperationLabel(operationKey)}
-                                </p>
-                                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                                  {getSeriesOperationHelperText(operationKey)}
-                                </p>
-                                <Button
-                                  className="mt-4 w-full"
-                                  variant={operationKey === "recompute_series" ? "outline" : "default"}
-                                  disabled={
-                                    seriesOperationStatus === "saving"
-                                    || !scheduledRefreshAllowed
-                                  }
-                                  onClick={() => void handleCreateSeriesOperationRequest(operationKey)}
+                            {availableSeriesOperations.map((operation) => {
+                              const operationKey = (operation.operationKey || "discover_new_matches") as CricketAdminSeriesOperationKey;
+                              const activeRequest = activeSeriesOperationRequestByKey.get(operationKey);
+                              const isQueueEnabled = operation.queueEnabled !== false;
+                              const isSavingCurrent =
+                                seriesOperationStatus === "saving" && activeSeriesOperationKey === operationKey;
+                              const buttonLabel = isSavingCurrent
+                                ? "Queuing..."
+                                : activeRequest?.requestStatus === "processing"
+                                  ? "Processing"
+                                  : activeRequest
+                                    ? "Already queued"
+                                    : isQueueEnabled
+                                      ? getSeriesOperationLabel(operationKey)
+                                      : "Deferred";
+
+                              return (
+                                <div
+                                  key={operationKey}
+                                  className="rounded-2xl border border-border/70 bg-background/55 p-4"
                                 >
-                                  {seriesOperationStatus === "saving" && activeSeriesOperationKey === operationKey
-                                    ? "Queuing..."
-                                    : getSeriesOperationLabel(operationKey)}
-                                </Button>
-                              </div>
-                            ))}
+                                  <div className="flex items-start justify-between gap-3">
+                                    <p className="text-sm font-semibold text-foreground">
+                                      {operation.operationLabel || getSeriesOperationLabel(operationKey)}
+                                    </p>
+                                    <Badge className={getSeriesOperationSupportBadgeClass(operation.supportStatus)}>
+                                      {getSeriesOperationSupportLabel(operation.supportStatus)}
+                                    </Badge>
+                                  </div>
+
+                                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                    {getSeriesOperationHelperText(operationKey, operation.supportNote)}
+                                  </p>
+
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                                      {getSeriesOperationModeLabel(operation.runnerMode)}
+                                    </Badge>
+                                    {activeRequest ? (
+                                      <Badge className={getStatusBadgeClass(activeRequest.requestStatus)}>
+                                        {activeRequest.requestStatus || "pending"}
+                                      </Badge>
+                                    ) : null}
+                                  </div>
+
+                                  {activeRequest?.createdAt ? (
+                                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                      Active request queued {formatDateTime(activeRequest.createdAt)}.
+                                    </p>
+                                  ) : null}
+
+                                  <Button
+                                    className="mt-4 w-full"
+                                    variant={isQueueEnabled ? "default" : "outline"}
+                                    disabled={
+                                      seriesOperationStatus === "saving"
+                                      || !scheduledRefreshAllowed
+                                      || !isQueueEnabled
+                                      || Boolean(activeRequest)
+                                    }
+                                    onClick={() => void handleCreateSeriesOperationRequest(operationKey)}
+                                  >
+                                    {buttonLabel}
+                                  </Button>
+                                </div>
+                              );
+                            })}
                           </div>
 
                           {!scheduledRefreshAllowed ? (
@@ -4395,37 +4643,100 @@ const AnalyticsAdmin = () => {
                           </p>
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                           <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
                             <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                              Latest series request
+                              Latest worker run
                             </p>
                             <p className="mt-3 text-sm font-semibold text-foreground">
-                              {latestSeriesOperationRequest
-                                ? latestSeriesOperationRequest.operationLabel || getSeriesOperationLabel(latestSeriesOperationRequest.operationKey)
-                                : "No series-wide requests yet"}
+                              {latestResolvedSeriesOperationRequest
+                                ? latestResolvedSeriesOperationRequest.operationLabel || getSeriesOperationLabel(latestResolvedSeriesOperationRequest.operationKey)
+                                : "No completed worker runs yet"}
                             </p>
                             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                              {latestSeriesOperationRequest?.createdAt
-                                ? formatDateTime(latestSeriesOperationRequest.createdAt)
-                                : "Queue the first protected request from the control center."}
+                              {latestResolvedSeriesOperationRequest?.finishedAt
+                                ? `Finished ${formatDateTime(latestResolvedSeriesOperationRequest.finishedAt)}`
+                                : "Process the first worker-backed request to populate live run history."}
                             </p>
+                            {latestResolvedSeriesOperationRequest ? (
+                              <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <Badge className={getStatusBadgeClass(latestResolvedSeriesOperationRequest.requestStatus)}>
+                                  {latestResolvedSeriesOperationRequest.requestStatus || "completed"}
+                                </Badge>
+                                <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                                  {formatRequestDuration(
+                                    latestResolvedSeriesOperationRequest.startedAt,
+                                    latestResolvedSeriesOperationRequest.finishedAt
+                                  )}
+                                </Badge>
+                              </div>
+                            ) : null}
+                            {latestResolvedSeriesOperationRequest?.resultSummary ? (
+                              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                {latestResolvedSeriesOperationRequest.resultSummary}
+                              </p>
+                            ) : null}
                           </div>
 
                           <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
                             <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                              Latest refresh
+                              Current queue state
                             </p>
                             <p className="mt-3 text-sm font-semibold text-foreground">
-                              {latestRefreshRequest
-                                ? `Match ${latestRefreshRequest.linkedSourceMatchId || latestRefreshRequest.requestSourceMatchId || "-"}`
-                                : "No refresh requests yet"}
+                              {activeSeriesOperationRequest
+                                ? activeSeriesOperationRequest.operationLabel || getSeriesOperationLabel(activeSeriesOperationRequest.operationKey)
+                                : "Queue idle"}
                             </p>
                             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                              {latestRefreshRequest?.requestedAt
-                                ? formatDateTime(latestRefreshRequest.requestedAt)
-                                : "Create the first refresh request from the control below."}
+                              {activeSeriesOperationRequest?.createdAt
+                                ? `Queued ${formatDateTime(activeSeriesOperationRequest.createdAt)}`
+                                : latestSeriesOperationRequestedAt
+                                  ? `Last request ${formatDateTime(latestSeriesOperationRequestedAt)}`
+                                  : "No active pending or processing series-wide requests."}
                             </p>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <Badge className={getStatusBadgeClass(activeSeriesOperationRequest?.requestStatus || seriesOperationQueueTone)}>
+                                {activeSeriesOperationRequest?.requestStatus || seriesOperationQueueLabel}
+                              </Badge>
+                              <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                                {formatNumber(pendingSeriesOperationRequests + processingSeriesOperationRequests)} active
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                              Refresh queue
+                            </p>
+                            <p className="mt-3 text-sm font-semibold text-foreground">
+                              {activeRefreshRequest
+                                ? `Match ${activeRefreshRequest.linkedSourceMatchId || activeRefreshRequest.requestSourceMatchId || "-"}`
+                                : latestResolvedRefreshRequest
+                                  ? `Match ${latestResolvedRefreshRequest.linkedSourceMatchId || latestResolvedRefreshRequest.requestSourceMatchId || "-"}`
+                                  : "Queue idle"}
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                              {activeRefreshRequest?.requestedAt
+                                ? `Requested ${formatDateTime(activeRefreshRequest.requestedAt)}`
+                                : latestResolvedRefreshRequest?.processedAt
+                                  ? `Finished ${formatDateTime(latestResolvedRefreshRequest.processedAt)}`
+                                  : latestRefreshRequestedAt
+                                    ? `Last request ${formatDateTime(latestRefreshRequestedAt)}`
+                                    : "Queue the first refresh request from the control below."}
+                            </p>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <Badge className={getStatusBadgeClass(activeRefreshRequest?.status || refreshQueueTone)}>
+                                {activeRefreshRequest?.status || refreshQueueLabel}
+                              </Badge>
+                              <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                                {formatNumber(pendingRefreshRequests + processingRefreshRequests)} active
+                              </Badge>
+                            </div>
+                            {latestResolvedRefreshRequest?.resolutionNote ? (
+                              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                {latestResolvedRefreshRequest.resolutionNote}
+                              </p>
+                            ) : null}
                           </div>
                         </div>
 
@@ -4472,13 +4783,54 @@ const AnalyticsAdmin = () => {
                                         Runner mode
                                       </p>
                                       <p className="mt-2 text-sm leading-6 text-foreground">
-                                        {request.runnerMode || "deferred"}
+                                        {getSeriesOperationModeLabel(request.runnerMode)}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                        Started
+                                      </p>
+                                      <p className="mt-2 text-sm leading-6 text-foreground">
+                                        {request.startedAt ? formatDateTime(request.startedAt) : "-"}
+                                      </p>
+                                    </div>
+                                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                        Finished
+                                      </p>
+                                      <p className="mt-2 text-sm leading-6 text-foreground">
+                                        {request.finishedAt ? formatDateTime(request.finishedAt) : "-"}
+                                      </p>
+                                    </div>
+                                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                        Duration
+                                      </p>
+                                      <p className="mt-2 text-sm leading-6 text-foreground">
+                                        {formatRequestDuration(request.startedAt, request.finishedAt)}
+                                      </p>
+                                    </div>
+                                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                        Support
+                                      </p>
+                                      <p className="mt-2 text-sm leading-6 text-foreground">
+                                        {getSeriesOperationSupportLabel(request.supportStatus)}
                                       </p>
                                     </div>
                                   </div>
 
                                   {request.requestNote ? (
                                     <p className="mt-3 text-sm leading-6 text-muted-foreground">{request.requestNote}</p>
+                                  ) : null}
+
+                                  {request.workerRef ? (
+                                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                      Worker ref: {request.workerRef}
+                                    </p>
                                   ) : null}
 
                                   {request.lastWorkerNote ? (
@@ -4506,13 +4858,13 @@ const AnalyticsAdmin = () => {
                           <div className="flex items-center justify-between gap-3">
                             <p className="text-sm font-semibold text-foreground">Recent refresh requests</p>
                             <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
-                              Latest {matchOps ? formatNumber(recentRefreshCount) : "-"}
+                              {matchOps ? formatNumber(totalRefreshRequests || recentRefreshCount) : "-"} total
                             </Badge>
                           </div>
 
-                          {(matchOps?.recentRequests ?? []).length ? (
+                          {refreshRequests.length ? (
                             <div className="space-y-3">
-                              {(matchOps?.recentRequests ?? []).slice(0, 5).map((request) => (
+                              {refreshRequests.slice(0, 5).map((request) => (
                                 <div
                                   key={request.requestId || `${request.requestSourceMatchId}-${request.requestedAt}`}
                                   className="rounded-2xl border border-border/70 bg-background/60 p-4"
@@ -4534,6 +4886,25 @@ const AnalyticsAdmin = () => {
                                   {request.reason ? (
                                     <p className="mt-3 text-sm leading-6 text-muted-foreground">{request.reason}</p>
                                   ) : null}
+
+                                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                        Requested by
+                                      </p>
+                                      <p className="mt-2 text-sm leading-6 text-foreground">
+                                        {request.requestedBy || "-"}
+                                      </p>
+                                    </div>
+                                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                        Processed
+                                      </p>
+                                      <p className="mt-2 text-sm leading-6 text-foreground">
+                                        {request.processedAt ? formatDateTime(request.processedAt) : "-"}
+                                      </p>
+                                    </div>
+                                  </div>
 
                                   <div className="mt-3 flex flex-wrap gap-2">
                                     {request.requestMatchUrl ? (
@@ -4565,12 +4936,13 @@ const AnalyticsAdmin = () => {
                                         </a>
                                       </>
                                     ) : null}
-                                    {request.resolutionNote ? (
-                                      <span className="text-xs text-muted-foreground">
-                                        Resolution: {request.resolutionNote}
-                                      </span>
-                                    ) : null}
                                   </div>
+
+                                  {request.resolutionNote ? (
+                                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                      Resolution: {request.resolutionNote}
+                                    </p>
+                                  ) : null}
                                 </div>
                               ))}
                             </div>
@@ -4616,8 +4988,9 @@ const AnalyticsAdmin = () => {
                         </div>
 
                         <p className="text-sm leading-6 text-muted-foreground">
-                          Use this when one specific match is missing, stale, or needs recompute help. The series-wide
-                          queue now lives above, while automated worker execution is still deferred.
+                          Use this when one specific match is missing or stale. This queues a worker-backed refresh of
+                          the live discovery and inventory path for the series, then relinks the requested source match.
+                          Full scorecard/commentary recompute is still deferred.
                         </p>
 
                         <div className="space-y-3">
@@ -4664,7 +5037,7 @@ const AnalyticsAdmin = () => {
                             onClick={() => void handleCreateRefreshRequest()}
                             disabled={refreshStatus === "saving" || !manualRefreshAllowed}
                           >
-                            {refreshStatus === "saving" ? "Creating request..." : "Create refresh request"}
+                            {refreshStatus === "saving" ? "Queueing request..." : "Queue refresh request"}
                           </Button>
                           <Button
                             variant="outline"

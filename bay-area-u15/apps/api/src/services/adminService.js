@@ -1103,7 +1103,12 @@ async function getMatchOpsPayloadWithClient(client, context, input) {
         count(*)::int as total_matches,
         count(*) filter (where mrs.reconciliation_status = 'warn')::int as warning_matches,
         count(*) filter (where mrs.admin_selection_override <> 'auto')::int as overridden_matches,
-        count(*) filter (where mrs.analytics_status = 'computed')::int as computed_matches
+        count(*) filter (where mrs.analytics_status = 'computed')::int as computed_matches,
+        count(*) filter (
+          where coalesce(mrs.needs_rescrape, false) = true
+             or coalesce(mrs.needs_reparse, false) = true
+             or coalesce(mrs.needs_recompute, false) = true
+        )::int as pending_ops
       from match m
       left join match_refresh_state mrs on mrs.match_id = m.id
       where m.series_id = $1
@@ -1225,6 +1230,7 @@ async function getMatchOpsPayloadWithClient(client, context, input) {
       warningMatches: toInteger(summary?.warning_matches) || 0,
       overriddenMatches: toInteger(summary?.overridden_matches) || 0,
       computedMatches: toInteger(summary?.computed_matches) || 0,
+      pendingOps: toInteger(summary?.pending_ops) || 0,
     },
     matches,
     recentRequests: requests,

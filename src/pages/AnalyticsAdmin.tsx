@@ -645,6 +645,47 @@ const AnalyticsAdmin = () => {
     () => pendingViewerAccessRequests.filter((request) => getPendingRequestReadiness(request.requestType, request.requestedUserId) === "waiting").length,
     [pendingViewerAccessRequests]
   );
+  const totalSeriesMatches = matchOps?.summary?.totalMatches ?? 0;
+  const computedSeriesMatches = matchOps?.summary?.computedMatches ?? 0;
+  const warningSeriesMatches = matchOps?.summary?.warningMatches ?? 0;
+  const overriddenSeriesMatches = matchOps?.summary?.overriddenMatches ?? 0;
+  const pendingSeriesOps = matchOps?.summary?.pendingOps ?? 0;
+  const loadedMatchCount = matchOps?.matches?.length ?? 0;
+  const recentRefreshCount = matchOps?.recentRequests?.length ?? 0;
+  const latestRefreshRequest = matchOps?.recentRequests?.[0] ?? null;
+  const computedCoveragePercent = totalSeriesMatches > 0
+    ? Math.round((computedSeriesMatches / totalSeriesMatches) * 100)
+    : 0;
+  const operationsHealthLabel = pendingSeriesOps > 0
+    ? "Action needed"
+    : warningSeriesMatches > 0
+      ? "Review warnings"
+      : totalSeriesMatches > 0 && computedSeriesMatches === totalSeriesMatches
+        ? "Current"
+        : computedSeriesMatches > 0
+          ? "Partially computed"
+          : "Pending";
+  const operationsHealthTone = pendingSeriesOps > 0
+    ? "watch"
+    : warningSeriesMatches > 0
+      ? "watch"
+      : totalSeriesMatches > 0 && computedSeriesMatches === totalSeriesMatches
+        ? "good"
+        : "risk";
+  const reviewQueueMatches = useMemo(
+    () => (matchOps?.matches ?? [])
+      .filter((match) => {
+        const pendingOpsCount = getPendingOpsCount(match);
+        return (
+          pendingOpsCount > 0
+          || match.reconciliationStatus === "warn"
+          || Boolean(match.lastErrorMessage)
+          || (match.adminSelectionOverride && match.adminSelectionOverride !== "auto")
+        );
+      })
+      .slice(0, 3),
+    [matchOps]
+  );
 
   useEffect(() => {
     if (!accessToken) {
@@ -3998,62 +4039,289 @@ const AnalyticsAdmin = () => {
 
                 <Card className="order-7 border-border/80 bg-card/85 shadow-xl" id="match-ops">
                   <CardHeader>
-                    <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                       <div className="space-y-2">
-                        <CardTitle className="font-display text-2xl text-foreground">Optional match operations</CardTitle>
-                        <CardDescription>Manual refresh requests and per-match overrides only.</CardDescription>
+                        <CardTitle className="font-display text-2xl text-foreground">Series operations</CardTitle>
+                        <CardDescription>
+                          Live operating view for refresh activity, review queues, and match-level selector overrides.
+                        </CardDescription>
                       </div>
 
-                      <Button
-                        variant="outline"
-                        onClick={() => setMatchOpsReloadKey((current) => current + 1)}
-                        disabled={matchOpsStatus === "loading"}
-                      >
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Reload jobs
-                      </Button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge className={getStatusBadgeClass(operationsHealthTone)}>
+                          {operationsHealthLabel}
+                        </Badge>
+                        <Button
+                          variant="outline"
+                          onClick={() => setMatchOpsReloadKey((current) => current + 1)}
+                          disabled={matchOpsStatus === "loading"}
+                        >
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Reload operations
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
 
                   <CardContent className="space-y-5">
-                    <div className="grid gap-3 md:grid-cols-4">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                       <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
                         <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                          Total matches
+                          Coverage
                         </p>
-                        <div className="mt-3 font-display text-4xl text-foreground">
-                          {formatNumber(matchOps?.summary?.totalMatches)}
+                        <div className="mt-3 font-display text-3xl text-foreground">
+                          {matchOps ? `${formatNumber(computedSeriesMatches)} / ${formatNumber(totalSeriesMatches)}` : "-"}
                         </div>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          {matchOps
+                            ? `${formatNumber(computedCoveragePercent)}% of tracked matches are currently computed.`
+                            : "Loading live series coverage."}
+                        </p>
                       </div>
                       <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
                         <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                          Computed matches
+                          Pending ops
                         </p>
-                        <div className="mt-3 font-display text-4xl text-foreground">
-                          {formatNumber(matchOps?.summary?.computedMatches)}
+                        <div className="mt-3 font-display text-3xl text-foreground">
+                          {matchOps ? formatNumber(pendingSeriesOps) : "-"}
                         </div>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          Matches currently flagged for rescrape, reparse, or recompute.
+                        </p>
                       </div>
                       <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
                         <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
                           Warning matches
                         </p>
-                        <div className="mt-3 font-display text-4xl text-foreground">
-                          {formatNumber(matchOps?.summary?.warningMatches)}
+                        <div className="mt-3 font-display text-3xl text-foreground">
+                          {matchOps ? formatNumber(warningSeriesMatches) : "-"}
                         </div>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          Computed rows still carrying reconciliation warnings.
+                        </p>
                       </div>
                       <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
                         <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                          Overrides
+                          Selector overrides
                         </p>
-                        <div className="mt-3 font-display text-4xl text-foreground">
-                          {formatNumber(matchOps?.summary?.overriddenMatches)}
+                        <div className="mt-3 font-display text-3xl text-foreground">
+                          {matchOps ? formatNumber(overriddenSeriesMatches) : "-"}
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          Matches with a force-include or force-exclude decision applied.
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                        <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                          Recent refreshes
+                        </p>
+                        <div className="mt-3 font-display text-3xl text-foreground">
+                          {matchOps ? formatNumber(recentRefreshCount) : "-"}
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          {latestRefreshRequest?.requestedAt
+                            ? `Latest request ${formatDateTime(latestRefreshRequest.requestedAt)}.`
+                            : "No manual refresh activity recorded yet."}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
+                        <div className="flex items-center gap-2">
+                          <Database className="h-4 w-4 text-cyan-200" />
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                            Operations control center
+                          </p>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-foreground">Manual refresh</p>
+                                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                  Single-match refresh requests are live in this console.
+                                </p>
+                              </div>
+                              <Badge className={getStatusBadgeClass(manualRefreshAllowed ? "active" : "blocked")}>
+                                {manualRefreshAllowed ? "Enabled" : "Plan locked"}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-foreground">Scheduled refresh</p>
+                                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                  Entitlement is visible here, but the trigger surface is still deferred.
+                                </p>
+                              </div>
+                              <Badge className={getStatusBadgeClass(subscriptionSummary?.entitlements?.scheduledRefreshEnabled ? "active" : "pending")}>
+                                {subscriptionSummary?.entitlements?.scheduledRefreshEnabled ? "Entitled" : "Not included"}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-foreground">Full-series pull</p>
+                                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                  Intentionally deferred until the protected worker control plane is hardened.
+                                </p>
+                              </div>
+                              <Badge className={getStatusBadgeClass("pending")}>
+                                Deferred
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-foreground">Loaded review queue</p>
+                                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                  Current page snapshot of the live queue after the active search and row limit.
+                                </p>
+                              </div>
+                              <Badge className={getStatusBadgeClass(reviewQueueMatches.length > 0 ? "warning" : "active")}>
+                                {loadedMatchCount} loaded
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
+                        <div className="flex items-center gap-2">
+                          <Clock3 className="h-4 w-4 text-cyan-200" />
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                            Latest activity
+                          </p>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                              Latest refresh
+                            </p>
+                            <p className="mt-3 text-sm font-semibold text-foreground">
+                              {latestRefreshRequest
+                                ? `Match ${latestRefreshRequest.linkedSourceMatchId || latestRefreshRequest.requestSourceMatchId || "-"}`
+                                : "No refresh requests yet"}
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                              {latestRefreshRequest?.requestedAt
+                                ? formatDateTime(latestRefreshRequest.requestedAt)
+                                : "Create the first request from the control below."}
+                            </p>
+                          </div>
+
+                          <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                              Review queue focus
+                            </p>
+                            <p className="mt-3 text-sm font-semibold text-foreground">
+                              {reviewQueueMatches.length
+                                ? `${reviewQueueMatches.length} flagged matches in the loaded queue`
+                                : "No flagged matches in the loaded queue"}
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                              Warnings, pending ops, row errors, and selector overrides surface here first.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-semibold text-foreground">Recent refresh requests</p>
+                            <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                              Latest {matchOps ? formatNumber(recentRefreshCount) : "-"}
+                            </Badge>
+                          </div>
+
+                          {(matchOps?.recentRequests ?? []).length ? (
+                            <div className="space-y-3">
+                              {(matchOps?.recentRequests ?? []).slice(0, 5).map((request) => (
+                                <div
+                                  key={request.requestId || `${request.requestSourceMatchId}-${request.requestedAt}`}
+                                  className="rounded-2xl border border-border/70 bg-background/60 p-4"
+                                >
+                                  <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div className="space-y-1">
+                                      <p className="font-semibold text-foreground">
+                                        Match {request.linkedSourceMatchId || request.requestSourceMatchId || "-"}
+                                      </p>
+                                      <p className="text-sm leading-6 text-muted-foreground">
+                                        Requested {formatDateTime(request.requestedAt)}
+                                      </p>
+                                    </div>
+                                    <Badge className={getStatusBadgeClass(request.status)}>
+                                      {request.status || "pending"}
+                                    </Badge>
+                                  </div>
+
+                                  {request.reason ? (
+                                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{request.reason}</p>
+                                  ) : null}
+
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    {request.requestMatchUrl ? (
+                                      <>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
+                                            setRefreshForm({
+                                              matchUrl: request.requestMatchUrl || "",
+                                              reason: request.reason || "",
+                                            });
+                                            setRefreshStatus("idle");
+                                            setRefreshMessage(null);
+                                            setRefreshError(null);
+                                          }}
+                                        >
+                                          Reuse URL
+                                        </Button>
+                                        <a
+                                          href={request.requestMatchUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex items-center gap-1 text-xs font-medium text-cyan-200 transition hover:text-cyan-100"
+                                        >
+                                          Open source URL
+                                          <ExternalLink className="h-3.5 w-3.5" />
+                                        </a>
+                                      </>
+                                    ) : null}
+                                    {request.resolutionNote ? (
+                                      <span className="text-xs text-muted-foreground">
+                                        Resolution: {request.resolutionNote}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="rounded-2xl border border-border/70 bg-background/60 p-4 text-sm leading-7 text-muted-foreground">
+                              No manual refresh requests yet.
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
 
                     {matchOpsStatus === "loading" ? (
                       <div className="space-y-4">
-                        <Skeleton className="h-24 w-full" />
+                        <Skeleton className="h-40 w-full" />
+                        <div className="grid gap-4 xl:grid-cols-2">
+                          <Skeleton className="h-80 w-full" />
+                          <Skeleton className="h-80 w-full" />
+                        </div>
                         <Skeleton className="h-72 w-full" />
                       </div>
                     ) : null}
@@ -4063,21 +4331,26 @@ const AnalyticsAdmin = () => {
                         <div className="flex items-start gap-3">
                           <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
                           <div className="space-y-3">
-                            <p className="font-semibold text-destructive">Live job controls could not be loaded</p>
+                            <p className="font-semibold text-destructive">Series operations could not be loaded</p>
                             <p className="text-sm leading-6 text-destructive/80">{matchOpsError}</p>
                           </div>
                         </div>
                       </div>
                     ) : null}
 
-                    <div className="grid gap-4">
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
                       <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
                         <div className="flex items-center gap-2">
                           <Wrench className="h-4 w-4 text-cyan-200" />
                           <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                            1. Manual refresh requests
+                            Manual refresh request
                           </p>
                         </div>
+
+                        <p className="text-sm leading-6 text-muted-foreground">
+                          Use this when one specific match is missing, stale, or needs recompute help. The series-wide
+                          pull button is intentionally deferred to the next control-plane slice.
+                        </p>
 
                         <div className="space-y-3">
                           <div className="space-y-2">
@@ -4144,72 +4417,6 @@ const AnalyticsAdmin = () => {
                             Manual refresh is disabled by the current entity plan.
                           </div>
                         ) : null}
-
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2">
-                              <Clock3 className="h-4 w-4 text-cyan-200" />
-                              <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                                Recent requests
-                              </p>
-                            </div>
-                            <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
-                              Latest {(matchOps?.recentRequests ?? []).length}
-                            </Badge>
-                          </div>
-
-                          {(matchOps?.recentRequests ?? []).length ? (
-                            <div className="space-y-3">
-                              {(matchOps?.recentRequests ?? []).map((request) => (
-                                <div
-                                  key={request.requestId || `${request.requestSourceMatchId}-${request.requestedAt}`}
-                                  className="rounded-2xl border border-border/70 bg-background/60 p-4"
-                                >
-                                  <div className="flex flex-wrap items-start justify-between gap-3">
-                                    <div className="space-y-1">
-                                      <p className="font-semibold text-foreground">
-                                        Match {request.linkedSourceMatchId || request.requestSourceMatchId || "-"}
-                                      </p>
-                                      <p className="text-sm leading-6 text-muted-foreground">
-                                        Requested {formatDateTime(request.requestedAt)}
-                                      </p>
-                                    </div>
-                                    <Badge className={getStatusBadgeClass(request.status)}>
-                                      {request.status || "pending"}
-                                    </Badge>
-                                  </div>
-
-                                  {request.reason ? (
-                                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{request.reason}</p>
-                                  ) : null}
-
-                                  <div className="mt-3 flex flex-wrap gap-2">
-                                    {request.requestMatchUrl ? (
-                                      <a
-                                        href={request.requestMatchUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="inline-flex items-center gap-1 text-xs font-medium text-cyan-200 transition hover:text-cyan-100"
-                                      >
-                                        Open source URL
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                      </a>
-                                    ) : null}
-                                    {request.resolutionNote ? (
-                                      <span className="text-xs text-muted-foreground">
-                                        Resolution: {request.resolutionNote}
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="rounded-2xl border border-border/70 bg-background/60 p-4 text-sm leading-7 text-muted-foreground">
-                              No manual refresh requests yet.
-                            </div>
-                          )}
-                        </div>
                       </div>
 
                       <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-4">
@@ -4218,18 +4425,57 @@ const AnalyticsAdmin = () => {
                             <div className="flex items-center gap-2">
                               <ListChecks className="h-4 w-4 text-cyan-200" />
                               <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                                2. Per-match review and overrides
+                                Match review queue
                               </p>
                             </div>
                             <p className="text-sm leading-6 text-muted-foreground">
-                              Search matches and apply include or exclude overrides.
+                              Search matches, inspect live statuses, and apply include or exclude overrides.
                             </p>
                           </div>
 
                           <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
-                            {(matchOps?.matches ?? []).length} loaded
+                            {loadedMatchCount} loaded
                           </Badge>
                         </div>
+
+                        {reviewQueueMatches.length ? (
+                          <div className="grid gap-3 md:grid-cols-3">
+                            {reviewQueueMatches.map((match) => {
+                              const pendingOpsCount = getPendingOpsCount(match);
+                              return (
+                                <div
+                                  key={match.matchId || `${match.sourceMatchId}-${match.matchDate}-review`}
+                                  className="rounded-2xl border border-border/70 bg-background/60 p-4"
+                                >
+                                  <p className="text-sm font-semibold text-foreground">
+                                    {match.matchTitle || `Match ${match.matchId || "-"}`}
+                                  </p>
+                                  <p className="mt-2 text-xs leading-6 text-muted-foreground">
+                                    {match.divisionLabel || "Division unavailable"}
+                                    {match.sourceMatchId ? ` · source ${match.sourceMatchId}` : ""}
+                                  </p>
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    {pendingOpsCount ? (
+                                      <Badge className="border-amber-500/25 bg-amber-500/10 text-amber-300">
+                                        {pendingOpsCount} pending op{pendingOpsCount === 1 ? "" : "s"}
+                                      </Badge>
+                                    ) : null}
+                                    {match.reconciliationStatus === "warn" ? (
+                                      <Badge className="border-amber-500/25 bg-amber-500/10 text-amber-300">
+                                        Reconciliation warning
+                                      </Badge>
+                                    ) : null}
+                                    {match.adminSelectionOverride && match.adminSelectionOverride !== "auto" ? (
+                                      <Badge className={getOverrideBadgeClass(match.adminSelectionOverride)}>
+                                        {getOverrideLabel(match.adminSelectionOverride)}
+                                      </Badge>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
 
                         <form
                           className="grid gap-3 md:grid-cols-[1fr_160px_auto]"
@@ -4476,29 +4722,36 @@ const AnalyticsAdmin = () => {
                     <div className="flex flex-col gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 md:flex-row md:items-start md:justify-between">
                       <div className="space-y-1 text-sm leading-7 text-muted-foreground">
                         <p>
-                          This section is intentionally narrow: manual refresh requests and per-match overrides are live
-                          here, while scheduler history and worker-run auditing stay outside this page for now.
+                          This page is the live operations surface for single-match refresh and review. Series-wide
+                          pull controls, scheduler actions, and durable worker audit history stay in the next
+                          control-plane slice.
                         </p>
                       </div>
 
-                      <div className="grid gap-2 sm:grid-cols-3">
+                      <div className="grid gap-2 sm:grid-cols-4">
                         <div className="rounded-xl border border-border/70 bg-background/60 p-3">
                           <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                             Live now
                           </p>
-                          <p className="mt-2 text-sm text-foreground">Manual refresh requests</p>
+                          <p className="mt-2 text-sm text-foreground">Single-match refresh</p>
                         </div>
                         <div className="rounded-xl border border-border/70 bg-background/60 p-3">
                           <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                             Live now
                           </p>
-                          <p className="mt-2 text-sm text-foreground">Per-match selection overrides</p>
+                          <p className="mt-2 text-sm text-foreground">Review queue visibility</p>
                         </div>
                         <div className="rounded-xl border border-border/70 bg-background/60 p-3">
                           <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                            Deferred
+                            Live now
                           </p>
-                          <p className="mt-2 text-sm text-foreground">Scheduler and run history</p>
+                          <p className="mt-2 text-sm text-foreground">Per-match overrides</p>
+                        </div>
+                        <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                            Next slice
+                          </p>
+                          <p className="mt-2 text-sm text-foreground">Series-wide pull and scheduler</p>
                         </div>
                       </div>
                     </div>

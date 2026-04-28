@@ -553,6 +553,7 @@ export type CricketAdminMatchOpsResponse = {
     warningMatches?: number | null;
     overriddenMatches?: number | null;
     computedMatches?: number | null;
+    pendingOps?: number | null;
   };
   matches?: CricketAdminMatchOpsMatch[];
   recentRequests?: CricketAdminRefreshRequest[];

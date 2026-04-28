@@ -20,7 +20,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import {
   CricketDashboardSummaryResponse,
   CricketPlayerSearchResponse,
@@ -28,6 +37,8 @@ import {
   CricketPlayerSearchResult,
   CricketSeriesCard,
   CricketViewerSeriesResponse,
+  createCricketSeriesAccessRequest,
+  createCricketSeriesAdminAccessRequest,
   fetchCricketDashboardSummary,
   fetchCricketViewerSeries,
   getAnalyticsAdminRoute,
@@ -43,6 +54,7 @@ type SearchStatus = "idle" | "searching" | "success" | "empty" | "error";
 type SummaryStatus = "loading" | "success" | "error";
 type ViewerStatus = "loading" | "success" | "error";
 type AnalyticsView = "landing" | "workspace";
+type SeriesRequestKind = "viewer" | "admin";
 
 type CombinedCricketPlayerSearchResult = {
   playerId: number;
@@ -892,6 +904,198 @@ function SeriesWorkspaceOverview({
   );
 }
 
+function SeriesAccessRequestPanel({
+  seriesCards,
+  preferredSeriesKey,
+  accessToken,
+  onAccessActivated,
+}: {
+  seriesCards: SeriesWorkspaceCard[];
+  preferredSeriesKey?: string;
+  accessToken: string;
+  onAccessActivated?: (seriesConfigKey: string, requestKind: SeriesRequestKind) => void;
+}) {
+  const { toast } = useToast();
+  const [requestSeriesKey, setRequestSeriesKey] = useState(preferredSeriesKey?.trim() || seriesCards[0]?.configKey || "");
+  const [requestKind, setRequestKind] = useState<SeriesRequestKind>("viewer");
+  const [requestStatus, setRequestStatus] = useState<"idle" | "saving">("idle");
+
+  useEffect(() => {
+    const validSeriesKeys = new Set(seriesCards.map((card) => card.configKey));
+    const normalizedPreferred = preferredSeriesKey?.trim() || "";
+    const nextSeriesKey =
+      (normalizedPreferred && validSeriesKeys.has(normalizedPreferred) ? normalizedPreferred : "")
+      || (validSeriesKeys.has(requestSeriesKey) ? requestSeriesKey : "")
+      || seriesCards[0]?.configKey
+      || "";
+
+    if (nextSeriesKey !== requestSeriesKey) {
+      setRequestSeriesKey(nextSeriesKey);
+    }
+  }, [preferredSeriesKey, requestSeriesKey, seriesCards]);
+
+  const selectedSeries = seriesCards.find((card) => card.configKey === requestSeriesKey) || null;
+  const selectedSeriesSummary = joinCoverageLabels(
+    [
+      selectedSeries?.targetAgeGroup || null,
+      ...(selectedSeries?.divisionLabels ?? []),
+    ].filter((value): value is string => Boolean(value)),
+    "Series"
+  );
+
+  async function handleSubmitRequest() {
+    if (!accessToken) {
+      toast({
+        variant: "destructive",
+        title: "Sign in required",
+        description: "Your session is missing. Sign in again before requesting access.",
+      });
+      return;
+    }
+
+    if (!requestSeriesKey) {
+      toast({
+        variant: "destructive",
+        title: "Select a series",
+        description: "Choose the series you want to request access to first.",
+      });
+      return;
+    }
+
+    setRequestStatus("saving");
+
+    try {
+      if (requestKind === "admin") {
+        const result = await createCricketSeriesAdminAccessRequest(requestSeriesKey, accessToken, {
+          requestNote: "User requested series-admin access from the analytics access panel.",
+        });
+
+        toast({
+          title: result.accessGranted ? "Series-admin access active" : "Series-admin request submitted",
+          description:
+            result.message
+            || (result.accessGranted
+              ? "Series-admin access is already active for this account."
+              : "The current series-admin team must approve this request before access is granted."),
+        });
+
+        if (result.accessGranted) {
+          onAccessActivated?.(requestSeriesKey, "admin");
+        }
+      } else {
+        const result = await createCricketSeriesAccessRequest(requestSeriesKey, accessToken, {
+          accessRole: "viewer",
+          requestNote: "User requested viewer access from the analytics access panel.",
+        });
+
+        toast({
+          title: result.accessGranted ? "Viewer access active" : "Viewer request submitted",
+          description:
+            result.message
+            || (result.accessGranted
+              ? "Viewer access is already active for this account."
+              : "The current series admin must approve this request before reports unlock."),
+        });
+
+        if (result.accessGranted) {
+          onAccessActivated?.(requestSeriesKey, "viewer");
+        }
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Request failed",
+        description: error instanceof Error ? error.message : "The access request could not be submitted right now.",
+      });
+    } finally {
+      setRequestStatus("idle");
+    }
+  }
+
+  return (
+    <Card className="border-border/80 bg-card/85 shadow-xl">
+      <CardHeader className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+            Request Access
+          </Badge>
+          <Badge variant="outline" className="border-border/80 bg-background/60 text-foreground">
+            Approval Required
+          </Badge>
+        </div>
+        <div className="space-y-2">
+          <CardTitle className="font-display text-2xl text-foreground">Request access to any series</CardTitle>
+          <CardDescription className="max-w-3xl text-sm leading-7">
+            Pick the series first, then choose whether you want report-view access or series-admin access. Nothing is
+            granted automatically unless an admin already pre-approved your account.
+          </CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="series-access-request-series">Series</Label>
+            <Select value={requestSeriesKey} onValueChange={setRequestSeriesKey}>
+              <SelectTrigger id="series-access-request-series">
+                <SelectValue placeholder="Select a series" />
+              </SelectTrigger>
+              <SelectContent>
+                {seriesCards.length > 0 ? (
+                  seriesCards.map((seriesCard) => (
+                    <SelectItem key={seriesCard.configKey} value={seriesCard.configKey}>
+                      {seriesCard.seriesName}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="__none__" disabled>
+                    No series available
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="series-access-request-kind">Access type</Label>
+            <Select value={requestKind} onValueChange={(value) => setRequestKind(value as SeriesRequestKind)}>
+              <SelectTrigger id="series-access-request-kind">
+                <SelectValue placeholder="Select access type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="viewer">Series viewer</SelectItem>
+                <SelectItem value="admin">Series admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Selected request</p>
+          <p className="mt-2 font-semibold text-foreground">
+            {selectedSeries?.seriesName || "No series selected"}
+          </p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{selectedSeriesSummary}</p>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            {requestKind === "admin"
+              ? "Series-admin approval is handled by the entity that owns this series. Once approved, admin access applies across that entity's series."
+              : "Viewer approval unlocks player reports and series analytics for the selected series after the current series-admin team approves it."}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <Button type="button" onClick={() => void handleSubmitRequest()} disabled={requestStatus === "saving" || !requestSeriesKey}>
+            {requestStatus === "saving"
+              ? "Submitting request..."
+              : requestKind === "admin"
+                ? "Request series admin access"
+                : "Request viewer access"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
   const isWorkspaceView = view === "workspace";
   const { session, user } = useAuth();
@@ -909,6 +1113,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
   const [viewerError, setViewerError] = useState<string | null>(null);
   const [viewerCatalog, setViewerCatalog] = useState<CricketViewerSeriesResponse | null>(null);
   const [viewerReloadKey, setViewerReloadKey] = useState(0);
+  const [showRequestPanel, setShowRequestPanel] = useState(false);
   const activeRequestRef = useRef<AbortController | null>(null);
   const accessToken = session?.access_token || "";
   const currentUrlQuery = searchParams.get("q")?.trim() ?? "";
@@ -958,14 +1163,21 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     () => getAnalyticsSeriesAdminRoute(selectedSeriesKey || undefined),
     [selectedSeriesKey]
   );
-  const requestAdminRoute = useMemo(
-    () => getAnalyticsAdminRoute(recommendedRequestSeriesKey || undefined),
-    [recommendedRequestSeriesKey]
-  );
   const adminRoute = useMemo(
     () => (isPlatformAdminViewer ? seriesAdminRoute : getAnalyticsAdminRoute(selectedSeriesKey || undefined)),
     [isPlatformAdminViewer, selectedSeriesKey, seriesAdminRoute]
   );
+
+  useEffect(() => {
+    if (!hasSeriesAccess && !isPlatformAdminViewer) {
+      setShowRequestPanel(true);
+    }
+  }, [hasSeriesAccess, isPlatformAdminViewer]);
+
+  const handleAccessActivated = (seriesConfigKey: string) => {
+    setViewerReloadKey((current) => current + 1);
+    setSearchParams(buildAnalyticsSearchParams(currentUrlQuery || undefined, seriesConfigKey));
+  };
 
   async function runSearch(trimmedQuery: string, seriesConfigKey: string) {
     activeRequestRef.current?.abort();
@@ -1302,7 +1514,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                     <CardDescription className="max-w-2xl text-sm leading-7">
                       {isPlatformAdminViewer
                         ? "This platform-admin account can access every series automatically, but no series are currently visible in the analytics dataset."
-                        : "Your account is signed in, but it has not been granted access to any cricket analytics series yet. You can request the right series-admin path directly from this page."}
+                        : "Your account is signed in, but it has not been granted access to any cricket analytics series yet. You can request viewer or series-admin access directly from this page."}
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -1316,8 +1528,8 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                         "Platform admins automatically inherit series-admin and report-view access across every series. They do not need viewer grants and do not consume entity viewer seats."
                       ) : (
                         <>
-                          Choose the series below and open the request flow directly from analytics. That sends you into the
-                          correct admin gateway for the selected series instead of making you copy a separate URL.
+                          Use the request panel to choose any series and ask for viewer access or series-admin access.
+                          Approval still stays with the current admins for that series.
                         </>
                       )}
                     </p>
@@ -1329,19 +1541,6 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                     </div>
                     {!isPlatformAdminViewer ? (
                       <div className="mt-5 flex flex-wrap gap-3">
-                        {recommendedRequestSeriesKey ? (
-                          <Button asChild>
-                            <Link to={requestAdminRoute}>
-                              Request series admin access
-                              <ArrowRight className="ml-2 h-4 w-4" />
-                            </Link>
-                          </Button>
-                        ) : (
-                          <Button type="button" disabled>
-                            Request series admin access
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Button>
-                        )}
                         <Button type="button" variant="outline" onClick={handleRetryViewerAccess}>
                           <RefreshCw className="mr-2 h-4 w-4" />
                           Recheck Access
@@ -1364,36 +1563,21 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                       ) : (
                         <>
                           <p>1. Choose the series you want below.</p>
-                          <p>2. Submit the series-admin request from the gateway page.</p>
-                          <p>3. The current series admin reviews it in pending admin requests.</p>
-                          <p>4. After approval, return here and refresh to load the series workspace.</p>
+                          <p>2. Choose whether you want viewer access or series-admin access.</p>
+                          <p>3. Submit the request directly from this analytics page.</p>
+                          <p>4. The current series admin reviews it and approval unlocks access.</p>
                         </>
                       )}
                     </div>
                     {!isPlatformAdminViewer ? (
-                      <div className="mt-5 space-y-3">
+                      <div className="mt-5">
                         {requestableSeriesCards.length > 0 ? (
-                          requestableSeriesCards.map((seriesCard) => (
-                            <div
-                              key={seriesCard.configKey}
-                              className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between"
-                            >
-                              <div className="space-y-1">
-                                <p className="font-semibold text-foreground">{seriesCard.seriesName}</p>
-                                <p className="text-xs leading-6 text-muted-foreground">
-                                  {joinCoverageLabels(
-                                    [seriesCard.targetAgeGroup, ...seriesCard.divisionLabels].filter(
-                                      (value): value is string => Boolean(value)
-                                    ),
-                                    "Series"
-                                  )}
-                                </p>
-                              </div>
-                              <Button asChild size="sm" variant="outline">
-                                <Link to={getAnalyticsAdminRoute(seriesCard.configKey)}>Open Request</Link>
-                              </Button>
-                            </div>
-                          ))
+                          <SeriesAccessRequestPanel
+                            seriesCards={requestableSeriesCards}
+                            preferredSeriesKey={recommendedRequestSeriesKey}
+                            accessToken={accessToken}
+                            onAccessActivated={handleAccessActivated}
+                          />
                         ) : summaryStatus === "loading" ? (
                           <div className="flex items-start gap-3 rounded-2xl border border-border/80 bg-background/70 p-4">
                             <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
@@ -1494,6 +1678,12 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                       </Link>
                     </Button>
                   ) : null}
+                  {!isPlatformAdminViewer ? (
+                    <Button type="button" variant="outline" className="w-full md:w-auto" onClick={() => setShowRequestPanel((current) => !current)}>
+                      Request Access
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  ) : null}
                   <Button asChild variant="outline" className="w-full md:w-auto">
                     <Link to={adminRoute}>
                       {isPlatformAdminViewer ? "Series Console" : "Admin Console"}
@@ -1505,6 +1695,24 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                   </Button>
                 </div>
               </div>
+
+              {showRequestPanel && !isPlatformAdminViewer ? (
+                requestableSeriesCards.length > 0 ? (
+                  <SeriesAccessRequestPanel
+                    seriesCards={requestableSeriesCards}
+                    preferredSeriesKey={selectedSeriesKey || recommendedRequestSeriesKey}
+                    accessToken={accessToken}
+                    onAccessActivated={handleAccessActivated}
+                  />
+                ) : (
+                  <Card className="border-border/80 bg-card/85 shadow-xl">
+                    <CardContent className="flex items-start gap-3 p-6 text-sm text-muted-foreground">
+                      <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+                      <p>Loading the current series list so you can request access from the workspace.</p>
+                    </CardContent>
+                  </Card>
+                )
+              ) : null}
 
               <SeriesWorkspaceOverview
                 summaryStatus={summaryStatus}
@@ -1561,6 +1769,12 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                     </Link>
                   </Button>
                 ) : null}
+                {!isPlatformAdminViewer ? (
+                  <Button type="button" variant="outline" className="w-full md:w-auto" onClick={() => setShowRequestPanel((current) => !current)}>
+                    Request Access
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                ) : null}
                 <Button asChild variant="outline" className="w-full md:w-auto">
                   <Link to={adminRoute}>
                     {isPlatformAdminViewer ? "Series Console" : "Admin Console"}
@@ -1575,6 +1789,24 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                 </Button>
               </div>
             </div>
+
+            {showRequestPanel && !isPlatformAdminViewer ? (
+              requestableSeriesCards.length > 0 ? (
+                <SeriesAccessRequestPanel
+                  seriesCards={requestableSeriesCards}
+                  preferredSeriesKey={selectedSeriesKey || recommendedRequestSeriesKey}
+                  accessToken={accessToken}
+                  onAccessActivated={handleAccessActivated}
+                />
+              ) : (
+                <Card className="border-border/80 bg-card/85 shadow-xl">
+                  <CardContent className="flex items-start gap-3 p-6 text-sm text-muted-foreground">
+                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+                    <p>Loading the current series list so you can request access from analytics.</p>
+                  </CardContent>
+                </Card>
+              )
+            ) : null}
 
             <Card className="border-border/80 bg-card/85 shadow-xl">
               <CardContent className="space-y-8 p-8 lg:p-10">

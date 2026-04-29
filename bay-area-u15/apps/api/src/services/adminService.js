@@ -194,6 +194,7 @@ async function createSeries(input) {
         sourceSystem: nullableText(sourceSetup.sourceSystem) || "cricclubs",
         seriesUrl: sourceSetup.seriesUrl,
         expectedLeagueName: sourceSetup.expectedLeagueName,
+        sourceSeriesId: sourceSetup.sourceSeriesId,
       });
 
       const existingSeries = await fetchOne(
@@ -1779,7 +1780,9 @@ function parseSeriesSourceReference(input) {
   const fallbackLeagueName = nullableText(input.expectedLeagueName);
   const leagueName = normalizeText(pathParts[0]) || fallbackLeagueName;
   const sourceSeriesId = normalizeText(
-    parsed.searchParams.get("league")
+    input.sourceSeriesId
+    || parsed.searchParams.get("sourceSeriesId")
+    || parsed.searchParams.get("league")
     || parsed.searchParams.get("seriesId")
     || parsed.searchParams.get("series")
     || parsed.pathname.match(/(\d+)(?:\/)?$/)?.[1]
@@ -1795,7 +1798,7 @@ function parseSeriesSourceReference(input) {
 
   if (!sourceSeriesId) {
     const error = new Error(
-      "Series URL must include the source series id, usually via the league query parameter."
+      "Enter a CricClubs source series id or slug, or use a series URL that already includes it, usually via the league query parameter."
     );
     error.statusCode = 400;
     throw error;

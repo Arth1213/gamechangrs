@@ -123,6 +123,7 @@ type SeriesCreationFormState = {
     name: string;
     sourceSystem: string;
     seriesUrl: string;
+    sourceSeriesId: string;
     expectedLeagueName: string;
     expectedSeriesName: string;
     seasonYear: string;
@@ -526,6 +527,7 @@ function createSeriesCreationForm(entityId = ""): SeriesCreationFormState {
       name: "",
       sourceSystem: "cricclubs",
       seriesUrl: "",
+      sourceSeriesId: "",
       expectedLeagueName: "",
       expectedSeriesName: "",
       seasonYear: String(new Date().getFullYear()),
@@ -1493,6 +1495,7 @@ const AnalyticsAdmin = () => {
         name: createSeriesForm.sourceSetup.name,
         sourceSystem: createSeriesForm.sourceSetup.sourceSystem,
         seriesUrl: createSeriesForm.sourceSetup.seriesUrl,
+        sourceSeriesId: createSeriesForm.sourceSetup.sourceSeriesId,
         expectedLeagueName: createSeriesForm.sourceSetup.expectedLeagueName,
         expectedSeriesName: createSeriesForm.sourceSetup.expectedSeriesName,
         seasonYear: parseIntegerOrNull(createSeriesForm.sourceSetup.seasonYear),
@@ -2761,20 +2764,38 @@ const AnalyticsAdmin = () => {
                                 </div>
 
                                 <div className="mt-4 space-y-4">
-                                  <div className="space-y-2">
-                                    <Label htmlFor="create-series-url">Primary source URL</Label>
-                                    <Input
-                                      id="create-series-url"
-                                      value={createSeriesForm.sourceSetup.seriesUrl}
-                                      onChange={(event) =>
-                                        handleCreateSeriesSourceFieldChange("seriesUrl", event.target.value)
-                                      }
-                                      placeholder="https://cricclubs.com/USACricketJunior/viewLeague.do?league=434&clubId=40319"
-                                    />
-                                    <p className="text-xs leading-6 text-muted-foreground">
-                                      Paste the main CricClubs league page. This is the anchor used to discover results,
-                                      scorecards, and ball-by-ball coverage.
-                                    </p>
+                                  <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                                    <div className="space-y-2">
+                                      <Label htmlFor="create-series-url">Primary source URL</Label>
+                                      <Input
+                                        id="create-series-url"
+                                        value={createSeriesForm.sourceSetup.seriesUrl}
+                                        onChange={(event) =>
+                                          handleCreateSeriesSourceFieldChange("seriesUrl", event.target.value)
+                                        }
+                                        placeholder="https://cricclubs.com/USACricketJunior/viewLeague.do?league=434&clubId=40319"
+                                      />
+                                      <p className="text-xs leading-6 text-muted-foreground">
+                                        Paste the main CricClubs league page. This is the anchor used to discover results,
+                                        scorecards, and ball-by-ball coverage.
+                                      </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <Label htmlFor="create-source-series-id">Source series id or slug</Label>
+                                      <Input
+                                        id="create-source-series-id"
+                                        value={createSeriesForm.sourceSetup.sourceSeriesId}
+                                        onChange={(event) =>
+                                          handleCreateSeriesSourceFieldChange("sourceSeriesId", event.target.value)
+                                        }
+                                        placeholder="434 or Z7froYWOUcJ-_kt1me_RaQ"
+                                      />
+                                      <p className="text-xs leading-6 text-muted-foreground">
+                                        Use the CricClubs series identifier when the URL does not already expose a
+                                        `league` value, including newer `series-list/...` links that use a slug.
+                                      </p>
+                                    </div>
                                   </div>
 
                                   <div className="grid gap-3 md:grid-cols-2">

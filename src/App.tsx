@@ -47,11 +47,7 @@ const App = () => (
             <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/techniqueai" element={
-              <ProtectedRoute>
-                <TechniqueAI />
-              </ProtectedRoute>
-            } />
+            <Route path="/techniqueai" element={<TechniqueAI />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/analytics/workspace" element={
               <ProtectedRoute>

@@ -282,6 +282,7 @@ export type CricketAdminCreateSeriesPayload = {
     name?: string;
     sourceSystem?: string;
     seriesUrl?: string;
+    sourceSeriesId?: string;
     expectedLeagueName?: string;
     expectedSeriesName?: string;
     seasonYear?: number | null;

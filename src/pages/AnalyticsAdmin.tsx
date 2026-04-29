@@ -9,7 +9,6 @@ import {
   ExternalLink,
   ListChecks,
   Loader2,
-  Plus,
   RefreshCw,
   Save,
   Search,
@@ -574,6 +573,8 @@ const AnalyticsAdmin = () => {
   const { session, user } = useAuth();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
+  const allowHostedSeriesCreation = false;
+  const allowHostedSeriesOperations = false;
   const [catalogStatus, setCatalogStatus] = useState<CatalogStatus>("loading");
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<CricketAdminSeriesResponse | null>(null);
@@ -1006,12 +1007,17 @@ const AnalyticsAdmin = () => {
       return;
     }
 
-    if (!series.length) {
+    if (!allowHostedSeriesCreation && seriesEntryMode !== "edit") {
+      setSeriesEntryMode("edit");
+      return;
+    }
+
+    if (allowHostedSeriesCreation && !series.length) {
       setSeriesEntryMode("create");
     } else if (seriesEntryMode !== "create") {
       setSeriesEntryMode("edit");
     }
-  }, [catalog?.authFoundationReady, catalogStatus, series.length, seriesEntryMode]);
+  }, [allowHostedSeriesCreation, catalog?.authFoundationReady, catalogStatus, series.length, seriesEntryMode]);
 
   useEffect(() => {
     const currentSeriesKey = selectedSeries?.configKey?.trim();
@@ -1069,7 +1075,7 @@ const AnalyticsAdmin = () => {
 
   useEffect(() => {
     const currentSeriesKey = selectedSeries?.configKey?.trim();
-    if (!accessToken || !currentSeriesKey || catalog?.authFoundationReady !== true) {
+    if (!allowHostedSeriesOperations || !accessToken || !currentSeriesKey || catalog?.authFoundationReady !== true) {
       setMatchOps(null);
       setMatchOpsStatus("idle");
       setMatchOpsError(null);
@@ -1106,7 +1112,15 @@ const AnalyticsAdmin = () => {
     return () => {
       controller.abort();
     };
-  }, [accessToken, catalog?.authFoundationReady, matchLimit, matchOpsReloadKey, matchQuery, selectedSeries?.configKey]);
+  }, [
+    accessToken,
+    allowHostedSeriesOperations,
+    catalog?.authFoundationReady,
+    matchLimit,
+    matchOpsReloadKey,
+    matchQuery,
+    selectedSeries?.configKey,
+  ]);
 
   useEffect(() => {
     const currentSeriesKey = selectedSeries?.configKey?.trim();
@@ -2348,7 +2362,7 @@ const AnalyticsAdmin = () => {
                     variant="outline"
                     className="border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-emerald-300"
                   >
-                    Required + Optional Controls
+                    Setup + Access Controls
                   </Badge>
                 </div>
                 <div className="space-y-2">
@@ -2357,7 +2371,7 @@ const AnalyticsAdmin = () => {
                   </h1>
                   <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
                     Run one series in order: required setup first, series admin team next, series users after that,
-                    then optional tuning and match operations.
+                    then optional tuning inside the existing hosted series boundary.
                   </p>
                 </div>
               </div>
@@ -2453,8 +2467,8 @@ const AnalyticsAdmin = () => {
                         body: "Approve viewer or analyst access after the admin team is set.",
                       },
                       {
-                        title: "4. Optional controls",
-                        body: "Tuning and match operations stay lower on the page.",
+                        title: "4. Optional tuning",
+                        body: "Report profiles and division mappings stay lower on the page.",
                       },
                     ].map((item) => (
                       <div key={item.title} className="rounded-2xl border border-border/70 bg-background/55 p-4">
@@ -2476,7 +2490,6 @@ const AnalyticsAdmin = () => {
                 { href: "#plan-controls", label: "Plan + gates" },
                 { href: "#series-switcher", label: "Series switcher" },
                 { href: "#series-setup", label: "Optional tuning" },
-                { href: "#match-ops", label: "Optional match ops" },
               ].map((item) => (
                 <a
                   key={item.href}
@@ -2555,8 +2568,8 @@ const AnalyticsAdmin = () => {
                 <CardHeader>
                   <CardTitle>No series exist for this entity yet</CardTitle>
                   <CardDescription>
-                    Start with the mandatory setup below. The access and optional-control sections will attach after
-                    the first series is created.
+                    New series onboarding now happens offline on the local ops machine. Once a series is loaded into
+                    Supabase, it will appear here for setup review, access management, and tuning.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -2630,32 +2643,21 @@ const AnalyticsAdmin = () => {
                           </p>
                         </div>
                         <div>
-                          <h2 className="font-display text-2xl text-foreground">Create or update the required series setup</h2>
+                          <h2 className="font-display text-2xl text-foreground">Update the required series setup</h2>
                           <p className="text-sm leading-7 text-muted-foreground">
-                            Enter the source URL, series identity, and capture switches needed to run the series.
-                            Series-user access and optional controls stay below.
+                            The hosted console is limited to existing series. New series onboarding and all refresh
+                            operations now stay in the local offline ops workflow, while access control and setup review
+                            remain here.
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant={seriesEntryMode === "create" ? "default" : "outline"}
-                          onClick={handleStartCreateSeries}
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          New series
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={seriesEntryMode === "edit" ? "default" : "outline"}
-                          onClick={handleStartEditSeries}
-                          disabled={!selectedSeries}
-                        >
-                          <Save className="mr-2 h-4 w-4" />
-                          Update selected
-                        </Button>
+                      <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Hosted boundary</p>
+                        <p className="mt-2 text-sm font-semibold text-foreground">Existing series only</p>
+                        <p className="mt-1 text-xs leading-6 text-muted-foreground">
+                          Add new series and run data pulls from the local ops machine, then manage access here.
+                        </p>
                       </div>
                     </div>
 
@@ -3141,7 +3143,8 @@ const AnalyticsAdmin = () => {
                               </>
                             ) : (
                               <div className="rounded-2xl border border-border/70 bg-background/60 p-5 text-sm leading-7 text-muted-foreground">
-                                Select a series to edit its mandatory setup fields.
+                                No hosted series setup is available to edit yet. Add or refresh series data from the
+                                local ops workspace, then it will appear here for setup review and access management.
                               </div>
                             )}
                           </>
@@ -3221,10 +3224,6 @@ const AnalyticsAdmin = () => {
                               {
                                 title: "Optional tuning",
                                 body: "Choose the report profile and tune division mappings after the source setup is stable.",
-                              },
-                              {
-                                title: "Optional operations",
-                                body: "Request a manual refresh or override a specific match only when the automated flow needs help.",
                               },
                             ].map((item) => (
                               <div key={item.title} className="rounded-xl border border-cyan-400/15 bg-background/55 p-4">
@@ -3630,7 +3629,7 @@ const AnalyticsAdmin = () => {
                           <div>
                             <h2 className="font-display text-2xl text-foreground">{planSummaryLabel}</h2>
                             <p className="text-sm leading-7 text-muted-foreground">
-                              Current plan gates viewer grants, manual refresh, and future paid-series controls for this entity.
+                              Current plan gates viewer grants, tuning controls, and future paid-series limits for this entity.
                             </p>
                           </div>
                         </div>
@@ -3750,14 +3749,6 @@ const AnalyticsAdmin = () => {
                               </div>
                               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                                 {[
-                                  {
-                                    label: "Manual refresh",
-                                    enabled: subscriptionSummary.entitlements?.manualRefreshEnabled === true,
-                                  },
-                                  {
-                                    label: "Scheduled refresh",
-                                    enabled: subscriptionSummary.entitlements?.scheduledRefreshEnabled === true,
-                                  },
                                   {
                                     label: "Weight tuning",
                                     enabled: subscriptionSummary.entitlements?.weightTuningEnabled === true,
@@ -4394,6 +4385,7 @@ const AnalyticsAdmin = () => {
                   </CardContent>
                 </Card>
 
+                {allowHostedSeriesOperations ? (
                 <Card className="order-7 border-border/80 bg-card/85 shadow-xl" id="match-ops">
                   <CardHeader>
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -5419,6 +5411,7 @@ const AnalyticsAdmin = () => {
                     </div>
                   </CardContent>
                 </Card>
+                ) : null}
 
                 <Card className="order-3 border-border/80 bg-card/85 shadow-xl" id="series-users">
                   <CardContent className="space-y-6 p-6">

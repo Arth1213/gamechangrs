@@ -578,7 +578,7 @@ const AnalyticsPlatformAdmin = () => {
                           },
                           {
                             title: "Series admin",
-                            body: "Runs setup, access, refresh controls, and tuning inside one entity scope.",
+                            body: "Runs setup, access, and tuning inside one entity scope.",
                           },
                           {
                             title: "Series user",

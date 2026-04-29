@@ -4,7 +4,6 @@ import {
   AlertCircle,
   ArrowRight,
   CalendarDays,
-  ExternalLink,
   Layers3,
   Loader2,
   RefreshCw,
@@ -45,7 +44,6 @@ import {
   getAnalyticsPlatformAdminRoute,
   getAnalyticsSeriesAdminRoute,
   getAnalyticsWorkspaceRoute,
-  getCricketPlayerReportUrl,
   getRootCricketPlayerReportRoute,
   searchCricketPlayers,
 } from "@/lib/cricketApi";
@@ -409,7 +407,6 @@ function SearchResultCard({
     playerId: result.playerId,
     divisionId: null,
   };
-  const reportUrl = getCricketPlayerReportUrl(combinedReportTarget, { seriesConfigKey });
   const inAppReportUrl = getRootCricketPlayerReportRoute(combinedReportTarget, { searchQuery, seriesConfigKey });
   const teamCoverage = joinCoverageLabels(result.teamNames, "Team not available");
   const divisionCoverage = joinCoverageLabels(result.divisionLabels);
@@ -453,12 +450,6 @@ function SearchResultCard({
               View In App
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
-          </Button>
-          <Button asChild variant="outline" className="w-full md:w-auto">
-            <a href={reportUrl} target="_blank" rel="noreferrer">
-              Open Standalone
-              <ExternalLink className="ml-2 h-4 w-4" />
-            </a>
           </Button>
         </div>
       </CardHeader>
@@ -1348,6 +1339,12 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
   };
 
   async function runSearch(trimmedQuery: string, seriesConfigKey: string) {
+    if (!accessToken) {
+      setErrorMessage("Your session expired. Sign in again before searching.");
+      setStatus("error");
+      return;
+    }
+
     activeRequestRef.current?.abort();
     const controller = new AbortController();
     activeRequestRef.current = controller;
@@ -1359,6 +1356,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
 
     try {
       const response = await searchCricketPlayers(trimmedQuery, {
+        accessToken,
         seriesConfigKey,
         signal: controller.signal,
       });
@@ -1540,7 +1538,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     return () => {
       activeRequestRef.current?.abort();
     };
-  }, [currentUrlQuery, hasSeriesAccess, selectedSeriesKey, summaryStatus, viewerError, viewerStatus, isWorkspaceView]);
+  }, [accessToken, currentUrlQuery, hasSeriesAccess, selectedSeriesKey, summaryStatus, viewerError, viewerStatus, isWorkspaceView]);
 
   const handleSearch = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

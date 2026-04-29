@@ -1045,6 +1045,7 @@ async function readApiErrorMessage(response: Response, fallbackMessage: string) 
 export async function searchCricketPlayers(
   query: string,
   options?: {
+    accessToken: string;
     seriesConfigKey?: string | null;
     signal?: AbortSignal;
   }
@@ -1055,6 +1056,9 @@ export async function searchCricketPlayers(
   const response = await fetch(url.toString(), {
     method: "GET",
     signal: options?.signal,
+    headers: {
+      Authorization: `Bearer ${options?.accessToken || ""}`,
+    },
   });
 
   if (!response.ok) {
@@ -1081,6 +1085,7 @@ export async function fetchCricketDashboardSummary(signal?: AbortSignal) {
 export async function fetchCricketPlayerReport(
   result: CricketPlayerTarget,
   options?: {
+    accessToken: string;
     seriesConfigKey?: string | null;
     signal?: AbortSignal;
   }
@@ -1089,6 +1094,9 @@ export async function fetchCricketPlayerReport(
   const response = await fetch(url.toString(), {
     method: "GET",
     signal: options?.signal,
+    headers: {
+      Authorization: `Bearer ${options?.accessToken || ""}`,
+    },
   });
 
   if (!response.ok) {

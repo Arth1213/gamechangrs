@@ -55,11 +55,6 @@ const {
   getPlayerReport,
   searchPlayers,
 } = require("./services/reportService");
-const {
-  getPlayerReportDefault,
-  getPlayerSummaryDefault,
-  searchPlayersDefault,
-} = require("./services/playerApiService");
 
 const app = express();
 const API_CORS_ALLOWED_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
@@ -151,6 +146,21 @@ function sendHtml(res, html, statusCode = 200) {
   res.status(statusCode).type("html").send(html);
 }
 
+function buildPlayerSummaryPayload(report) {
+  return {
+    meta: report.meta,
+    header: report.header,
+    scores: report.scores,
+    assessmentSnapshot: report.assessmentSnapshot,
+    visualReadout: report.visualReadout,
+    contextPerformance: report.contextPerformance,
+    peerComparison: report.peerComparison,
+    selectorInterpretation: report.selectorInterpretation,
+    selectorTakeaway: report.selectorTakeaway,
+    standardStats: report.standardStats,
+  };
+}
+
 const requireSeriesAdmin = asyncHandler(async (req, res, next) => {
   await requireSeriesAdminAccess(req);
   next();
@@ -158,6 +168,11 @@ const requireSeriesAdmin = asyncHandler(async (req, res, next) => {
 
 const requireSeriesViewer = asyncHandler(async (req, res, next) => {
   await requireSeriesViewerAccess(req);
+  next();
+});
+
+const requireSeriesViewerOrDefault = asyncHandler(async (req, res, next) => {
+  await requireSeriesViewerAccess(req, { allowDefaultSeries: true });
   next();
 });
 
@@ -395,24 +410,27 @@ app.get("/api/viewer/series", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.get("/api/players/search", asyncHandler(async (req, res) => {
-  const payload = await searchPlayersDefault({
+app.get("/api/players/search", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await searchPlayers({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     query: req.query.q ?? req.query.query ?? "",
     limit: req.query.limit,
   });
   res.json(payload);
 }));
 
-app.get("/api/players/:playerId/summary", asyncHandler(async (req, res) => {
-  const payload = await getPlayerSummaryDefault({
+app.get("/api/players/:playerId/summary", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const report = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     playerId: req.params.playerId,
     divisionId: req.query.divisionId,
   });
-  res.json(payload);
+  res.json(buildPlayerSummaryPayload(report));
 }));
 
-app.get("/api/players/:playerId/report", asyncHandler(async (req, res) => {
-  const payload = await getPlayerReportDefault({
+app.get("/api/players/:playerId/report", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     playerId: req.params.playerId,
     divisionId: req.query.divisionId,
   });
@@ -428,16 +446,18 @@ app.get("/", asyncHandler(async (req, res) => {
   sendHtml(res, renderSeriesIndexPage({ seriesCards, activeOverview }));
 }));
 
-app.get("/players/:playerId", asyncHandler(async (req, res) => {
-  const payload = await getPlayerReportDefault({
+app.get("/players/:playerId", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     playerId: req.params.playerId,
     divisionId: req.query.divisionId,
   });
   sendHtml(res, renderPlayerReportPage(payload));
 }));
 
-app.get("/players/:playerId/report", asyncHandler(async (req, res) => {
-  const payload = await getPlayerReportDefault({
+app.get("/players/:playerId/report", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     playerId: req.params.playerId,
     divisionId: req.query.divisionId,
   });
@@ -458,9 +478,9 @@ app.get("/api/series/:seriesConfigKey/dashboard/overview", asyncHandler(async (r
   res.json(payload);
 }));
 
-app.get("/api/series/:seriesConfigKey/players/search", asyncHandler(async (req, res) => {
+app.get("/api/series/:seriesConfigKey/players/search", requireSeriesViewer, asyncHandler(async (req, res) => {
   const payload = await searchPlayers({
-    seriesConfigKey: req.params.seriesConfigKey,
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     query: req.query.query ?? req.query.q ?? "",
     limit: req.query.limit,
   });
@@ -491,13 +511,22 @@ app.post("/api/series/:seriesConfigKey/admin-access-requests", asyncHandler(asyn
   res.json(payload);
 }));
 
-app.get("/api/series/:seriesConfigKey/players/:playerId/report", asyncHandler(async (req, res) => {
+app.get("/api/series/:seriesConfigKey/players/:playerId/report", requireSeriesViewer, asyncHandler(async (req, res) => {
   const payload = await getPlayerReport({
-    seriesConfigKey: req.params.seriesConfigKey,
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     playerId: req.params.playerId,
     divisionId: req.query.divisionId,
   });
   res.json(payload);
+}));
+
+app.get("/api/series/:seriesConfigKey/players/:playerId/report/html", requireSeriesViewer, asyncHandler(async (req, res) => {
+  const payload = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  sendHtml(res, renderPlayerReportPage(payload));
 }));
 
 app.post("/api/series/:seriesConfigKey/players/:playerId/chat-context", requireSeriesViewer, asyncHandler(async (req, res) => {
@@ -522,9 +551,9 @@ app.post("/api/series/:seriesConfigKey/players/:playerId/chat", requireSeriesVie
   res.json(payload);
 }));
 
-app.get("/series/:seriesConfigKey/players/:playerId/report", asyncHandler(async (req, res) => {
+app.get("/series/:seriesConfigKey/players/:playerId/report", requireSeriesViewer, asyncHandler(async (req, res) => {
   const payload = await getPlayerReport({
-    seriesConfigKey: req.params.seriesConfigKey,
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     playerId: req.params.playerId,
     divisionId: req.query.divisionId,
   });

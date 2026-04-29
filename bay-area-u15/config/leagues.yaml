@@ -3,23 +3,22 @@ default_timezone: America/Los_Angeles
 default_schedule:
   cadence: weekly
   day: sunday
-  local_time: "23:00"
-
+  local_time: 23:00
 series:
   - slug: bay-area-usac-hub-2026
     label: 2026 Bay Area USAC Hub
     enabled: true
     league_name: USACricketJunior
     season_year: 2026
-    series_url: "https://cricclubs.com/USACricketJunior/series-list/uMgpWfOUngCk4uXJEGyssQ?divisionId=Bo-G1A7_UwgUN13_EOMC7g%3Fyear%3Dundefined&seriesName=2026%2520Bay%2520Area%2520USAC%2520Hub"
+    series_url: https://cricclubs.com/USACricketJunior/series-list/uMgpWfOUngCk4uXJEGyssQ?divisionId=Bo-G1A7_UwgUN13_EOMC7g%3Fyear%3Dundefined&seriesName=2026%2520Bay%2520Area%2520USAC%2520Hub
     source_hints:
       league_id: Ba0VvwIQmlFddVzEcRy6nQ
       series_id: uMgpWfOUngCk4uXJEGyssQ
-      results_url: "https://cricclubs.com/USACricketJunior/results?leagueId=Ba0VvwIQmlFddVzEcRy6nQ&year=2026&series=uMgpWfOUngCk4uXJEGyssQ&division=all&seriesName=2026+Bay+Area+USAC+Hub"
-      batting_records_url: "https://cricclubs.com/USACricketJunior/statistics/batting-records?filter=Most+Runs&leagueId=Ba0VvwIQmlFddVzEcRy6nQ&matchType=All&year=2026&series=uMgpWfOUngCk4uXJEGyssQ&seriesName=2026+Bay+Area+USAC+Hub"
-      bowling_records_url: "https://cricclubs.com/USACricketJunior/statistics/bowling-records?filter=Most+Wickets&leagueId=Ba0VvwIQmlFddVzEcRy6nQ&matchType=All&year=2026&series=uMgpWfOUngCk4uXJEGyssQ&seriesName=2026+Bay+Area+USAC+Hub"
-      fielding_records_url: "https://cricclubs.com/USACricketJunior/statistics/fielding-records?filter=Most+Catches&leagueId=Ba0VvwIQmlFddVzEcRy6nQ&matchType=All&year=2026&series=uMgpWfOUngCk4uXJEGyssQ&seriesName=2026+Bay+Area+USAC+Hub"
-      rankings_url: "https://cricclubs.com/USACricketJunior/statistics/rankings-records?filter=Points&leagueId=Ba0VvwIQmlFddVzEcRy6nQ&matchType=All&year=2026&series=uMgpWfOUngCk4uXJEGyssQ&seriesName=2026+Bay+Area+USAC+Hub"
+      results_url: https://cricclubs.com/USACricketJunior/results?leagueId=Ba0VvwIQmlFddVzEcRy6nQ&year=2026&series=uMgpWfOUngCk4uXJEGyssQ&division=all&seriesName=2026+Bay+Area+USAC+Hub
+      batting_records_url: https://cricclubs.com/USACricketJunior/statistics/batting-records?filter=Most+Runs&leagueId=Ba0VvwIQmlFddVzEcRy6nQ&matchType=All&year=2026&series=uMgpWfOUngCk4uXJEGyssQ&seriesName=2026+Bay+Area+USAC+Hub
+      bowling_records_url: https://cricclubs.com/USACricketJunior/statistics/bowling-records?filter=Most+Wickets&leagueId=Ba0VvwIQmlFddVzEcRy6nQ&matchType=All&year=2026&series=uMgpWfOUngCk4uXJEGyssQ&seriesName=2026+Bay+Area+USAC+Hub
+      fielding_records_url: https://cricclubs.com/USACricketJunior/statistics/fielding-records?filter=Most+Catches&leagueId=Ba0VvwIQmlFddVzEcRy6nQ&matchType=All&year=2026&series=uMgpWfOUngCk4uXJEGyssQ&seriesName=2026+Bay+Area+USAC+Hub
+      rankings_url: https://cricclubs.com/USACricketJunior/statistics/rankings-records?filter=Points&leagueId=Ba0VvwIQmlFddVzEcRy6nQ&matchType=All&year=2026&series=uMgpWfOUngCk4uXJEGyssQ&seriesName=2026+Bay+Area+USAC+Hub
     targeting:
       age_group: U15
       divisions:
@@ -51,4 +50,24 @@ series:
       enable_raw_snapshots: true
       enable_json_exports: true
       enable_pdf_reports: true
+      enable_dashboard_views: true
+  - slug: bay-area-youth-cricket-hub-2025-milc-2025-27
+    label: MilC 2025
+    enabled: true
+    source_system: cricclubs
+    league_name: MiLC
+    season_year: 2025
+    series_url: https://www.cricclubs.com/MiLC/viewLeague.do?league=27&clubId=18036
+    source_hints:
+      namespace: MiLC
+      club_id: "18036"
+      series_id: "27"
+    targeting:
+      age_group: Open
+      divisions: []
+    validation_players: []
+    outputs:
+      enable_raw_snapshots: true
+      enable_json_exports: true
+      enable_pdf_reports: false
       enable_dashboard_views: true

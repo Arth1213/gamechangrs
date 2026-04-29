@@ -4,6 +4,7 @@ import { Link, useLocation, useParams, useSearchParams } from "react-router-dom"
 
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
+import AnalyticsReportModeSwitcher from "@/components/analytics/AnalyticsReportModeSwitcher";
 import PlayerReportChat from "@/components/analytics/PlayerReportChat";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import {
   fetchCricketViewerSeries,
   fetchCricketPlayerReport,
   getAnalyticsPlatformAdminRoute,
+  getRootCricketPlayerIntelligenceRoute,
   getAnalyticsWorkspaceRoute,
   getCricketPlayerReportUrl,
 } from "@/lib/cricketApi";
@@ -65,6 +67,7 @@ function includesLabel(value: string | undefined, label: string) {
 }
 
 type ReportSummaryStatus = "idle" | "loading" | "success" | "error";
+type ReportDocumentStatus = "idle" | "loading" | "success" | "error";
 type ViewerStatus = "loading" | "success" | "error";
 type AccessRequestStatus = "idle" | "saving" | "success" | "error";
 
@@ -79,6 +82,11 @@ const AnalyticsReport = () => {
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [reportSummary, setReportSummary] = useState<CricketPlayerReportResponse | null>(null);
   const [summaryReloadKey, setSummaryReloadKey] = useState(0);
+  const [reportDocumentStatus, setReportDocumentStatus] = useState<ReportDocumentStatus>("idle");
+  const [reportDocumentError, setReportDocumentError] = useState<string | null>(null);
+  const [reportDocumentHtml, setReportDocumentHtml] = useState<string | null>(null);
+  const [reportDocumentReloadKey, setReportDocumentReloadKey] = useState(0);
+  const [standaloneReportBlobUrl, setStandaloneReportBlobUrl] = useState<string | null>(null);
   const [viewerStatus, setViewerStatus] = useState<ViewerStatus>("loading");
   const [viewerError, setViewerError] = useState<string | null>(null);
   const [viewerSeries, setViewerSeries] = useState<Array<{ configKey?: string; seriesName?: string }>>([]);
@@ -95,12 +103,29 @@ const AnalyticsReport = () => {
   const defaultSeriesKey = viewerSeries[0]?.configKey?.trim() || "";
   const effectiveSeriesKey = currentSeriesKey || defaultSeriesKey;
   const currentSearchQuery = searchParams.get("q")?.trim() || routeState.searchQuery?.trim() || "";
+  const executiveRoute = `${location.pathname}${location.search}`;
   const backToSearchUrl = useMemo(
     () => getAnalyticsWorkspaceRoute(currentSearchQuery, effectiveSeriesKey || undefined),
     [currentSearchQuery, effectiveSeriesKey]
   );
   const platformAdminRoute = getAnalyticsPlatformAdminRoute();
   const hasViewerAccess = viewerSeries.some((series) => series.configKey?.trim() === effectiveSeriesKey);
+  const intelligenceRoute = useMemo(() => {
+    if (!Number.isFinite(numericPlayerId)) {
+      return backToSearchUrl;
+    }
+
+    return getRootCricketPlayerIntelligenceRoute(
+      {
+        playerId: numericPlayerId,
+        divisionId,
+      },
+      {
+        searchQuery: currentSearchQuery,
+        seriesConfigKey: effectiveSeriesKey || undefined,
+      }
+    );
+  }, [backToSearchUrl, currentSearchQuery, divisionId, effectiveSeriesKey, numericPlayerId]);
   const reportUrl = useMemo(() => {
     if (!Number.isFinite(numericPlayerId)) {
       return null;
@@ -163,7 +188,7 @@ const AnalyticsReport = () => {
 
   useEffect(() => {
     setIsFrameLoading(true);
-  }, [reportUrl]);
+  }, [reportDocumentHtml]);
 
   useEffect(() => {
     setAccessRequestStatus("idle");
@@ -196,6 +221,7 @@ const AnalyticsReport = () => {
         divisionId,
       },
       {
+        accessToken,
         seriesConfigKey: effectiveSeriesKey || undefined,
         signal: controller.signal,
       }
@@ -222,7 +248,70 @@ const AnalyticsReport = () => {
     return () => {
       controller.abort();
     };
-  }, [divisionId, effectiveSeriesKey, hasViewerAccess, numericPlayerId, summaryReloadKey, viewerStatus]);
+  }, [accessToken, divisionId, effectiveSeriesKey, hasViewerAccess, numericPlayerId, summaryReloadKey, viewerStatus]);
+
+  useEffect(() => {
+    if (viewerStatus !== "success" || !hasViewerAccess || !reportUrl || !accessToken) {
+      setReportDocumentStatus("idle");
+      setReportDocumentError(null);
+      setReportDocumentHtml(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setReportDocumentStatus("loading");
+    setReportDocumentError(null);
+    setReportDocumentHtml(null);
+
+    fetch(reportUrl, {
+      method: "GET",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Protected report request failed with status ${response.status}.`);
+        }
+
+        const html = await response.text();
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setReportDocumentHtml(html);
+        setReportDocumentStatus("success");
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : "The protected report could not be loaded right now.";
+        setReportDocumentError(message);
+        setReportDocumentHtml(null);
+        setReportDocumentStatus("error");
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [accessToken, hasViewerAccess, reportDocumentReloadKey, reportUrl, viewerStatus]);
+
+  useEffect(() => {
+    if (!reportDocumentHtml) {
+      setStandaloneReportBlobUrl(null);
+      return;
+    }
+
+    const blobUrl = URL.createObjectURL(new Blob([reportDocumentHtml], { type: "text/html" }));
+    setStandaloneReportBlobUrl(blobUrl);
+
+    return () => {
+      URL.revokeObjectURL(blobUrl);
+    };
+  }, [reportDocumentHtml]);
 
   const title =
     reportSummary?.header?.playerName ||
@@ -638,12 +727,24 @@ const AnalyticsReport = () => {
                         Back to Search
                       </Link>
                     </Button>
-                    <Button asChild>
-                      <a href={reportUrl} target="_blank" rel="noreferrer">
-                        Open Standalone Report
-                        <ExternalLink className="ml-2 h-4 w-4" />
-                      </a>
-                    </Button>
+                    <AnalyticsReportModeSwitcher
+                      activeMode="executive"
+                      executiveHref={executiveRoute}
+                      intelligenceHref={intelligenceRoute}
+                      linkState={routeState}
+                    />
+                    {standaloneReportBlobUrl ? (
+                      <Button asChild>
+                        <a href={standaloneReportBlobUrl} target="_blank" rel="noreferrer">
+                          Open Standalone Report
+                          <ExternalLink className="ml-2 h-4 w-4" />
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button type="button" disabled>
+                        {reportDocumentStatus === "loading" ? "Loading Report..." : "Standalone Report Unavailable"}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -721,13 +822,13 @@ const AnalyticsReport = () => {
 
             {summaryStatus === "error" && summaryError ? (
               <div className="flex flex-col gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <p>
-                    Live shell metadata could not be loaded from the report endpoint. The embedded verified report below is still available.
-                    <span className="block text-amber-100/80">{summaryError}</span>
-                  </p>
-                </div>
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <p>
+                      Live shell metadata could not be loaded from the report endpoint. The protected report document below is still available.
+                      <span className="block text-amber-100/80">{summaryError}</span>
+                    </p>
+                  </div>
                 <Button type="button" variant="outline" size="sm" onClick={() => setSummaryReloadKey((current) => current + 1)}>
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Refresh Summary
@@ -758,7 +859,7 @@ const AnalyticsReport = () => {
                       <div className="space-y-1">
                         <p>Loading live summary metadata for this player report.</p>
                         <p className="text-xs text-muted-foreground/80">
-                          The Game-Changrs shell is reading the existing cricket report JSON while the verified iframe report remains unchanged.
+                          The Game-Changrs shell is reading the live report JSON while the protected report document loads below.
                         </p>
                       </div>
                     </div>
@@ -827,7 +928,7 @@ const AnalyticsReport = () => {
                   </>
                 ) : (
                   <div className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-background/60 px-4 py-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                    <p>Live summary metadata is not available yet. The embedded verified report below remains the source of truth.</p>
+                    <p>Live summary metadata is not available yet. The protected report document below remains the source of truth.</p>
                     <Button type="button" variant="outline" size="sm" onClick={() => setSummaryReloadKey((current) => current + 1)}>
                       <RefreshCw className="mr-2 h-4 w-4" />
                       Refresh Summary
@@ -841,27 +942,45 @@ const AnalyticsReport = () => {
               <CardHeader>
                 <CardTitle className="font-display text-2xl text-foreground">Embedded report</CardTitle>
                 <CardDescription>
-                  Source route: <span className="font-mono text-foreground">{reportUrl}</span>
+                  Protected source route: <span className="font-mono text-foreground">{reportUrl}</span>
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {isFrameLoading ? (
+                {(reportDocumentStatus === "loading" || (reportDocumentStatus === "success" && isFrameLoading)) ? (
                   <div className="space-y-4">
                     <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-background/60 px-4 py-3 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading the verified Express report inside the Game-Changrs shell.
+                      Loading the protected report inside the Game-Changrs shell.
                     </div>
                     <Skeleton className="h-[70vh] w-full rounded-2xl" />
                   </div>
                 ) : null}
 
-                <iframe
-                  key={reportUrl}
-                  title={`${title} report`}
-                  src={reportUrl}
-                  onLoad={() => setIsFrameLoading(false)}
-                  className={`w-full rounded-2xl border border-border/80 bg-white ${isFrameLoading ? "hidden" : "block"} h-[80vh]`}
-                />
+                {reportDocumentStatus === "error" && reportDocumentError ? (
+                  <div className="flex flex-col gap-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-sm text-destructive sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div className="space-y-1">
+                        <p>The protected report could not be loaded.</p>
+                        <p className="text-destructive/80">{reportDocumentError}</p>
+                      </div>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setReportDocumentReloadKey((current) => current + 1)}>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Retry Report
+                    </Button>
+                  </div>
+                ) : null}
+
+                {reportDocumentStatus === "success" && reportDocumentHtml ? (
+                  <iframe
+                    key={reportUrl}
+                    title={`${title} report`}
+                    srcDoc={reportDocumentHtml}
+                    onLoad={() => setIsFrameLoading(false)}
+                    className={`w-full rounded-2xl border border-border/80 bg-white ${isFrameLoading ? "hidden" : "block"} h-[80vh]`}
+                  />
+                ) : null}
               </CardContent>
             </Card>
           </div>

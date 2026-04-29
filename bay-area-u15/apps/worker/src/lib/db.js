@@ -6,6 +6,26 @@ loadEnvFile(path.resolve(process.cwd(), ".env"));
 
 let sharedPool = null;
 
+function attachClientErrorLogging(client) {
+  let clientErrored = false;
+
+  const onError = (error) => {
+    clientErrored = true;
+    console.error(`[worker-db] client error: ${error.message}`);
+  };
+
+  client.on("error", onError);
+
+  return {
+    hadError() {
+      return clientErrored;
+    },
+    dispose() {
+      client.off("error", onError);
+    },
+  };
+}
+
 function getDatabaseUrl() {
   const value = process.env.DATABASE_URL;
   if (!value) {
@@ -33,6 +53,12 @@ function getPool() {
     sharedPool = new Pool({
       connectionString: getDatabaseUrl(),
       ssl: getSslConfig(),
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000,
+    });
+
+    sharedPool.on("error", (error) => {
+      console.error(`[worker-db] pooled client error: ${error.message}`);
     });
   }
 
@@ -41,30 +67,40 @@ function getPool() {
 
 async function withClient(work) {
   const client = await getPool().connect();
+  const clientState = attachClientErrorLogging(client);
   try {
     return await work(client);
   } finally {
-    client.release();
+    clientState.dispose();
+    client.release(clientState.hadError());
   }
 }
 
-async function withTransaction(work) {
+async function withTransaction(work, options = {}) {
   const client = await getPool().connect();
+  const clientState = attachClientErrorLogging(client);
 
   try {
     await client.query("BEGIN");
     const result = await work(client);
-    await client.query("COMMIT");
+    if (options.rollback === true) {
+      await client.query("ROLLBACK");
+    } else {
+      await client.query("COMMIT");
+    }
     return result;
   } catch (error) {
     try {
-      await client.query("ROLLBACK");
+      if (!clientState.hadError()) {
+        await client.query("ROLLBACK");
+      }
     } catch (_) {
       // no-op
     }
     throw error;
   } finally {
-    client.release();
+    clientState.dispose();
+    client.release(clientState.hadError());
   }
 }
 

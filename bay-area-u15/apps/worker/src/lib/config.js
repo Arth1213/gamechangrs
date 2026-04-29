@@ -29,8 +29,32 @@ function loadWeightsConfig(filePath = path.resolve(process.cwd(), "config/weight
   return YAML.parse(raw);
 }
 
+function writeYamlConfig(filePath, payload) {
+  const serialized = YAML.stringify(payload, {
+    indent: 2,
+    lineWidth: 0,
+  });
+  fs.writeFileSync(filePath, serialized, "utf8");
+}
+
+function resolveSourceSystem(config, seriesConfig, explicitValue) {
+  const candidate =
+    explicitValue ||
+    seriesConfig?.source_system ||
+    seriesConfig?.sourceSystem ||
+    config?.default_source;
+
+  if (!candidate) {
+    return null;
+  }
+
+  return String(candidate).trim().toLowerCase();
+}
+
 module.exports = {
   loadYamlConfig,
   loadWeightsConfig,
+  resolveSourceSystem,
   resolveSeriesConfig,
+  writeYamlConfig,
 };

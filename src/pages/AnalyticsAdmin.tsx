@@ -574,6 +574,7 @@ const AnalyticsAdmin = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const allowHostedSeriesCreation = false;
+  const allowHostedSeriesSetup = false;
   const allowHostedSeriesOperations = false;
   const [catalogStatus, setCatalogStatus] = useState<CatalogStatus>("loading");
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -1021,7 +1022,7 @@ const AnalyticsAdmin = () => {
 
   useEffect(() => {
     const currentSeriesKey = selectedSeries?.configKey?.trim();
-    if (!accessToken || !currentSeriesKey || catalog?.authFoundationReady !== true) {
+    if (!allowHostedSeriesSetup || !accessToken || !currentSeriesKey || catalog?.authFoundationReady !== true) {
       setSetup(null);
       setSetupStatus("idle");
       setSetupError(null);
@@ -1054,7 +1055,7 @@ const AnalyticsAdmin = () => {
     return () => {
       controller.abort();
     };
-  }, [accessToken, catalog?.authFoundationReady, selectedSeries?.configKey, setupReloadKey]);
+  }, [accessToken, allowHostedSeriesSetup, catalog?.authFoundationReady, selectedSeries?.configKey, setupReloadKey]);
 
   useEffect(() => {
     if (setupStatus === "success" && setup) {
@@ -2362,6 +2363,1175 @@ const AnalyticsAdmin = () => {
                     variant="outline"
                     className="border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-emerald-300"
                   >
+                    Access Controls Only
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <h1 className="font-display text-4xl font-bold leading-[0.96] text-foreground md:text-5xl">
+                    Series access management
+                  </h1>
+                  <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
+                    Only series-admin and series-user access stays in the hosted console. Setup, refresh, tuning, and
+                    the rest of the series workflow now stay in the local workspace.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
+                {isPlatformAdminActor ? (
+                  <Button asChild variant="outline" className="w-full md:w-auto">
+                    <Link to={getAnalyticsPlatformAdminRoute()}>
+                      <ShieldCheck className="mr-2 h-4 w-4" />
+                      Platform Console
+                    </Link>
+                  </Button>
+                ) : null}
+                <Button asChild variant="outline" className="w-full md:w-auto">
+                  <Link to="/analytics">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Analytics
+                  </Link>
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {[
+                { href: "#series-switcher", label: "Series switcher" },
+                { href: "#series-admins", label: "Series admins" },
+                { href: "#series-users", label: "Series users" },
+              ].map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="inline-flex items-center rounded-full border border-border/80 bg-card/70 px-4 py-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+                >
+                  {item.label}
+                </a>
+              ))}
+            </div>
+
+            {catalogStatus === "loading" ? (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Card className="border-border/80 bg-card/85 shadow-xl">
+                  <CardContent className="space-y-4 p-6">
+                    <Skeleton className="h-8 w-56" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                  </CardContent>
+                </Card>
+                <Card className="border-border/80 bg-card/85 shadow-xl">
+                  <CardContent className="space-y-4 p-6">
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-32 w-full" />
+                  </CardContent>
+                </Card>
+              </div>
+            ) : null}
+
+            {catalogStatus === "error" ? (
+              <Card className="border-destructive/30 bg-destructive/5 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-destructive">
+                    <AlertCircle className="h-5 w-5" />
+                    Admin shell could not load
+                  </CardTitle>
+                  <CardDescription className="text-destructive/80">{catalogError}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="outline" onClick={() => setCatalogReloadKey((current) => current + 1)}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Retry admin load
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {catalogStatus === "success" && catalog?.authFoundationReady !== true ? (
+              <Card className="border-amber-500/30 bg-amber-500/8 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-amber-200">
+                    <Database className="h-5 w-5" />
+                    Tenant foundation is not applied in the database yet
+                  </CardTitle>
+                  <CardDescription className="text-amber-100/80">
+                    The access console is wired, but entity-scoped management will not resolve until the tenant
+                    foundation migration is applied to the shared Supabase project.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3 md:grid-cols-3">
+                  {readinessItems.map((item) => (
+                    <div key={item.label} className="rounded-2xl border border-amber-500/20 bg-background/40 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-amber-100/70">{item.label}</p>
+                      <p className="mt-3 font-semibold text-foreground">{item.ready ? "Ready" : "Missing"}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {catalogStatus === "success" && catalog?.authFoundationReady === true && !hasSeriesAdminConsoleAccess ? (
+              <Card className="border-amber-500/30 bg-amber-500/8 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-amber-200">
+                    <ShieldCheck className="h-5 w-5" />
+                    Series admin access required
+                  </CardTitle>
+                  <CardDescription className="text-amber-100/80">
+                    This route is reserved for platform admins and series admins. Series users do not receive an admin
+                    console and should use the analytics workspace instead.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">User ID</p>
+                    <p className="mt-2 break-all font-mono text-sm text-foreground">
+                      {catalog?.actor?.userId || user?.id || "Unavailable"}
+                    </p>
+                  </div>
+
+                  {seriesAdminSelfRequestMessage ? (
+                    <div
+                      className={`rounded-2xl border p-4 text-sm leading-7 ${
+                        seriesAdminSelfRequestStatus === "error"
+                          ? "border-destructive/30 bg-destructive/5 text-destructive"
+                          : "border-cyan-400/20 bg-cyan-400/5 text-cyan-100"
+                      }`}
+                    >
+                      {seriesAdminSelfRequestMessage}
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      type="button"
+                      onClick={() => void handleRequestSeriesAdminAccess()}
+                      disabled={seriesAdminSelfRequestStatus === "saving" || !selectedSeriesKey}
+                    >
+                      {seriesAdminSelfRequestStatus === "saving" ? "Submitting request..." : "Request series admin access"}
+                    </Button>
+                    <Button asChild variant="outline">
+                      <Link to="/analytics">
+                        Back to Analytics
+                      </Link>
+                    </Button>
+                  </div>
+
+                  {!selectedSeriesKey ? (
+                    <p className="text-sm leading-6 text-amber-100/80">
+                      Open this route from a specific series so the request can be sent to the correct series-admin team.
+                    </p>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {catalogStatus === "success" && catalog?.authFoundationReady === true && hasSeriesAdminConsoleAccess && !series.length ? (
+              <Card className="border-border/80 bg-card/85 shadow-xl">
+                <CardHeader>
+                  <CardTitle>No series exist for this entity yet</CardTitle>
+                  <CardDescription>
+                    New series onboarding now happens offline on the local ops machine. Once a series is loaded into
+                    Supabase, it will appear here for series-admin and series-user access management.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            ) : null}
+
+            {catalogStatus === "success" && catalog?.authFoundationReady === true && hasSeriesAdminConsoleAccess && series.length ? (
+              <div className="flex flex-col gap-4">
+                <Card className="border-border/80 bg-card/85 shadow-xl" id="series-switcher">
+                  <CardHeader>
+                    <CardTitle className="font-display text-2xl text-foreground">Series switcher</CardTitle>
+                    <CardDescription>Select which series drives the access sections on this page.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {selectedSeries ? (
+                      <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div className="space-y-1">
+                            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                              Current selection
+                            </p>
+                            <p className="font-semibold text-foreground">
+                              {selectedSeries.seriesName || selectedSeries.configKey}
+                            </p>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                              {selectedSeries.entityName || "Unassigned entity"}
+                              {selectedSeries.targetAgeGroup ? ` · ${selectedSeries.targetAgeGroup}` : ""}
+                              {selectedSeries.seasonYear ? ` · ${selectedSeries.seasonYear}` : ""}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Badge className="border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
+                              Current series
+                            </Badge>
+                            {selectedSeries.isActive ? (
+                              <Badge className="border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
+                                Active
+                              </Badge>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {series.map((item) => {
+                      const isSelected = item.configKey === selectedSeries?.configKey;
+
+                      return (
+                        <button
+                          key={item.configKey}
+                          type="button"
+                          onClick={() => handleSelectSeries(item.configKey)}
+                          className={`w-full rounded-2xl border p-4 text-left transition ${
+                            isSelected
+                              ? "border-primary/40 bg-primary/10"
+                              : "border-border/80 bg-background/45 hover:border-primary/25 hover:bg-background/70"
+                          }`}
+                        >
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                {isSelected ? (
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+                                ) : null}
+                                <p className="text-lg font-semibold text-foreground">
+                                  {item.seriesName || item.configKey}
+                                </p>
+                              </div>
+                              <p className="text-sm leading-6 text-muted-foreground">
+                                {item.entityName || "Unassigned entity"}
+                                {item.targetAgeGroup ? ` · ${item.targetAgeGroup}` : ""}
+                                {item.seasonYear ? ` · ${item.seasonYear}` : ""}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              {isSelected ? (
+                                <Badge className="border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
+                                  Selected
+                                </Badge>
+                              ) : null}
+                              <Badge className={getAccessTone(item.accessRole)}>{item.accessRole || "admin"}</Badge>
+                              {item.isActive ? (
+                                <Badge className="border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
+                                  Active
+                                </Badge>
+                              ) : null}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+
+                {selectedSeries ? (
+                  <>
+                    <Card className="border-border/80 bg-card/85 shadow-xl" id="series-admins">
+                      <CardContent className="space-y-6 p-6">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <ShieldCheck className="h-4 w-4 text-cyan-200" />
+                              <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                                Series admins
+                              </p>
+                            </div>
+                            <div>
+                              <h2 className="font-display text-2xl text-foreground">Series admin team</h2>
+                              <p className="text-sm leading-7 text-muted-foreground">
+                                Grant or remove series-admin access for the entity that owns this series. Admin access
+                                applies across every series under this entity.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Owning entity</p>
+                            <p className="mt-2 text-sm font-semibold text-foreground">
+                              {selectedEntity?.entityName || "No entity selected"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 xl:grid-cols-2">
+                          <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                            <div className="space-y-2">
+                              <p className="font-display text-xl text-foreground">Pre-approve by email</p>
+                              <p className="text-sm leading-7 text-muted-foreground">
+                                Use this when the future series admin has not signed in yet.
+                              </p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="series-admin-invite-email">Series admin email</Label>
+                              <Input
+                                id="series-admin-invite-email"
+                                type="email"
+                                placeholder="admin@example.com"
+                                value={seriesAdminInviteForm.email}
+                                onChange={(event) => handleSeriesAdminInviteFieldChange("email", event.target.value)}
+                              />
+                            </div>
+
+                            {seriesAdminInviteMutationMessage ? (
+                              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-7 text-emerald-200">
+                                {seriesAdminInviteMutationMessage}
+                              </div>
+                            ) : null}
+
+                            {seriesAdminInviteMutationError ? (
+                              <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm leading-7 text-destructive">
+                                {seriesAdminInviteMutationError}
+                              </div>
+                            ) : null}
+
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                onClick={() => void handleInviteEntityAdmin()}
+                                disabled={seriesAdminInviteMutationStatus === "saving" || !selectedEntity?.entityId}
+                              >
+                                {seriesAdminInviteMutationStatus === "saving" ? "Saving..." : "Save pre-approval"}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setSeriesAdminInviteForm({ email: "" })}
+                                disabled={seriesAdminInviteMutationStatus === "saving"}
+                              >
+                                Clear
+                              </Button>
+                            </div>
+                          </div>
+
+                          <form
+                            className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5"
+                            onSubmit={(event) =>
+                              selectedEntity?.entityId ? void handleAssignEntityAdmin(event, selectedEntity.entityId) : undefined
+                            }
+                          >
+                            <div className="space-y-2">
+                              <p className="font-display text-xl text-foreground">Grant immediately by user ID</p>
+                              <p className="text-sm leading-7 text-muted-foreground">
+                                Use this when the person already has a Game-Changrs account.
+                              </p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor={`entity-admin-user-${selectedEntity?.entityId || "selected"}`}>
+                                Series admin user ID
+                              </Label>
+                              <Input
+                                id={`entity-admin-user-${selectedEntity?.entityId || "selected"}`}
+                                value={selectedEntity?.entityId ? entityAdminDrafts[selectedEntity.entityId] || "" : ""}
+                                onChange={(event) => {
+                                  const entityId = selectedEntity?.entityId || "";
+                                  setEntityAdminDrafts((current) => ({
+                                    ...current,
+                                    [entityId]: event.target.value,
+                                  }));
+                                  setEntityAdminErrors((current) => ({
+                                    ...current,
+                                    [entityId]: "",
+                                  }));
+                                }}
+                                placeholder="Supabase auth user ID"
+                                className="font-mono text-xs"
+                                autoComplete="off"
+                                disabled={!selectedEntity?.entityId}
+                              />
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="submit"
+                                disabled={Boolean(activeEntityAdminMutationKey) || !selectedEntity?.entityId}
+                                className="md:min-w-[14rem]"
+                              >
+                                {activeEntityAdminMutationKey === `assign:${selectedEntity?.entityId}` ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <UserPlus className="mr-2 h-4 w-4" />
+                                )}
+                                Grant series admin
+                              </Button>
+                            </div>
+
+                            {selectedEntity?.entityId && entityAdminMessages[selectedEntity.entityId] ? (
+                              <p className="text-sm leading-6 text-emerald-300">
+                                {entityAdminMessages[selectedEntity.entityId]}
+                              </p>
+                            ) : null}
+
+                            {selectedEntity?.entityId && entityAdminErrors[selectedEntity.entityId] ? (
+                              <p className="text-sm leading-6 text-destructive">
+                                {entityAdminErrors[selectedEntity.entityId]}
+                              </p>
+                            ) : null}
+                          </form>
+                        </div>
+
+                        <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                          <div className="space-y-2">
+                            <p className="font-display text-xl text-foreground">Pending admin requests</p>
+                            <p className="text-sm leading-7 text-muted-foreground">
+                              Approve self-service admin requests or manage email invites that are still waiting for
+                              first login.
+                            </p>
+                          </div>
+
+                          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                            <div className="space-y-2">
+                              <Label htmlFor="entity-admin-request-search">Search requests</Label>
+                              <Input
+                                id="entity-admin-request-search"
+                                value={entityAdminRequestQuery}
+                                onChange={(event) => setEntityAdminRequestQuery(event.target.value)}
+                                placeholder="Search by email, user ID, or note"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Show</Label>
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  { value: "all", label: `All (${formatNumber(pendingEntityAdminRequests.length)})` },
+                                  { value: "ready", label: `Ready (${formatNumber(readyEntityAdminRequestCount)})` },
+                                  { value: "waiting", label: `Waiting (${formatNumber(waitingEntityAdminRequestCount)})` },
+                                ].map((item) => (
+                                  <Button
+                                    key={item.value}
+                                    type="button"
+                                    size="sm"
+                                    variant={entityAdminRequestFilter === item.value ? "default" : "outline"}
+                                    onClick={() => setEntityAdminRequestFilter(item.value as PendingRequestFilter)}
+                                  >
+                                    {item.label}
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {filteredPendingEntityAdminRequests.length ? (
+                            <div className="space-y-3">
+                              {filteredPendingEntityAdminRequests.map((request) => {
+                                const requestId = request.requestId || "";
+                                const decisionStatus = requestId
+                                  ? entityAdminRequestDecisionStatusByRequest[requestId]
+                                  : undefined;
+                                const canApprove = request.requestType === "self_request" && Boolean(request.requestedUserId);
+                                const requestStatusLabel =
+                                  request.requestType === "admin_invite" && !request.requestedUserId
+                                    ? "Waiting for first login"
+                                    : request.requestStatus || "pending";
+
+                                return (
+                                  <div
+                                    key={request.requestId || `${request.requestedEmail}-${request.createdAt}`}
+                                    className="rounded-2xl border border-border/70 bg-background/60 p-5"
+                                  >
+                                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                      <div className="space-y-4">
+                                        <div className="flex flex-wrap gap-2">
+                                          <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                                            {request.requestType === "admin_invite" ? "Email pre-approval" : "User request"}
+                                          </Badge>
+                                          <Badge className={getStatusBadgeClass(request.requestStatus)}>
+                                            {requestStatusLabel}
+                                          </Badge>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                          <p className="break-all text-base font-semibold text-foreground">
+                                            {request.requestedEmail || "-"}
+                                          </p>
+                                          <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
+                                            {request.requestedUserId || "No user ID linked yet"}
+                                          </p>
+                                        </div>
+
+                                        {request.requestNote ? (
+                                          <p className="text-sm leading-6 text-muted-foreground">
+                                            {request.requestNote}
+                                          </p>
+                                        ) : null}
+                                      </div>
+
+                                      <div className="flex flex-wrap gap-2 lg:justify-end">
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          disabled={!canApprove || decisionStatus === "saving" || !requestId}
+                                          onClick={() => void handleEntityAdminRequestDecision(request, "approve")}
+                                        >
+                                          {decisionStatus === "saving" && canApprove ? "Approving..." : "Approve"}
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          disabled={decisionStatus === "saving" || !requestId}
+                                          onClick={() => void handleEntityAdminRequestDecision(request, "decline")}
+                                        >
+                                          Decline
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="rounded-2xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground">
+                              No pending series-admin requests match the current filter.
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                          <div className="space-y-1">
+                            <p className="font-display text-xl text-foreground">Current series admins</p>
+                            <p className="text-sm leading-7 text-muted-foreground">
+                              Owner transfer stays locked. Additional admins inherit access across this entity.
+                            </p>
+                          </div>
+
+                          {(selectedEntity?.admins ?? []).length ? (
+                            <div className="space-y-3">
+                              {(selectedEntity?.admins ?? []).map((membership) => {
+                                const removeKey = `remove:${selectedEntity?.entityId}:${membership.userId}`;
+                                const isRemoving = activeEntityAdminMutationKey === removeKey;
+
+                                return (
+                                  <div
+                                    key={`${membership.userId}-${membership.role}`}
+                                    className="flex flex-col gap-3 rounded-xl border border-border/70 bg-background/55 p-4 md:flex-row md:items-center md:justify-between"
+                                  >
+                                    <div className="space-y-1">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <p className="font-medium text-foreground">
+                                          {membership.isOwner ? "Entity owner" : "Series admin"}
+                                        </p>
+                                        <Badge className={getEntityAdminMembershipTone(membership)}>
+                                          {membership.isOwner ? "owner" : membership.role || "admin"}
+                                        </Badge>
+                                      </div>
+                                      <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
+                                        {membership.userId || "No user ID"}
+                                      </p>
+                                    </div>
+
+                                    {membership.canRemove ? (
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={Boolean(activeEntityAdminMutationKey) || !selectedEntity?.entityId}
+                                        onClick={() =>
+                                          selectedEntity?.entityId && membership.userId
+                                            ? void handleRemoveEntityAdmin(selectedEntity.entityId, membership.userId)
+                                            : undefined
+                                        }
+                                        className="border-destructive/25 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                      >
+                                        {isRemoving ? (
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                        )}
+                                        Remove
+                                      </Button>
+                                    ) : (
+                                      <div className="text-xs leading-6 text-muted-foreground">Locked</div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="rounded-xl border border-border/70 bg-background/55 p-4 text-sm leading-7 text-muted-foreground">
+                              No entity-admin assignments are active yet for this series owner.
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-border/80 bg-card/85 shadow-xl" id="series-users">
+                      <CardContent className="space-y-6 p-6">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <ShieldCheck className="h-4 w-4 text-cyan-200" />
+                              <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                                Series users
+                              </p>
+                            </div>
+                            <div>
+                              <h2 className="font-display text-2xl text-foreground">Series user access</h2>
+                              <p className="text-sm leading-7 text-muted-foreground">
+                                Use one path at a time: pre-approve by email, grant by user ID, or review pending requests.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            {subscriptionStatus === "loading" ? (
+                              <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                                Checking entitlements
+                              </Badge>
+                            ) : null}
+                            {subscriptionStatus === "error" ? (
+                              <Badge className="border-amber-500/25 bg-amber-500/10 text-amber-300">
+                                Entitlements unavailable
+                              </Badge>
+                            ) : null}
+                            {subscriptionReady ? (
+                              <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
+                                {planSummaryLabel}
+                              </Badge>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className="grid gap-2 sm:grid-cols-4">
+                          <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Active viewers</p>
+                            <p className="mt-2 text-sm text-foreground">
+                              {formatNumber(viewerAccess?.totals?.activeViewers ?? 0)}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Active analysts</p>
+                            <p className="mt-2 text-sm text-foreground">
+                              {formatNumber(viewerAccess?.totals?.activeAnalysts ?? 0)}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Pending requests</p>
+                            <p className="mt-2 text-sm text-foreground">
+                              {formatNumber(viewerAccess?.totals?.pendingRequests ?? 0)}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Viewer plan cap</p>
+                            <p className="mt-2 text-sm text-foreground">
+                              {formatNumber(viewerAccess?.subscription?.maxViewerUsers ?? null)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 xl:grid-cols-2">
+                          <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                            <div className="space-y-2">
+                              <p className="font-display text-xl text-foreground">Pre-approve by email</p>
+                              <p className="text-sm leading-7 text-muted-foreground">
+                                Best before the person signs in for the first time.
+                              </p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="viewer-invite-email">Viewer email</Label>
+                              <Input
+                                id="viewer-invite-email"
+                                type="email"
+                                placeholder="viewer@example.com"
+                                value={viewerInviteForm.email}
+                                onChange={(event) => handleViewerInviteFieldChange("email", event.target.value)}
+                              />
+                            </div>
+
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="space-y-2">
+                                <Label htmlFor="viewer-invite-role">Access role</Label>
+                                <Select
+                                  value={viewerInviteForm.accessRole}
+                                  onValueChange={(value) =>
+                                    handleViewerInviteFieldChange("accessRole", value as ViewerInviteFormState["accessRole"])
+                                  }
+                                >
+                                  <SelectTrigger id="viewer-invite-role">
+                                    <SelectValue placeholder="Viewer" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="viewer">Viewer</SelectItem>
+                                    <SelectItem value="analyst">Analyst</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="viewer-invite-expires-at">Expires at (optional)</Label>
+                                <Input
+                                  id="viewer-invite-expires-at"
+                                  type="datetime-local"
+                                  value={viewerInviteForm.expiresAt}
+                                  onChange={(event) => handleViewerInviteFieldChange("expiresAt", event.target.value)}
+                                />
+                              </div>
+                            </div>
+
+                            {viewerInviteMutationMessage ? (
+                              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-7 text-emerald-200">
+                                {viewerInviteMutationMessage}
+                              </div>
+                            ) : null}
+
+                            {viewerInviteMutationError ? (
+                              <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm leading-7 text-destructive">
+                                {viewerInviteMutationError}
+                              </div>
+                            ) : null}
+
+                            {subscriptionStatus === "error" ? (
+                              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm leading-7 text-amber-200">
+                                Viewer entitlements could not be loaded right now. Try refreshing the page.
+                              </div>
+                            ) : null}
+
+                            {!viewerGrantEnabledByPlan && subscriptionStatus === "success" ? (
+                              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm leading-7 text-amber-200">
+                                New viewer access is blocked by the current entity plan.
+                              </div>
+                            ) : null}
+
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                onClick={() => void handleGrantViewerInvite()}
+                                disabled={viewerInviteMutationStatus === "saving" || !viewerGrantEnabledByPlan}
+                              >
+                                {viewerInviteMutationStatus === "saving" ? "Saving..." : "Save pre-approval"}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  setViewerInviteForm({
+                                    email: "",
+                                    accessRole: "viewer",
+                                    expiresAt: "",
+                                  })
+                                }
+                                disabled={viewerInviteMutationStatus === "saving"}
+                              >
+                                Clear
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                            <div className="space-y-2">
+                              <p className="font-display text-xl text-foreground">Grant immediately by user ID</p>
+                              <p className="text-sm leading-7 text-muted-foreground">
+                                Use this when the person already has a Game-Changrs account.
+                              </p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="viewer-direct-user-id">Viewer user ID</Label>
+                              <Input
+                                id="viewer-direct-user-id"
+                                placeholder="5ffa7fd5-37b9-4505-b819-8357be68de8f"
+                                value={viewerDirectGrantForm.userId}
+                                onChange={(event) => handleViewerDirectGrantFieldChange("userId", event.target.value)}
+                              />
+                            </div>
+
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="space-y-2">
+                                <Label htmlFor="viewer-direct-role">Access role</Label>
+                                <Select
+                                  value={viewerDirectGrantForm.accessRole}
+                                  onValueChange={(value) =>
+                                    handleViewerDirectGrantFieldChange("accessRole", value as ViewerDirectGrantFormState["accessRole"])
+                                  }
+                                >
+                                  <SelectTrigger id="viewer-direct-role">
+                                    <SelectValue placeholder="Viewer" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="viewer">Viewer</SelectItem>
+                                    <SelectItem value="analyst">Analyst</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="viewer-direct-expires-at">Expires at (optional)</Label>
+                                <Input
+                                  id="viewer-direct-expires-at"
+                                  type="datetime-local"
+                                  value={viewerDirectGrantForm.expiresAt}
+                                  onChange={(event) => handleViewerDirectGrantFieldChange("expiresAt", event.target.value)}
+                                />
+                              </div>
+                            </div>
+
+                            {viewerDirectGrantMutationMessage ? (
+                              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-7 text-emerald-200">
+                                {viewerDirectGrantMutationMessage}
+                              </div>
+                            ) : null}
+
+                            {viewerDirectGrantMutationError ? (
+                              <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm leading-7 text-destructive">
+                                {viewerDirectGrantMutationError}
+                              </div>
+                            ) : null}
+
+                            {!viewerGrantEnabledByPlan && subscriptionStatus === "success" ? (
+                              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm leading-7 text-amber-200">
+                                New viewer access is blocked by the current entity plan.
+                              </div>
+                            ) : null}
+
+                            {viewerGrantEnabledByPlan && !viewerImmediateGrantAllowed ? (
+                              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm leading-7 text-amber-200">
+                                Direct user-id grants are at the current viewer cap. Use the email pre-approval path instead,
+                                or free an existing viewer seat.
+                              </div>
+                            ) : null}
+
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                onClick={() => void handleGrantViewerDirectAccess()}
+                                disabled={
+                                  viewerDirectGrantMutationStatus === "saving"
+                                  || !viewerGrantEnabledByPlan
+                                  || !viewerImmediateGrantAllowed
+                                }
+                              >
+                                {viewerDirectGrantMutationStatus === "saving" ? "Granting..." : "Grant now"}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  setViewerDirectGrantForm({
+                                    userId: "",
+                                    accessRole: "viewer",
+                                    expiresAt: "",
+                                  })
+                                }
+                                disabled={viewerDirectGrantMutationStatus === "saving"}
+                              >
+                                Clear
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                          <div className="space-y-2">
+                            <p className="font-display text-xl text-foreground">Pending user requests</p>
+                            <p className="text-sm leading-7 text-muted-foreground">
+                              Approve self-service requests or check invites waiting for first login.
+                            </p>
+                          </div>
+
+                          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                            <div className="space-y-2">
+                              <Label htmlFor="viewer-request-search">Search requests</Label>
+                              <Input
+                                id="viewer-request-search"
+                                value={viewerRequestQuery}
+                                onChange={(event) => setViewerRequestQuery(event.target.value)}
+                                placeholder="Search by email, user ID, role, or note"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Show</Label>
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  { value: "all", label: `All (${formatNumber(pendingViewerAccessRequests.length)})` },
+                                  { value: "ready", label: `Ready (${formatNumber(readyViewerRequestCount)})` },
+                                  { value: "waiting", label: `Waiting (${formatNumber(waitingViewerRequestCount)})` },
+                                ].map((item) => (
+                                  <Button
+                                    key={item.value}
+                                    type="button"
+                                    size="sm"
+                                    variant={viewerRequestFilter === item.value ? "default" : "outline"}
+                                    onClick={() => setViewerRequestFilter(item.value as PendingRequestFilter)}
+                                  >
+                                    {item.label}
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {viewerAccessStatus === "loading" ? (
+                            <div className="space-y-3">
+                              <Skeleton className="h-24 w-full" />
+                              <Skeleton className="h-24 w-full" />
+                            </div>
+                          ) : null}
+
+                          {viewerAccessStatus === "error" && viewerAccessError ? (
+                            <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
+                              <div className="flex items-start gap-3">
+                                <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
+                                <div className="space-y-3">
+                                  <p className="font-semibold text-destructive">Requests could not be loaded</p>
+                                  <p className="text-sm leading-6 text-destructive/80">{viewerAccessError}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {viewerAccessStatus === "success" ? (
+                            filteredPendingViewerAccessRequests.length ? (
+                              <div className="space-y-3">
+                                {filteredPendingViewerAccessRequests.map((request) => {
+                                  const requestId = request.requestId || "";
+                                  const decisionStatus = requestId
+                                    ? accessRequestDecisionStatusByRequest[requestId]
+                                    : undefined;
+                                  const canApprove = request.requestType === "self_request" && Boolean(request.requestedUserId);
+                                  const requestStatusLabel =
+                                    request.requestType === "admin_invite" && !request.requestedUserId
+                                      ? "Waiting for first login"
+                                      : request.requestStatus || "pending";
+
+                                  return (
+                                    <div
+                                      key={request.requestId || `${request.requestedEmail}-${request.createdAt}`}
+                                      className="rounded-2xl border border-border/70 bg-background/60 p-5"
+                                    >
+                                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                        <div className="space-y-4">
+                                          <div className="flex flex-wrap gap-2">
+                                            <Badge className={getStatusBadgeClass(request.requestType)}>
+                                              {request.requestType === "admin_invite" ? "Email pre-approval" : "User request"}
+                                            </Badge>
+                                            <Badge className={getViewerAccessRoleBadgeClass(request.requestedAccessRole)}>
+                                              {request.requestedAccessRole || "viewer"}
+                                            </Badge>
+                                            <Badge className={getStatusBadgeClass(request.requestStatus)}>
+                                              {requestStatusLabel}
+                                            </Badge>
+                                          </div>
+
+                                          <div className="space-y-1">
+                                            <p className="break-all text-base font-semibold text-foreground">
+                                              {request.requestedEmail || "-"}
+                                            </p>
+                                            <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
+                                              {request.requestedUserId || "No user ID linked yet"}
+                                            </p>
+                                          </div>
+
+                                          {request.requestNote ? (
+                                            <p className="text-sm leading-6 text-muted-foreground">
+                                              {request.requestNote}
+                                            </p>
+                                          ) : null}
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2 lg:justify-end">
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={!canApprove || decisionStatus === "saving" || !requestId}
+                                            onClick={() => void handleAccessRequestDecision(request, "approve")}
+                                          >
+                                            {decisionStatus === "saving" && canApprove ? "Approving..." : "Approve"}
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={decisionStatus === "saving" || !requestId}
+                                            onClick={() => void handleAccessRequestDecision(request, "decline")}
+                                          >
+                                            Decline
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="rounded-2xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground">
+                                No pending viewer requests match the current filter.
+                              </div>
+                            )
+                          ) : null}
+                        </div>
+
+                        <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="space-y-1">
+                              <p className="font-display text-xl text-foreground">Current grants</p>
+                              <p className="text-sm leading-7 text-muted-foreground">
+                                Viewer and analyst access for this series.
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setViewerAccessReloadKey((current) => current + 1)}
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              Refresh
+                            </Button>
+                          </div>
+
+                          {viewerAccessStatus === "loading" ? (
+                            <div className="space-y-3">
+                              <Skeleton className="h-16 w-full" />
+                              <Skeleton className="h-16 w-full" />
+                              <Skeleton className="h-16 w-full" />
+                            </div>
+                          ) : null}
+
+                          {viewerAccessStatus === "error" && viewerAccessError ? (
+                            <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
+                              <div className="flex items-start gap-3">
+                                <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
+                                <div className="space-y-3">
+                                  <p className="font-semibold text-destructive">Viewer access grants could not be loaded</p>
+                                  <p className="text-sm leading-6 text-destructive/80">{viewerAccessError}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {viewerAccessStatus === "success" ? (
+                            (viewerAccess?.grants ?? []).length ? (
+                              <div className="space-y-3">
+                                {(viewerAccess?.grants ?? []).map((grant) => {
+                                  const grantId = grant.grantId || "";
+                                  const revokeStatus = grantId ? viewerRevokeStatusByGrant[grantId] : undefined;
+
+                                  return (
+                                    <div
+                                      key={grant.grantId || `${grant.userId}-${grant.createdAt}`}
+                                      className="rounded-2xl border border-border/70 bg-background/60 p-5"
+                                    >
+                                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                        <div className="space-y-4">
+                                          <div className="flex flex-wrap gap-2">
+                                            <Badge className={getViewerAccessRoleBadgeClass(grant.accessRole)}>
+                                              {grant.accessRole || "viewer"}
+                                            </Badge>
+                                            <Badge className={getStatusBadgeClass(grant.isExpired ? "warning" : grant.status)}>
+                                              {grant.isExpired ? "expired" : grant.status || "active"}
+                                            </Badge>
+                                          </div>
+
+                                          <div className="space-y-1">
+                                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                              User ID
+                                            </p>
+                                            <p className="break-all font-mono text-xs leading-6 text-foreground">
+                                              {grant.userId || "-"}
+                                            </p>
+                                          </div>
+
+                                          <div className="grid gap-3 sm:grid-cols-3">
+                                            <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                                Granted by
+                                              </p>
+                                              <p className="mt-2 break-all text-sm leading-6 text-foreground">
+                                                {grant.grantedByUserId || "-"}
+                                              </p>
+                                            </div>
+                                            <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                                Updated
+                                              </p>
+                                              <p className="mt-2 text-sm leading-6 text-foreground">
+                                                {formatDateTime(grant.updatedAt)}
+                                              </p>
+                                            </div>
+                                            <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                              <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                                Expiry
+                                              </p>
+                                              <p className="mt-2 text-sm leading-6 text-foreground">
+                                                {grant.expiresAt ? formatDateTime(grant.expiresAt) : "No expiry"}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2 lg:justify-end">
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={grant.status === "revoked" || revokeStatus === "saving" || !grantId}
+                                            onClick={() => void handleRevokeViewerGrant(grant)}
+                                          >
+                                            {revokeStatus === "saving" ? "Revoking..." : "Revoke"}
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="rounded-2xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground">
+                                No viewer or analyst grants exist for this series yet.
+                              </div>
+                            )
+                          ) : null}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+
+      <section className="bg-gradient-hero pb-20 pt-32">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto max-w-6xl space-y-8">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <Badge
+                    variant="outline"
+                    className="border-border/80 bg-card/70 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-foreground"
+                  >
+                    Analytics
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className="border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-cyan-200"
+                  >
+                    Series Admin Console
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-emerald-300"
+                  >
                     Setup + Access Controls
                   </Badge>
                 </div>
@@ -2791,7 +3961,7 @@ const AnalyticsAdmin = () => {
                                         onChange={(event) =>
                                           handleCreateSeriesSourceFieldChange("sourceSeriesId", event.target.value)
                                         }
-                                        placeholder="434 or Z7froYWOUcJ-_kt1me_RaQ"
+                                        placeholder="434 or uMgpWfOUngCk4uXJEGyssQ"
                                       />
                                       <p className="text-xs leading-6 text-muted-foreground">
                                         Use the CricClubs series identifier when the URL does not already expose a

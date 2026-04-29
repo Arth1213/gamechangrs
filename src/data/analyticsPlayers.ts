@@ -630,7 +630,7 @@ export const LOCAL_PREVIEW_PLAYERS: LocalPreviewPlayer[] = [
       dismissalPatterns: [],
       bowlerTypeNotes: [],
       groundingNotes: [
-        "Public team pages across USA Cricket Junior Pathway, BACA, NCCA, and tournament pages consistently list Neil Mishra as a verified wicket keeper.",
+        "Public team pages across USA Cricket Junior Pathway, BACA, and tournament pages consistently list Neil Mishra as a verified wicket keeper.",
         "Indexed DSCA Rhinos scorecards expose a four-innings batting sample of 0, 8, 13, and 10 runs, which is what this local cache uses.",
       ],
     },

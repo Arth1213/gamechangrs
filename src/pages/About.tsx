@@ -11,7 +11,7 @@ const About = () => {
       bio: "Visionary leader with a passion for democratizing sports excellence through technology.",
       initials: "AA",
       linkedin: "https://www.linkedin.com/in/helloarth/",
-      cricclubs: "https://www.nccacricket.org/NCCA/viewPlayer.do?playerId=2262444&clubId=1191",
+      cricclubs: "https://cricclubs.com/ASCE/viewPlayer.do?playerId=2262444&clubId=22142",
     },
     {
       name: "Coach Dasarath Sanke",

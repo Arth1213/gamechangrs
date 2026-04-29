@@ -34,9 +34,23 @@ async function enumerateMatches(seriesConfig, discovery, options = {}) {
   };
 
   await withBrowser(async (context) => {
-    const divisionPages = (discovery.divisions || []).filter((division) =>
-      targetDivisionSet.has(normalizeLabel(division.label)),
-    );
+    let divisionPages = (discovery.divisions || []);
+    if (targetDivisionSet.size) {
+      divisionPages = divisionPages.filter((division) =>
+        targetDivisionSet.has(normalizeLabel(division.label)),
+      );
+    }
+    if (!divisionPages.length && discovery.routes?.resultsUrl) {
+      divisionPages = [
+        {
+          label: seriesConfig.label || discovery.series?.label || "All Matches",
+          resultsUrl: discovery.routes.resultsUrl,
+          href: discovery.routes.resultsUrl,
+          leagueId: discovery.series?.leagueId || null,
+          isSeriesLevel: true,
+        },
+      ];
+    }
     result.discoveredDivisions = divisionPages;
 
     const matches = [];

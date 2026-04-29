@@ -3,7 +3,11 @@
 const path = require("path");
 
 const { loadEnvFile } = require("./env");
-const { getSeriesAdminAccess, getSeriesViewerAccess } = require("../services/accessService");
+const {
+  getSeriesAdminAccess,
+  getSeriesViewerAccess,
+  getViewerSeriesCatalog,
+} = require("../services/accessService");
 const { normalizeText, toInteger } = require("./utils");
 
 loadEnvFile(path.resolve(process.cwd(), ".env"));
@@ -119,6 +123,43 @@ async function requireAuthenticatedCricketUser(req) {
   return req.cricketActor;
 }
 
+async function resolveViewerSeriesConfigKey(req, actor, options = {}) {
+  const explicitSeriesConfigKey = normalizeText(
+    options.seriesConfigKey || req.params?.seriesConfigKey || req.query?.series
+  );
+  if (explicitSeriesConfigKey) {
+    return explicitSeriesConfigKey;
+  }
+
+  if (options.allowDefaultSeries !== true) {
+    const error = new Error("A series config key is required for this route.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const viewerCatalog = await getViewerSeriesCatalog({
+    userId: actor.userId,
+    email: actor.email,
+  });
+
+  if (viewerCatalog.authFoundationReady !== true) {
+    const error = new Error(
+      "Phase 10 entity auth foundation is not available in the database yet. Apply the tenant-foundation migration first."
+    );
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const defaultSeriesConfigKey = normalizeText(viewerCatalog.defaultSeriesConfigKey);
+  if (!defaultSeriesConfigKey) {
+    const error = new Error("You do not have viewer access to any analytics series.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return defaultSeriesConfigKey;
+}
+
 async function requireSeriesAdminAccess(req) {
   const actor = await requireAuthenticatedCricketUser(req);
 
@@ -162,12 +203,13 @@ async function requireSeriesAdminAccess(req) {
   return req.cricketActor;
 }
 
-async function requireSeriesViewerAccess(req) {
+async function requireSeriesViewerAccess(req, options = {}) {
   const actor = await requireAuthenticatedCricketUser(req);
+  const seriesConfigKey = await resolveViewerSeriesConfigKey(req, actor, options);
 
   const access = await getSeriesViewerAccess({
     userId: actor.userId,
-    seriesConfigKey: req.params.seriesConfigKey,
+    seriesConfigKey,
   });
 
   if (!access.authFoundationReady) {

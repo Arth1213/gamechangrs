@@ -85,6 +85,29 @@ export type CricketDashboardSummaryResponse = {
   } | null;
 };
 
+export type CricketSeriesOverviewResponse = {
+  series?: {
+    configKey?: string;
+    name?: string;
+    targetAgeGroup?: string;
+  };
+  leaderboard?: Array<{
+    divisionLabel?: string;
+  }>;
+  qualitySummary?: {
+    totalMatches?: number | null;
+    computedMatches?: number | null;
+    warningMatches?: number | null;
+    pendingOps?: number | null;
+    adminOverrides?: number | null;
+  };
+  recentMatches?: Array<{
+    matchDateLabel?: string;
+    matchTitle?: string;
+    divisionLabel?: string;
+  }>;
+};
+
 export type CricketAdminEntityMembership = {
   membershipId?: string;
   entityId?: string;
@@ -884,6 +907,200 @@ export type CricketPlayerReportResponse = {
   };
 };
 
+export type CricketPlayerIntelligenceSignalCard = {
+  label?: string;
+  tone?: CricketReportTone;
+  metricLabel?: string;
+  metricValue?: number | null;
+  note?: string;
+};
+
+export type CricketPlayerIntelligenceMatchupRow = {
+  scopeType?: string;
+  divisionId?: number | null;
+  playerId?: number | null;
+  perspective?: string;
+  splitGroup?: string;
+  splitValue?: string;
+  splitLabel?: string;
+  phaseBucket?: string;
+  matchCount?: number | null;
+  deliveryEvents?: number | null;
+  legalBalls?: number | null;
+  runsScored?: number | null;
+  runsConceded?: number | null;
+  dismissals?: number | null;
+  wickets?: number | null;
+  dotBalls?: number | null;
+  boundaries?: number | null;
+  wides?: number | null;
+  noBalls?: number | null;
+  strikeRate?: number | null;
+  economy?: number | null;
+  battingAverage?: number | null;
+  ballsPerDismissal?: number | null;
+  ballsPerWicket?: number | null;
+  dotBallPct?: number | null;
+  boundaryBallPct?: number | null;
+  controlErrorPct?: number | null;
+};
+
+export type CricketPlayerIntelligenceDismissalRow = {
+  scopeType?: string;
+  divisionId?: number | null;
+  playerId?: number | null;
+  bowlerStyleBucket?: string;
+  bowlerStyleLabel?: string;
+  dismissalType?: string;
+  dismissalCount?: number | null;
+  matchCount?: number | null;
+  averageRunsAtDismissal?: number | null;
+  averageBallsFacedAtDismissal?: number | null;
+};
+
+export type CricketPlayerIntelligencePressureProfile = {
+  battingRotationRatio?: number | null;
+  battingHighLeverageStrikeRate?: number | null;
+  bowlingHighLeverageEconomy?: number | null;
+  bowlingPressureControlErrorPct?: number | null;
+  boundaryDotThreshold?: number | null;
+  dismissalDotThreshold?: number | null;
+  boundaryAfterThreeDotsPct?: number | null;
+  dismissalAfterThreeDotsPct?: number | null;
+} | null;
+
+export type CricketPlayerIntelligenceLens = {
+  scopeType?: string;
+  divisionId?: number | null;
+  divisionLabel?: string;
+  sample?: {
+    battingMatchCount?: number | null;
+    bowlingMatchCount?: number | null;
+    battingLegalBalls?: number | null;
+    bowlingLegalBalls?: number | null;
+  };
+  batting?: {
+    overall?: CricketPlayerIntelligenceMatchupRow | null;
+    byPhase?: {
+      powerplay?: CricketPlayerIntelligenceMatchupRow | null;
+      middle?: CricketPlayerIntelligenceMatchupRow | null;
+      death?: CricketPlayerIntelligenceMatchupRow | null;
+    };
+    byBowlerType?: CricketPlayerIntelligenceMatchupRow[];
+    byBowlerTypePhase?: {
+      powerplay?: CricketPlayerIntelligenceMatchupRow[];
+      middle?: CricketPlayerIntelligenceMatchupRow[];
+      death?: CricketPlayerIntelligenceMatchupRow[];
+    };
+  };
+  bowling?: {
+    overall?: CricketPlayerIntelligenceMatchupRow | null;
+    byPhase?: {
+      powerplay?: CricketPlayerIntelligenceMatchupRow | null;
+      middle?: CricketPlayerIntelligenceMatchupRow | null;
+      death?: CricketPlayerIntelligenceMatchupRow | null;
+    };
+    byBatterHand?: CricketPlayerIntelligenceMatchupRow[];
+    byBatterHandPhase?: {
+      powerplay?: CricketPlayerIntelligenceMatchupRow[];
+      middle?: CricketPlayerIntelligenceMatchupRow[];
+      death?: CricketPlayerIntelligenceMatchupRow[];
+    };
+  };
+  dismissals?: CricketPlayerIntelligenceDismissalRow[];
+  pressureProfile?: CricketPlayerIntelligencePressureProfile;
+};
+
+export type CricketPlayerIntelligenceEvidenceItem = {
+  matchId?: number | null;
+  matchDate?: string;
+  matchDateLabel?: string;
+  matchTitle?: string;
+  divisionLabel?: string;
+  inningsNo?: number | null;
+  ballLabel?: string;
+  phase?: string;
+  strikerName?: string;
+  bowlerName?: string;
+  playerOutName?: string;
+  batterRuns?: number | null;
+  totalRuns?: number | null;
+  wicketFlag?: boolean;
+  wicketCreditedToBowler?: boolean;
+  dismissalType?: string;
+  leverageScore?: number | null;
+  totalEventWeight?: number | null;
+  commentaryText?: string;
+  headline?: string;
+};
+
+export type CricketPlayerIntelligenceResponse = {
+  meta?: {
+    generatedAt?: string;
+    reportType?: string;
+    series?: {
+      configKey?: string;
+      name?: string;
+      targetAgeGroup?: string;
+    };
+    scope?: {
+      requestedDivisionId?: number | null;
+      resolvedScopeType?: string;
+      divisionId?: number | null;
+      divisionLabel?: string;
+      scopeLabel?: string;
+      fallbackApplied?: boolean;
+      fallbackReason?: string;
+    };
+    player?: {
+      playerId?: number;
+      primaryDivisionId?: number | null;
+      primaryDivisionLabel?: string;
+      divisionOptions?: Array<{
+        divisionId?: number | null;
+        divisionLabel?: string;
+        roleType?: string;
+        roleLabel?: string;
+        compositeScore?: number | null;
+        confidenceScore?: number | null;
+      }>;
+    };
+    sources?: string[];
+  };
+  header?: {
+    playerName?: string;
+    canonicalName?: string;
+    teamName?: string;
+    roleType?: string;
+    roleLabel?: string;
+    primaryRoleBucket?: string;
+    battingStyle?: string;
+    bowlingStyle?: string;
+    isWicketkeeper?: boolean;
+    recommendationLabel?: string;
+    compositeScore?: number | null;
+    percentileRank?: number | null;
+    confidenceScore?: number | null;
+    confidenceLabel?: string;
+  };
+  tacticalSummary?: {
+    strengths?: CricketPlayerIntelligenceSignalCard[];
+    watchouts?: CricketPlayerIntelligenceSignalCard[];
+    pressureSignals?: CricketPlayerIntelligenceSignalCard[];
+  };
+  focusedLens?: CricketPlayerIntelligenceLens | null;
+  seriesLens?: CricketPlayerIntelligenceLens | null;
+  tacticalPlan?: {
+    battingPlan?: string[];
+    bowlingPlan?: string[];
+  };
+  commentaryEvidence?: {
+    batting?: CricketPlayerIntelligenceEvidenceItem[];
+    bowling?: CricketPlayerIntelligenceEvidenceItem[];
+    dismissals?: CricketPlayerIntelligenceEvidenceItem[];
+  };
+};
+
 export type CricketPlayerReportChatHistoryMessage = {
   role: "user" | "assistant";
   content: string;
@@ -956,6 +1173,14 @@ function getPlayerReportApiPath(result: CricketPlayerTarget, seriesConfigKey?: s
   return `/api/players/${result.playerId}/report`;
 }
 
+function getPlayerIntelligenceApiPath(result: CricketPlayerTarget, seriesConfigKey?: string | null) {
+  if (seriesConfigKey?.trim()) {
+    return `/api/series/${encodeURIComponent(seriesConfigKey.trim())}/players/${result.playerId}/intelligence`;
+  }
+
+  return `/api/players/${result.playerId}/intelligence`;
+}
+
 function getPlayerSearchApiPath(seriesConfigKey?: string | null) {
   if (seriesConfigKey?.trim()) {
     return `/api/series/${encodeURIComponent(seriesConfigKey.trim())}/players/search`;
@@ -988,6 +1213,13 @@ export function getRootCricketPlayerReportRoute(result: CricketPlayerTarget, opt
   const query = appendPlayerQueryParams(result, options);
   const search = query.toString();
   const basePath = `/analytics/reports/${result.playerId}`;
+  return search ? `${basePath}?${search}` : basePath;
+}
+
+export function getRootCricketPlayerIntelligenceRoute(result: CricketPlayerTarget, options?: CricketPlayerRouteOptions) {
+  const query = appendPlayerQueryParams(result, options);
+  const search = query.toString();
+  const basePath = `/analytics/intelligence/${result.playerId}`;
   return search ? `${basePath}?${search}` : basePath;
 }
 
@@ -1045,6 +1277,7 @@ async function readApiErrorMessage(response: Response, fallbackMessage: string) 
 export async function searchCricketPlayers(
   query: string,
   options?: {
+    accessToken: string;
     seriesConfigKey?: string | null;
     signal?: AbortSignal;
   }
@@ -1055,6 +1288,9 @@ export async function searchCricketPlayers(
   const response = await fetch(url.toString(), {
     method: "GET",
     signal: options?.signal,
+    headers: {
+      Authorization: `Bearer ${options?.accessToken || ""}`,
+    },
   });
 
   if (!response.ok) {
@@ -1078,9 +1314,27 @@ export async function fetchCricketDashboardSummary(signal?: AbortSignal) {
   return (await response.json()) as CricketDashboardSummaryResponse;
 }
 
+export async function fetchCricketSeriesOverview(seriesConfigKey: string, signal?: AbortSignal) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(seriesConfigKey)}/dashboard/overview`),
+    window.location.origin
+  );
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Series overview request failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as CricketSeriesOverviewResponse;
+}
+
 export async function fetchCricketPlayerReport(
   result: CricketPlayerTarget,
   options?: {
+    accessToken: string;
     seriesConfigKey?: string | null;
     signal?: AbortSignal;
   }
@@ -1089,6 +1343,9 @@ export async function fetchCricketPlayerReport(
   const response = await fetch(url.toString(), {
     method: "GET",
     signal: options?.signal,
+    headers: {
+      Authorization: `Bearer ${options?.accessToken || ""}`,
+    },
   });
 
   if (!response.ok) {
@@ -1096,6 +1353,39 @@ export async function fetchCricketPlayerReport(
   }
 
   return (await response.json()) as CricketPlayerReportResponse;
+}
+
+export async function fetchCricketPlayerIntelligence(
+  result: CricketPlayerTarget,
+  options?: {
+    accessToken: string;
+    seriesConfigKey?: string | null;
+    signal?: AbortSignal;
+  }
+) {
+  const url = new URL(
+    getCricketApiUrl(getPlayerIntelligenceApiPath(result, options?.seriesConfigKey)),
+    window.location.origin
+  );
+  if (result.divisionId !== null && result.divisionId !== undefined) {
+    url.searchParams.set("divisionId", String(result.divisionId));
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    signal: options?.signal,
+    headers: {
+      Authorization: `Bearer ${options?.accessToken || ""}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiErrorMessage(response, `Player intelligence request failed with status ${response.status}.`)
+    );
+  }
+
+  return (await response.json()) as CricketPlayerIntelligenceResponse;
 }
 
 export async function fetchCricketAdminSeries(accessToken: string, signal?: AbortSignal) {

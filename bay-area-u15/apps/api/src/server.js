@@ -5,6 +5,7 @@ const express = require("express");
 const { requireAuthenticatedCricketUser, requireSeriesAdminAccess, requireSeriesViewerAccess } = require("./lib/auth");
 const { closePool, testConnection } = require("./lib/connection");
 const { normalizeText, toBoolean, toInteger } = require("./lib/utils");
+const { renderLocalOpsConsolePage } = require("./render/localOpsPage");
 const {
   renderAdminMatchesPage,
   renderAdminSetupPage,
@@ -56,12 +57,15 @@ const {
   searchPlayers,
 } = require("./services/reportService");
 const {
-  getPlayerReportDefault,
-  getPlayerSummaryDefault,
-  searchPlayersDefault,
-} = require("./services/playerApiService");
+  getPlayerIntelligenceReport,
+} = require("./services/playerIntelligenceService");
+const {
+  getLocalOpsOverview,
+  runLocalOpsAction,
+} = require("./services/localOpsService");
 
 const app = express();
+const LOCAL_OPS_UI_ENABLED = toBoolean(process.env.LOCAL_OPS_ENABLE_UI);
 const API_CORS_ALLOWED_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 const API_CORS_ALLOWED_HEADERS = [
   "Authorization",
@@ -151,6 +155,49 @@ function sendHtml(res, html, statusCode = 200) {
   res.status(statusCode).type("html").send(html);
 }
 
+function isLoopbackAddress(value) {
+  const normalized = normalizeText(value).toLowerCase();
+  return (
+    normalized === "127.0.0.1" ||
+    normalized === "::1" ||
+    normalized === "::ffff:127.0.0.1"
+  );
+}
+
+function requireLocalOpsUi(req, res, next) {
+  if (!LOCAL_OPS_UI_ENABLED) {
+    const error = new Error("Local ops console is not enabled for this runtime.");
+    error.statusCode = 404;
+    next(error);
+    return;
+  }
+
+  const remoteAddress = req.socket?.remoteAddress || req.ip || "";
+  if (!isLoopbackAddress(remoteAddress)) {
+    const error = new Error("Local ops console is only available from the same machine over loopback.");
+    error.statusCode = 403;
+    next(error);
+    return;
+  }
+
+  next();
+}
+
+function buildPlayerSummaryPayload(report) {
+  return {
+    meta: report.meta,
+    header: report.header,
+    scores: report.scores,
+    assessmentSnapshot: report.assessmentSnapshot,
+    visualReadout: report.visualReadout,
+    contextPerformance: report.contextPerformance,
+    peerComparison: report.peerComparison,
+    selectorInterpretation: report.selectorInterpretation,
+    selectorTakeaway: report.selectorTakeaway,
+    standardStats: report.standardStats,
+  };
+}
+
 const requireSeriesAdmin = asyncHandler(async (req, res, next) => {
   await requireSeriesAdminAccess(req);
   next();
@@ -158,6 +205,11 @@ const requireSeriesAdmin = asyncHandler(async (req, res, next) => {
 
 const requireSeriesViewer = asyncHandler(async (req, res, next) => {
   await requireSeriesViewerAccess(req);
+  next();
+});
+
+const requireSeriesViewerOrDefault = asyncHandler(async (req, res, next) => {
+  await requireSeriesViewerAccess(req, { allowDefaultSeries: true });
   next();
 });
 
@@ -262,6 +314,29 @@ app.get("/health", asyncHandler(async (req, res) => {
     },
   });
 }));
+
+if (LOCAL_OPS_UI_ENABLED) {
+  app.get("/local-ops", requireLocalOpsUi, asyncHandler(async (req, res) => {
+    const overview = await getLocalOpsOverview();
+    sendHtml(
+      res,
+      renderLocalOpsConsolePage({
+        overview,
+        port: toInteger(process.env.PORT) || 4010,
+      })
+    );
+  }));
+
+  app.get("/api/local-ops/overview", requireLocalOpsUi, asyncHandler(async (req, res) => {
+    const overview = await getLocalOpsOverview();
+    res.json(overview);
+  }));
+
+  app.post("/api/local-ops/actions/:action", requireLocalOpsUi, asyncHandler(async (req, res) => {
+    const payload = await runLocalOpsAction(req.params.action, req.body || {});
+    res.json(payload);
+  }));
+}
 
 app.get("/api/dashboard/summary", asyncHandler(async (req, res) => {
   const seriesCards = await loadSeriesCards();
@@ -395,24 +470,36 @@ app.get("/api/viewer/series", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.get("/api/players/search", asyncHandler(async (req, res) => {
-  const payload = await searchPlayersDefault({
+app.get("/api/players/search", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await searchPlayers({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     query: req.query.q ?? req.query.query ?? "",
     limit: req.query.limit,
   });
   res.json(payload);
 }));
 
-app.get("/api/players/:playerId/summary", asyncHandler(async (req, res) => {
-  const payload = await getPlayerSummaryDefault({
+app.get("/api/players/:playerId/summary", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const report = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  res.json(buildPlayerSummaryPayload(report));
+}));
+
+app.get("/api/players/:playerId/intelligence", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await getPlayerIntelligenceReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     playerId: req.params.playerId,
     divisionId: req.query.divisionId,
   });
   res.json(payload);
 }));
 
-app.get("/api/players/:playerId/report", asyncHandler(async (req, res) => {
-  const payload = await getPlayerReportDefault({
+app.get("/api/players/:playerId/report", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     playerId: req.params.playerId,
     divisionId: req.query.divisionId,
   });
@@ -428,16 +515,18 @@ app.get("/", asyncHandler(async (req, res) => {
   sendHtml(res, renderSeriesIndexPage({ seriesCards, activeOverview }));
 }));
 
-app.get("/players/:playerId", asyncHandler(async (req, res) => {
-  const payload = await getPlayerReportDefault({
+app.get("/players/:playerId", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     playerId: req.params.playerId,
     divisionId: req.query.divisionId,
   });
   sendHtml(res, renderPlayerReportPage(payload));
 }));
 
-app.get("/players/:playerId/report", asyncHandler(async (req, res) => {
-  const payload = await getPlayerReportDefault({
+app.get("/players/:playerId/report", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     playerId: req.params.playerId,
     divisionId: req.query.divisionId,
   });
@@ -458,9 +547,9 @@ app.get("/api/series/:seriesConfigKey/dashboard/overview", asyncHandler(async (r
   res.json(payload);
 }));
 
-app.get("/api/series/:seriesConfigKey/players/search", asyncHandler(async (req, res) => {
+app.get("/api/series/:seriesConfigKey/players/search", requireSeriesViewer, asyncHandler(async (req, res) => {
   const payload = await searchPlayers({
-    seriesConfigKey: req.params.seriesConfigKey,
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     query: req.query.query ?? req.query.q ?? "",
     limit: req.query.limit,
   });
@@ -491,13 +580,31 @@ app.post("/api/series/:seriesConfigKey/admin-access-requests", asyncHandler(asyn
   res.json(payload);
 }));
 
-app.get("/api/series/:seriesConfigKey/players/:playerId/report", asyncHandler(async (req, res) => {
+app.get("/api/series/:seriesConfigKey/players/:playerId/report", requireSeriesViewer, asyncHandler(async (req, res) => {
   const payload = await getPlayerReport({
-    seriesConfigKey: req.params.seriesConfigKey,
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     playerId: req.params.playerId,
     divisionId: req.query.divisionId,
   });
   res.json(payload);
+}));
+
+app.get("/api/series/:seriesConfigKey/players/:playerId/intelligence", requireSeriesViewer, asyncHandler(async (req, res) => {
+  const payload = await getPlayerIntelligenceReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  res.json(payload);
+}));
+
+app.get("/api/series/:seriesConfigKey/players/:playerId/report/html", requireSeriesViewer, asyncHandler(async (req, res) => {
+  const payload = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  sendHtml(res, renderPlayerReportPage(payload));
 }));
 
 app.post("/api/series/:seriesConfigKey/players/:playerId/chat-context", requireSeriesViewer, asyncHandler(async (req, res) => {
@@ -522,9 +629,9 @@ app.post("/api/series/:seriesConfigKey/players/:playerId/chat", requireSeriesVie
   res.json(payload);
 }));
 
-app.get("/series/:seriesConfigKey/players/:playerId/report", asyncHandler(async (req, res) => {
+app.get("/series/:seriesConfigKey/players/:playerId/report", requireSeriesViewer, asyncHandler(async (req, res) => {
   const payload = await getPlayerReport({
-    seriesConfigKey: req.params.seriesConfigKey,
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
     playerId: req.params.playerId,
     divisionId: req.query.divisionId,
   });

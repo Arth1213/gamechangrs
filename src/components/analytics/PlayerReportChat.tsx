@@ -42,6 +42,7 @@ type PlayerReportChatProps = {
   seriesName?: string | null;
   divisionId?: number | null;
   divisionLabel?: string | null;
+  mode?: "report" | "intelligence";
 };
 
 function getMessageId() {
@@ -52,13 +53,21 @@ function getMessageId() {
   return `chat-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function buildIntroMessage(playerName: string, seriesName?: string | null): PlayerReportChatMessage {
+function buildIntroMessage(
+  playerName: string,
+  seriesName?: string | null,
+  mode: "report" | "intelligence" = "report"
+): PlayerReportChatMessage {
+  const subject = mode === "intelligence"
+    ? "intelligence, tactics, evidence, or series context"
+    : "report, evidence, clips, or series context";
+
   return {
     id: "intro",
     role: "assistant",
     content: seriesName
-      ? `Ask about ${playerName}'s report, evidence, clips, or series context in ${seriesName}.`
-      : `Ask about ${playerName}'s report, evidence, clips, or series context.`,
+      ? `Ask about ${playerName}'s ${subject} in ${seriesName}.`
+      : `Ask about ${playerName}'s ${subject}.`,
     includeInHistory: false,
   };
 }
@@ -103,12 +112,15 @@ const PlayerReportChat = ({
   seriesName,
   divisionId,
   divisionLabel,
+  mode = "report",
 }: PlayerReportChatProps) => {
   const { session } = useAuth();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [messages, setMessages] = useState<PlayerReportChatMessage[]>(() => [buildIntroMessage(playerName, seriesName)]);
+  const [messages, setMessages] = useState<PlayerReportChatMessage[]>(() => [
+    buildIntroMessage(playerName, seriesName, mode),
+  ]);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   const resolvedPlayerId = playerId ?? report?.meta?.player?.playerId ?? null;
@@ -118,6 +130,15 @@ const PlayerReportChat = ({
   const canChat = Boolean(seriesConfigKey && resolvedPlayerId);
 
   const starterQuestions = useMemo(() => {
+    if (mode === "intelligence") {
+      return dedupePrompts([
+        `Summarize ${playerName}'s player intelligence from the live series data.`,
+        `What tactical plan comes out of ${playerName}'s current matchup and pressure profile?`,
+        `Which bowling styles or batter-hand splits matter most for ${playerName}?`,
+        `Show me some ball-by-ball evidence behind this intelligence view.`,
+      ]).slice(0, 4);
+    }
+
     return dedupePrompts([
       report?.reportPayload?.recommendationBadge?.label
         ? `Why is ${playerName} rated ${report.reportPayload.recommendationBadge.label.toLowerCase()} in this report?`
@@ -127,13 +148,31 @@ const PlayerReportChat = ({
       commentaryCount > 0 ? `Show me some ball-by-ball commentary that explains this report.` : null,
       report?.drilldowns?.phasePerformance ? `Break down ${playerName}'s phase performance from the live report.` : null,
     ]).slice(0, 4);
-  }, [commentaryCount, peerCount, playerName, report]);
+  }, [commentaryCount, mode, peerCount, playerName, report]);
 
   useEffect(() => {
-    setMessages([buildIntroMessage(playerName, seriesName)]);
+    setMessages([buildIntroMessage(playerName, seriesName, mode)]);
     setInput("");
     setIsSubmitting(false);
-  }, [playerName, resolvedPlayerId, seriesConfigKey, seriesName]);
+  }, [mode, playerName, resolvedPlayerId, seriesConfigKey, seriesName]);
+
+  const assistantLabel = mode === "intelligence"
+    ? "Game-Changrs intelligence assistant"
+    : "Game-Changrs report assistant";
+  const panelDescription = mode === "intelligence"
+    ? "Ask about the intelligence view, tactics, match evidence, or broader series context."
+    : "Ask about the report, match evidence, clips, or series context.";
+  const submittingLabel = mode === "intelligence" ? "Reviewing the live intelligence." : "Reviewing the live report.";
+  const inputPlaceholder = canChat
+    ? mode === "intelligence"
+      ? "Ask about tactics, pressure, matchups, or series context."
+      : "Ask about the report, evidence, clips, or series context."
+    : mode === "intelligence"
+      ? "Waiting for live intelligence context..."
+      : "Waiting for live report summary...";
+  const footerLabel = mode === "intelligence"
+    ? "Answers use the live intelligence payload and stored series context."
+    : "Answers use the live report and stored series context.";
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -252,7 +291,7 @@ const PlayerReportChat = ({
               <div className="space-y-2">
                 <SheetTitle className="font-display text-2xl text-foreground">{playerName}</SheetTitle>
                 <SheetDescription className="max-w-lg text-sm leading-6 text-muted-foreground">
-                  Ask about the report, match evidence, clips, or series context.
+                  {panelDescription}
                 </SheetDescription>
               </div>
             </div>
@@ -319,7 +358,7 @@ const PlayerReportChat = ({
                     >
                       {message.role === "assistant" ? <Bot className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
                     </span>
-                    {message.role === "assistant" ? "Game-Changrs report assistant" : "You"}
+                    {message.role === "assistant" ? assistantLabel : "You"}
                   </div>
 
                   <div className="mt-3 space-y-3">
@@ -384,7 +423,7 @@ const PlayerReportChat = ({
                 <div className="rounded-3xl border border-cyan-400/15 bg-background/50 px-4 py-4">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Reviewing the live report.
+                    {submittingLabel}
                   </div>
                 </div>
               ) : null}
@@ -405,9 +444,7 @@ const PlayerReportChat = ({
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 placeholder={
-                  canChat
-                    ? "Ask about the report, evidence, clips, or series context."
-                    : "Waiting for live report summary..."
+                  inputPlaceholder
                 }
                 disabled={!canChat || isSubmitting}
                 className="min-h-[110px] resize-none rounded-2xl border-border/80 bg-background/55 text-sm leading-6"
@@ -420,7 +457,7 @@ const PlayerReportChat = ({
               />
               <div className="flex items-center justify-between gap-3">
                 <p className="max-w-md text-xs leading-5 text-muted-foreground">
-                  Answers use the live report and stored series context.
+                  {footerLabel}
                 </p>
                 <Button type="submit" disabled={!canChat || isSubmitting || input.trim().length === 0}>
                   {isSubmitting ? (

@@ -4,7 +4,6 @@ import {
   AlertCircle,
   ArrowRight,
   CalendarDays,
-  ExternalLink,
   Layers3,
   Loader2,
   RefreshCw,
@@ -35,17 +34,19 @@ import {
   CricketPlayerSearchResponse,
   CricketPlayerReportRouteState,
   CricketPlayerSearchResult,
+  CricketSeriesOverviewResponse,
   CricketSeriesCard,
   CricketViewerSeriesResponse,
   createCricketSeriesAccessRequest,
   createCricketSeriesAdminAccessRequest,
   fetchCricketDashboardSummary,
+  fetchCricketSeriesOverview,
   fetchCricketViewerSeries,
   getAnalyticsAdminRoute,
   getAnalyticsPlatformAdminRoute,
+  getRootCricketPlayerIntelligenceRoute,
   getAnalyticsSeriesAdminRoute,
   getAnalyticsWorkspaceRoute,
-  getCricketPlayerReportUrl,
   getRootCricketPlayerReportRoute,
   searchCricketPlayers,
 } from "@/lib/cricketApi";
@@ -53,6 +54,7 @@ import {
 type SearchStatus = "idle" | "searching" | "success" | "empty" | "error";
 type SummaryStatus = "loading" | "success" | "error";
 type ViewerStatus = "loading" | "success" | "error";
+type SeriesDetailStatus = "idle" | "loading" | "success" | "error";
 type AnalyticsView = "landing" | "workspace";
 type SeriesRequestKind = "viewer" | "admin";
 
@@ -84,6 +86,12 @@ type SeriesWorkspaceCard = {
   freshnessNote: string | null;
   latestMatchTitle: string | null;
   latestMatchMeta: string | null;
+};
+
+type RequestableSeriesEntry = SeriesWorkspaceCard & {
+  availableRequestKinds: SeriesRequestKind[];
+  currentAccessLabel: string;
+  currentAccessTone: "none" | "viewer" | "admin";
 };
 
 const EXAMPLE_SEARCHES = ["Shreyak Porecha", "Nikhil Natarajan"];
@@ -206,6 +214,22 @@ function getAnalyticsProfileTone(role: "platform" | "series-admin" | "series-use
   };
 }
 
+function getRequestAccessBadgeClass(tone: RequestableSeriesEntry["currentAccessTone"]) {
+  if (tone === "admin") {
+    return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+  }
+
+  if (tone === "viewer") {
+    return "border-sky-400/25 bg-sky-400/10 text-sky-200";
+  }
+
+  return "border-border/80 bg-background/60 text-muted-foreground";
+}
+
+function getSeriesRequestKindLabel(kind: SeriesRequestKind) {
+  return kind === "admin" ? "Series Admin" : "Series User";
+}
+
 function getScoreSortValue(value: number | null | undefined) {
   return Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
 }
@@ -238,6 +262,100 @@ function prioritizeLabel(values: string[], preferred?: string | null) {
 
 function joinCoverageLabels(values: string[], fallback = "-") {
   return values.length ? values.join(" · ") : fallback;
+}
+
+function getSeriesPreferenceStorageKey(userId?: string | null) {
+  const normalizedUserId = userId?.trim();
+  return normalizedUserId ? `gc.analytics.preferredSeries.${normalizedUserId}` : "gc.analytics.preferredSeries";
+}
+
+function summarizeSeriesFreshness(
+  totalMatches: number | null,
+  computedMatches: number | null,
+  warningMatches: number | null,
+  pendingOps: number | null
+) {
+  if ((pendingOps ?? 0) > 0) {
+    return {
+      label: "Pending Ops",
+      tone: "watch",
+      note: `${formatNumber(pendingOps)} tracked match operations still need refresh or recompute work.`,
+    };
+  }
+
+  if ((warningMatches ?? 0) > 0) {
+    return {
+      label: "Review Warnings",
+      tone: "watch",
+      note: `${formatNumber(warningMatches)} computed matches are still flagged for reconciliation review.`,
+    };
+  }
+
+  if ((totalMatches ?? 0) === 0) {
+    return {
+      label: "No Match Data",
+      tone: "risk",
+      note: "This series has not loaded any tracked matches yet.",
+    };
+  }
+
+  if ((computedMatches ?? 0) < (totalMatches ?? 0)) {
+    return {
+      label: "Compute Pending",
+      tone: "watch",
+      note: `${formatNumber(computedMatches)} of ${formatNumber(totalMatches)} tracked matches have completed analytics.`,
+    };
+  }
+
+  return {
+    label: "Live and Computed",
+    tone: "good",
+    note: `${formatNumber(totalMatches)} tracked matches are available in the live analytics workspace.`,
+  };
+}
+
+function mergeSeriesCardWithOverview(
+  card: SeriesWorkspaceCard,
+  overview: CricketSeriesOverviewResponse | null
+): SeriesWorkspaceCard {
+  if (!overview) {
+    return card;
+  }
+
+  const totalMatches = overview.qualitySummary?.totalMatches ?? card.totalMatches;
+  const computedMatches = overview.qualitySummary?.computedMatches ?? card.computedMatches;
+  const warningMatches = overview.qualitySummary?.warningMatches ?? card.warningMatches;
+  const pendingOps = overview.qualitySummary?.pendingOps ?? card.pendingOps;
+  const adminOverrides = overview.qualitySummary?.adminOverrides ?? card.adminOverrides;
+  const divisionLabels = collectUniqueLabels([
+    ...(overview.leaderboard ?? []).map((row) => row.divisionLabel),
+    ...(overview.recentMatches ?? []).map((row) => row.divisionLabel),
+  ]);
+  const latestMatch = overview.recentMatches?.[0];
+  const freshness = summarizeSeriesFreshness(totalMatches, computedMatches, warningMatches, pendingOps);
+
+  return {
+    ...card,
+    seriesName: overview.series?.name?.trim() || card.seriesName,
+    targetAgeGroup: overview.series?.targetAgeGroup?.trim() || card.targetAgeGroup,
+    totalMatches,
+    computedMatches,
+    warningMatches,
+    pendingOps,
+    adminOverrides,
+    divisionLabels: divisionLabels.length > 0 ? divisionLabels : card.divisionLabels,
+    freshnessLabel: freshness.label,
+    freshnessTone: freshness.tone,
+    freshnessNote: freshness.note,
+    latestMatchTitle: latestMatch?.matchTitle?.trim() || card.latestMatchTitle,
+    latestMatchMeta:
+      joinCoverageLabels(
+        [latestMatch?.matchDateLabel?.trim(), latestMatch?.divisionLabel?.trim()].filter(
+          (value): value is string => Boolean(value)
+        ),
+        ""
+      ) || card.latestMatchMeta,
+  };
 }
 
 function buildAnalyticsSearchParams(searchQuery?: string, seriesConfigKey?: string | null) {
@@ -345,6 +463,58 @@ function normalizeViewerSeriesCards(summary: CricketViewerSeriesResponse | null)
     .sort((left, right) => Number(right.isActive) - Number(left.isActive) || left.seriesName.localeCompare(right.seriesName));
 }
 
+function buildRequestableSeriesEntries(
+  summary: CricketDashboardSummaryResponse | null,
+  viewerCatalog: CricketViewerSeriesResponse | null
+): RequestableSeriesEntry[] {
+  if (viewerCatalog?.actor?.isPlatformAdmin === true) {
+    return [];
+  }
+
+  const seriesCards = normalizeSeriesCards(summary);
+  const accessibleSeries = new Map(
+    (viewerCatalog?.series ?? [])
+      .map((series) => {
+        const configKey = series.configKey?.trim() || "";
+        return configKey ? [configKey, series] as const : null;
+      })
+      .filter((entry): entry is readonly [string, NonNullable<CricketViewerSeriesResponse["series"]>[number]] => Boolean(entry))
+  );
+
+  return seriesCards
+    .map((card) => {
+      const accessRow = accessibleSeries.get(card.configKey);
+      const hasAdminAccess = accessRow?.canManage === true;
+      const hasViewerAccess = hasAdminAccess || Boolean(accessRow);
+      const availableRequestKinds: SeriesRequestKind[] = [];
+
+      if (!hasViewerAccess) {
+        availableRequestKinds.push("viewer");
+      }
+
+      if (!hasAdminAccess) {
+        availableRequestKinds.push("admin");
+      }
+
+      if (availableRequestKinds.length === 0) {
+        return null;
+      }
+
+      return {
+        ...card,
+        availableRequestKinds,
+        currentAccessLabel: hasAdminAccess
+          ? "Series admin active"
+          : hasViewerAccess
+            ? "Series user active"
+            : "No current access",
+        currentAccessTone: hasAdminAccess ? "admin" : hasViewerAccess ? "viewer" : "none",
+      } satisfies RequestableSeriesEntry;
+    })
+    .filter((entry): entry is RequestableSeriesEntry => Boolean(entry))
+    .sort((left, right) => Number(right.isActive) - Number(left.isActive) || left.seriesName.localeCompare(right.seriesName));
+}
+
 function combineSearchResults(results: CricketPlayerSearchResult[]): CombinedCricketPlayerSearchResult[] {
   const grouped = new Map<number, CombinedCricketPlayerSearchResult>();
 
@@ -409,8 +579,8 @@ function SearchResultCard({
     playerId: result.playerId,
     divisionId: null,
   };
-  const reportUrl = getCricketPlayerReportUrl(combinedReportTarget, { seriesConfigKey });
   const inAppReportUrl = getRootCricketPlayerReportRoute(combinedReportTarget, { searchQuery, seriesConfigKey });
+  const intelligenceReportUrl = getRootCricketPlayerIntelligenceRoute(combinedReportTarget, { searchQuery, seriesConfigKey });
   const teamCoverage = joinCoverageLabels(result.teamNames, "Team not available");
   const divisionCoverage = joinCoverageLabels(result.divisionLabels);
   const roleCoverage = joinCoverageLabels(result.roleLabels, "Player");
@@ -450,15 +620,15 @@ function SearchResultCard({
         <div className="flex w-full flex-col gap-3 md:w-auto">
           <Button asChild className="w-full md:w-auto">
             <Link to={inAppReportUrl} state={routeState}>
-              View In App
+              Executive Report
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
           <Button asChild variant="outline" className="w-full md:w-auto">
-            <a href={reportUrl} target="_blank" rel="noreferrer">
-              Open Standalone
-              <ExternalLink className="ml-2 h-4 w-4" />
-            </a>
+            <Link to={intelligenceReportUrl} state={routeState}>
+              Player Intelligence
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
           </Button>
         </div>
       </CardHeader>
@@ -841,7 +1011,7 @@ function SeriesWorkspaceOverview({
                       ))
                     ) : (
                       <Badge variant="outline" className="border-border/80 bg-background/60 text-muted-foreground">
-                        Division coverage will appear here when this series is the active computed workspace.
+                        Division coverage will appear here when live series detail is available.
                       </Badge>
                     )}
                     {(seriesCard.warningMatches ?? 0) > 0 ? (
@@ -893,37 +1063,129 @@ function SeriesWorkspaceOverview({
   );
 }
 
-function SeriesAccessRequestPanel({
+function AnalyticsSeriesPortfolio({
   seriesCards,
+  preferredSeriesKey,
+}: {
+  seriesCards: SeriesWorkspaceCard[];
+  preferredSeriesKey?: string | null;
+}) {
+  if (seriesCards.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card className="border-border/80 bg-card/85 shadow-xl">
+      <CardHeader className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+            Series Portfolio
+          </Badge>
+          <Badge variant="outline" className="border-border/80 bg-background/60 text-foreground">
+            {seriesCards.length} accessible
+          </Badge>
+        </div>
+        <div className="space-y-2">
+          <CardTitle className="font-display text-2xl text-foreground">Choose a series workspace</CardTitle>
+          <CardDescription className="max-w-3xl text-sm leading-7">
+            Each series keeps its own workspace, search boundary, and report routes.
+          </CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-4 xl:grid-cols-2">
+        {seriesCards.map((seriesCard) => {
+          const isPreferred = preferredSeriesKey?.trim() === seriesCard.configKey;
+
+          return (
+            <div key={seriesCard.configKey} className="rounded-2xl border border-border/80 bg-background/45 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    {seriesCard.isActive ? (
+                      <Badge variant="outline" className="border-primary/30 bg-primary/12 text-primary">
+                        Active series
+                      </Badge>
+                    ) : null}
+                    {isPreferred ? (
+                      <Badge variant="outline" className="border-sky-400/30 bg-sky-400/12 text-sky-300">
+                        Preferred
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <h3 className="font-display text-2xl text-foreground">{seriesCard.seriesName}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {seriesCard.targetAgeGroup || "Series workspace"}
+                  </p>
+                </div>
+
+                <Button asChild variant="outline">
+                  <Link to={getAnalyticsWorkspaceRoute(undefined, seriesCard.configKey)}>
+                    Open Workspace
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+                  <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Players</p>
+                  <p className="mt-2 text-2xl font-semibold text-foreground">{formatNumber(seriesCard.playerCount)}</p>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+                  <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Matches</p>
+                  <p className="mt-2 text-2xl font-semibold text-foreground">{formatNumber(seriesCard.totalMatches)}</p>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+                  <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Computed</p>
+                  <p className="mt-2 text-2xl font-semibold text-foreground">{formatNumber(seriesCard.computedMatches)}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SeriesAccessRequestPanel({
+  entries,
   preferredSeriesKey,
   accessToken,
   onAccessActivated,
 }: {
-  seriesCards: SeriesWorkspaceCard[];
+  entries: RequestableSeriesEntry[];
   preferredSeriesKey?: string;
   accessToken: string;
   onAccessActivated?: (seriesConfigKey: string, requestKind: SeriesRequestKind) => void;
 }) {
   const { toast } = useToast();
-  const [requestSeriesKey, setRequestSeriesKey] = useState(preferredSeriesKey?.trim() || seriesCards[0]?.configKey || "");
-  const [requestKind, setRequestKind] = useState<SeriesRequestKind>("viewer");
+  const [requestSeriesKey, setRequestSeriesKey] = useState(preferredSeriesKey?.trim() || entries[0]?.configKey || "");
+  const [requestKind, setRequestKind] = useState<SeriesRequestKind>(() => {
+    const normalizedPreferred = preferredSeriesKey?.trim() || "";
+    return (
+      entries.find((entry) => entry.configKey === normalizedPreferred)?.availableRequestKinds[0]
+      || entries[0]?.availableRequestKinds[0]
+      || "viewer"
+    );
+  });
   const [requestStatus, setRequestStatus] = useState<"idle" | "saving">("idle");
 
   useEffect(() => {
-    const validSeriesKeys = new Set(seriesCards.map((card) => card.configKey));
+    const validSeriesKeys = new Set(entries.map((entry) => entry.configKey));
     const normalizedPreferred = preferredSeriesKey?.trim() || "";
     const nextSeriesKey =
       (normalizedPreferred && validSeriesKeys.has(normalizedPreferred) ? normalizedPreferred : "")
       || (validSeriesKeys.has(requestSeriesKey) ? requestSeriesKey : "")
-      || seriesCards[0]?.configKey
+      || entries[0]?.configKey
       || "";
 
     if (nextSeriesKey !== requestSeriesKey) {
       setRequestSeriesKey(nextSeriesKey);
     }
-  }, [preferredSeriesKey, requestSeriesKey, seriesCards]);
+  }, [entries, preferredSeriesKey, requestSeriesKey]);
 
-  const selectedSeries = seriesCards.find((card) => card.configKey === requestSeriesKey) || null;
+  const selectedSeries = entries.find((entry) => entry.configKey === requestSeriesKey) || null;
   const selectedSeriesSummary = joinCoverageLabels(
     [
       selectedSeries?.targetAgeGroup || null,
@@ -931,6 +1193,17 @@ function SeriesAccessRequestPanel({
     ].filter((value): value is string => Boolean(value)),
     "Series"
   );
+
+  useEffect(() => {
+    const nextRequestKind =
+      selectedSeries?.availableRequestKinds.includes(requestKind)
+        ? requestKind
+        : selectedSeries?.availableRequestKinds[0] || "viewer";
+
+    if (nextRequestKind !== requestKind) {
+      setRequestKind(nextRequestKind);
+    }
+  }, [requestKind, selectedSeries]);
 
   async function handleSubmitRequest() {
     if (!accessToken) {
@@ -974,15 +1247,15 @@ function SeriesAccessRequestPanel({
       } else {
         const result = await createCricketSeriesAccessRequest(requestSeriesKey, accessToken, {
           accessRole: "viewer",
-          requestNote: "User requested viewer access from the analytics access panel.",
+          requestNote: "User requested series-user access from the analytics access panel.",
         });
 
         toast({
-          title: result.accessGranted ? "Viewer access active" : "Viewer request submitted",
+          title: result.accessGranted ? "Series-user access active" : "Series-user request submitted",
           description:
             result.message
             || (result.accessGranted
-              ? "Viewer access is already active for this account."
+              ? "Series-user access is already active for this account."
               : "The current series admin must approve this request before reports unlock."),
         });
 
@@ -1015,34 +1288,74 @@ function SeriesAccessRequestPanel({
         <div className="space-y-2">
           <CardTitle className="font-display text-2xl text-foreground">Request series access</CardTitle>
           <CardDescription className="max-w-3xl text-sm leading-7">
-            Choose a series and request viewer or series-admin access.
+            Only missing privileges are listed. Pick a series, then request series-user or series-admin access.
           </CardDescription>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="series-access-request-series">Series</Label>
-            <Select value={requestSeriesKey} onValueChange={setRequestSeriesKey}>
-              <SelectTrigger id="series-access-request-series">
-                <SelectValue placeholder="Select a series" />
-              </SelectTrigger>
-              <SelectContent>
-                {seriesCards.length > 0 ? (
-                  seriesCards.map((seriesCard) => (
-                    <SelectItem key={seriesCard.configKey} value={seriesCard.configKey}>
-                      {seriesCard.seriesName}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="__none__" disabled>
-                    No series available
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Label>Available series requests</Label>
+            <p className="text-xs text-muted-foreground">
+              {entries.length} requestable series for this account.
+            </p>
           </div>
 
+          <div className="grid gap-3 lg:grid-cols-2">
+            {entries.map((entry) => {
+              const isSelected = entry.configKey === requestSeriesKey;
+
+              return (
+                <button
+                  key={entry.configKey}
+                  type="button"
+                  onClick={() => setRequestSeriesKey(entry.configKey)}
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    isSelected
+                      ? "border-primary/40 bg-primary/10 shadow-sm"
+                      : "border-border/80 bg-background/60 hover:border-primary/25 hover:bg-background/80"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="font-semibold text-foreground">{entry.seriesName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {joinCoverageLabels(
+                          [entry.targetAgeGroup || null, ...(entry.divisionLabels ?? [])].filter(
+                            (value): value is string => Boolean(value)
+                          ),
+                          "Series"
+                        )}
+                      </p>
+                    </div>
+                    {isSelected ? (
+                      <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                        Selected
+                      </Badge>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Badge variant="outline" className={getRequestAccessBadgeClass(entry.currentAccessTone)}>
+                      {entry.currentAccessLabel}
+                    </Badge>
+                    {entry.availableRequestKinds.map((kind) => (
+                      <Badge
+                        key={`${entry.configKey}-${kind}`}
+                        variant="outline"
+                        className="border-border/80 bg-background/60 text-foreground"
+                      >
+                        {getSeriesRequestKindLabel(kind)} request
+                      </Badge>
+                    ))}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="series-access-request-kind">Access type</Label>
             <Select value={requestKind} onValueChange={(value) => setRequestKind(value as SeriesRequestKind)}>
@@ -1050,8 +1363,11 @@ function SeriesAccessRequestPanel({
                 <SelectValue placeholder="Select access type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="viewer">Series viewer</SelectItem>
-                <SelectItem value="admin">Series admin</SelectItem>
+                {(selectedSeries?.availableRequestKinds ?? []).map((kind) => (
+                  <SelectItem key={kind} value={kind}>
+                    {getSeriesRequestKindLabel(kind)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -1063,10 +1379,22 @@ function SeriesAccessRequestPanel({
             {selectedSeries?.seriesName || "No series selected"}
           </p>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{selectedSeriesSummary}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {selectedSeries ? (
+              <Badge variant="outline" className={getRequestAccessBadgeClass(selectedSeries.currentAccessTone)}>
+                {selectedSeries.currentAccessLabel}
+              </Badge>
+            ) : null}
+            {selectedSeries ? (
+              <Badge variant="outline" className="border-border/80 bg-background/70 text-foreground">
+                Requesting {getSeriesRequestKindLabel(requestKind)}
+              </Badge>
+            ) : null}
+          </div>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             {requestKind === "admin"
               ? "Series-admin approval is handled by the owning entity."
-              : "Viewer approval unlocks reports for the selected series."}
+              : "Series-user approval unlocks reports for the selected series."}
           </p>
         </div>
 
@@ -1076,7 +1404,7 @@ function SeriesAccessRequestPanel({
               ? "Submitting request..."
               : requestKind === "admin"
                 ? "Request series admin access"
-                : "Request viewer access"}
+                : "Request series user access"}
           </Button>
         </div>
       </CardContent>
@@ -1210,17 +1538,26 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [dashboardSummary, setDashboardSummary] = useState<CricketDashboardSummaryResponse | null>(null);
   const [summaryReloadKey, setSummaryReloadKey] = useState(0);
+  const [selectedSeriesDetailStatus, setSelectedSeriesDetailStatus] = useState<SeriesDetailStatus>("idle");
+  const [selectedSeriesDetailError, setSelectedSeriesDetailError] = useState<string | null>(null);
+  const [selectedSeriesOverview, setSelectedSeriesOverview] = useState<CricketSeriesOverviewResponse | null>(null);
+  const [selectedSeriesDetailReloadKey, setSelectedSeriesDetailReloadKey] = useState(0);
   const [viewerStatus, setViewerStatus] = useState<ViewerStatus>("loading");
   const [viewerError, setViewerError] = useState<string | null>(null);
   const [viewerCatalog, setViewerCatalog] = useState<CricketViewerSeriesResponse | null>(null);
   const [viewerReloadKey, setViewerReloadKey] = useState(0);
   const [showRequestPanel, setShowRequestPanel] = useState(false);
+  const [preferredSeriesKey, setPreferredSeriesKey] = useState("");
   const activeRequestRef = useRef<AbortController | null>(null);
   const accessToken = session?.access_token || "";
   const currentUrlQuery = searchParams.get("q")?.trim() ?? "";
   const currentUrlSeries = searchParams.get("series")?.trim() ?? "";
+  const preferredSeriesStorageKey = useMemo(() => getSeriesPreferenceStorageKey(user?.id), [user?.id]);
   const accessibleFallbackCards = useMemo(() => normalizeViewerSeriesCards(viewerCatalog), [viewerCatalog]);
-  const requestableSeriesCards = useMemo(() => normalizeSeriesCards(dashboardSummary), [dashboardSummary]);
+  const requestableSeriesEntries = useMemo(
+    () => buildRequestableSeriesEntries(dashboardSummary, viewerCatalog),
+    [dashboardSummary, viewerCatalog]
+  );
   const seriesCards = useMemo(() => {
     const accessibleSeries = viewerCatalog?.series ?? [];
     if (!accessibleSeries.length) {
@@ -1235,17 +1572,29 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     const detailedCards = normalizeSeriesCards(dashboardSummary).filter((card) => accessibleKeys.has(card.configKey));
     return detailedCards.length > 0 ? detailedCards : accessibleFallbackCards;
   }, [accessibleFallbackCards, dashboardSummary, viewerCatalog]);
+  const validPreferredSeriesKey =
+    preferredSeriesKey && seriesCards.some((card) => card.configKey === preferredSeriesKey)
+      ? preferredSeriesKey
+      : "";
   const defaultSeriesKey =
-    viewerCatalog?.defaultSeriesConfigKey?.trim()
-    || seriesCards.find((card) => card.isActive)?.configKey
-    || seriesCards[0]?.configKey
-    || "";
+    validPreferredSeriesKey
+    || (seriesCards.length === 1 ? seriesCards[0]?.configKey || "" : "");
   const selectedSeriesKey =
     currentUrlSeries && seriesCards.some((card) => card.configKey === currentUrlSeries)
       ? currentUrlSeries
       : defaultSeriesKey;
+  const workspaceSeriesCards = useMemo(() => {
+    if (!selectedSeriesKey || !selectedSeriesOverview) {
+      return seriesCards;
+    }
+
+    return seriesCards.map((card) =>
+      card.configKey === selectedSeriesKey ? mergeSeriesCardWithOverview(card, selectedSeriesOverview) : card
+    );
+  }, [selectedSeriesKey, selectedSeriesOverview, seriesCards]);
+  const displaySeriesCards = isWorkspaceView ? workspaceSeriesCards : seriesCards;
   const selectedSeries =
-    seriesCards.find((card) => card.configKey === selectedSeriesKey) || seriesCards[0] || null;
+    displaySeriesCards.find((card) => card.configKey === selectedSeriesKey) || null;
   const combinedResults = payload ? combineSearchResults(payload.results) : [];
   const workspaceRoute = useMemo(
     () => getAnalyticsWorkspaceRoute(currentUrlQuery || undefined, selectedSeriesKey || undefined),
@@ -1256,9 +1605,9 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
   const hasSeriesAccess = seriesCards.length > 0;
   const isPlatformAdminViewer = viewerCatalog?.actor?.isPlatformAdmin === true;
   const recommendedRequestSeriesKey =
-    (currentUrlSeries && requestableSeriesCards.some((card) => card.configKey === currentUrlSeries) ? currentUrlSeries : "")
-    || requestableSeriesCards.find((card) => card.isActive)?.configKey
-    || requestableSeriesCards[0]?.configKey
+    (currentUrlSeries && requestableSeriesEntries.some((entry) => entry.configKey === currentUrlSeries) ? currentUrlSeries : "")
+    || requestableSeriesEntries.find((entry) => entry.isActive)?.configKey
+    || requestableSeriesEntries[0]?.configKey
     || "";
   const seriesAdminRoute = useMemo(
     () => getAnalyticsSeriesAdminRoute(selectedSeriesKey || undefined),
@@ -1269,6 +1618,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     [isPlatformAdminViewer, selectedSeriesKey, seriesAdminRoute]
   );
   const isAuthenticated = Boolean(user && accessToken);
+  const hasMultipleSeries = seriesCards.length > 1;
   const userDisplayName =
     user?.user_metadata?.full_name?.trim()
     || user?.user_metadata?.name?.trim()
@@ -1321,7 +1671,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
         meta:
           accessibleSeriesCount > 0
             ? `${accessibleSeriesCount} accessible ${accessibleSeriesCount === 1 ? "series" : "series"}`
-            : "Viewer access active",
+            : "Series-user access active",
       });
     }
 
@@ -1337,6 +1687,61 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
   ]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setPreferredSeriesKey("");
+      return;
+    }
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      setPreferredSeriesKey(window.localStorage.getItem(preferredSeriesStorageKey)?.trim() || "");
+    } catch {
+      setPreferredSeriesKey("");
+    }
+  }, [isAuthenticated, preferredSeriesStorageKey]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !preferredSeriesKey) {
+      return;
+    }
+
+    if (seriesCards.some((card) => card.configKey === preferredSeriesKey)) {
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem(preferredSeriesStorageKey);
+      } catch {
+        // Ignore storage cleanup failures.
+      }
+    }
+
+    setPreferredSeriesKey("");
+  }, [isAuthenticated, preferredSeriesKey, preferredSeriesStorageKey, seriesCards]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !selectedSeriesKey) {
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(preferredSeriesStorageKey, selectedSeriesKey);
+      } catch {
+        // Ignore storage write failures.
+      }
+    }
+
+    if (preferredSeriesKey !== selectedSeriesKey) {
+      setPreferredSeriesKey(selectedSeriesKey);
+    }
+  }, [isAuthenticated, preferredSeriesKey, preferredSeriesStorageKey, selectedSeriesKey]);
+
+  useEffect(() => {
     if (!hasSeriesAccess && !isPlatformAdminViewer) {
       setShowRequestPanel(true);
     }
@@ -1348,6 +1753,12 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
   };
 
   async function runSearch(trimmedQuery: string, seriesConfigKey: string) {
+    if (!accessToken) {
+      setErrorMessage("Your session expired. Sign in again before searching.");
+      setStatus("error");
+      return;
+    }
+
     activeRequestRef.current?.abort();
     const controller = new AbortController();
     activeRequestRef.current = controller;
@@ -1359,6 +1770,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
 
     try {
       const response = await searchCricketPlayers(trimmedQuery, {
+        accessToken,
         seriesConfigKey,
         signal: controller.signal,
       });
@@ -1469,6 +1881,45 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
   }, [isAuthenticated, isWorkspaceView, summaryReloadKey]);
 
   useEffect(() => {
+    if (!isWorkspaceView || viewerStatus !== "success" || !hasSeriesAccess || !selectedSeriesKey) {
+      setSelectedSeriesOverview(null);
+      setSelectedSeriesDetailError(null);
+      setSelectedSeriesDetailStatus("idle");
+      return;
+    }
+
+    const controller = new AbortController();
+
+    setSelectedSeriesDetailStatus("loading");
+    setSelectedSeriesDetailError(null);
+    setSelectedSeriesOverview(null);
+
+    fetchCricketSeriesOverview(selectedSeriesKey, controller.signal)
+      .then((response) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setSelectedSeriesOverview(response);
+        setSelectedSeriesDetailStatus("success");
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : "Selected series detail could not be refreshed.";
+        setSelectedSeriesOverview(null);
+        setSelectedSeriesDetailError(message);
+        setSelectedSeriesDetailStatus("error");
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [hasSeriesAccess, isWorkspaceView, selectedSeriesDetailReloadKey, selectedSeriesKey, viewerStatus]);
+
+  useEffect(() => {
     if (!isWorkspaceView) {
       activeRequestRef.current?.abort();
       setPayload(null);
@@ -1517,7 +1968,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
       activeRequestRef.current?.abort();
       setPayload(null);
       setLastQuery(trimmedQuery);
-      setErrorMessage("You do not have viewer access to any analytics series yet.");
+      setErrorMessage("You do not have series-user access to any analytics series yet.");
       setStatus("error");
       return;
     }
@@ -1540,7 +1991,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     return () => {
       activeRequestRef.current?.abort();
     };
-  }, [currentUrlQuery, hasSeriesAccess, selectedSeriesKey, summaryStatus, viewerError, viewerStatus, isWorkspaceView]);
+  }, [accessToken, currentUrlQuery, hasSeriesAccess, selectedSeriesKey, summaryStatus, viewerError, viewerStatus, isWorkspaceView]);
 
   const handleSearch = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1605,6 +2056,10 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
 
   const handleRetrySummary = () => {
     setSummaryReloadKey((current) => current + 1);
+  };
+
+  const handleRetrySelectedSeriesDetail = () => {
+    setSelectedSeriesDetailReloadKey((current) => current + 1);
   };
 
   const handleRetryViewerAccess = () => {
@@ -1734,7 +2189,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                     <CardDescription className="max-w-2xl text-sm leading-7">
                       {isPlatformAdminViewer
                         ? "This platform-admin account can access every series automatically, but no series are visible yet."
-                        : "Your account does not have series access yet. Request viewer or series-admin access here."}
+                        : "Your account does not have series access yet. Request series-user or series-admin access here."}
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -1745,7 +2200,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                     </p>
                     <p className="mt-4 text-sm leading-7 text-muted-foreground">
                       {isPlatformAdminViewer ? (
-                        "Platform admins automatically inherit series-admin and viewer access across every series."
+                        "Platform admins automatically inherit series-admin and series-user access across every series."
                       ) : (
                         <>Use the request panel to request access for a specific series.</>
                       )}
@@ -1780,7 +2235,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                       ) : (
                         <>
                           <p>1. Choose the series.</p>
-                          <p>2. Choose viewer or series-admin.</p>
+                          <p>2. Choose series-user or series-admin.</p>
                           <p>3. Submit the request.</p>
                           <p>4. Wait for approval.</p>
                         </>
@@ -1788,9 +2243,9 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                     </div>
                     {!isPlatformAdminViewer ? (
                       <div className="mt-5">
-                        {requestableSeriesCards.length > 0 ? (
+                        {requestableSeriesEntries.length > 0 ? (
                           <SeriesAccessRequestPanel
-                            seriesCards={requestableSeriesCards}
+                            entries={requestableSeriesEntries}
                             preferredSeriesKey={recommendedRequestSeriesKey}
                             accessToken={accessToken}
                             onAccessActivated={handleAccessActivated}
@@ -1874,7 +2329,11 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                       Series workspace
                     </h1>
                     <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-                      Review the live series boundary and search within it.
+                      {selectedSeries
+                        ? `Review the live boundary and search within ${selectedSeries.seriesName}.`
+                        : hasMultipleSeries
+                          ? "Choose a series to load its live boundary and player search."
+                          : "Review the live series boundary and search within it."}
                     </p>
                     {isPlatformAdminViewer ? (
                       <p className="max-w-3xl text-sm leading-7 text-cyan-100/85">
@@ -1912,9 +2371,9 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
               </div>
 
               {showRequestPanel && !isPlatformAdminViewer ? (
-                requestableSeriesCards.length > 0 ? (
+                requestableSeriesEntries.length > 0 ? (
                   <SeriesAccessRequestPanel
-                    seriesCards={requestableSeriesCards}
+                    entries={requestableSeriesEntries}
                     preferredSeriesKey={selectedSeriesKey || recommendedRequestSeriesKey}
                     accessToken={accessToken}
                     onAccessActivated={handleAccessActivated}
@@ -1929,11 +2388,49 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                 )
               ) : null}
 
+              {!selectedSeries && hasMultipleSeries ? (
+                <Card className="border-border/80 bg-card/85 shadow-xl">
+                  <CardContent className="flex flex-col gap-4 p-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <Layers3 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <p>Select one series card below to load its live summary and search within that series only.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {selectedSeries && selectedSeriesDetailStatus === "loading" ? (
+                <Card className="border-border/80 bg-card/75 shadow-sm">
+                  <CardContent className="flex items-start gap-3 p-5 text-sm text-muted-foreground">
+                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+                    <p>Refreshing live detail for {selectedSeries.seriesName}.</p>
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {selectedSeries && selectedSeriesDetailStatus === "error" && selectedSeriesDetailError ? (
+                <Card className="border-amber-500/30 bg-amber-500/10 shadow-sm">
+                  <CardContent className="flex flex-col gap-4 p-5 text-sm text-amber-200 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div className="space-y-1">
+                        <p>Selected series detail refresh failed.</p>
+                        <p className="text-amber-100/80">{selectedSeriesDetailError}</p>
+                      </div>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={handleRetrySelectedSeriesDetail}>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Retry Selected Series
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
+
               <SeriesWorkspaceOverview
                 summaryStatus={summaryStatus}
                 summaryError={summaryError}
                 onRetrySummary={handleRetrySummary}
-                seriesCards={seriesCards}
+                seriesCards={displaySeriesCards}
                 selectedSeriesKey={selectedSeriesKey}
                 onSelectSeries={handleSeriesSelection}
                 query={query}
@@ -1972,20 +2469,16 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                         Welcome back, {userDisplayName}
                       </h1>
                       <p className="max-w-3xl text-base leading-7 text-muted-foreground">
-                        {selectedSeries
-                          ? `${selectedSeries.seriesName} is active for this account.`
+                        {accessibleSeriesCount > 0
+                          ? selectedSeries
+                            ? `${accessibleSeriesCount} accessible series. Preferred workspace: ${selectedSeries.seriesName}.`
+                            : `${accessibleSeriesCount} accessible series. Choose one below to open its workspace.`
                           : `Signed in as ${user?.email || "this account"}.`}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row lg:flex-col">
-                    {!isPlatformAdminViewer ? (
-                      <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setShowRequestPanel((current) => !current)}>
-                        {showRequestPanel ? "Hide Access Request" : "Request Access"}
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    ) : null}
+                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row lg:flex-col">
                     <Button asChild variant="outline" className="w-full sm:w-auto">
                       <Link to={workspaceRoute}>
                         Series Workspace
@@ -2007,9 +2500,9 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                     </p>
                   </div>
                   <div className="rounded-2xl border border-border/80 bg-background/40 p-5">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Current series</p>
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Preferred series</p>
                     <p className="mt-3 font-display text-xl text-foreground">
-                      {selectedSeries?.seriesName || "Analytics"}
+                      {selectedSeries?.seriesName || (hasMultipleSeries ? "Choose in workspace" : "Analytics")}
                     </p>
                   </div>
                 </div>
@@ -2061,22 +2554,18 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
               </CardContent>
             </Card>
 
-            {showRequestPanel && !isPlatformAdminViewer ? (
-              requestableSeriesCards.length > 0 ? (
+            <AnalyticsSeriesPortfolio
+              seriesCards={seriesCards}
+              preferredSeriesKey={selectedSeriesKey || validPreferredSeriesKey || undefined}
+            />
+
+            {!isPlatformAdminViewer && requestableSeriesEntries.length > 0 ? (
                 <SeriesAccessRequestPanel
-                  seriesCards={requestableSeriesCards}
+                  entries={requestableSeriesEntries}
                   preferredSeriesKey={selectedSeriesKey || recommendedRequestSeriesKey}
                   accessToken={accessToken}
                   onAccessActivated={handleAccessActivated}
                 />
-              ) : (
-                    <Card className="border-border/80 bg-card/85 shadow-xl">
-                      <CardContent className="flex items-start gap-3 p-6 text-sm text-muted-foreground">
-                        <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
-                        <p>Loading the series list.</p>
-                      </CardContent>
-                    </Card>
-              )
             ) : null}
 
             <AnalyticsLandingSections />

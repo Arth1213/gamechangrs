@@ -1181,6 +1181,14 @@ function getPlayerIntelligenceApiPath(result: CricketPlayerTarget, seriesConfigK
   return `/api/players/${result.playerId}/intelligence`;
 }
 
+function getPlayerReportDocumentApiPath(result: CricketPlayerTarget, seriesConfigKey?: string | null) {
+  if (seriesConfigKey?.trim()) {
+    return `/api/series/${encodeURIComponent(seriesConfigKey.trim())}/players/${result.playerId}/report/html`;
+  }
+
+  return `/api/players/${result.playerId}/report/html`;
+}
+
 function getPlayerSearchApiPath(seriesConfigKey?: string | null) {
   if (seriesConfigKey?.trim()) {
     return `/api/series/${encodeURIComponent(seriesConfigKey.trim())}/players/search`;
@@ -1205,6 +1213,16 @@ export function getCricketPlayerReportApiUrl(
 ) {
   const query = appendPlayerQueryParams(result);
   const basePath = getCricketApiUrl(getPlayerReportApiPath(result, options?.seriesConfigKey));
+  const search = query.toString();
+  return search ? `${basePath}?${search}` : basePath;
+}
+
+export function getCricketPlayerReportDocumentUrl(
+  result: CricketPlayerTarget,
+  options?: Pick<CricketPlayerRouteOptions, "seriesConfigKey">
+) {
+  const query = appendPlayerQueryParams(result);
+  const basePath = getCricketApiUrl(getPlayerReportDocumentApiPath(result, options?.seriesConfigKey));
   const search = query.toString();
   return search ? `${basePath}?${search}` : basePath;
 }

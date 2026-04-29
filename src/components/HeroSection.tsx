@@ -26,16 +26,16 @@ export const HeroSection = () => {
               </div>
 
               <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight mb-6 animate-slide-up">
-                Transform Your Cricket with{" "}
-                <span className="text-gradient-primary">Intelligent</span>{" "}
-                Tools
+                Sports Analytics, AI &amp; Science for{" "}
+                <span className="text-gradient-primary">Smarter Cricket</span>
               </h1>
 
               <p
                 className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 mb-10 animate-slide-up"
                 style={{ animationDelay: "0.1s" }}
               >
-                Technique AI, cricket analytics, coaching workflows, and gear access in one platform.
+                From AI-based technique feedback and coach matching to analytics-driven scouting, selection, and
+                opposition planning, Game-Changrs transforms cricket data into decisions.
               </p>
 
               <div

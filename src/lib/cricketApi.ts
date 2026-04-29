@@ -1013,10 +1013,14 @@ export type CricketPlayerIntelligenceLens = {
 
 export type CricketPlayerIntelligenceEvidenceItem = {
   matchId?: number | null;
+  sourceMatchId?: string;
   matchDate?: string;
   matchDateLabel?: string;
   matchTitle?: string;
   divisionLabel?: string;
+  matchPageUrl?: string;
+  scorecardUrl?: string;
+  ballByBallUrl?: string;
   inningsNo?: number | null;
   ballLabel?: string;
   phase?: string;

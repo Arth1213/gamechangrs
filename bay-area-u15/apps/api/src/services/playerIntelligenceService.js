@@ -584,10 +584,14 @@ function formatEvidenceHeadline(row, playerId) {
 function mapEvidenceRow(row, playerId) {
   return {
     matchId: toInteger(row.match_id),
+    sourceMatchId: normalizeText(row.source_match_id),
     matchDate: row.match_date,
     matchDateLabel: formatDate(row.match_date),
     matchTitle: normalizeText(row.match_title),
     divisionLabel: normalizeText(row.division_label),
+    matchPageUrl: normalizeText(row.match_page_url),
+    scorecardUrl: normalizeText(row.scorecard_url),
+    ballByBallUrl: normalizeText(row.ball_by_ball_url),
     inningsNo: toInteger(row.innings_no),
     ballLabel: normalizeText(row.ball_label),
     phase: normalizeText(row.phase),
@@ -667,7 +671,11 @@ async function loadCommentaryRows(client, input) {
     `
       select
         be.match_id,
+        m.source_match_id,
         m.match_date,
+        m.match_page_url,
+        m.scorecard_url,
+        m.ball_by_ball_url,
         d.source_label as division_label,
         t1.display_name || ' v ' || t2.display_name as match_title,
         be.innings_no,

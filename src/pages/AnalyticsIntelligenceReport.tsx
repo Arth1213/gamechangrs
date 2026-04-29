@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   BrainCircuit,
   Crosshair,
+  ExternalLink,
   Radar,
   RefreshCw,
   ShieldCheck,
@@ -334,6 +335,43 @@ function EvidenceColumn({
               </div>
               {item.commentaryText ? (
                 <p className="mt-3 text-sm leading-7 text-foreground">{item.commentaryText}</p>
+              ) : null}
+              {item.matchPageUrl || item.scorecardUrl || item.ballByBallUrl ? (
+                <div className="mt-3 flex flex-wrap gap-3">
+                  {item.matchPageUrl ? (
+                    <a
+                      href={item.matchPageUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-cyan-200 transition hover:text-cyan-100"
+                    >
+                      Match page
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  ) : null}
+                  {item.scorecardUrl ? (
+                    <a
+                      href={item.scorecardUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-cyan-200 transition hover:text-cyan-100"
+                    >
+                      Scorecard
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  ) : null}
+                  {item.ballByBallUrl ? (
+                    <a
+                      href={item.ballByBallUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-cyan-200 transition hover:text-cyan-100"
+                    >
+                      Ball by ball
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           ))

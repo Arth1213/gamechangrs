@@ -437,6 +437,15 @@ app.get("/api/players/:playerId/report", requireSeriesViewerOrDefault, asyncHand
   res.json(payload);
 }));
 
+app.get("/api/players/:playerId/report/html", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  sendHtml(res, renderPlayerReportPage(payload));
+}));
+
 app.get("/", asyncHandler(async (req, res) => {
   const seriesCards = await loadSeriesCards();
   const activeSeries = seriesCards.find((card) => card.isActive) || seriesCards[0] || null;

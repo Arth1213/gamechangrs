@@ -19,7 +19,7 @@ import {
   fetchCricketPlayerReport,
   getAnalyticsPlatformAdminRoute,
   getAnalyticsWorkspaceRoute,
-  getCricketPlayerReportUrl,
+  getCricketPlayerReportDocumentUrl,
 } from "@/lib/cricketApi";
 
 function getDivisionId(value: string | null) {
@@ -112,7 +112,7 @@ const AnalyticsReport = () => {
       return null;
     }
 
-    return getCricketPlayerReportUrl(
+    return getCricketPlayerReportDocumentUrl(
       {
         playerId: numericPlayerId,
         divisionId,

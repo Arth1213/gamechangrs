@@ -8,7 +8,6 @@ import {
   GraduationCap,
   type LucideIcon,
   ShoppingBag,
-  Sparkles,
   UserCircle,
   Zap,
 } from "lucide-react";
@@ -376,10 +375,6 @@ export const UserDashboard = () => {
     <section className="pb-16 pt-32">
       <div className="container mx-auto px-4">
         <div className="mb-10 space-y-5">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
-            <Sparkles className="h-4 w-4" />
-            Game-Changrs Service Hub
-          </div>
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-3xl space-y-3">
               <h1 className="font-display text-3xl font-bold text-foreground md:text-4xl lg:text-5xl">

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Zap, LogOut, User } from "lucide-react";
+import { Menu, X, LogOut, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationBell } from "@/components/NotificationBell";
+import { CricketBrandTile } from "@/components/CricketBrandTile";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,9 +36,7 @@ export const Navbar = () => {
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow group-hover:scale-110 transition-transform duration-300">
-              <Zap className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <CricketBrandTile className="h-10 w-10 shadow-glow transition-transform duration-300 group-hover:scale-110" />
             <span className="font-display font-bold text-xl text-foreground">
               Game<span className="text-gradient-primary">Changrs</span>
             </span>

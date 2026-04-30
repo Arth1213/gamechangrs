@@ -4,7 +4,8 @@ import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, Mail, Lock, User, ArrowRight, Chrome } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, Chrome } from "lucide-react";
+import { CricketBrandTile } from "@/components/CricketBrandTile";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
@@ -133,9 +134,7 @@ const Auth = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-accent/10" />
         <div className="relative z-10 flex flex-col justify-center px-16">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow">
-              <Zap className="w-7 h-7 text-primary-foreground" />
-            </div>
+            <CricketBrandTile className="h-14 w-14 rounded-2xl shadow-glow" />
             <span className="font-display font-bold text-3xl text-foreground">
               Game<span className="text-gradient-primary">Changrs</span>
             </span>
@@ -169,9 +168,7 @@ const Auth = () => {
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center justify-center gap-2 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow">
-              <Zap className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <CricketBrandTile className="h-10 w-10 shadow-glow" />
             <span className="font-display font-bold text-xl text-foreground">
               Game<span className="text-gradient-primary">Changrs</span>
             </span>

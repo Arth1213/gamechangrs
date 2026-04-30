@@ -20,11 +20,6 @@ export const HeroSection = () => {
         <div className="max-w-6xl mx-auto">
           <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
             <div className="text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8 animate-fade-in">
-                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-sm font-medium text-primary">Game-Changrs</span>
-              </div>
-
               <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight mb-6 animate-slide-up">
                 Sports Analytics, AI &amp; Science for{" "}
                 <span className="text-gradient-primary">Smarter Cricket</span>

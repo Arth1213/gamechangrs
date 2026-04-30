@@ -404,21 +404,18 @@ export const UserDashboard = () => {
 
         <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
           <Link to="/techniqueai" className="group">
-            <div className="flex h-full flex-col rounded-[28px] border border-primary/20 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.18),transparent_34%),rgba(15,23,42,0.92)] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_24px_60px_rgba(37,99,235,0.18)]">
-              <div className="mb-6 flex items-start justify-between gap-3">
+            <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-elevated">
+              <div className="mb-6 flex items-start gap-3">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15">
                   <Zap className="h-7 w-7 text-primary" />
                 </div>
-                <Badge className="border border-primary/20 bg-primary/10 text-primary hover:bg-primary/10">
-                  Technique AI
-                </Badge>
               </div>
               <div className="space-y-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Video analysis</p>
                   <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Technique AI</h2>
                 </div>
-                <div className="rounded-2xl border border-primary/15 bg-background/40 p-4">
+                <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
                   <p className="font-display text-3xl font-bold text-foreground">{analyses.length}</p>
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Saved analyses</p>
                   <p className="mt-2 text-sm text-muted-foreground">
@@ -436,21 +433,18 @@ export const UserDashboard = () => {
           </Link>
 
           <Link to="/analytics" className="group">
-            <div className="flex h-full flex-col rounded-[28px] border border-emerald-400/20 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.18),transparent_34%),rgba(15,23,42,0.92)] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/40 hover:shadow-[0_24px_60px_rgba(16,185,129,0.18)]">
-              <div className="mb-6 flex items-start justify-between gap-3">
+            <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-elevated">
+              <div className="mb-6 flex items-start gap-3">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-400/15">
                   <BarChart3 className="h-7 w-7 text-emerald-300" />
                 </div>
-                <Badge className="border border-emerald-400/20 bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/10">
-                  Analytics
-                </Badge>
               </div>
               <div className="space-y-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-emerald-300/80">Selector intelligence</p>
                   <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Analytics</h2>
                 </div>
-                <div className="rounded-2xl border border-emerald-400/15 bg-background/40 p-4">
+                <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
                   <p className="font-display text-xl font-bold text-foreground">Live player reports</p>
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Series workspace</p>
                 </div>
@@ -463,21 +457,18 @@ export const UserDashboard = () => {
           </Link>
 
           <Link to="/coaching-marketplace" className="group">
-            <div className="flex h-full flex-col rounded-[28px] border border-accent/25 bg-[radial-gradient(circle_at_top_left,rgba(217,70,239,0.16),transparent_34%),rgba(15,23,42,0.92)] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-accent/45 hover:shadow-[0_24px_60px_rgba(217,70,239,0.18)]">
-              <div className="mb-6 flex items-start justify-between gap-3">
+            <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-accent/25 hover:shadow-elevated">
+              <div className="mb-6 flex items-start gap-3">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/15">
                   <Brain className="h-7 w-7 text-accent" />
                 </div>
-                <Badge className="border border-accent/25 bg-accent/10 text-accent hover:bg-accent/10">
-                  Coaching Marketplace
-                </Badge>
               </div>
               <div className="space-y-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-accent/80">Coach and player network</p>
                   <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Coaching Marketplace</h2>
                 </div>
-                <div className="rounded-2xl border border-accent/15 bg-background/40 p-4">
+                <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
                   <p className="font-display text-3xl font-bold text-foreground">{coachingProfilesCount}</p>
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Active profiles</p>
                   <p className="mt-2 text-sm text-muted-foreground">{loading ? "Loading..." : coachingDetail}</p>
@@ -491,21 +482,18 @@ export const UserDashboard = () => {
           </Link>
 
           <Link to="/marketplace" className="group">
-            <div className="flex h-full flex-col rounded-[28px] border border-amber-400/20 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_34%),rgba(15,23,42,0.92)] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-amber-400/40 hover:shadow-[0_24px_60px_rgba(251,191,36,0.16)]">
-              <div className="mb-6 flex items-start justify-between gap-3">
+            <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-accent/25 hover:shadow-elevated">
+              <div className="mb-6 flex items-start gap-3">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-400/15">
                   <ShoppingBag className="h-7 w-7 text-amber-300" />
                 </div>
-                <Badge className="border border-amber-400/20 bg-amber-400/10 text-amber-300 hover:bg-amber-400/10">
-                  Gear Marketplace
-                </Badge>
               </div>
               <div className="space-y-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-amber-300/80">Buy, sell, donate</p>
                   <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Gear Marketplace</h2>
                 </div>
-                <div className="rounded-2xl border border-amber-400/15 bg-background/40 p-4">
+                <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
                   <p className="font-display text-3xl font-bold text-foreground">{activeListingsCount}</p>
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Active listings</p>
                   <p className="mt-2 text-sm text-muted-foreground">{latestListing ? latestListing.title : "No listings yet."}</p>

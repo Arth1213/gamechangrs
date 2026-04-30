@@ -9,14 +9,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-[0_0_60px_hsl(var(--primary)/0.15)]",
+        default: "bg-primary text-primary-foreground hover:bg-primary/92 shadow-card",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline: "border border-border bg-transparent text-foreground hover:bg-secondary hover:border-primary/50",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-secondary hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        hero: "bg-gradient-to-r from-[hsl(152,60%,45%)] to-[hsl(170,60%,35%)] text-[hsl(220,20%,4%)] font-semibold shadow-lg hover:shadow-[0_0_60px_hsl(152,60%,45%,0.15)] hover:scale-105 active:scale-100",
-        accent: "bg-gradient-to-r from-[hsl(38,95%,55%)] to-[hsl(28,95%,50%)] text-[hsl(220,20%,4%)] font-semibold shadow-lg hover:scale-105 active:scale-100",
+        hero: "bg-primary text-primary-foreground font-semibold shadow-card hover:bg-primary/90 active:bg-primary/88",
+        accent: "bg-accent text-accent-foreground font-semibold shadow-card hover:bg-accent/92 active:bg-accent/88",
         glass: "bg-foreground/5 backdrop-blur-sm border border-foreground/10 text-foreground hover:bg-foreground/10 hover:border-primary/30",
       },
       size: {

@@ -274,7 +274,7 @@ const PlayerReportChat = ({
         <Button
           type="button"
           size="icon"
-          className="fixed right-5 bottom-5 z-40 h-14 w-14 rounded-full bg-gradient-to-br from-cyan-300 via-cyan-400 to-emerald-400 text-slate-950 shadow-[0_20px_50px_rgba(34,211,238,0.28)] hover:scale-[1.03] hover:from-cyan-200 hover:to-emerald-300"
+          className="fixed right-5 bottom-5 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-elevated hover:scale-[1.03] hover:bg-primary/92"
         >
           <MessageSquareText className="h-6 w-6" />
           <span className="sr-only">Open player report assistant</span>
@@ -283,7 +283,7 @@ const PlayerReportChat = ({
 
       <SheetContent
         side="right"
-        className="w-full max-w-none border-l border-border/80 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.14),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.12),transparent_28%),rgba(2,6,23,0.98)] p-0 text-foreground sm:max-w-xl"
+        className="w-full max-w-none border-l border-border/80 bg-card p-0 text-foreground sm:max-w-xl"
       >
         <div className="flex h-full flex-col">
           <SheetHeader className="border-b border-border/80 px-6 py-5 text-left">

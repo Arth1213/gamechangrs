@@ -1,11 +1,13 @@
 "use strict";
 
 const express = require("express");
+const fs = require("fs");
 
 const { requireAuthenticatedCricketUser, requireSeriesAdminAccess, requireSeriesViewerAccess } = require("./lib/auth");
 const { closePool, testConnection } = require("./lib/connection");
 const { normalizeText, toBoolean, toInteger } = require("./lib/utils");
 const { renderLocalOpsConsolePage } = require("./render/localOpsPage");
+const { renderLocalOpsRunPage } = require("./render/localOpsRunPage");
 const {
   renderAdminMatchesPage,
   renderAdminSetupPage,
@@ -61,6 +63,7 @@ const {
 } = require("./services/playerIntelligenceService");
 const {
   getLocalOpsOverview,
+  getLocalOpsRunDetail,
   runLocalOpsAction,
 } = require("./services/localOpsService");
 
@@ -327,9 +330,51 @@ if (LOCAL_OPS_UI_ENABLED) {
     );
   }));
 
+  app.get("/local-ops/runs/:runId", requireLocalOpsUi, asyncHandler(async (req, res) => {
+    const detail = await getLocalOpsRunDetail(req.params.runId);
+    sendHtml(
+      res,
+      renderLocalOpsRunPage({
+        detail,
+        port: toInteger(process.env.PORT) || 4010,
+      })
+    );
+  }));
+
   app.get("/api/local-ops/overview", requireLocalOpsUi, asyncHandler(async (req, res) => {
     const overview = await getLocalOpsOverview();
     res.json(overview);
+  }));
+
+  app.get("/api/local-ops/runs/:runId", requireLocalOpsUi, asyncHandler(async (req, res) => {
+    const detail = await getLocalOpsRunDetail(req.params.runId);
+    res.json(detail);
+  }));
+
+  app.get("/api/local-ops/runs/:runId/status", requireLocalOpsUi, asyncHandler(async (req, res) => {
+    const detail = await getLocalOpsRunDetail(req.params.runId);
+    res.json(detail.rawStatus || {});
+  }));
+
+  app.get("/api/local-ops/runs/:runId/artifact", requireLocalOpsUi, asyncHandler(async (req, res) => {
+    const detail = await getLocalOpsRunDetail(req.params.runId);
+    if (!detail.artifact) {
+      const error = new Error("No artifact payload is attached to this local ops run.");
+      error.statusCode = 404;
+      throw error;
+    }
+    res.json(detail.artifact);
+  }));
+
+  app.get("/api/local-ops/runs/:runId/log", requireLocalOpsUi, asyncHandler(async (req, res) => {
+    const detail = await getLocalOpsRunDetail(req.params.runId);
+    const logPath = normalizeText(detail?.files?.logPath);
+    if (!logPath || !fs.existsSync(logPath)) {
+      const error = new Error("No log file is attached to this local ops run.");
+      error.statusCode = 404;
+      throw error;
+    }
+    res.type("text/plain").send(fs.readFileSync(logPath, "utf8"));
   }));
 
   app.post("/api/local-ops/actions/:action", requireLocalOpsUi, asyncHandler(async (req, res) => {

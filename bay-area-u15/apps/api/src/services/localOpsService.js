@@ -31,6 +31,8 @@ const LOCAL_OPS_SERIES_DIR = path.join(LOCAL_OPS_DIR, "series");
 const LOCAL_OPS_GLOBAL_RUN_PATH = path.join(LOCAL_OPS_DIR, "latest_run.json");
 const LOCAL_OPS_ACTIVE_RUN_TTL_MS = 30 * 60 * 1000;
 const LOCAL_OPS_LOG_TAIL_LIMIT = 16;
+const LOCAL_OPS_RUN_DETAIL_LOG_LIMIT = 160;
+const LOCAL_OPS_RUN_DETAIL_STEP_LOG_LIMIT = 18;
 const LOCAL_OPS_RUN_HISTORY_LIMIT = 8;
 const LOCAL_OPS_BACKGROUND_CONCURRENCY = 1;
 const BACKGROUND_ACTIONS = new Set([
@@ -53,9 +55,12 @@ const WORKFLOW_ACTIONS = new Set([
   "workflow-refresh",
   "workflow-publish",
 ]);
+const RECOVERABLE_RUN_STATUSES = new Set(["queued", "running"]);
+const INTERRUPTED_WORKFLOW_STEP_STATUSES = new Set(["running", "queued", "in_progress", "standby"]);
 
 const backgroundRunQueue = [];
 const activeBackgroundRuns = new Map();
+let localOpsRecoveryInitialized = false;
 
 function buildActionLabel(actionKey) {
   switch (normalizeText(actionKey).toLowerCase()) {
@@ -196,7 +201,46 @@ function buildLocalOpsRunPaths(seriesConfigKey, runId) {
   };
 }
 
+function resolvePersistedRunPaths(run = {}, fallbackStatusPath = "") {
+  const runId = normalizeText(run?.runId);
+  const statusPath = normalizeText(run?.statusPath || fallbackStatusPath);
+  const detailPath = normalizeText(run?.detailPath || (statusPath ? path.dirname(statusPath) : ""));
+  const logPath = normalizeText(run?.logPath);
+
+  if (!runId) {
+    return {
+      detailPath,
+      statusPath,
+      logPath,
+    };
+  }
+
+  const defaults = buildLocalOpsRunPaths(run?.seriesConfigKey, runId);
+  return {
+    detailPath: detailPath || defaults.runDir,
+    statusPath: statusPath || defaults.statusPath,
+    logPath: logPath || defaults.logPath,
+  };
+}
+
 function readTailLines(filePath, limit = LOCAL_OPS_LOG_TAIL_LIMIT) {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return [];
+  }
+
+  try {
+    const text = fs.readFileSync(filePath, "utf8");
+    return text
+      .split(/\r?\n/)
+      .map((line) => line.trimEnd())
+      .filter(Boolean)
+      .slice(-Math.max(1, limit));
+  } catch (error) {
+    return [`Unable to read log output: ${normalizeText(error.message) || "unknown error"}`];
+  }
+}
+
+function readLogLines(filePath, limit = LOCAL_OPS_RUN_DETAIL_LOG_LIMIT) {
   if (!filePath || !fs.existsSync(filePath)) {
     return [];
   }
@@ -223,6 +267,7 @@ function deriveLatestRunStatus(run, entry = null) {
     return run;
   }
 
+  const persistedPaths = resolvePersistedRunPaths(run);
   const referenceTimestamp = latestEntryArtifactTimestamp(entry);
   const createdAtTimestamp = toTimestamp(run.createdAt || run.startedAt);
   const startedAtTimestamp = toTimestamp(run.startedAt);
@@ -245,9 +290,10 @@ function deriveLatestRunStatus(run, entry = null) {
 
   return {
     ...run,
+    ...persistedPaths,
     status,
     note,
-    recentLogLines: readTailLines(run.logPath),
+    recentLogLines: readTailLines(persistedPaths.logPath),
   };
 }
 
@@ -297,7 +343,9 @@ function readRecentActionRuns(seriesConfigKey, entry = null, limit = LOCAL_OPS_R
       note: normalizeText(run.note),
       retryInput: run.retryInput || null,
       commandPreview: normalizeText(run.commandPreview),
-      artifactPath: normalizeText(run.artifactPath),
+    artifactPath: normalizeText(run.artifactPath),
+      detailPath: normalizeText(run.detailPath),
+      statusPath: normalizeText(run.statusPath),
       queuePosition: toInteger(run.queuePosition),
       pid: toInteger(run.pid),
       canCancel: run.status === "queued",
@@ -790,6 +838,8 @@ function createActionRunContext(actionKey, input = {}, options = {}) {
     input: summarizeActionInput(actionKey, input),
     retryInput: buildRetryInput(input),
     artifactPath: null,
+    detailPath: paths.runDir,
+    statusPath: paths.statusPath,
     logPath: paths.logPath,
     logLineCount: 0,
     lastLogLine: "",
@@ -976,6 +1026,18 @@ function readJsonIfExists(filePath) {
       message: error.message,
       filePath,
     };
+  }
+}
+
+function readTextIfExists(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    return fs.readFileSync(filePath, "utf8");
+  } catch (error) {
+    return null;
   }
 }
 
@@ -2289,6 +2351,421 @@ function updateWorkflowRunState(runContext, workflowActionKey, seriesConfigKey, 
   });
 }
 
+function listPersistedRunStatusPaths() {
+  const roots = [];
+
+  if (fs.existsSync(LOCAL_OPS_SERIES_DIR)) {
+    fs.readdirSync(LOCAL_OPS_SERIES_DIR, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .forEach((entry) => {
+        roots.push(path.join(LOCAL_OPS_SERIES_DIR, entry.name));
+      });
+  }
+
+  const globalRoot = path.join(LOCAL_OPS_DIR, "global");
+  if (fs.existsSync(globalRoot)) {
+    roots.push(globalRoot);
+  }
+
+  return roots.flatMap((rootPath) => {
+    const runsDir = path.join(rootPath, "runs");
+    if (!fs.existsSync(runsDir)) {
+      return [];
+    }
+
+    return fs.readdirSync(runsDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => path.join(runsDir, entry.name, "status.json"))
+      .filter((statusPath) => fs.existsSync(statusPath));
+  });
+}
+
+function buildWorkflowRestartResumeOption(workflowActionKey, seriesConfigKey, input = {}, step = null, label = "Resume workflow") {
+  if (step) {
+    const resumeOption = buildWorkflowResumeOption(workflowActionKey, seriesConfigKey, input, step);
+    if (resumeOption) {
+      return resumeOption;
+    }
+  }
+
+  const payload = buildRetryInput({
+    ...input,
+    series: seriesConfigKey,
+  });
+
+  return {
+    key: normalizeText(payload.fromStep),
+    label,
+    action: normalizeText(workflowActionKey).toLowerCase(),
+    payload,
+    command: buildWorkflowCommandPreview(workflowActionKey, payload),
+    confirmLive: resolveWorkflowDryRun(payload) === false,
+  };
+}
+
+function findWorkflowPlanStep(planSteps = [], stepKey = "") {
+  const normalizedKey = normalizeText(stepKey).toLowerCase();
+  if (!normalizedKey) {
+    return null;
+  }
+
+  return planSteps.find((step) => {
+    const candidateKey = normalizeText(step?.key).toLowerCase();
+    const actionKey = normalizeText(step?.actionKey).toLowerCase();
+    return candidateKey === normalizedKey || actionKey === normalizedKey;
+  }) || null;
+}
+
+function selectWorkflowResumeStepFromRun(run = {}) {
+  const workflowSteps = Array.isArray(run.workflowSteps) ? run.workflowSteps : [];
+  const planSteps = Array.isArray(run.workflowPlanSteps) ? run.workflowPlanSteps : [];
+  const priorStatus = normalizeText(run.status).toLowerCase();
+
+  if (priorStatus !== "queued") {
+    const activeStep = workflowSteps.find((step) => normalizeText(step?.status).toLowerCase() !== "completed");
+    if (activeStep) {
+      return findWorkflowPlanStep(planSteps, activeStep.key || activeStep.actionKey) || activeStep;
+    }
+  }
+
+  const completedKeys = new Set(
+    workflowSteps
+      .filter((step) => normalizeText(step?.status).toLowerCase() === "completed")
+      .map((step) => normalizeText(step?.key).toLowerCase())
+      .filter(Boolean)
+  );
+  const nextPlanStep = planSteps.find((step) => !completedKeys.has(normalizeText(step?.key).toLowerCase()));
+  if (nextPlanStep) {
+    return nextPlanStep;
+  }
+
+  const requestedFromStep = normalizeText(run?.retryInput?.fromStep || run?.workflowStartStepKey);
+  if (requestedFromStep) {
+    return findWorkflowPlanStep(planSteps, requestedFromStep)
+      || workflowSteps.find((step) => {
+        const stepKey = normalizeText(step?.key).toLowerCase();
+        const actionKey = normalizeText(step?.actionKey).toLowerCase();
+        return stepKey === requestedFromStep.toLowerCase() || actionKey === requestedFromStep.toLowerCase();
+      })
+      || {
+        key: requestedFromStep,
+        label: normalizeText(run?.workflowStartStepLabel) || requestedFromStep,
+      };
+  }
+
+  return planSteps[0] || workflowSteps[0] || null;
+}
+
+function buildInterruptedWorkflowSteps(run = {}, interruptedAt = "") {
+  const workflowSteps = Array.isArray(run.workflowSteps) ? run.workflowSteps : [];
+  if (!workflowSteps.length) {
+    return workflowSteps;
+  }
+
+  if (normalizeText(run.status).toLowerCase() !== "running") {
+    return workflowSteps.map((step) => ({ ...step }));
+  }
+
+  let interruptedMarked = false;
+  return workflowSteps.map((step) => {
+    const stepStatus = normalizeText(step?.status).toLowerCase();
+    if (!interruptedMarked && INTERRUPTED_WORKFLOW_STEP_STATUSES.has(stepStatus)) {
+      interruptedMarked = true;
+      return {
+        ...step,
+        status: "interrupted",
+        summary: "Interrupted by API restart before the step finished.",
+        updatedAt: interruptedAt || new Date().toISOString(),
+      };
+    }
+    return {
+      ...step,
+    };
+  });
+}
+
+function rebuildLatestRunPointersFromDisk(statusPaths = []) {
+  const seriesLatest = new Map();
+  let latestOverall = null;
+
+  statusPaths.forEach((statusPath) => {
+    const run = readJsonIfExists(statusPath);
+    if (!run || run.readError || !normalizeText(run.runId)) {
+      return;
+    }
+
+    const hydratedRun = {
+      ...run,
+      ...resolvePersistedRunPaths(run, statusPath),
+    };
+    const compareTimestamp = Math.max(
+      toTimestamp(hydratedRun.createdAt || hydratedRun.startedAt),
+      toTimestamp(hydratedRun.updatedAt),
+      toTimestamp(hydratedRun.finishedAt)
+    );
+
+    const seriesKey = normalizeText(hydratedRun.seriesConfigKey) || "__global__";
+    const existingSeriesRun = seriesLatest.get(seriesKey);
+    const existingSeriesTimestamp = existingSeriesRun
+      ? Math.max(
+          toTimestamp(existingSeriesRun.createdAt || existingSeriesRun.startedAt),
+          toTimestamp(existingSeriesRun.updatedAt),
+          toTimestamp(existingSeriesRun.finishedAt)
+        )
+      : 0;
+
+    if (!existingSeriesRun || compareTimestamp >= existingSeriesTimestamp) {
+      seriesLatest.set(seriesKey, hydratedRun);
+    }
+
+    const latestOverallTimestamp = latestOverall
+      ? Math.max(
+          toTimestamp(latestOverall.createdAt || latestOverall.startedAt),
+          toTimestamp(latestOverall.updatedAt),
+          toTimestamp(latestOverall.finishedAt)
+        )
+      : 0;
+    if (!latestOverall || compareTimestamp >= latestOverallTimestamp) {
+      latestOverall = hydratedRun;
+    }
+  });
+
+  seriesLatest.forEach((run, key) => {
+    const latestPath = key === "__global__"
+      ? path.join(LOCAL_OPS_DIR, "global", "latest_run.json")
+      : path.join(LOCAL_OPS_SERIES_DIR, key, "latest_run.json");
+    ensureDir(path.dirname(latestPath));
+    writeJsonFile(latestPath, run);
+  });
+
+  if (latestOverall) {
+    ensureDir(path.dirname(LOCAL_OPS_GLOBAL_RUN_PATH));
+    writeJsonFile(LOCAL_OPS_GLOBAL_RUN_PATH, latestOverall);
+  }
+}
+
+function recoverInterruptedActionRuns() {
+  const statusPaths = listPersistedRunStatusPaths();
+  if (!statusPaths.length) {
+    return {
+      recoveredCount: 0,
+      touchedCount: 0,
+    };
+  }
+
+  const recoveredAt = new Date().toISOString();
+  let recoveredCount = 0;
+  let touchedCount = 0;
+
+  statusPaths.forEach((statusPath) => {
+    const run = readJsonIfExists(statusPath);
+    if (!run || run.readError || !normalizeText(run.runId)) {
+      return;
+    }
+
+    const persistedPaths = resolvePersistedRunPaths(run, statusPath);
+    const nextState = {
+      ...run,
+      ...persistedPaths,
+    };
+    let changed = (
+      normalizeText(run.detailPath) !== persistedPaths.detailPath
+      || normalizeText(run.statusPath) !== persistedPaths.statusPath
+      || normalizeText(run.logPath) !== persistedPaths.logPath
+    );
+
+    const priorStatus = normalizeText(run.status).toLowerCase();
+    if (RECOVERABLE_RUN_STATUSES.has(priorStatus)) {
+      const actionLabel = normalizeText(run.actionLabel) || buildActionLabel(run.actionKey);
+      const workflowResume = isWorkflowAction(run.actionKey)
+        ? buildWorkflowRestartResumeOption(
+          run.actionKey,
+          normalizeText(run.seriesConfigKey || run?.retryInput?.series),
+          run.retryInput || {},
+          selectWorkflowResumeStepFromRun(run),
+          priorStatus === "queued" ? "Resume queued workflow" : "Resume interrupted workflow"
+        )
+        : null;
+
+      const summary = priorStatus === "queued"
+        ? `${actionLabel} was queued when the API restarted. Resume it manually if the work is still needed.`
+        : `${actionLabel} was interrupted when the API restarted. Resume it manually from the next unfinished step.`;
+
+      nextState.status = "interrupted";
+      nextState.ok = null;
+      nextState.updatedAt = recoveredAt;
+      nextState.finishedAt = recoveredAt;
+      nextState.durationMs = Math.max(0, toTimestamp(recoveredAt) - toTimestamp(run.startedAt || run.createdAt || recoveredAt));
+      nextState.queuePosition = null;
+      nextState.pid = null;
+      nextState.summary = summary;
+      nextState.message = summary;
+      nextState.note = priorStatus === "queued"
+        ? "Queued local work did not start before the API restarted. Use Resume or Retry when you want to run it again."
+        : "Active local work stopped during API restart. Review the saved log and resume manually when ready.";
+      nextState.interruptedFromStatus = priorStatus;
+      nextState.interruptedAt = recoveredAt;
+      if (isWorkflowAction(run.actionKey)) {
+        nextState.workflowSteps = buildInterruptedWorkflowSteps(run, recoveredAt);
+        nextState.workflowResume = workflowResume;
+        nextState.workflowStoppedEarly = true;
+        nextState.workflowStopReason = summary;
+      }
+      recoveredCount += 1;
+      changed = true;
+    }
+
+    if (changed) {
+      writeJsonFile(statusPath, nextState);
+      touchedCount += 1;
+    }
+  });
+
+  rebuildLatestRunPointersFromDisk(statusPaths);
+
+  return {
+    recoveredCount,
+    touchedCount,
+  };
+}
+
+function ensureLocalOpsRecoveryState() {
+  if (localOpsRecoveryInitialized) {
+    return;
+  }
+
+  localOpsRecoveryInitialized = true;
+  recoverInterruptedActionRuns();
+}
+
+function buildWorkflowStepLogSlices(run = {}, logLines = []) {
+  const planSteps = Array.isArray(run.workflowPlanSteps) ? run.workflowPlanSteps : [];
+  const workflowSteps = Array.isArray(run.workflowSteps) ? run.workflowSteps : [];
+  const actualByKey = new Map(
+    workflowSteps
+      .map((step) => [normalizeText(step?.key).toLowerCase(), step])
+      .filter(([key]) => Boolean(key))
+  );
+  const baseSteps = planSteps.length ? planSteps : workflowSteps;
+  if (!baseSteps.length) {
+    return [];
+  }
+
+  const slices = baseSteps.map((step, index) => {
+    const stepKey = normalizeText(step?.key || step?.actionKey);
+    const actual = actualByKey.get(stepKey.toLowerCase()) || workflowSteps[index] || null;
+    return {
+      key: stepKey,
+      actionKey: normalizeText((actual || step)?.actionKey).toLowerCase(),
+      label: normalizeText((actual || step)?.label) || stepKey || `Step ${index + 1}`,
+      status: normalizeText(actual?.status || step?.status).toLowerCase() || "pending",
+      summary: normalizeText(actual?.summary || step?.summary),
+      updatedAt: actual?.updatedAt || step?.updatedAt || null,
+      dryRun: typeof actual?.dryRun === "boolean"
+        ? actual.dryRun
+        : typeof step?.dryRun === "boolean"
+          ? step.dryRun
+          : undefined,
+      command: normalizeText(actual?.command || step?.command),
+      logLines: [],
+    };
+  });
+
+  const findSliceForStartLine = (label) => {
+    const normalizedLabel = normalizeText(label).toLowerCase();
+    return slices.find((slice) => {
+      const sliceLabel = normalizeText(slice.label).toLowerCase();
+      const sliceKey = normalizeText(slice.key).toLowerCase();
+      return sliceLabel === normalizedLabel || sliceKey === normalizedLabel;
+    }) || null;
+  };
+
+  let activeSlice = null;
+  logLines.forEach((line) => {
+    const startMatch = line.match(/\[workflow\]\s+\d+\/\d+\s+(.*?): start$/);
+    if (startMatch) {
+      activeSlice = findSliceForStartLine(startMatch[1]);
+    }
+    if (activeSlice) {
+      activeSlice.logLines.push(line);
+    }
+  });
+
+  return slices.map((slice) => ({
+    ...slice,
+    logLines: slice.logLines.slice(-LOCAL_OPS_RUN_DETAIL_STEP_LOG_LIMIT),
+  }));
+}
+
+function findPersistedRunStatusPath(runId) {
+  const targetRunId = normalizeText(runId);
+  if (!targetRunId) {
+    return null;
+  }
+
+  const statusPaths = listPersistedRunStatusPaths();
+  for (const statusPath of statusPaths) {
+    const payload = readJsonIfExists(statusPath);
+    if (payload && !payload.readError && normalizeText(payload.runId) === targetRunId) {
+      return statusPath;
+    }
+  }
+
+  return null;
+}
+
+function getLocalOpsRunDetail(runId) {
+  ensureLocalOpsRecoveryState();
+  const targetRunId = normalizeText(runId);
+  if (!targetRunId) {
+    throw createLocalOpsActionError("A local ops run id is required.", 400);
+  }
+
+  const statusPath = findPersistedRunStatusPath(targetRunId);
+  if (!statusPath) {
+    throw createLocalOpsActionError(`Local ops run was not found: ${targetRunId}`, 404);
+  }
+
+  const rawStatus = readJsonIfExists(statusPath);
+  if (!rawStatus || rawStatus.readError) {
+    throw createLocalOpsActionError(`Local ops run status could not be read: ${targetRunId}`, 500);
+  }
+
+  const config = loadYamlConfig(CONFIG_PATH);
+  const seriesEntries = Array.isArray(config?.series) ? config.series : [];
+  const seriesEntry = seriesEntries.find((entry) => normalizeText(entry?.slug) === normalizeText(rawStatus.seriesConfigKey)) || null;
+  const overviewEntry = seriesEntry ? buildSeriesOverviewEntry(seriesEntry) : null;
+  const hydratedRun = deriveLatestRunStatus({
+    ...rawStatus,
+    ...resolvePersistedRunPaths(rawStatus, statusPath),
+  }, overviewEntry);
+  const logLines = readLogLines(hydratedRun.logPath, LOCAL_OPS_RUN_DETAIL_LOG_LIMIT);
+  const artifactPayload = hydratedRun.artifactPath ? readJsonIfExists(hydratedRun.artifactPath) : null;
+
+  return {
+    ok: true,
+    generatedAt: new Date().toISOString(),
+    run: hydratedRun,
+    series: {
+      configKey: normalizeText(hydratedRun.seriesConfigKey),
+      label: normalizeText(seriesEntry?.label),
+      sourceSystem: normalizeText(seriesEntry?.source_system || seriesEntry?.sourceSystem),
+      seasonYear: toInteger(seriesEntry?.season_year),
+      targetAgeGroup: normalizeText(seriesEntry?.targeting?.age_group),
+    },
+    files: {
+      detailPath: normalizeText(hydratedRun.detailPath),
+      statusPath: normalizeText(hydratedRun.statusPath || statusPath),
+      logPath: normalizeText(hydratedRun.logPath),
+      artifactPath: normalizeText(hydratedRun.artifactPath),
+    },
+    rawStatus,
+    artifact: artifactPayload,
+    logLines,
+    workflowStepLogs: buildWorkflowStepLogSlices(hydratedRun, logLines),
+  };
+}
+
 function buildWorkflowPublishSteps(input = {}) {
   const workflowDryRun = resolveWorkflowDryRun(input);
   const basePayload = buildWorkflowActionPayload(input);
@@ -2707,6 +3184,7 @@ function buildSeriesOverviewEntry(series) {
 }
 
 async function getLocalOpsOverview() {
+  ensureLocalOpsRecoveryState();
   const config = loadYamlConfig(CONFIG_PATH);
   const seriesEntries = Array.isArray(config?.series) ? config.series : [];
   const series = seriesEntries
@@ -3063,6 +3541,7 @@ async function executeLocalOpsActionInline(action, input, runContext) {
 }
 
 async function runLocalOpsAction(actionKey, input = {}) {
+  ensureLocalOpsRecoveryState();
   const action = normalizeText(actionKey).toLowerCase();
   if (action === "cancel-run") {
     return cancelQueuedBackgroundRun(input);
@@ -3093,5 +3572,6 @@ async function runLocalOpsAction(actionKey, input = {}) {
 
 module.exports = {
   getLocalOpsOverview,
+  getLocalOpsRunDetail,
   runLocalOpsAction,
 };

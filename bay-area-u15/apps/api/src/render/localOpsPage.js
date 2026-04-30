@@ -342,6 +342,11 @@ function renderLocalOpsConsolePage({ overview, port }) {
         color: var(--accent-2);
         border-color: rgba(127, 179, 255, 0.35);
       }
+      .status-pill.interrupted,
+      .workflow-step.interrupted .status-pill {
+        color: var(--warn);
+        border-color: rgba(245, 183, 107, 0.35);
+      }
       .status-pill.canceled,
       .status-pill.cancelled {
         color: var(--bad);
@@ -400,6 +405,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
       .workflow-step.complete {
         background: rgba(13, 41, 31, 0.32);
       }
+      .workflow-step.interrupted,
       .workflow-step.stale,
       .workflow-step.standby {
         background: rgba(63, 42, 17, 0.28);
@@ -566,15 +572,21 @@ function renderLocalOpsConsolePage({ overview, port }) {
         flex-wrap: wrap;
         gap: 10px;
       }
-      button {
+      button,
+      .button-link {
         border: 0;
         border-radius: 999px;
         padding: 11px 16px;
         font: inherit;
         cursor: pointer;
         transition: transform 120ms ease, opacity 120ms ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
-      button:hover { transform: translateY(-1px); }
+      button:hover,
+      .button-link:hover { transform: translateY(-1px); }
       button:disabled { opacity: 0.55; cursor: wait; transform: none; }
       .button-primary {
         background: linear-gradient(135deg, var(--accent), #3fa9ff);
@@ -910,6 +922,8 @@ function renderLocalOpsConsolePage({ overview, port }) {
             return "Queued";
           case "running":
             return "Running";
+          case "interrupted":
+            return "Interrupted";
           case "in_progress":
             return "In Progress";
           case "failed":
@@ -937,6 +951,8 @@ function renderLocalOpsConsolePage({ overview, port }) {
           case "queued":
           case "running":
             return "";
+          case "interrupted":
+            return "warn";
           case "failed":
           case "blocked":
             return "bad";
@@ -988,8 +1004,26 @@ function renderLocalOpsConsolePage({ overview, port }) {
         \`;
       }
 
+      function renderRunInspectorLink(run) {
+        if (!run?.runId) {
+          return "";
+        }
+
+        return \`
+          <a
+            class="button-link button-secondary button-small"
+            href="/local-ops/runs/\${encodeURIComponent(run.runId)}"
+          >Open Run</a>
+        \`;
+      }
+
       function renderRunControlButtons(run) {
         const buttons = [];
+
+        const inspectorLink = renderRunInspectorLink(run);
+        if (inspectorLink) {
+          buttons.push(inspectorLink);
+        }
 
         if (run?.status === "queued" && run?.runId) {
           buttons.push(renderInlineActionButton(
@@ -1176,6 +1210,8 @@ function renderLocalOpsConsolePage({ overview, port }) {
         const summary = run.summary || run.message || "No run summary available.";
         const note = run.note || "";
         const artifactPath = run.artifactPath || "No artifact path recorded";
+        const detailPath = run.detailPath || "No run detail path recorded";
+        const statusPath = run.statusPath || "No status file recorded";
         const commandPreview = run.commandPreview || "";
         const workflowMeta = run.workflowKey
           ? \`
@@ -1238,6 +1274,14 @@ function renderLocalOpsConsolePage({ overview, port }) {
             \${run.pid ? \`<div class="meta-chip"><b>Worker PID</b><code>\${escapeHtmlText(run.pid)}</code></div>\` : ""}
             \${commandPreview ? \`<div class="meta-chip"><b>Command</b><code>\${escapeHtmlText(commandPreview)}</code></div>\` : ""}
             <div class="meta-chip">
+              <b>Run Detail</b>
+              <code>\${escapeHtmlText(detailPath)}</code>
+            </div>
+            <div class="meta-chip">
+              <b>Status File</b>
+              <code>\${escapeHtmlText(statusPath)}</code>
+            </div>
+            <div class="meta-chip">
               <b>Artifact</b>
               <code>\${escapeHtmlText(artifactPath)}</code>
             </div>
@@ -1276,6 +1320,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
                   <div class="series-note">\${escapeHtmlText(run.summary || run.note || "No run summary available.")}</div>
                   \${run.workflowStopReason ? \`<div class="series-note">\${escapeHtmlText(run.workflowStopReason)}</div>\` : ""}
                   \${run.commandPreview ? \`<code class="mono">\${escapeHtmlText(run.commandPreview)}</code>\` : ""}
+                  \${run.detailPath ? \`<code class="mono">\${escapeHtmlText(run.detailPath)}</code>\` : ""}
                   \${renderRunControlButtons(run)}
                   \${renderWorkflowRunSteps(run)}
                 </div>

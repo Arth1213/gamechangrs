@@ -40,7 +40,7 @@ export const HeroSection = () => {
   ];
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-hero pt-20">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-hero pt-16 sm:pt-20">
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute inset-x-0 top-0 h-40 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent)]" />
@@ -50,16 +50,16 @@ export const HeroSection = () => {
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0wIDBoNjB2NjBIMHoiLz48cGF0aCBkPSJNMzAgMzBoMXYxaC0xeiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIvPjwvZz48L3N2Zz4=')] opacity-20" />
 
       <div className="container mx-auto px-4 relative z-10">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(440px,1.08fr)] lg:gap-14 xl:gap-20">
             <div className="text-center lg:text-left">
-              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight mb-6 animate-slide-up">
+              <h1 className="font-display text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight mb-5 sm:mb-6 animate-slide-up">
                 Sports Analytics, AI &amp; Science for{" "}
                 <span className="text-gradient-primary">Smarter Cricket</span>
               </h1>
 
               <p
-                className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 mb-10 animate-slide-up"
+                className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 mb-8 sm:mb-10 animate-slide-up"
                 style={{ animationDelay: "0.1s" }}
               >
                 From AI-based technique feedback and coach matching to analytics-driven scouting, selection, and
@@ -67,7 +67,7 @@ export const HeroSection = () => {
               </p>
 
               <div
-                className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-10 lg:mb-0 animate-slide-up"
+                className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-6 sm:mb-8 lg:mb-0 animate-slide-up"
                 style={{ animationDelay: "0.2s" }}
               >
                 <Link to="/auth">

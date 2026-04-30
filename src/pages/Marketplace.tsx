@@ -56,6 +56,8 @@ interface Listing {
   created_at: string | null;
 }
 
+type ListingMode = "sale" | "donation";
+
 const featuredRetailPartner = {
   name: "East Bay Cricket Shop",
   href: "https://eastbaycricshop.com/#new-bats",
@@ -64,6 +66,24 @@ const featuredRetailPartner = {
   description: "Retail access for new cricket gear alongside the community marketplace.",
   highlights: ["New bats", "Pads and gloves", "Quick external checkout"],
 };
+
+const marketplaceFlowCards = [
+  {
+    title: "Community feed",
+    description: "Browse all active gear in one searchable marketplace.",
+    icon: ShoppingBag,
+  },
+  {
+    title: "Email handoff",
+    description: "Game-Changrs introduces both sides, then the conversation continues by email.",
+    icon: Mail,
+  },
+  {
+    title: "Retail fallback",
+    description: "Jump to East Bay Cricket Shop when the right new gear is the better fit.",
+    icon: Store,
+  },
+];
 
 function formatListingDate(value: string | null) {
   if (!value) {
@@ -112,76 +132,99 @@ function MarketplaceHeroCard({
   );
 }
 
+function MarketplaceOverviewStrip({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <section className="border-b border-border py-10">
+      <div className="container mx-auto px-4">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-6">
+            <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Marketplace flow</p>
+            <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">{title}</h2>
+            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{description}</p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {marketplaceFlowCards.map((item) => (
+              <div key={item.title} className="rounded-3xl border border-border bg-card/80 p-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+                  <item.icon className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="mt-4 font-display text-2xl font-bold text-foreground">{item.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function MarketplaceRetailPartner() {
   return (
-    <section className="border-t border-border bg-background py-6">
+    <section className="border-t border-border bg-background py-8">
       <div className="container mx-auto px-4">
-        <div className="overflow-hidden rounded-[28px] border border-border bg-[linear-gradient(135deg,rgba(14,19,28,0.98),rgba(18,30,26,0.94)_45%,rgba(24,16,10,0.94))]">
-          <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="relative p-6 md:p-8 lg:p-10">
-              <div className="absolute -left-16 top-10 h-40 w-40 rounded-full bg-primary/15 blur-3xl" />
-              <div className="absolute bottom-0 right-10 h-32 w-32 rounded-full bg-accent/10 blur-3xl" />
+        <div className="mx-auto max-w-6xl overflow-hidden rounded-[32px] border border-border bg-card/80 p-6 shadow-sm md:p-8">
+          <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-primary">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                {featuredRetailPartner.eyebrow}
+              </div>
 
-              <div className="relative">
-                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-primary">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  {featuredRetailPartner.eyebrow}
-                </div>
+              <div className="mt-5 max-w-2xl">
+                <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">
+                  {featuredRetailPartner.title}
+                </h2>
+                <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
+                  {featuredRetailPartner.description}
+                </p>
+              </div>
 
-                <div className="mt-5 max-w-2xl">
-                  <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">
-                    {featuredRetailPartner.title}
-                  </h2>
-                  <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
-                    {featuredRetailPartner.description}
-                  </p>
-                </div>
+              <div className="mt-6 flex flex-wrap gap-2">
+                {featuredRetailPartner.highlights.map((highlight) => (
+                  <span
+                    key={highlight}
+                    className="rounded-full border border-border bg-background/60 px-3 py-1 text-xs font-medium text-foreground/85"
+                  >
+                    {highlight}
+                  </span>
+                ))}
+              </div>
 
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {featuredRetailPartner.highlights.map((highlight) => (
-                    <span
-                      key={highlight}
-                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-foreground/85"
-                    >
-                      {highlight}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                  <a href={featuredRetailPartner.href} target="_blank" rel="noreferrer" className="inline-flex">
-                    <Button variant="hero" size="default">
-                      Shop East Bay
-                      <ArrowUpRight className="h-4 w-4" />
-                    </Button>
-                  </a>
-                  <a href={featuredRetailPartner.href} target="_blank" rel="noreferrer" className="inline-flex">
-                    <Button variant="outline" size="default" className="border-white/15 bg-background/30">
-                      View New Bats
-                    </Button>
-                  </a>
-                </div>
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                <a href={featuredRetailPartner.href} target="_blank" rel="noreferrer" className="inline-flex">
+                  <Button variant="hero" size="default">
+                    Shop East Bay
+                    <ArrowUpRight className="h-4 w-4" />
+                  </Button>
+                </a>
+                <a href={featuredRetailPartner.href} target="_blank" rel="noreferrer" className="inline-flex">
+                  <Button variant="outline" size="default">
+                    View New Bats
+                  </Button>
+                </a>
               </div>
             </div>
 
-            <div className="relative border-t border-border/70 lg:border-l lg:border-t-0">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_45%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))]" />
-              <div className="relative flex h-full items-center justify-center p-6 md:p-8 lg:p-10">
-                <div className="relative w-full max-w-[340px]">
-                  <div className="absolute inset-10 rounded-[40px] bg-primary/10 blur-3xl" />
-                  <div className="relative flex items-center justify-center overflow-hidden rounded-[30px] border border-white/10 bg-black/10 px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
-                    <img
-                      src="/partners/east-bay-cricket-shop-logo.jpeg"
-                      alt="East Bay Cricket Shop logo"
-                      className="h-auto max-h-[150px] w-auto max-w-full object-contain md:max-h-[180px] lg:max-h-[200px]"
-                    />
-                  </div>
-                  <div className="absolute inset-x-0 bottom-5 text-center">
-                    <span className="inline-flex rounded-full border border-white/10 bg-background/60 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-white/70 backdrop-blur-sm">
-                      {featuredRetailPartner.name}
-                    </span>
-                  </div>
-                </div>
+            <div className="rounded-[28px] border border-border bg-background/60 p-6">
+              <div className="flex min-h-[260px] items-center justify-center rounded-[24px] border border-border bg-card/80 px-6 py-8">
+                <img
+                  src="/partners/east-bay-cricket-shop-logo.jpeg"
+                  alt="East Bay Cricket Shop logo"
+                  className="h-auto max-h-[180px] w-auto max-w-full object-contain"
+                />
+              </div>
+              <div className="mt-4 text-center">
+                <span className="inline-flex rounded-full border border-border bg-background/80 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                  {featuredRetailPartner.name}
+                </span>
               </div>
             </div>
           </div>
@@ -203,84 +246,95 @@ function MarketplaceGuestLanding({
   previewCategories: string[];
 }) {
   return (
-    <>
-      <section className="border-b border-border bg-card/40 pb-12 pt-32">
-        <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-6xl">
-            <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-              <div className="space-y-6">
-                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
-                  <Sparkles className="h-4 w-4" />
-                  Gear Marketplace
-                </div>
-
-                <div className="space-y-4">
-                  <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl lg:text-6xl">
-                    Pass gear forward. Find the next bat, pads, or full kit.
-                  </h1>
-                  <p className="max-w-3xl text-lg leading-8 text-muted-foreground">
-                    Browse community listings, connect directly with sellers, and jump to retail options for new cricket gear when needed.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button variant="hero" size="lg" asChild>
-                    <Link to="/auth">
-                      Sign In to List Gear
-                      <ArrowRight className="h-5 w-5" />
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="lg" asChild>
-                    <a href="#gear-marketplace-feed">Browse Live Listings</a>
-                  </Button>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {previewCategories.map((category) => (
-                    <Badge key={category} variant="outline" className="border-border/80 bg-background/40">
-                      {category}
-                    </Badge>
-                  ))}
-                </div>
+    <section className="border-b border-border bg-card/40 pb-12 pt-32">
+      <div className="container mx-auto px-4">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+            <div className="space-y-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
+                <Sparkles className="h-4 w-4" />
+                Gear Marketplace
               </div>
 
-              <div className="rounded-[32px] border border-border/80 bg-card/85 p-6 shadow-xl">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <MarketplaceHeroCard label="Community listings" value={publicListingCount} tone="accent" />
-                  <MarketplaceHeroCard label="Donation listings" value={donationCount} tone="warm" />
-                  <MarketplaceHeroCard label="Gear categories" value={categoryCount} />
+              <div className="space-y-4">
+                <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl lg:text-6xl">
+                  Donate gear. Sell gear. Connect by email.
+                </h1>
+                <p className="max-w-3xl text-lg leading-8 text-muted-foreground">
+                  Move good cricket gear through the community feed, then let buyer and seller continue directly by email offline.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Button variant="hero" size="lg" asChild>
+                  <Link to="/auth">
+                    Donate Gear
+                    <ArrowRight className="h-5 w-5" />
+                  </Link>
+                </Button>
+                <Button variant="outline" size="lg" asChild>
+                  <Link to="/auth">Sell Gear</Link>
+                </Button>
+                <Button variant="outline" size="lg" asChild>
+                  <a href="#gear-marketplace-feed">Browse Live Listings</a>
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {previewCategories.map((category) => (
+                  <Badge key={category} variant="outline" className="border-border/80 bg-background/40">
+                    {category}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[32px] border border-border/80 bg-card/85 p-6 shadow-xl">
+              <div className="grid gap-4 md:grid-cols-3">
+                <MarketplaceHeroCard label="Community listings" value={publicListingCount} tone="accent" />
+                <MarketplaceHeroCard label="Donation listings" value={donationCount} tone="warm" />
+                <MarketplaceHeroCard label="Gear categories" value={categoryCount} />
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-border/80 bg-background/60 p-5">
+                <p className="text-xs uppercase tracking-[0.16em] text-primary/80">Marketplace setup</p>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-border bg-card/80 p-4">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                      <HeartHandshake className="h-5 w-5 text-primary" />
+                    </div>
+                    <h2 className="mt-4 font-display text-xl font-bold text-foreground">Donate gear</h2>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      Publish free listings for good gear that should keep moving through the game.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-card/80 p-4">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                      <Tag className="h-5 w-5 text-primary" />
+                    </div>
+                    <h2 className="mt-4 font-display text-xl font-bold text-foreground">Sell gear</h2>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      Add price, condition, and location, then let the buyer reach out by email.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="mt-6 rounded-2xl border border-border/80 bg-background/60 p-5">
+                <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
-                      <ShieldCheck className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <h2 className="font-display text-2xl font-bold text-foreground">How it works</h2>
-                      <div className="mt-4 grid gap-3">
-                        <div className="rounded-2xl border border-border bg-card/80 p-4">
-                          <p className="text-sm font-semibold text-foreground">1. Browse public listings</p>
-                          <p className="mt-1 text-sm text-muted-foreground">Filter the live feed and open the right item.</p>
-                        </div>
-                        <div className="rounded-2xl border border-border bg-card/80 p-4">
-                          <p className="text-sm font-semibold text-foreground">2. Connect directly by email</p>
-                          <p className="mt-1 text-sm text-muted-foreground">Game-Changrs connects buyers and sellers. Payments stay offline.</p>
-                        </div>
-                        <div className="rounded-2xl border border-border bg-card/80 p-4">
-                          <p className="text-sm font-semibold text-foreground">3. Mix community and retail</p>
-                          <p className="mt-1 text-sm text-muted-foreground">Use East Bay Cricket Shop when you need new gear fast.</p>
-                        </div>
-                      </div>
-                    </div>
+                    <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-500" />
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">Connection only:</span> Game-Changrs makes the introduction. Buyer and seller continue by email and complete the exchange offline.
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </section>
-    </>
+      </div>
+    </section>
   );
 }
 
@@ -295,10 +349,10 @@ function MarketplaceWorkspaceHero({
   ownerListingCount: number;
   publicListingCount: number;
   donationCount: number;
-  onCreateListing: () => void;
+  onCreateListing: (mode: ListingMode) => void;
 }) {
   return (
-    <section className="bg-gradient-hero pb-12 pt-32">
+    <section className="border-b border-border bg-card/50 pb-12 pt-32">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
@@ -310,30 +364,25 @@ function MarketplaceWorkspaceHero({
 
               <div className="space-y-4">
                 <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl lg:text-6xl">
-                  {userName}, manage your listings and keep the feed moving.
+                  {userName}, move cricket gear through the community.
                 </h1>
                 <p className="max-w-3xl text-lg leading-8 text-muted-foreground">
-                  List gear, monitor your active items, browse the community feed, and jump to retail inventory when you need something new.
+                  Keep your listings visible, open the live feed, and use Game-Changrs to establish the email connection between buyer and seller.
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <Button variant="hero" size="lg" onClick={onCreateListing}>
-                  <Plus className="h-5 w-5" />
-                  Donate or Sell Gear
+                <Button variant="hero" size="lg" onClick={() => onCreateListing("donation")}>
+                  <HeartHandshake className="h-5 w-5" />
+                  Donate Gear
+                </Button>
+                <Button variant="outline" size="lg" onClick={() => onCreateListing("sale")}>
+                  <Tag className="h-5 w-5" />
+                  Sell Gear
                 </Button>
                 <Button variant="outline" size="lg" asChild>
                   <a href="#gear-marketplace-feed">Browse Live Feed</a>
                 </Button>
-              </div>
-
-              <div className="rounded-2xl border border-border bg-card/70 p-4">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-500" />
-                  <p className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">Connection only:</span> buyers and sellers still connect by email. Game-Changrs does not process payment on this surface.
-                  </p>
-                </div>
               </div>
             </div>
 
@@ -345,15 +394,30 @@ function MarketplaceWorkspaceHero({
               </div>
 
               <div className="mt-6 rounded-2xl border border-border/80 bg-background/60 p-5">
-                <p className="text-xs uppercase tracking-[0.16em] text-primary/80">Workspace focus</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-primary/80">Workspace actions</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-2xl border border-border bg-card/80 p-4">
-                    <p className="text-sm font-semibold text-foreground">List gear quickly</p>
-                    <p className="mt-1 text-sm text-muted-foreground">Create a new listing in one flow and keep the item visible in the live marketplace.</p>
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                      <HeartHandshake className="h-5 w-5 text-primary" />
+                    </div>
+                    <p className="mt-4 text-sm font-semibold text-foreground">Donate gear</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Publish a free listing and route the first email introduction through the marketplace.</p>
                   </div>
                   <div className="rounded-2xl border border-border bg-card/80 p-4">
-                    <p className="text-sm font-semibold text-foreground">Mix reuse and retail</p>
-                    <p className="mt-1 text-sm text-muted-foreground">Use community listings first, then move to East Bay for new inventory.</p>
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                      <Tag className="h-5 w-5 text-primary" />
+                    </div>
+                    <p className="mt-4 text-sm font-semibold text-foreground">Sell gear</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Set the asking price, publish the item, and let the buyer continue directly by email.</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-500" />
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">Connection only:</span> Game-Changrs does not process payment. Buyer and seller continue the exchange by email after the introduction.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -435,7 +499,7 @@ function OwnerListingsSection({
 }: {
   ownerListings: Listing[];
   isLoading: boolean;
-  onCreateListing: () => void;
+  onCreateListing: (mode: ListingMode) => void;
   onRefresh: () => void;
   onDelist: (listingId: string) => void;
 }) {
@@ -447,10 +511,16 @@ function OwnerListingsSection({
             <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Owner view</p>
             <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">Your Listings</h2>
           </div>
-          <Button variant="outline" onClick={onCreateListing}>
-            <Plus className="h-4 w-4" />
-            Add Another Listing
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={() => onCreateListing("donation")}>
+              <HeartHandshake className="h-4 w-4" />
+              Donate Gear
+            </Button>
+            <Button variant="outline" onClick={() => onCreateListing("sale")}>
+              <Tag className="h-4 w-4" />
+              Sell Gear
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -461,10 +531,14 @@ function OwnerListingsSection({
           <div className="rounded-3xl border border-border bg-gradient-card p-8">
             <h3 className="font-display text-xl font-bold text-foreground">No active listings yet</h3>
             <p className="mt-2 text-sm text-muted-foreground">Your gear will appear here once you create the first listing.</p>
-            <div className="mt-6">
-              <Button onClick={onCreateListing}>
-                <Plus className="h-4 w-4" />
-                List Your Gear
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button onClick={() => onCreateListing("donation")}>
+                <HeartHandshake className="h-4 w-4" />
+                Donate Gear
+              </Button>
+              <Button variant="outline" onClick={() => onCreateListing("sale")}>
+                <Tag className="h-4 w-4" />
+                Sell Gear
               </Button>
             </div>
           </div>
@@ -634,7 +708,7 @@ function MarketplaceCard({
         <div className="mt-5">
           <Button variant="hero" size="sm" className="w-full" onClick={() => onContact(listing)}>
             <Mail className="mr-1 h-3.5 w-3.5" />
-            {listing.listing_type === "donation" ? "Request Gear" : "Contact Seller"}
+            {listing.listing_type === "donation" ? "Request by Email" : "Connect by Email"}
           </Button>
         </div>
       </div>
@@ -648,6 +722,7 @@ const Marketplace = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createListingMode, setCreateListingMode] = useState<ListingMode>("sale");
   const [delistingId, setDelistingId] = useState<string | null>(null);
   const [contactListing, setContactListing] = useState<Listing | null>(null);
   const { toast } = useToast();
@@ -716,10 +791,11 @@ const Marketplace = () => {
     setContactListing(listing);
   };
 
-  const handleCreateListing = () => {
+  const handleCreateListing = (mode: ListingMode = "sale") => {
     if (!requireAuth("create a listing")) {
       return;
     }
+    setCreateListingMode(mode);
     setCreateDialogOpen(true);
   };
 
@@ -789,6 +865,15 @@ const Marketplace = () => {
         />
       )}
 
+      <MarketplaceOverviewStrip
+        title={user ? "What stays in this workspace" : "How the marketplace works"}
+        description={
+          user
+            ? "Your listings, the live community feed, and the retail fallback stay organized in one place."
+            : "List used gear, make the introduction by email, and use the retail fallback when new gear is needed."
+        }
+      />
+
       {user ? (
         <OwnerListingsSection
           ownerListings={ownerListings}
@@ -797,43 +882,7 @@ const Marketplace = () => {
           onRefresh={fetchListings}
           onDelist={setDelistingId}
         />
-      ) : (
-        <section className="border-b border-border py-10">
-          <div className="container mx-auto px-4">
-            <div className="mx-auto max-w-6xl">
-              <div className="grid gap-6 lg:grid-cols-3">
-                <div className="rounded-3xl border border-border bg-card/70 p-6">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
-                    <ShoppingBag className="h-5 w-5 text-primary" />
-                  </div>
-                  <h2 className="mt-4 font-display text-2xl font-bold text-foreground">List gear in minutes</h2>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Sign in, add an image, and publish a donation or sale listing into the live feed.
-                  </p>
-                </div>
-                <div className="rounded-3xl border border-border bg-card/70 p-6">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10">
-                    <HeartHandshake className="h-5 w-5 text-accent" />
-                  </div>
-                  <h2 className="mt-4 font-display text-2xl font-bold text-foreground">Community first</h2>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Donation and resale listings stay visible together so players can source the right gear faster.
-                  </p>
-                </div>
-                <div className="rounded-3xl border border-border bg-card/70 p-6">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-400/10">
-                    <Store className="h-5 w-5 text-amber-300" />
-                  </div>
-                  <h2 className="mt-4 font-display text-2xl font-bold text-foreground">Retail fallback</h2>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    When the right used gear is not available, jump straight to East Bay Cricket Shop for new inventory.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
+      ) : null}
 
       <MarketplaceSearchSection
         category={category}
@@ -845,8 +894,8 @@ const Marketplace = () => {
         title={user ? "Browse Gear" : "Live Gear Feed"}
         description={
           user
-            ? "Search the active feed, open donation or sale listings, and connect directly with the seller."
-            : "This public preview shows the current live listings. Sign in when you want to list or contact a seller."
+            ? "Search the active feed, open donation or sale listings, and continue the conversation with the seller by email."
+            : "This public preview shows the live listings. Sign in when you want to donate, sell, or contact a seller by email."
         }
       />
 
@@ -885,10 +934,27 @@ const Marketplace = () => {
           ) : marketplaceListings.length === 0 ? (
             <div className="rounded-3xl border border-border bg-card/70 p-10 text-center">
               <p className="mb-4 text-muted-foreground">No marketplace listings found for the current filters.</p>
-              <Button variant="outline" size="sm" onClick={handleCreateListing}>
-                <Plus className="mr-2 h-4 w-4" />
-                Be the first to list
-              </Button>
+              <div className="flex flex-wrap justify-center gap-3">
+                {user ? (
+                  <>
+                    <Button size="sm" onClick={() => handleCreateListing("donation")}>
+                      <HeartHandshake className="mr-2 h-4 w-4" />
+                      Donate Gear
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleCreateListing("sale")}>
+                      <Tag className="mr-2 h-4 w-4" />
+                      Sell Gear
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/auth">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Sign In to List Gear
+                    </Link>
+                  </Button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -902,15 +968,38 @@ const Marketplace = () => {
 
       <section className="border-t border-border bg-gradient-card py-10">
         <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">Have Gear to Share?</h2>
-            <p className="mb-4 mt-2 text-sm text-muted-foreground">
-              Add a listing and keep good cricket gear moving through the community.
+          <div className="mx-auto max-w-4xl rounded-[28px] border border-border bg-card/80 p-8 text-center">
+            <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">Ready to move gear?</h2>
+            <p className="mb-6 mt-2 text-sm text-muted-foreground">
+              Use Game-Changrs to make the introduction. Buyer and seller continue directly by email after that.
             </p>
-            <Button variant="hero" size="default" onClick={handleCreateListing}>
-              <Plus className="h-4 w-4" />
-              List Your Gear
-            </Button>
+
+            <div className="flex flex-wrap justify-center gap-3">
+              {user ? (
+                <>
+                  <Button variant="hero" size="default" onClick={() => handleCreateListing("donation")}>
+                    <HeartHandshake className="h-4 w-4" />
+                    Donate Gear
+                  </Button>
+                  <Button variant="outline" size="default" onClick={() => handleCreateListing("sale")}>
+                    <Tag className="h-4 w-4" />
+                    Sell Gear
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="hero" size="default" asChild>
+                    <Link to="/auth">
+                      Donate Gear
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="default" asChild>
+                    <Link to="/auth">Sell Gear</Link>
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </section>
@@ -919,7 +1008,12 @@ const Marketplace = () => {
 
       <Footer />
 
-      <CreateListingDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} onSuccess={fetchListings} />
+      <CreateListingDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={fetchListings}
+        initialListingType={createListingMode}
+      />
 
       {contactListing ? (
         <ContactSellerDialog

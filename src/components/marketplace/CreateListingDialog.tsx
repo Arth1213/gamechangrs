@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,9 +14,15 @@ interface CreateListingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  initialListingType?: "sale" | "donation";
 }
 
-export function CreateListingDialog({ open, onOpenChange, onSuccess }: CreateListingDialogProps) {
+export function CreateListingDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+  initialListingType = "sale",
+}: CreateListingDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -31,11 +37,23 @@ export function CreateListingDialog({ open, onOpenChange, onSuccess }: CreateLis
     description: "",
     category: "Cricket",
     condition: "Good",
-    listingType: "sale",
+    listingType: initialListingType,
     price: "",
     contactEmail: user?.email || "",
     location: "",
   });
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      listingType: initialListingType,
+      contactEmail: user?.email || prev.contactEmail,
+    }));
+  }, [open, initialListingType, user?.email]);
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -158,7 +176,7 @@ export function CreateListingDialog({ open, onOpenChange, onSuccess }: CreateLis
       description: "",
       category: "Cricket",
       condition: "Good",
-      listingType: "sale",
+      listingType: initialListingType,
       price: "",
       contactEmail: user?.email || "",
       location: "",
@@ -167,13 +185,21 @@ export function CreateListingDialog({ open, onOpenChange, onSuccess }: CreateLis
     setImageBase64(null);
   };
 
+  const isDonation = formData.listingType === "donation";
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      resetForm();
+    }
+    onOpenChange(nextOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>List Your Gear</DialogTitle>
+          <DialogTitle>{isDonation ? "Donate Gear" : "Sell Gear"}</DialogTitle>
           <DialogDescription>
-            Upload an image and we'll auto-fill the details using AI. You can donate or sell your gear.
+            Upload an image, review the AI-filled details, and publish the listing. Game-Changrs only introduces the two sides. The exchange continues by email offline.
           </DialogDescription>
         </DialogHeader>
 
@@ -344,7 +370,7 @@ export function CreateListingDialog({ open, onOpenChange, onSuccess }: CreateLis
               required
             />
             <p className="text-xs text-muted-foreground">
-              Your email is stored securely and never shown publicly. Buyers will contact you through our secure form.
+              Your email stays private until the buyer or recipient is introduced through the marketplace email flow.
             </p>
           </div>
 

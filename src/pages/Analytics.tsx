@@ -186,28 +186,6 @@ const LANDING_OUTCOMES = [
     description: "Search a player and get the full story in one decision-ready view.",
   },
 ];
-const LANDING_FLOW = [
-  {
-    stage: "Stage 1",
-    title: "Discover",
-    description: "Find divisions, matches, scorecards, commentary, teams, and players.",
-  },
-  {
-    stage: "Stage 2",
-    title: "Validate",
-    description: "Parse and reconcile before analytics are trusted.",
-  },
-  {
-    stage: "Stage 3",
-    title: "Interpret",
-    description: "Compute matchup, opponent-adjusted, form, and consistency metrics.",
-  },
-  {
-    stage: "Stage 4",
-    title: "Decide",
-    description: "Publish private dashboards and reports that explain the rating.",
-  },
-];
 const LANDING_FOOTER_TAGS = [
   "Structured Data",
   "Opponent Context",
@@ -1575,25 +1553,6 @@ function AnalyticsLandingSections() {
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-sky-400 text-sm font-black text-slate-950">
                   {item.step}
                 </div>
-                <h3 className="font-display text-2xl text-foreground">{item.title}</h3>
-                <p className="text-sm leading-7 text-muted-foreground">{item.description}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <h2 className="font-display text-3xl text-foreground md:text-4xl">How The App Creates Meaning</h2>
-          <p className="max-w-xl text-sm leading-6 text-muted-foreground">Messy web pages in. Trusted decisions out.</p>
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-4">
-          {LANDING_FLOW.map((item) => (
-            <Card key={item.stage} className="border-border/80 bg-card/80 shadow-sm">
-              <CardContent className="space-y-3 p-6">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-primary">{item.stage}</p>
                 <h3 className="font-display text-2xl text-foreground">{item.title}</h3>
                 <p className="text-sm leading-7 text-muted-foreground">{item.description}</p>
               </CardContent>

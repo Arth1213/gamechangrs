@@ -1,14 +1,15 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { buildAuthCallbackUrl } from "@/lib/authRedirect";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, redirectPath?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithGoogle: () => Promise<{ error: Error | null }>;
+  signInWithGoogle: (redirectPath?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -39,14 +40,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
+  const signUp = async (email: string, password: string, fullName: string, redirectPath = "/") => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: redirectUrl,
+        emailRedirectTo: buildAuthCallbackUrl(redirectPath),
         data: {
           full_name: fullName,
         },
@@ -63,11 +62,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error: error as Error | null };
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (redirectPath = "/") => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: buildAuthCallbackUrl(redirectPath),
       },
     });
     return { error: error as Error | null };

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Lock, User, ArrowRight, Chrome } from "lucide-react";
 import { CricketBrandTile } from "@/components/CricketBrandTile";
+import { resolveAuthRedirect } from "@/lib/authRedirect";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
@@ -23,8 +24,10 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
+  const from = resolveAuthRedirect(
+    location.search,
+    (location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null)?.from,
+  );
 
   useEffect(() => {
     if (user) {
@@ -87,7 +90,7 @@ const Auth = () => {
           });
         }
       } else {
-        const { error } = await signUp(email, password, fullName);
+        const { error } = await signUp(email, password, fullName, from);
         if (error) {
           if (error.message.includes("User already registered")) {
             toast({
@@ -116,7 +119,7 @@ const Auth = () => {
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
-    const { error } = await signInWithGoogle();
+    const { error } = await signInWithGoogle(from);
     if (error) {
       toast({
         variant: "destructive",

@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { buildAuthRoute, buildLocationRedirect } from "@/lib/authRedirect";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -21,7 +22,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (!user) {
-    return <Navigate to="/auth" state={{ from: location }} replace />;
+    const redirectPath = buildLocationRedirect(location);
+    return <Navigate to={buildAuthRoute(redirectPath)} state={{ from: location }} replace />;
   }
 
   return <>{children}</>;

@@ -40,7 +40,7 @@ export const HeroSection = () => {
   ];
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-hero pt-16 sm:pt-20">
+    <section className="relative overflow-hidden bg-gradient-hero pb-8 pt-14 sm:pb-10 sm:pt-16 lg:pb-12 lg:pt-20">
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute inset-x-0 top-0 h-40 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent)]" />
@@ -51,15 +51,15 @@ export const HeroSection = () => {
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-7xl mx-auto">
-          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(440px,1.08fr)] lg:gap-14 xl:gap-20">
+          <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)] lg:gap-12 xl:gap-16">
             <div className="text-center lg:text-left">
-              <h1 className="font-display text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight mb-5 sm:mb-6 animate-slide-up">
+              <h1 className="font-display text-3xl sm:text-5xl md:text-6xl lg:text-[4.3rem] font-bold text-foreground leading-tight mb-4 sm:mb-5 animate-slide-up">
                 Sports Analytics, AI &amp; Science for{" "}
                 <span className="text-gradient-primary">Smarter Cricket</span>
               </h1>
 
               <p
-                className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 mb-8 sm:mb-10 animate-slide-up"
+                className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0 mb-6 sm:mb-8 animate-slide-up"
                 style={{ animationDelay: "0.1s" }}
               >
                 From AI-based technique feedback and coach matching to analytics-driven scouting, selection, and
@@ -67,7 +67,7 @@ export const HeroSection = () => {
               </p>
 
               <div
-                className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-6 sm:mb-8 lg:mb-0 animate-slide-up"
+                className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-2 lg:mb-0 animate-slide-up"
                 style={{ animationDelay: "0.2s" }}
               >
                 <Link to="/auth">
@@ -79,26 +79,26 @@ export const HeroSection = () => {
               </div>
             </div>
 
-            <div className="animate-scale-in" style={{ animationDelay: "0.25s" }}>
+            <div className="animate-scale-in lg:pl-2" style={{ animationDelay: "0.25s" }}>
               <HomeHeroOrbit />
             </div>
           </div>
 
           {/* Feature Cards */}
-          <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-slide-up" style={{ animationDelay: "0.3s" }}>
+          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-slide-up lg:mt-10" style={{ animationDelay: "0.3s" }}>
             {features.map((feature) => (
               <Link
                 key={feature.title}
                 to={feature.link}
-                className="group rounded-2xl border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-border hover:shadow-elevated"
+                className="group rounded-2xl border border-border/80 bg-card p-5 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-border hover:shadow-elevated"
               >
-                <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl ${feature.iconWrapClass} transition-transform duration-300 group-hover:scale-105`}>
+                <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ${feature.iconWrapClass} transition-transform duration-300 group-hover:scale-105`}>
                   <feature.icon className={`h-6 w-6 ${feature.iconClass}`} />
                 </div>
-                <h3 className="font-display font-semibold text-lg text-foreground mb-2">
+                <h3 className="font-display font-semibold text-lg text-foreground mb-1.5">
                   {feature.title}
                 </h3>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   {feature.description}
                 </p>
               </Link>

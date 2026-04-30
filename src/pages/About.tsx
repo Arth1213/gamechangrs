@@ -14,16 +14,16 @@ const About = () => {
       cricclubs: "https://cricclubs.com/ASCE/viewPlayer.do?playerId=2262444&clubId=22142",
     },
     {
-      name: "Coach Dasarath Sanke",
-      role: "Director of Coaching",
-      bio: "Certified coach with extensive experience in youth sports programs and athlete development.",
-      initials: "DS",
+      name: "Samir Shah",
+      role: "Advisor / Mentor",
+      bio: "Experienced advisor supporting strategic growth, cricket direction, and long-term development of the platform.",
+      initials: "SS",
     },
     {
-      name: "Coach Esmail Mitchla",
-      role: "Director of Coaching",
-      bio: "Experienced coach dedicated to nurturing talent and building strong fundamentals in young athletes.",
-      initials: "EM",
+      name: "Arjun Shah",
+      role: "Technical Advisor",
+      bio: "Technical advisor guiding product architecture, engineering decisions, and platform scalability.",
+      initials: "AS",
     },
     // Second row - Open positions
     {

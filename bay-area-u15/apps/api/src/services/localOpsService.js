@@ -1,5 +1,7 @@
 "use strict";
 
+const { spawn } = require("child_process");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
@@ -24,6 +26,840 @@ const { normalizeText, toBoolean, toInteger } = require("../lib/utils");
 const CONFIG_PATH = path.resolve(process.cwd(), "config/leagues.yaml");
 const EXPORTS_DIR = path.resolve(process.cwd(), "storage/exports");
 const REGISTRY_EXPORTS_DIR = path.join(EXPORTS_DIR, "registry");
+const LOCAL_OPS_DIR = path.join(EXPORTS_DIR, "_local_ops");
+const LOCAL_OPS_SERIES_DIR = path.join(LOCAL_OPS_DIR, "series");
+const LOCAL_OPS_GLOBAL_RUN_PATH = path.join(LOCAL_OPS_DIR, "latest_run.json");
+const LOCAL_OPS_ACTIVE_RUN_TTL_MS = 30 * 60 * 1000;
+const LOCAL_OPS_LOG_TAIL_LIMIT = 16;
+const LOCAL_OPS_RUN_HISTORY_LIMIT = 8;
+const LOCAL_OPS_BACKGROUND_CONCURRENCY = 1;
+const BACKGROUND_ACTIONS = new Set([
+  "stage",
+  "run",
+  "compute-season",
+  "compute-composite",
+  "enrich-profiles",
+  "compute-intelligence",
+  "refresh-series",
+  "refresh-match",
+  "validate-series",
+  "publish-series",
+  "workflow-onboarding",
+  "workflow-refresh",
+  "workflow-publish",
+]);
+const WORKFLOW_ACTIONS = new Set([
+  "workflow-onboarding",
+  "workflow-refresh",
+  "workflow-publish",
+]);
+
+const backgroundRunQueue = [];
+const activeBackgroundRuns = new Map();
+
+function buildActionLabel(actionKey) {
+  switch (normalizeText(actionKey).toLowerCase()) {
+    case "probe":
+      return "Probe Source";
+    case "register":
+      return "Register Series";
+    case "stage":
+      return "Stage Discovery + Inventory";
+    case "run":
+      return "Run Initial Ingest";
+    case "compute-season":
+      return "Compute Season Aggregation";
+    case "compute-composite":
+      return "Compute Composite Scoring";
+    case "enrich-profiles":
+      return "Enrich Player Profiles";
+    case "compute-intelligence":
+      return "Compute Player Intelligence";
+    case "refresh-series":
+      return "Refresh Series";
+    case "refresh-match":
+      return "Refresh Match";
+    case "validate-series":
+      return "Validate Series";
+    case "publish-series":
+      return "Publish Series";
+    case "workflow-onboarding":
+      return "Run Onboarding Chain";
+    case "workflow-refresh":
+      return "Run Refresh Chain";
+    case "workflow-publish":
+      return "Run Validate + Publish Chain";
+    default:
+      return normalizeText(actionKey) || "Local Ops Action";
+  }
+}
+
+function buildRetryInput(input = {}) {
+  const payload = {};
+  const assignText = (key, value) => {
+    const normalized = normalizeText(value);
+    if (normalized) {
+      payload[key] = normalized;
+    }
+  };
+
+  assignText("series", input.series);
+  assignText("sourceSystem", input.sourceSystem || input.source);
+  assignText("url", input.url);
+  assignText("label", input.label);
+  assignText("entity", input.entity || input.entitySlug || input.entityId);
+  assignText("expectedLeagueName", input.expectedLeagueName);
+  assignText("sourceSeriesId", input.sourceSeriesId);
+  assignText("seasonYear", input.seasonYear);
+  assignText("targetAgeGroup", input.targetAgeGroup);
+  assignText("notes", input.notes);
+  assignText("matchId", input.matchId);
+  assignText("matchIds", Array.isArray(input.matchIds) ? input.matchIds.join(",") : input.matchIds);
+  assignText("dbMatchId", input.dbMatchId);
+  assignText("matchLimit", input.matchLimit);
+  assignText("playerIds", Array.isArray(input.playerIds) ? input.playerIds.join(",") : input.playerIds);
+  assignText("limit", input.limit);
+  assignText("pauseMs", input.pauseMs);
+
+  ["headless", "skipPipeline", "useStagedInventory", "force", "dryRun", "activate", "enabled"].forEach((key) => {
+    if (typeof input[key] === "boolean") {
+      payload[key] = input[key];
+    }
+  });
+
+  return payload;
+}
+
+function summarizeActionInput(actionKey, input = {}) {
+  const summary = {};
+  const assign = (key, value) => {
+    const normalized = typeof value === "boolean" ? value : normalizeText(value);
+    if (normalized === "" || normalized === null || normalized === undefined) {
+      return;
+    }
+    summary[key] = normalized;
+  };
+
+  assign("series", input.series);
+  assign("sourceSystem", input.sourceSystem || input.source);
+  assign("url", input.url);
+  assign("label", input.label);
+  assign("entity", input.entity || input.entitySlug || input.entityId);
+  assign("seasonYear", input.seasonYear);
+  assign("targetAgeGroup", input.targetAgeGroup);
+  assign("matchId", input.matchId);
+  assign("matchIds", Array.isArray(input.matchIds) ? input.matchIds.join(",") : input.matchIds);
+  assign("dbMatchId", input.dbMatchId);
+  assign("matchLimit", input.matchLimit);
+  assign("playerIds", Array.isArray(input.playerIds) ? input.playerIds.join(",") : input.playerIds);
+  assign("limit", input.limit);
+  assign("pauseMs", input.pauseMs);
+
+  if (input.headless === true) {
+    summary.headless = true;
+  }
+  if (input.skipPipeline === true) {
+    summary.skipPipeline = true;
+  }
+  if (input.useStagedInventory === true) {
+    summary.useStagedInventory = true;
+  }
+  if (input.force === true) {
+    summary.force = true;
+  }
+  if (input.dryRun === true) {
+    summary.dryRun = true;
+  }
+
+  summary.action = buildActionLabel(actionKey);
+  return summary;
+}
+
+function buildLocalOpsRunPaths(seriesConfigKey, runId) {
+  const seriesSlug = normalizeText(seriesConfigKey);
+  const baseDir = seriesSlug
+    ? path.join(LOCAL_OPS_SERIES_DIR, seriesSlug)
+    : path.join(LOCAL_OPS_DIR, "global");
+  const runDir = path.join(baseDir, "runs", runId);
+
+  return {
+    runDir,
+    statusPath: path.join(runDir, "status.json"),
+    logPath: path.join(runDir, "output.log"),
+    latestPath: path.join(baseDir, "latest_run.json"),
+  };
+}
+
+function readTailLines(filePath, limit = LOCAL_OPS_LOG_TAIL_LIMIT) {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return [];
+  }
+
+  try {
+    const text = fs.readFileSync(filePath, "utf8");
+    return text
+      .split(/\r?\n/)
+      .map((line) => line.trimEnd())
+      .filter(Boolean)
+      .slice(-Math.max(1, limit));
+  } catch (error) {
+    return [`Unable to read log output: ${normalizeText(error.message) || "unknown error"}`];
+  }
+}
+
+function latestEntryArtifactTimestamp(entry) {
+  const artifacts = entry && entry.artifacts ? Object.values(entry.artifacts) : [];
+  return artifacts.reduce((maxValue, artifact) => Math.max(maxValue, artifactTimestamp(artifact)), 0);
+}
+
+function deriveLatestRunStatus(run, entry = null) {
+  if (!run || run.readError) {
+    return run;
+  }
+
+  const referenceTimestamp = latestEntryArtifactTimestamp(entry);
+  const createdAtTimestamp = toTimestamp(run.createdAt || run.startedAt);
+  const startedAtTimestamp = toTimestamp(run.startedAt);
+  let status = normalizeText(run.status).toLowerCase() || "pending";
+  let note = normalizeText(run.note || run.message || run.summary || "");
+  const workflowRun = isWorkflowAction(run.actionKey);
+
+  if (status === "running") {
+    if (!workflowRun && referenceTimestamp > 0 && startedAtTimestamp > 0 && referenceTimestamp >= startedAtTimestamp) {
+      status = "stale";
+      note = "A newer artifact landed after this run started. The previous active state has been cleared.";
+    } else if (startedAtTimestamp > 0 && Date.now() - startedAtTimestamp > LOCAL_OPS_ACTIVE_RUN_TTL_MS) {
+      status = "stale";
+      note = "This run never reported completion and is past the active window. Treat it as stale unless you rerun it.";
+    }
+  } else if (status === "queued" && createdAtTimestamp > 0 && Date.now() - createdAtTimestamp > LOCAL_OPS_ACTIVE_RUN_TTL_MS) {
+    status = "stale";
+    note = "This queued run never started and is past the active window. Retry it if you still need the action.";
+  }
+
+  return {
+    ...run,
+    status,
+    note,
+    recentLogLines: readTailLines(run.logPath),
+  };
+}
+
+function readLatestActionRun(seriesConfigKey, entry = null) {
+  const latestPath = normalizeText(seriesConfigKey)
+    ? path.join(LOCAL_OPS_SERIES_DIR, normalizeText(seriesConfigKey), "latest_run.json")
+    : LOCAL_OPS_GLOBAL_RUN_PATH;
+
+  const payload = readJsonIfExists(latestPath);
+  if (!payload) {
+    return null;
+  }
+
+  return deriveLatestRunStatus(payload, entry);
+}
+
+function readRecentActionRuns(seriesConfigKey, entry = null, limit = LOCAL_OPS_RUN_HISTORY_LIMIT) {
+  const seriesSlug = normalizeText(seriesConfigKey);
+  if (!seriesSlug) {
+    return [];
+  }
+
+  const runsDir = path.join(LOCAL_OPS_SERIES_DIR, seriesSlug, "runs");
+  if (!fs.existsSync(runsDir)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(runsDir)
+    .map((runDirName) => path.join(runsDir, runDirName, "status.json"))
+    .filter((filePath) => fs.existsSync(filePath))
+    .map((filePath) => deriveLatestRunStatus(readJsonIfExists(filePath), entry))
+    .filter(Boolean)
+    .sort((left, right) => toTimestamp(right?.createdAt || right?.startedAt) - toTimestamp(left?.createdAt || left?.startedAt))
+    .slice(0, Math.max(1, limit))
+    .map((run) => ({
+      runId: run.runId,
+      actionKey: run.actionKey,
+      actionLabel: run.actionLabel,
+      seriesConfigKey: run.seriesConfigKey,
+      status: run.status,
+      createdAt: run.createdAt || null,
+      startedAt: run.startedAt || null,
+      finishedAt: run.finishedAt || null,
+      durationMs: run.durationMs,
+      summary: normalizeText(run.summary || run.message),
+      note: normalizeText(run.note),
+      retryInput: run.retryInput || null,
+      commandPreview: normalizeText(run.commandPreview),
+      queuePosition: toInteger(run.queuePosition),
+      pid: toInteger(run.pid),
+    }));
+}
+
+function buildBackgroundQueueSummary() {
+  const mapSnapshot = (item) => item.runContext.getSnapshot();
+  return {
+    concurrency: LOCAL_OPS_BACKGROUND_CONCURRENCY,
+    activeCount: activeBackgroundRuns.size,
+    queuedCount: backgroundRunQueue.length,
+    activeRuns: Array.from(activeBackgroundRuns.values()).map(mapSnapshot),
+    queuedRuns: backgroundRunQueue.map(mapSnapshot),
+  };
+}
+
+function isBackgroundAction(actionKey) {
+  return BACKGROUND_ACTIONS.has(normalizeText(actionKey).toLowerCase());
+}
+
+function isWorkflowAction(actionKey) {
+  return WORKFLOW_ACTIONS.has(normalizeText(actionKey).toLowerCase());
+}
+
+function quoteCliArg(value) {
+  const text = String(value ?? "");
+  return /[^A-Za-z0-9_./:=,-]/.test(text) ? JSON.stringify(text) : text;
+}
+
+function resolveWorkflowDryRun(input = {}) {
+  if (input?.dryRun === undefined) {
+    return true;
+  }
+  return toBoolean(input.dryRun);
+}
+
+function buildWorkerCliInvocation(actionKey, input = {}) {
+  const action = normalizeText(actionKey).toLowerCase();
+  const workerScript = path.resolve(process.cwd(), "apps/worker/src/index.js");
+  const args = [workerScript, action, "--config", CONFIG_PATH];
+
+  const pushText = (flag, value) => {
+    const normalized = normalizeText(value);
+    if (!normalized) {
+      return;
+    }
+    args.push(flag, normalized);
+  };
+
+  const pushBoolean = (flag, value, includeFalse = false) => {
+    if (typeof value !== "boolean") {
+      return;
+    }
+    if (value === true || includeFalse) {
+      args.push(flag, value ? "true" : "false");
+    }
+  };
+
+  pushText("--series", input.series);
+
+  switch (action) {
+    case "run":
+      pushText("--matchLimit", input.matchLimit);
+      pushText("--matchIds", Array.isArray(input.matchIds) ? input.matchIds.join(",") : input.matchIds);
+      pushBoolean("--useStagedInventory", input.useStagedInventory);
+      pushBoolean("--headless", input.headless, true);
+      break;
+    case "compute-season":
+    case "compute-composite":
+    case "compute-intelligence":
+    case "validate-series":
+    case "stage":
+      break;
+    case "enrich-profiles":
+      pushText("--limit", input.limit);
+      pushText("--playerIds", Array.isArray(input.playerIds) ? input.playerIds.join(",") : input.playerIds);
+      pushText("--pauseMs", input.pauseMs);
+      pushBoolean("--force", input.force);
+      break;
+    case "refresh-series":
+      pushText("--matchLimit", input.matchLimit);
+      pushText("--matchIds", Array.isArray(input.matchIds) ? input.matchIds.join(",") : input.matchIds);
+      pushText("--dbMatchId", input.dbMatchId);
+      pushBoolean("--skipPipeline", input.skipPipeline);
+      pushBoolean("--headless", input.headless, true);
+      break;
+    case "refresh-match":
+      pushText("--matchId", input.matchId || input.matchIds);
+      pushText("--dbMatchId", input.dbMatchId);
+      pushBoolean("--skipPipeline", input.skipPipeline);
+      pushBoolean("--headless", input.headless, true);
+      break;
+    case "publish-series":
+      pushBoolean("--dryRun", input.dryRun);
+      break;
+    default:
+      break;
+  }
+
+  const previewArgs = args.map((entry, index) => {
+    if (index === 0) {
+      return "apps/worker/src/index.js";
+    }
+    if (entry === CONFIG_PATH) {
+      return "config/leagues.yaml";
+    }
+    return quoteCliArg(entry);
+  });
+
+  return {
+    command: process.execPath,
+    args,
+    commandPreview: ["node", ...previewArgs].join(" "),
+  };
+}
+
+function buildWorkflowCommandPreview(actionKey, input = {}) {
+  const action = normalizeText(actionKey).toLowerCase();
+  const seriesConfigKey = normalizeText(input.series) || "<series>";
+  switch (action) {
+    case "workflow-onboarding":
+      return `guided-workflow onboarding --series ${seriesConfigKey}`;
+    case "workflow-refresh":
+      return `guided-workflow refresh --series ${seriesConfigKey}`;
+    case "workflow-publish":
+      return `guided-workflow publish --series ${seriesConfigKey}`;
+    default:
+      return `guided-workflow ${action} --series ${seriesConfigKey}`;
+  }
+}
+
+function readExecutionArtifactForAction(actionKey, input = {}) {
+  const action = normalizeText(actionKey).toLowerCase();
+  const seriesConfigKey = normalizeText(input.series);
+  if (!seriesConfigKey) {
+    return null;
+  }
+
+  let artifactPath = null;
+
+  switch (action) {
+    case "stage":
+      artifactPath = buildArtifactPath(seriesConfigKey, "stage_summary.json");
+      break;
+    case "run":
+      artifactPath = buildArtifactPath(seriesConfigKey, "run_summary.json");
+      break;
+    case "compute-season":
+      artifactPath = buildArtifactPath(seriesConfigKey, "season_aggregation_summary.json");
+      break;
+    case "compute-composite":
+      artifactPath = buildArtifactPath(seriesConfigKey, "composite_scoring_summary.json");
+      break;
+    case "enrich-profiles":
+      artifactPath = buildArtifactPath(seriesConfigKey, "player_profile_enrichment_summary.json");
+      break;
+    case "compute-intelligence":
+      artifactPath = buildArtifactPath(seriesConfigKey, "player_intelligence_summary.json");
+      break;
+    case "refresh-series":
+      artifactPath = buildArtifactPath(seriesConfigKey, "series_refresh_summary.json");
+      break;
+    case "refresh-match": {
+      const latestRefresh = readLatestRefreshArtifactSummary(seriesConfigKey);
+      artifactPath = latestRefresh?.filePath || null;
+      break;
+    }
+    case "validate-series":
+      artifactPath = buildArtifactPath(seriesConfigKey, "series_validation_summary.json");
+      break;
+    case "publish-series":
+      artifactPath = buildArtifactPath(seriesConfigKey, "series_publish_summary.json");
+      break;
+    default:
+      artifactPath = null;
+      break;
+  }
+
+  if (!artifactPath) {
+    return null;
+  }
+
+  const result = readJsonIfExists(artifactPath);
+  if (!result || result.readError) {
+    return null;
+  }
+
+  return {
+    ok: action === "publish-series" ? result.ok === true : true,
+    actionKey: action,
+    seriesConfigKey,
+    artifactPath,
+    result,
+    message: normalizeText(result?.message),
+  };
+}
+
+function refreshQueuedRunPositions() {
+  backgroundRunQueue.forEach((item, index) => {
+    item.runContext.update({
+      status: "queued",
+      queuePosition: index + 1,
+      message: `${item.runContext.actionLabel} is queued.`,
+      note: `Waiting for a worker slot (#${index + 1}).`,
+    });
+  });
+}
+
+function attachChildProcessLogs(child, runContext) {
+  const attachStream = (stream, prefix = "") => {
+    if (!stream) {
+      return;
+    }
+
+    let buffer = "";
+    stream.setEncoding("utf8");
+    stream.on("data", (chunk) => {
+      buffer += chunk;
+      let newlineIndex = buffer.indexOf("\n");
+      while (newlineIndex >= 0) {
+        const line = buffer.slice(0, newlineIndex).trim();
+        buffer = buffer.slice(newlineIndex + 1);
+        if (line) {
+          runContext.log(`${prefix}${line}`);
+        }
+        newlineIndex = buffer.indexOf("\n");
+      }
+    });
+    stream.on("end", () => {
+      const line = buffer.trim();
+      if (line) {
+        runContext.log(`${prefix}${line}`);
+      }
+    });
+  };
+
+  attachStream(child.stdout);
+  attachStream(child.stderr, "[stderr] ");
+}
+
+function scheduleNextBackgroundRun() {
+  while (activeBackgroundRuns.size < LOCAL_OPS_BACKGROUND_CONCURRENCY && backgroundRunQueue.length > 0) {
+    const queueItem = backgroundRunQueue.shift();
+    if (!queueItem) {
+      break;
+    }
+
+    refreshQueuedRunPositions();
+    activeBackgroundRuns.set(queueItem.runContext.runId, queueItem);
+
+    let settled = false;
+    const settle = (execution, error = null) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      activeBackgroundRuns.delete(queueItem.runContext.runId);
+      if (execution) {
+        queueItem.runContext.markCompleted(execution);
+      } else {
+        queueItem.runContext.markFailed(error || new Error(`${queueItem.runContext.actionLabel} failed.`));
+      }
+      scheduleNextBackgroundRun();
+    };
+
+    if (typeof queueItem.executor === "function") {
+      queueItem.runContext.markRunning({
+        commandPreview: queueItem.commandPreview,
+        note: "Background workflow started.",
+      });
+      queueItem.runContext.log("[queue] local workflow runner started");
+      Promise.resolve()
+        .then(() => queueItem.executor(queueItem.runContext))
+        .then((execution) => settle(execution, null))
+        .catch((error) => settle(null, error));
+      continue;
+    }
+
+    const child = spawn(queueItem.invocation.command, queueItem.invocation.args, {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    queueItem.child = child;
+    queueItem.runContext.markRunning({
+      pid: child.pid,
+      commandPreview: queueItem.invocation.commandPreview,
+    });
+    queueItem.runContext.log(`[queue] worker pid ${child.pid} started`);
+    attachChildProcessLogs(child, queueItem.runContext);
+
+    child.on("error", (error) => {
+      settle(null, error);
+    });
+
+    child.on("close", (code, signal) => {
+      const execution = readExecutionArtifactForAction(queueItem.actionKey, queueItem.input);
+      if (execution) {
+        execution.ok = code === 0 && execution.ok !== false;
+        execution.message = execution.message || (code === 0
+          ? `${queueItem.runContext.actionLabel} completed in the background.`
+          : `${queueItem.runContext.actionLabel} exited with code ${code}${signal ? ` (${signal})` : ""}.`);
+        settle(execution, null);
+        return;
+      }
+
+      const error = new Error(
+        code === 0
+          ? `${queueItem.runContext.actionLabel} finished but no result artifact was found.`
+          : `${queueItem.runContext.actionLabel} exited with code ${code}${signal ? ` (${signal})` : ""}.`
+      );
+      settle(null, error);
+    });
+  }
+}
+
+function enqueueBackgroundQueueItem(actionKey, input = {}, options = {}) {
+  const runContext = createActionRunContext(actionKey, input, {
+    initialStatus: "queued",
+    commandPreview: normalizeText(options.commandPreview),
+  });
+
+  const queueItem = {
+    actionKey,
+    input,
+    runContext,
+    invocation: options.invocation || null,
+    executor: typeof options.executor === "function" ? options.executor : null,
+    commandPreview: normalizeText(options.commandPreview),
+  };
+
+  backgroundRunQueue.push(queueItem);
+  refreshQueuedRunPositions();
+  scheduleNextBackgroundRun();
+
+  return {
+    ok: true,
+    queued: true,
+    background: true,
+    actionKey: normalizeText(actionKey).toLowerCase(),
+    seriesConfigKey: normalizeText(input.series) || null,
+    runId: runContext.runId,
+    message: `${runContext.actionLabel} queued for background execution.`,
+    actionRun: runContext.getSnapshot(),
+  };
+}
+
+function enqueueBackgroundAction(actionKey, input = {}) {
+  if (isWorkflowAction(actionKey)) {
+    return enqueueBackgroundQueueItem(actionKey, input, {
+      commandPreview: buildWorkflowCommandPreview(actionKey, input),
+      executor: (runContext) => executeWorkflowAction(actionKey, input, runContext),
+    });
+  }
+
+  const invocation = buildWorkerCliInvocation(actionKey, input);
+  return enqueueBackgroundQueueItem(actionKey, input, {
+    invocation,
+    commandPreview: invocation.commandPreview,
+  });
+}
+
+function buildActionCompletionSummary(actionKey, execution) {
+  const result = execution && execution.result ? execution.result : null;
+
+  switch (normalizeText(actionKey).toLowerCase()) {
+    case "stage":
+      return summarizeStageStep({ summary: summarizeStage(result) });
+    case "run":
+      return summarizeRunStep({ summary: summarizeRun(result) });
+    case "compute-season":
+      return summarizeSeasonStep({
+        summary: summarizeCompute(result, "playerSeasonAdvancedRowCount"),
+      });
+    case "compute-composite":
+      return summarizeCompositeStep({
+        summary: summarizeCompute(result, "playerCompositeScoreRowCount"),
+      });
+    case "enrich-profiles":
+      return summarizeProfileStep({ summary: summarizeProfileEnrichment(result) });
+    case "compute-intelligence":
+      return summarizeIntelligenceStep({
+        summary: summarizeCompute(result, "profileRowCount"),
+      });
+    case "refresh-series":
+    case "refresh-match":
+      return summarizeRefreshStep({ summary: summarizeRefresh(result) });
+    case "validate-series":
+      return summarizeValidationStep({ summary: summarizeValidation(result) });
+    case "publish-series":
+      return normalizeText(result?.message)
+        || (toBoolean(result?.dryRun)
+          ? "Dry-run publish completed."
+          : execution?.ok === true
+            ? "Live publish completed."
+            : "Publish run finished.");
+    case "workflow-onboarding":
+    case "workflow-refresh":
+    case "workflow-publish":
+      return normalizeText(result?.message || execution?.message || `${buildActionLabel(actionKey)} completed.`);
+    case "register":
+      return normalizeText(summarizeRegistration(result)?.message || result?.message || "Series registration completed.");
+    case "probe":
+      return normalizeText(result?.message || result?.summary || "Series probe completed.");
+    default:
+      return normalizeText(result?.message || execution?.message || `${buildActionLabel(actionKey)} completed.`);
+  }
+}
+
+function createActionRunContext(actionKey, input = {}, options = {}) {
+  const seriesConfigKey = normalizeText(input.series);
+  const runId = normalizeText(input.runId) || `local-ops-${Date.now()}-${crypto.randomUUID().split("-")[0]}`;
+  const createdAt = new Date().toISOString();
+  const initialStatus = normalizeText(options.initialStatus).toLowerCase() || "running";
+  const paths = buildLocalOpsRunPaths(seriesConfigKey, runId);
+  ensureDir(paths.runDir);
+
+  let state = {
+    runId,
+    actionKey,
+    actionLabel: buildActionLabel(actionKey),
+    seriesConfigKey: seriesConfigKey || null,
+    status: initialStatus,
+    ok: null,
+    createdAt,
+    startedAt: initialStatus === "running" ? createdAt : null,
+    updatedAt: createdAt,
+    finishedAt: null,
+    durationMs: null,
+    summary: "",
+    message: initialStatus === "queued"
+      ? `${buildActionLabel(actionKey)} is queued.`
+      : `${buildActionLabel(actionKey)} is running.`,
+    note: initialStatus === "queued" ? "Waiting for a worker slot." : "",
+    input: summarizeActionInput(actionKey, input),
+    retryInput: buildRetryInput(input),
+    artifactPath: null,
+    logPath: paths.logPath,
+    logLineCount: 0,
+    lastLogLine: "",
+    commandPreview: normalizeText(options.commandPreview),
+    queuePosition: null,
+    pid: null,
+  };
+
+  function persistState(patch = {}) {
+    state = {
+      ...state,
+      ...patch,
+    };
+
+    writeJsonFile(paths.statusPath, state);
+    writeJsonFile(paths.latestPath, state);
+    writeJsonFile(LOCAL_OPS_GLOBAL_RUN_PATH, state);
+    return state;
+  }
+
+  function update(patch = {}) {
+    const updatedAt = new Date().toISOString();
+    persistState({
+      updatedAt,
+      ...patch,
+    });
+    return getSnapshot();
+  }
+
+  function log(message) {
+    const text = normalizeText(message);
+    if (!text) {
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const line = `[${timestamp}] ${text}`;
+    fs.appendFileSync(paths.logPath, `${line}\n`, "utf8");
+    persistState({
+      updatedAt: timestamp,
+      logLineCount: (toInteger(state.logLineCount) || 0) + 1,
+      lastLogLine: line,
+    });
+  }
+
+  function markQueued(queuePosition = null, extra = {}) {
+    return update({
+      status: "queued",
+      startedAt: null,
+      finishedAt: null,
+      durationMs: null,
+      queuePosition,
+      ok: null,
+      message: `${buildActionLabel(actionKey)} is queued.`,
+      note: `Waiting for a worker slot${queuePosition ? ` (#${queuePosition})` : ""}.`,
+      ...extra,
+    });
+  }
+
+  function markRunning(extra = {}) {
+    const startedAt = new Date().toISOString();
+    return update({
+      status: "running",
+      startedAt,
+      finishedAt: null,
+      durationMs: null,
+      queuePosition: null,
+      message: `${buildActionLabel(actionKey)} is running in the background.`,
+      note: "Background worker started.",
+      ...extra,
+    });
+  }
+
+  function markCompleted(execution) {
+    const finishedAt = new Date().toISOString();
+    const ok = execution?.ok !== false;
+    const summary = buildActionCompletionSummary(actionKey, execution);
+    const startedAt = state.startedAt || state.createdAt;
+    persistState({
+      status: ok ? "completed" : "failed",
+      ok,
+      finishedAt,
+      updatedAt: finishedAt,
+      durationMs: Math.max(0, toTimestamp(finishedAt) - toTimestamp(startedAt)),
+      artifactPath: normalizeText(execution?.artifactPath) || null,
+      summary,
+      message: normalizeText(execution?.result?.message || execution?.message || summary || `${buildActionLabel(actionKey)} completed.`),
+      note: ok
+        ? normalizeText(execution?.message || summary)
+        : normalizeText(execution?.result?.message || execution?.message || ""),
+    });
+    return getSnapshot();
+  }
+
+  function markFailed(error) {
+    const finishedAt = new Date().toISOString();
+    const message = normalizeText(error?.message || error || `${buildActionLabel(actionKey)} failed.`);
+    const startedAt = state.startedAt || state.createdAt;
+    persistState({
+      status: "failed",
+      ok: false,
+      finishedAt,
+      updatedAt: finishedAt,
+      durationMs: Math.max(0, toTimestamp(finishedAt) - toTimestamp(startedAt)),
+      summary: message,
+      message,
+      note: normalizeText(error?.stack),
+    });
+    return getSnapshot();
+  }
+
+  function getSnapshot(entry = null) {
+    return deriveLatestRunStatus(state, entry);
+  }
+
+  persistState();
+
+  return {
+    runId,
+    actionKey,
+    actionLabel: buildActionLabel(actionKey),
+    seriesConfigKey,
+    update,
+    log,
+    markQueued,
+    markRunning,
+    markCompleted,
+    markFailed,
+    getSnapshot,
+  };
+}
 
 function parseListInput(value) {
   if (Array.isArray(value)) {
@@ -517,6 +1353,17 @@ function summarizeRefreshStep(artifact) {
   return `${inventoryMatchCount} matches checked. ${selectedMatchCount} selected. ${newMatchCount} new and ${updatedMatchCount} updated.`;
 }
 
+function buildWorkflowPreset(action, label, summary, options = {}) {
+  return {
+    action,
+    label,
+    summary,
+    form: options.form || "series-ops-form",
+    variant: options.variant || "primary",
+    visible: options.visible !== false,
+  };
+}
+
 function buildOnboardingWorkflow(entry) {
   const validation = entry?.artifacts?.validation || null;
   const validationCoverage = validation?.summary?.coverage || null;
@@ -701,6 +1548,14 @@ function buildOnboardingWorkflow(entry) {
         : countStatus(requiredSteps, "stale") > 0 || countStatus(requiredSteps, "pending") > 0
           ? "in_progress"
           : "complete",
+    preset: buildWorkflowPreset(
+      "workflow-onboarding",
+      "Run Onboarding Chain",
+      "Queues the remaining required onboarding steps for this series. The Dry run publish checkbox controls whether the chain stops at publish simulation or applies a live publish.",
+      {
+        visible: countStatus(requiredSteps, "pending") > 0 || countStatus(requiredSteps, "stale") > 0 || countStatus(requiredSteps, "blocked") > 0,
+      }
+    ),
     steps,
   };
 }
@@ -876,6 +1731,14 @@ function buildRefreshWorkflow(entry) {
   return {
     label: "Existing Series Refresh",
     status: !refresh ? "standby" : hasRefreshWork ? "in_progress" : "complete",
+    preset: buildWorkflowPreset(
+      "workflow-refresh",
+      "Run Refresh Chain",
+      "Queues refresh, recompute, validation, and publish for the selected series. If Match id or DB match id is filled in below, the chain uses one-match refresh.",
+      {
+        variant: "secondary",
+      }
+    ),
     steps,
     refreshReference,
   };
@@ -964,8 +1827,26 @@ function buildPublishWorkflow(entry) {
         : countStatus(steps, "stale") > 0 || countStatus(steps, "pending") > 0
           ? "in_progress"
           : "complete",
+    preset: buildWorkflowPreset(
+      "workflow-publish",
+      "Run Validate + Publish Chain",
+      "Runs the validation gate first, then executes publish dry run and optionally live publish depending on the Dry run publish checkbox.",
+      {
+        variant: "warn",
+        visible: countStatus(steps, "pending") > 0 || countStatus(steps, "stale") > 0 || countStatus(steps, "blocked") > 0,
+      }
+    ),
     steps,
   };
+}
+
+function isLiveSeriesCurrent(entry, workflows) {
+  if (!entry?.enabled) {
+    return false;
+  }
+
+  const refreshStatus = workflows?.refresh?.status;
+  return workflows?.publish?.status === "complete" && (refreshStatus === "complete" || refreshStatus === "standby");
 }
 
 function pickNextRecommendedAction(entry, workflows) {
@@ -973,6 +1854,7 @@ function pickNextRecommendedAction(entry, workflows) {
   const validation = entry?.artifacts?.validation || null;
   const publishArtifact = entry?.artifacts?.publish || null;
   const publishLiveArtifact = publishArtifact?.summary?.dryRun === false ? publishArtifact : null;
+  const liveSeriesCurrent = isLiveSeriesCurrent(entry, workflows);
 
   if (!entry.enabled) {
     const onboardingStep = onboarding.steps.find((step) => !step.optional && (step.status === "pending" || step.status === "stale"));
@@ -1015,17 +1897,19 @@ function pickNextRecommendedAction(entry, workflows) {
     return null;
   }
 
-  const onboardingFollowUp = onboarding.steps.find(
-    (step) => step.optional !== true && (step.status === "stale" || step.status === "pending" || step.status === "blocked")
-  );
-  if (onboardingFollowUp) {
-    return {
-      action: onboardingFollowUp.action,
-      label: onboardingFollowUp.label,
-      reason: onboardingFollowUp.summary,
-      command: onboardingFollowUp.command,
-      payloadOverrides: onboardingFollowUp.payloadOverrides || null,
-    };
+  if (!liveSeriesCurrent) {
+    const onboardingFollowUp = onboarding.steps.find(
+      (step) => step.optional !== true && (step.status === "stale" || step.status === "pending" || step.status === "blocked")
+    );
+    if (onboardingFollowUp) {
+      return {
+        action: onboardingFollowUp.action,
+        label: onboardingFollowUp.label,
+        reason: onboardingFollowUp.summary,
+        command: onboardingFollowUp.command,
+        payloadOverrides: onboardingFollowUp.payloadOverrides || null,
+      };
+    }
   }
 
   const refreshStep = refresh.steps.find((step) => step.key === "refresh-series");
@@ -1093,13 +1977,17 @@ function buildSeriesWorkflow(entry) {
   const refresh = buildRefreshWorkflow(entry);
   const publish = buildPublishWorkflow(entry);
   const nextRecommendedAction = pickNextRecommendedAction(entry, { onboarding, refresh, publish });
+  const liveSeriesCurrent = isLiveSeriesCurrent(entry, { onboarding, refresh, publish });
 
   let headline = entry.enabled ? "Live series is current." : "Series is still local-only.";
   let note = entry.enabled
     ? "Use refresh when new matches land, then recompute and publish the updated dataset."
     : "Finish onboarding, validate the dataset, then publish when you are ready to expose it to the hosted app.";
 
-  if (nextRecommendedAction && nextRecommendedAction.standby !== true) {
+  if (liveSeriesCurrent) {
+    headline = "Live series is current.";
+    note = "Use refresh when new matches land, then recompute and publish the updated dataset.";
+  } else if (nextRecommendedAction && nextRecommendedAction.standby !== true) {
     headline = `Next: ${nextRecommendedAction.label}`;
     note = nextRecommendedAction.reason;
   } else if (!entry.enabled && onboarding.status === "complete" && publish.status === "complete") {
@@ -1122,6 +2010,298 @@ function buildSeriesWorkflow(entry) {
       refresh: refresh.steps.map((step) => step.command).filter(Boolean),
       publish: publish.steps.map((step) => step.command).filter(Boolean),
     },
+  };
+}
+
+function createLocalOpsActionError(message, statusCode = 400) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function loadSeriesWorkflowEntry(seriesConfigKey) {
+  const seriesSlug = normalizeText(seriesConfigKey);
+  if (!seriesSlug) {
+    throw createLocalOpsActionError("A series key is required for guided workflow execution.", 400);
+  }
+
+  const config = loadYamlConfig(CONFIG_PATH);
+  const seriesEntries = Array.isArray(config?.series) ? config.series : [];
+  const entry = seriesEntries
+    .map(buildSeriesOverviewEntry)
+    .find((candidate) => candidate.slug === seriesSlug);
+
+  if (!entry) {
+    throw createLocalOpsActionError(`Series was not found in config/leagues.yaml: ${seriesSlug}`, 404);
+  }
+
+  return {
+    ...entry,
+    workflow: buildSeriesWorkflow(entry),
+  };
+}
+
+function buildWorkflowActionPayload(input = {}, payloadOverrides = {}) {
+  return {
+    ...input,
+    ...payloadOverrides,
+  };
+}
+
+function buildWorkflowPublishSteps(input = {}) {
+  const workflowDryRun = resolveWorkflowDryRun(input);
+  const basePayload = buildWorkflowActionPayload(input);
+  const steps = [
+    {
+      actionKey: "publish-series",
+      label: "Run publish dry run",
+      payload: {
+        ...basePayload,
+        dryRun: true,
+      },
+    },
+  ];
+
+  if (!workflowDryRun) {
+    steps.push({
+      actionKey: "publish-series",
+      label: "Apply live publish",
+      payload: {
+        ...basePayload,
+        dryRun: false,
+      },
+    });
+  }
+
+  return steps;
+}
+
+function buildOnboardingWorkflowExecutionPlan(entry, input = {}) {
+  const steps = [];
+  const requiredSteps = Array.isArray(entry?.workflow?.onboarding?.steps)
+    ? entry.workflow.onboarding.steps.filter((step) => step.optional !== true)
+    : [];
+
+  requiredSteps.forEach((step) => {
+    if (!step?.action) {
+      return;
+    }
+
+    if (step.action === "publish-series") {
+      if (step.status === "pending" || step.status === "stale") {
+        steps.push(...buildWorkflowPublishSteps(buildWorkflowActionPayload(input, step.payloadOverrides || {})));
+      }
+      return;
+    }
+
+    if (step.status === "pending" || step.status === "stale" || (step.action === "validate-series" && step.status === "blocked")) {
+      steps.push({
+        actionKey: step.action,
+        label: step.label,
+        payload: buildWorkflowActionPayload(input, step.payloadOverrides || {}),
+      });
+    }
+  });
+
+  return {
+    workflowKey: "onboarding",
+    label: "New Series Onboarding",
+    steps,
+    skippedCount: requiredSteps.filter((step) => step.status === "complete").length,
+    message: steps.length
+      ? `Queued ${steps.length} onboarding step(s) for ${entry.label || entry.slug}.`
+      : `No onboarding work is pending for ${entry.label || entry.slug}.`,
+  };
+}
+
+function buildRefreshWorkflowExecutionPlan(entry, input = {}) {
+  const useMatchRefresh = Boolean(
+    normalizeText(input.matchId)
+    || normalizeText(input.dbMatchId)
+    || normalizeText(input.matchIds)
+  );
+
+  const refreshPayload = buildWorkflowActionPayload(input, {
+    skipPipeline: input.skipPipeline === undefined ? true : toBoolean(input.skipPipeline),
+  });
+
+  const steps = [
+    {
+      actionKey: useMatchRefresh ? "refresh-match" : "refresh-series",
+      label: useMatchRefresh ? "Refresh selected match" : "Refresh series",
+      payload: refreshPayload,
+    },
+    {
+      actionKey: "compute-season",
+      label: "Recompute season aggregation",
+      payload: buildWorkflowActionPayload(input),
+    },
+    {
+      actionKey: "compute-composite",
+      label: "Recompute composite scoring",
+      payload: buildWorkflowActionPayload(input),
+    },
+    {
+      actionKey: "compute-intelligence",
+      label: "Recompute player intelligence",
+      payload: buildWorkflowActionPayload(input),
+    },
+    {
+      actionKey: "validate-series",
+      label: "Validate refreshed state",
+      payload: buildWorkflowActionPayload(input),
+    },
+    ...buildWorkflowPublishSteps(buildWorkflowActionPayload(input)),
+  ];
+
+  return {
+    workflowKey: "refresh",
+    label: "Existing Series Refresh",
+    steps,
+    skippedCount: 0,
+    message: `Queued ${steps.length} refresh step(s) for ${entry.label || entry.slug}.`,
+  };
+}
+
+function buildPublishWorkflowExecutionPlan(entry, input = {}) {
+  const steps = [
+    {
+      actionKey: "validate-series",
+      label: "Validate publish gate",
+      payload: buildWorkflowActionPayload(input),
+    },
+    ...buildWorkflowPublishSteps(buildWorkflowActionPayload(input)),
+  ];
+
+  return {
+    workflowKey: "publish",
+    label: "Validate And Publish",
+    steps,
+    skippedCount: 0,
+    message: `Queued ${steps.length} publish step(s) for ${entry.label || entry.slug}.`,
+  };
+}
+
+function buildWorkflowExecutionPlan(actionKey, entry, input = {}) {
+  const action = normalizeText(actionKey).toLowerCase();
+  switch (action) {
+    case "workflow-onboarding":
+      return buildOnboardingWorkflowExecutionPlan(entry, input);
+    case "workflow-refresh":
+      return buildRefreshWorkflowExecutionPlan(entry, input);
+    case "workflow-publish":
+      return buildPublishWorkflowExecutionPlan(entry, input);
+    default:
+      throw createLocalOpsActionError(`Unsupported guided workflow action: ${actionKey}`, 400);
+  }
+}
+
+async function executeWorkflowAction(actionKey, input = {}, runContext = null) {
+  const logger = typeof runContext?.log === "function" ? runContext.log : () => {};
+  const entry = loadSeriesWorkflowEntry(input.series);
+  const plan = buildWorkflowExecutionPlan(actionKey, entry, {
+    ...input,
+    series: entry.slug,
+  });
+
+  logger(`[workflow] ${plan.label}: plan build complete`);
+  logger(`[workflow] ${plan.message}`);
+
+  if (!Array.isArray(plan.steps) || plan.steps.length === 0) {
+    return {
+      ok: true,
+      actionKey: normalizeText(actionKey).toLowerCase(),
+      seriesConfigKey: entry.slug,
+      artifactPath: null,
+      result: {
+        workflowKey: plan.workflowKey,
+        workflowLabel: plan.label,
+        dryRun: resolveWorkflowDryRun(input),
+        stepsRequested: 0,
+        stepsCompleted: 0,
+        skippedSteps: plan.skippedCount || 0,
+        message: plan.message,
+      },
+      message: plan.message,
+    };
+  }
+
+  const completedSteps = [];
+  let lastExecution = null;
+
+  for (let index = 0; index < plan.steps.length; index += 1) {
+    const step = plan.steps[index];
+    logger(`[workflow] ${index + 1}/${plan.steps.length} ${step.label}: start`);
+    lastExecution = await executeLocalOpsActionInline(step.actionKey, {
+      ...step.payload,
+      series: entry.slug,
+    }, runContext);
+    const stepSummary = buildActionCompletionSummary(step.actionKey, lastExecution);
+    logger(`[workflow] ${index + 1}/${plan.steps.length} ${step.label}: ${stepSummary}`);
+    completedSteps.push({
+      actionKey: step.actionKey,
+      label: step.label,
+      summary: stepSummary,
+      dryRun: step.actionKey === "publish-series" ? toBoolean(step.payload?.dryRun) : undefined,
+    });
+
+    if (step.actionKey === "validate-series" && lastExecution?.result?.publishReady !== true) {
+      throw createLocalOpsActionError(
+        normalizeText(lastExecution?.result?.message)
+          || "Validation did not clear the publish gate. The guided workflow stopped before publish.",
+        409
+      );
+    }
+
+    if (step.actionKey === "refresh-series" || step.actionKey === "refresh-match") {
+      const selectedMatchCount = toInteger(lastExecution?.result?.selectedMatchCount) || 0;
+      const newMatchCount = toInteger(lastExecution?.result?.inventoryWrite?.newMatchCount) || 0;
+      const updatedMatchCount = toInteger(lastExecution?.result?.inventoryWrite?.updatedMatchCount) || 0;
+      if (selectedMatchCount === 0 && newMatchCount === 0 && updatedMatchCount === 0) {
+        const message = "No refreshed match changes were detected. The guided workflow stopped before recompute.";
+        logger(`[workflow] ${message}`);
+        return {
+          ok: true,
+          actionKey: normalizeText(actionKey).toLowerCase(),
+          seriesConfigKey: entry.slug,
+          artifactPath: lastExecution?.artifactPath || null,
+          result: {
+            workflowKey: plan.workflowKey,
+            workflowLabel: plan.label,
+            dryRun: resolveWorkflowDryRun(input),
+            stepsRequested: plan.steps.length,
+            stepsCompleted: completedSteps.length,
+            skippedSteps: plan.skippedCount || 0,
+            stoppedEarly: true,
+            stopReason: message,
+            completedSteps,
+            message,
+          },
+          message,
+        };
+      }
+    }
+  }
+
+  const message = `${plan.label} completed. ${completedSteps.length} step(s) ran.`;
+  logger(`[workflow] ${message}`);
+
+  return {
+    ok: true,
+    actionKey: normalizeText(actionKey).toLowerCase(),
+    seriesConfigKey: entry.slug,
+    artifactPath: lastExecution?.artifactPath || null,
+    result: {
+      workflowKey: plan.workflowKey,
+      workflowLabel: plan.label,
+      dryRun: resolveWorkflowDryRun(input),
+      stepsRequested: plan.steps.length,
+      stepsCompleted: completedSteps.length,
+      skippedSteps: plan.skippedCount || 0,
+      completedSteps,
+      message,
+    },
+    message,
   };
 }
 
@@ -1162,10 +2342,15 @@ async function getLocalOpsOverview() {
   const series = seriesEntries
     .map(buildSeriesOverviewEntry)
     .sort((left, right) => Number(right.enabled) - Number(left.enabled) || left.label.localeCompare(right.label))
-    .map((entry) => ({
-      ...entry,
-      workflow: buildSeriesWorkflow(entry),
-    }));
+    .map((entry) => {
+      const workflow = buildSeriesWorkflow(entry);
+      return {
+        ...entry,
+        latestRun: readLatestActionRun(entry.slug, entry),
+        recentRuns: readRecentActionRuns(entry.slug, entry),
+        workflow,
+      };
+    });
 
   return {
     ok: true,
@@ -1173,6 +2358,8 @@ async function getLocalOpsOverview() {
     configPath: CONFIG_PATH,
     seriesCount: seriesEntries.length,
     series,
+    latestRun: readLatestActionRun(null),
+    backgroundQueue: buildBackgroundQueueSummary(),
     queues: {
       seriesOperations: readGlobalArtifactSummary("series_operation_queue_summary.json", summarizeQueue),
       manualRefresh: readGlobalArtifactSummary("manual_refresh_queue_summary.json", summarizeQueue),
@@ -1181,23 +2368,31 @@ async function getLocalOpsOverview() {
       "ops_runbook_new_series.md",
       "ops_runbook_manual_refresh.md",
       "ops_runbook_compute_publish.md",
+      "local_ops_operator_console_start_guide.md",
     ],
   };
 }
 
-async function executeStage(input = {}) {
+async function executeStage(input = {}, runContext = null) {
   const runtime = resolveSeriesRuntime(input.series);
+  const logger = typeof runContext?.log === "function" ? runContext.log : () => {};
+  logger(`[stage] ${runtime.series.slug}: discovery start`);
   const discovery = await discoverSeries(runtime.series, { outDir: runtime.outDir });
   writeJsonFile(path.join(runtime.outDir, "discovery.json"), discovery);
   const discoveryWrite = await upsertDiscovery(discovery, {
     seriesConfigKey: runtime.series.slug,
   });
+  logger(`[stage] ${runtime.series.slug}: discovery persisted (${discoveryWrite.discoveredDivisionCount} divisions)`);
 
+  logger(`[stage] ${runtime.series.slug}: inventory start`);
   const inventory = await enumerateMatches(runtime.series, discovery, { outDir: runtime.outDir });
   writeJsonFile(path.join(runtime.outDir, "match_inventory.json"), inventory);
   const inventoryWrite = await upsertMatchInventory(inventory, {
     seriesConfigKey: runtime.series.slug,
   });
+  logger(
+    `[stage] ${runtime.series.slug}: inventory persisted (${inventoryWrite.inventoriedMatchCount} matches, ${inventoryWrite.newMatchCount} new, ${inventoryWrite.updatedMatchCount} updated)`
+  );
 
   const summary = {
     series: runtime.series.slug,
@@ -1216,7 +2411,7 @@ async function executeStage(input = {}) {
   };
 }
 
-async function executeRun(input = {}) {
+async function executeRun(input = {}, runContext = null) {
   const runtime = resolveSeriesRuntime(input.series);
   const result = await runMatchPipeline({
     series: runtime.series,
@@ -1225,7 +2420,7 @@ async function executeRun(input = {}) {
     matchIds: parseListInput(input.matchIds),
     useStagedInventory: toBoolean(input.useStagedInventory),
     headless: toBoolean(input.headless),
-    log: () => {},
+    log: typeof runContext?.log === "function" ? runContext.log : () => {},
   });
   const artifactPath = path.join(runtime.outDir, "run_summary.json");
   writeJsonFile(artifactPath, result);
@@ -1239,12 +2434,12 @@ async function executeRun(input = {}) {
   };
 }
 
-async function executeComputeSeason(input = {}) {
+async function executeComputeSeason(input = {}, runContext = null) {
   const runtime = resolveSeriesRuntime(input.series);
   const result = await runSeasonAggregation({
     series: runtime.series,
     outDir: runtime.outDir,
-    log: () => {},
+    log: typeof runContext?.log === "function" ? runContext.log : () => {},
   });
   const artifactPath = path.join(runtime.outDir, "season_aggregation_summary.json");
   writeJsonFile(artifactPath, result);
@@ -1258,12 +2453,12 @@ async function executeComputeSeason(input = {}) {
   };
 }
 
-async function executeComputeComposite(input = {}) {
+async function executeComputeComposite(input = {}, runContext = null) {
   const runtime = resolveSeriesRuntime(input.series);
   const result = await runCompositeScoring({
     series: runtime.series,
     outDir: runtime.outDir,
-    log: () => {},
+    log: typeof runContext?.log === "function" ? runContext.log : () => {},
   });
   const artifactPath = path.join(runtime.outDir, "composite_scoring_summary.json");
   writeJsonFile(artifactPath, result);
@@ -1277,7 +2472,7 @@ async function executeComputeComposite(input = {}) {
   };
 }
 
-async function executeProfileEnrichment(input = {}) {
+async function executeProfileEnrichment(input = {}, runContext = null) {
   const runtime = resolveSeriesRuntime(input.series);
   const result = await runPlayerProfileEnrichment({
     series: runtime.series,
@@ -1286,7 +2481,7 @@ async function executeProfileEnrichment(input = {}) {
     playerIds: parseListInput(input.playerIds),
     force: toBoolean(input.force),
     pauseMs: input.pauseMs,
-    log: () => {},
+    log: typeof runContext?.log === "function" ? runContext.log : () => {},
   });
   const artifactPath = path.join(runtime.outDir, "player_profile_enrichment_summary.json");
   writeJsonFile(artifactPath, result);
@@ -1300,12 +2495,12 @@ async function executeProfileEnrichment(input = {}) {
   };
 }
 
-async function executeComputeIntelligence(input = {}) {
+async function executeComputeIntelligence(input = {}, runContext = null) {
   const runtime = resolveSeriesRuntime(input.series);
   const result = await runPlayerIntelligence({
     series: runtime.series,
     outDir: runtime.outDir,
-    log: () => {},
+    log: typeof runContext?.log === "function" ? runContext.log : () => {},
   });
   const artifactPath = path.join(runtime.outDir, "player_intelligence_summary.json");
   writeJsonFile(artifactPath, result);
@@ -1319,7 +2514,7 @@ async function executeComputeIntelligence(input = {}) {
   };
 }
 
-async function executeRefreshSeries(input = {}) {
+async function executeRefreshSeries(input = {}, runContext = null) {
   const runtime = resolveSeriesRuntime(input.series);
   const result = await refreshSeries({
     series: runtime.series,
@@ -1329,7 +2524,7 @@ async function executeRefreshSeries(input = {}) {
     dbMatchId: input.dbMatchId,
     skipPipeline: toBoolean(input.skipPipeline),
     headless: toBoolean(input.headless),
-    log: () => {},
+    log: typeof runContext?.log === "function" ? runContext.log : () => {},
   });
   const artifactPath = path.join(runtime.outDir, "series_refresh_summary.json");
   writeJsonFile(artifactPath, result);
@@ -1343,7 +2538,7 @@ async function executeRefreshSeries(input = {}) {
   };
 }
 
-async function executeRefreshMatch(input = {}) {
+async function executeRefreshMatch(input = {}, runContext = null) {
   const runtime = resolveSeriesRuntime(input.series);
   const result = await refreshSingleMatch({
     series: runtime.series,
@@ -1352,7 +2547,7 @@ async function executeRefreshMatch(input = {}) {
     dbMatchId: input.dbMatchId,
     skipPipeline: toBoolean(input.skipPipeline),
     headless: toBoolean(input.headless),
-    log: () => {},
+    log: typeof runContext?.log === "function" ? runContext.log : () => {},
   });
   const sourceMatchId = result?.candidates?.[0]?.sourceMatchId;
   const artifactPath = path.join(
@@ -1370,12 +2565,12 @@ async function executeRefreshMatch(input = {}) {
   };
 }
 
-async function executeValidateSeries(input = {}) {
+async function executeValidateSeries(input = {}, runContext = null) {
   const runtime = resolveSeriesRuntime(input.series);
   const result = await validateSeries({
     series: runtime.series,
     configPath: runtime.configPath,
-    log: () => {},
+    log: typeof runContext?.log === "function" ? runContext.log : () => {},
   });
   const artifactPath = path.join(runtime.outDir, "series_validation_summary.json");
   writeJsonFile(artifactPath, result);
@@ -1389,13 +2584,13 @@ async function executeValidateSeries(input = {}) {
   };
 }
 
-async function executePublishSeries(input = {}) {
+async function executePublishSeries(input = {}, runContext = null) {
   const runtime = resolveSeriesRuntime(input.series);
   const result = await publishSeries({
     series: runtime.series,
     configPath: runtime.configPath,
     dryRun: toBoolean(input.dryRun),
-    log: () => {},
+    log: typeof runContext?.log === "function" ? runContext.log : () => {},
   });
   const artifactPath = path.join(runtime.outDir, "series_publish_summary.json");
   writeJsonFile(artifactPath, result);
@@ -1409,11 +2604,14 @@ async function executePublishSeries(input = {}) {
   };
 }
 
-async function executeProbe(input = {}) {
+async function executeProbe(input = {}, runContext = null) {
   const config = fs.existsSync(CONFIG_PATH) ? loadYamlConfig(CONFIG_PATH) : null;
   const seriesConfig = normalizeText(input.series)
     ? resolveSeriesConfig(config, normalizeText(input.series))
     : null;
+  if (typeof runContext?.log === "function") {
+    runContext.log(`[probe] ${normalizeText(input.url) || normalizeText(seriesConfig?.series_url) || "source"}: probe start`);
+  }
   const result = await probeSeries({
     url: normalizeText(input.url) || seriesConfig?.series_url,
     label: normalizeText(input.label) || seriesConfig?.label,
@@ -1430,7 +2628,12 @@ async function executeProbe(input = {}) {
   };
 }
 
-async function executeRegister(input = {}) {
+async function executeRegister(input = {}, runContext = null) {
+  if (typeof runContext?.log === "function") {
+    runContext.log(
+      `[register] ${normalizeText(input.label) || "series"}: ${toBoolean(input.dryRun) ? "dry-run registration" : "local registration"} start`
+    );
+  }
   const result = await registerSeries({
     configPath: CONFIG_PATH,
     entity: input.entity || input.entitySlug || input.entityId,
@@ -1455,39 +2658,62 @@ async function executeRegister(input = {}) {
   };
 }
 
-async function runLocalOpsAction(actionKey, input = {}) {
-  const action = normalizeText(actionKey).toLowerCase();
-
+async function executeLocalOpsActionInline(action, input, runContext) {
   switch (action) {
     case "probe":
-      return executeProbe(input);
+      return executeProbe(input, runContext);
     case "register":
-      return executeRegister(input);
+      return executeRegister(input, runContext);
     case "stage":
-      return executeStage(input);
+      return executeStage(input, runContext);
     case "run":
-      return executeRun(input);
+      return executeRun(input, runContext);
     case "compute-season":
-      return executeComputeSeason(input);
+      return executeComputeSeason(input, runContext);
     case "compute-composite":
-      return executeComputeComposite(input);
+      return executeComputeComposite(input, runContext);
     case "enrich-profiles":
-      return executeProfileEnrichment(input);
+      return executeProfileEnrichment(input, runContext);
     case "compute-intelligence":
-      return executeComputeIntelligence(input);
+      return executeComputeIntelligence(input, runContext);
     case "refresh-series":
-      return executeRefreshSeries(input);
+      return executeRefreshSeries(input, runContext);
     case "refresh-match":
-      return executeRefreshMatch(input);
+      return executeRefreshMatch(input, runContext);
     case "validate-series":
-      return executeValidateSeries(input);
+      return executeValidateSeries(input, runContext);
     case "publish-series":
-      return executePublishSeries(input);
+      return executePublishSeries(input, runContext);
     default: {
-      const error = new Error(`Unsupported local ops action: ${actionKey}`);
+      const error = new Error(`Unsupported local ops action: ${action}`);
       error.statusCode = 400;
       throw error;
     }
+  }
+}
+
+async function runLocalOpsAction(actionKey, input = {}) {
+  const action = normalizeText(actionKey).toLowerCase();
+  if (isBackgroundAction(action)) {
+    return enqueueBackgroundAction(action, input);
+  }
+
+  const runContext = createActionRunContext(action, input, {
+    initialStatus: "running",
+  });
+
+  try {
+    const execution = await executeLocalOpsActionInline(action, input, runContext);
+
+    return {
+      ...execution,
+      runId: runContext.runId,
+      actionRun: runContext.markCompleted(execution),
+    };
+  } catch (error) {
+    runContext.log(`[error] ${normalizeText(error?.message || error || "Unexpected local ops failure.")}`);
+    runContext.markFailed(error);
+    throw error;
   }
 }
 

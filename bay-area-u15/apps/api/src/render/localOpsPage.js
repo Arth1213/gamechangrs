@@ -5,6 +5,7 @@ const { escapeHtml } = require("../lib/utils");
 function renderLocalOpsConsolePage({ overview, port }) {
   const initialOverviewJson = JSON.stringify(overview || {}).replace(/</g, "\\u003c");
   const startCommand = `PORT=${port} npm run ops:ui:start`;
+  const runbooks = Array.isArray(overview?.runbooks) ? overview.runbooks : [];
 
   return `<!doctype html>
 <html lang="en">
@@ -234,6 +235,10 @@ function renderLocalOpsConsolePage({ overview, port }) {
         font-size: 13px;
         line-height: 1.55;
       }
+      .workflow-track-actions {
+        display: grid;
+        gap: 8px;
+      }
       .workflow-list {
         display: grid;
         gap: 10px;
@@ -311,9 +316,18 @@ function renderLocalOpsConsolePage({ overview, port }) {
         color: var(--muted);
       }
       .status-pill.complete,
+      .status-pill.completed,
       .workflow-step.complete .status-pill {
         color: var(--good);
         border-color: rgba(105, 225, 182, 0.35);
+      }
+      .status-pill.running {
+        color: var(--accent-2);
+        border-color: rgba(127, 179, 255, 0.35);
+      }
+      .status-pill.queued {
+        color: var(--accent-2);
+        border-color: rgba(127, 179, 255, 0.35);
       }
       .status-pill.in_progress,
       .status-pill.stale,
@@ -322,6 +336,10 @@ function renderLocalOpsConsolePage({ overview, port }) {
       .workflow-step.standby .status-pill {
         color: var(--warn);
         border-color: rgba(245, 183, 107, 0.35);
+      }
+      .status-pill.failed {
+        color: var(--bad);
+        border-color: rgba(255, 138, 138, 0.35);
       }
       .status-pill.blocked,
       .workflow-step.blocked .status-pill {
@@ -370,6 +388,74 @@ function renderLocalOpsConsolePage({ overview, port }) {
       }
       .workflow-step.blocked {
         background: rgba(68, 24, 24, 0.3);
+      }
+      .run-monitor {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 18px;
+        display: grid;
+        gap: 14px;
+      }
+      .run-monitor-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .run-monitor-header h3 {
+        margin: 0;
+        font-size: 17px;
+      }
+      .run-monitor-header p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+      .run-monitor-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 10px;
+      }
+      .run-log {
+        max-height: 260px;
+        min-height: 160px;
+      }
+      .run-log-empty {
+        border: 1px dashed var(--line);
+        border-radius: 16px;
+        padding: 14px 16px;
+        color: var(--muted);
+        font-size: 13px;
+        background: rgba(7, 16, 28, 0.32);
+      }
+      .run-history {
+        display: grid;
+        gap: 10px;
+      }
+      .run-history-item {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(7, 16, 28, 0.45);
+        padding: 14px 16px;
+        display: grid;
+        gap: 10px;
+      }
+      .run-history-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .run-history-header strong {
+        display: block;
+        font-size: 13px;
+      }
+      .run-history-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
       }
       .queue-list {
         display: grid;
@@ -740,9 +826,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
           <h2>Runbooks</h2>
           <p class="section-copy">The markdown runbooks remain the explicit source of truth. The workflow panels above now mirror that order and the current artifact state.</p>
           <div class="stats">
-            <div class="stat"><b>Runbook</b><span>ops_runbook_new_series.md</span></div>
-            <div class="stat"><b>Runbook</b><span>ops_runbook_manual_refresh.md</span></div>
-            <div class="stat"><b>Runbook</b><span>ops_runbook_compute_publish.md</span></div>
+            ${runbooks.map((runbook) => `<div class="stat"><b>Runbook</b><span>${escapeHtml(runbook)}</span></div>`).join("")}
           </div>
         </section>
 
@@ -767,6 +851,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
       const queueGrid = document.getElementById("queue-grid");
       const statusBox = document.getElementById("status-box");
       const resultBox = document.getElementById("result-box");
+      let overviewPollTimer = null;
 
       function formatTimestamp(value) {
         if (!value) return "Not run yet";
@@ -784,9 +869,16 @@ function renderLocalOpsConsolePage({ overview, port }) {
       function statusLabel(status) {
         switch (status) {
           case "complete":
+          case "completed":
             return "Complete";
+          case "queued":
+            return "Queued";
+          case "running":
+            return "Running";
           case "in_progress":
             return "In Progress";
+          case "failed":
+            return "Failed";
           case "blocked":
             return "Blocked";
           case "stale":
@@ -796,6 +888,26 @@ function renderLocalOpsConsolePage({ overview, port }) {
           case "pending":
           default:
             return "Pending";
+        }
+      }
+
+      function toneForRunStatus(status) {
+        switch (status) {
+          case "completed":
+          case "complete":
+            return "good";
+          case "queued":
+          case "running":
+            return "";
+          case "failed":
+          case "blocked":
+            return "bad";
+          case "stale":
+          case "in_progress":
+          case "standby":
+            return "warn";
+          default:
+            return "";
         }
       }
 
@@ -822,6 +934,19 @@ function renderLocalOpsConsolePage({ overview, port }) {
 
       function renderWorkflowTrack(track) {
         if (!track) return "";
+        const preset = track?.preset && track.preset.visible !== false
+          ? \`
+            <div class="workflow-track-actions">
+              <button
+                type="button"
+                class="\${escapeHtmlText(track.preset.variant === "warn" ? "button-warn" : track.preset.variant === "secondary" ? "button-secondary" : "button-primary")} button-small"
+                data-action="\${escapeHtmlText(track.preset.action || "")}"
+                data-form="\${escapeHtmlText(track.preset.form || "series-ops-form")}"
+              >\${escapeHtmlText(track.preset.label || "Run Workflow")}</button>
+              <p>\${escapeHtmlText(track.preset.summary || "")}</p>
+            </div>
+          \`
+          : "";
         return \`
           <article class="workflow-track">
             <div class="workflow-track-header">
@@ -831,6 +956,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
               </div>
               <span class="status-pill \${escapeHtmlText(track.status || "pending")}">\${escapeHtmlText(statusLabel(track.status))}</span>
             </div>
+            \${preset}
             <div class="workflow-step-grid">
               \${(Array.isArray(track.steps) ? track.steps : []).map((step) => \`
                 <div class="workflow-step \${escapeHtmlText(step.status || "pending")}">
@@ -851,6 +977,111 @@ function renderLocalOpsConsolePage({ overview, port }) {
         \`;
       }
 
+      function renderLatestRun(run) {
+        if (!run) {
+          return \`
+            <div class="run-log-empty">
+              No local operator run has been recorded for this series yet.
+            </div>
+          \`;
+        }
+
+        const logLines = Array.isArray(run.recentLogLines) ? run.recentLogLines : [];
+        const summary = run.summary || run.message || "No run summary available.";
+        const note = run.note || "";
+        const artifactPath = run.artifactPath || "No artifact path recorded";
+        const commandPreview = run.commandPreview || "";
+
+        return \`
+          <section class="run-monitor">
+            <div class="run-monitor-header">
+              <div>
+                <h3>Latest Operator Run</h3>
+                <p>\${escapeHtmlText(summary)}</p>
+                \${note ? \`<p class="series-note">\${escapeHtmlText(note)}</p>\` : ""}
+              </div>
+              <span class="status-pill \${escapeHtmlText(run.status || "pending")}">\${escapeHtmlText(statusLabel(run.status))}</span>
+            </div>
+            <div class="run-monitor-grid">
+              <div class="stat">
+                <b>Action</b>
+                <span>\${escapeHtmlText(run.actionLabel || run.actionKey || "-")}</span>
+              </div>
+              <div class="stat">
+                <b>Queued</b>
+                <span>\${escapeHtmlText(formatTimestamp(run.createdAt || run.startedAt))}</span>
+              </div>
+              <div class="stat">
+                <b>Started</b>
+                <span>\${escapeHtmlText(formatTimestamp(run.startedAt))}</span>
+              </div>
+              <div class="stat">
+                <b>Finished</b>
+                <span>\${escapeHtmlText(run.finishedAt ? formatTimestamp(run.finishedAt) : "Still running")}</span>
+              </div>
+              <div class="stat">
+                <b>Duration</b>
+                <span>\${escapeHtmlText(Number.isFinite(run.durationMs) && run.durationMs >= 0 ? \`\${Math.round(run.durationMs / 1000)}s\` : "-")}</span>
+              </div>
+            </div>
+            \${run.queuePosition ? \`<div class="meta-chip"><b>Queue Position</b><code>\${escapeHtmlText(run.queuePosition)}</code></div>\` : ""}
+            \${run.pid ? \`<div class="meta-chip"><b>Worker PID</b><code>\${escapeHtmlText(run.pid)}</code></div>\` : ""}
+            \${commandPreview ? \`<div class="meta-chip"><b>Command</b><code>\${escapeHtmlText(commandPreview)}</code></div>\` : ""}
+            <div class="meta-chip">
+              <b>Artifact</b>
+              <code>\${escapeHtmlText(artifactPath)}</code>
+            </div>
+            \${logLines.length
+              ? \`<pre class="run-log">\${escapeHtmlText(logLines.join("\\n"))}</pre>\`
+              : '<div class="run-log-empty">No log lines were captured for this run.</div>'}
+          </section>
+        \`;
+      }
+
+      function renderRecentRuns(runs) {
+        const items = Array.isArray(runs) ? runs : [];
+        if (!items.length) {
+          return '<div class="run-log-empty">No run history has been recorded for this series yet.</div>';
+        }
+
+        return \`
+          <section class="run-monitor">
+            <div class="run-monitor-header">
+              <div>
+                <h3>Recent Runs</h3>
+                <p>Retry failed or stale work without rebuilding the series form by hand.</p>
+              </div>
+            </div>
+            <div class="run-history">
+              \${items.map((run) => \`
+                <div class="run-history-item">
+                  <div class="run-history-header">
+                    <div>
+                      <strong>\${escapeHtmlText(run.actionLabel || run.actionKey || "Run")}</strong>
+                      <small class="hint">\${escapeHtmlText(formatTimestamp(run.createdAt || run.startedAt))}</small>
+                    </div>
+                    <span class="status-pill \${escapeHtmlText(run.status || "pending")}">\${escapeHtmlText(statusLabel(run.status))}</span>
+                  </div>
+                  <div class="series-note">\${escapeHtmlText(run.summary || run.note || "No run summary available.")}</div>
+                  \${run.commandPreview ? \`<code class="mono">\${escapeHtmlText(run.commandPreview)}</code>\` : ""}
+                  <div class="run-history-actions">
+                    \${run.retryInput && run.status !== "queued" && run.status !== "running" ? \`
+                      <button
+                        type="button"
+                        class="button-secondary button-small"
+                        data-retry-action="\${escapeHtmlText(run.actionKey || "")}"
+                        data-retry-payload='\${escapeHtmlText(JSON.stringify(run.retryInput || {}))}'
+                        \${run.actionKey === "publish-series" && run.retryInput?.dryRun !== true ? 'data-confirm-live="This will publish the selected series locally. Continue?"' : ""}
+                      >Retry Run</button>
+                    \` : ""}
+                  </div>
+                </div>
+              \`).join("")}
+            </div>
+          </section>
+        \`;
+      }
+
       function renderSelectedSeriesWorkflow(payload) {
         const selectedSeries = getSelectedSeries(payload);
         if (!selectedSeries) {
@@ -862,6 +1093,8 @@ function renderLocalOpsConsolePage({ overview, port }) {
         const nextAction = workflow.nextRecommendedAction || null;
         const validation = selectedSeries?.artifacts?.validation?.summary;
         const publish = selectedSeries?.artifacts?.publish?.summary;
+        const latestRun = selectedSeries?.latestRun || null;
+        const recentRuns = selectedSeries?.recentRuns || [];
 
         const nextActionButton = nextAction
           ? \`<button
@@ -906,6 +1139,8 @@ function renderLocalOpsConsolePage({ overview, port }) {
             \${nextActionButton}
             <button type="button" class="button-secondary" data-action="refreshOverview">Refresh Overview</button>
           </div>
+          \${renderLatestRun(latestRun)}
+          \${renderRecentRuns(recentRuns)}
           <div class="workflow-track-grid">
             \${renderWorkflowTrack(workflow.onboarding)}
             \${renderWorkflowTrack(workflow.refresh)}
@@ -917,6 +1152,10 @@ function renderLocalOpsConsolePage({ overview, port }) {
       function renderQueueGrid(payload) {
         const queueCards = [
           {
+            label: "Local Action Queue",
+            localQueue: payload?.backgroundQueue || null,
+          },
+          {
             label: "Series Ops Queue",
             queue: payload?.queues?.seriesOperations || null,
           },
@@ -927,6 +1166,33 @@ function renderLocalOpsConsolePage({ overview, port }) {
         ];
 
         queueGrid.innerHTML = queueCards.map((entry) => {
+          if (entry.localQueue) {
+            const localQueue = entry.localQueue;
+            const items = [...(Array.isArray(localQueue.activeRuns) ? localQueue.activeRuns : []), ...(Array.isArray(localQueue.queuedRuns) ? localQueue.queuedRuns : [])].slice(0, 5);
+            return \`
+              <article class="queue-card">
+                <div class="workflow-track-header">
+                  <div>
+                    <h3>\${escapeHtmlText(entry.label)}</h3>
+                    <small>\${escapeHtmlText(\`\${localQueue.activeCount || 0} active • \${localQueue.queuedCount || 0} queued\`)}</small>
+                  </div>
+                  <span class="status-pill \${items.length ? "running" : "standby"}">\${escapeHtmlText(\`max \${localQueue.concurrency || 1}\`)}</span>
+                </div>
+                \${items.length ? \`
+                  <div class="queue-list">
+                    \${items.map((run) => \`
+                      <div class="queue-item">
+                        <strong>\${escapeHtmlText(run.seriesConfigKey || run.actionLabel || run.runId || "Run")}</strong>
+                        <small>\${escapeHtmlText((run.actionLabel || run.actionKey || "Run") + " • " + statusLabel(run.status))}</small>
+                        <span>\${escapeHtmlText(run.summary || run.message || run.note || "No summary available.")}</span>
+                      </div>
+                    \`).join("")}
+                  </div>
+                \` : '<p>No local background runs are queued or active right now.</p>'}
+              </article>
+            \`;
+          }
+
           const queue = entry.queue;
           const requests = Array.isArray(queue?.summary?.requests) ? queue.summary.requests : [];
           return \`
@@ -960,6 +1226,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
           const validation = entry?.artifacts?.validation?.summary;
           const publish = entry?.artifacts?.publish?.summary;
           const workflow = entry?.workflow || {};
+          const latestRun = entry?.latestRun || null;
           const tone = badgeToneForSeries(entry);
           const validationLabel = validation
             ? validation.publishReady
@@ -983,6 +1250,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
                 <span class="badge \${entry.enabled ? "good" : "warn"}">\${entry.enabled ? "Enabled" : "Disabled"}</span>
                 <span class="badge \${tone}">\${validationLabel}</span>
                 <span class="badge">\${escapeHtmlText(entry.sourceSystem || "source")}</span>
+                \${latestRun ? \`<span class="badge \${toneForRunStatus(latestRun.status)}">\${escapeHtmlText(statusLabel(latestRun.status))}</span>\` : ""}
               </div>
               <div class="stats">
                 <div class="stat">
@@ -1004,6 +1272,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
               <div class="series-note">
                 \${escapeHtmlText(nextAction?.reason || workflow.note || "")}
               </div>
+              \${latestRun ? \`<div class="series-note">\${escapeHtmlText(latestRun.summary || latestRun.message || "")}</div>\` : ""}
               \${nextAction ? \`<code class="mono">\${escapeHtmlText(nextAction.command || "")}</code>\` : ""}
             </article>
           \`;
@@ -1043,6 +1312,50 @@ function renderLocalOpsConsolePage({ overview, port }) {
         renderSelectedSeriesWorkflow(currentOverview);
       }
 
+      function getLatestRunForSeries(seriesSlug) {
+        if (seriesSlug) {
+          const series = Array.isArray(currentOverview?.series) ? currentOverview.series : [];
+          return series.find((entry) => entry.slug === seriesSlug)?.latestRun || null;
+        }
+
+        return currentOverview?.latestRun || null;
+      }
+
+      function isRunPending(run) {
+        return run?.status === "queued" || run?.status === "running";
+      }
+
+      function updateLiveRunOutput(seriesSlug) {
+        const run = getLatestRunForSeries(seriesSlug);
+        if (!run) {
+          return;
+        }
+
+        statusBox.textContent = run.lastLogLine || run.message || run.summary || ((run.actionLabel || "Action") + " " + statusLabel(run.status).toLowerCase() + ".");
+        if (Array.isArray(run.recentLogLines) && run.recentLogLines.length) {
+          resultBox.textContent = run.recentLogLines.join("\\n");
+        }
+      }
+
+      function stopOverviewPolling() {
+        if (overviewPollTimer) {
+          window.clearInterval(overviewPollTimer);
+          overviewPollTimer = null;
+        }
+      }
+
+      function startOverviewPolling(seriesSlug) {
+        stopOverviewPolling();
+        overviewPollTimer = window.setInterval(async () => {
+          try {
+            await refreshOverview();
+            updateLiveRunOutput(seriesSlug);
+          } catch (_) {
+            // Polling is best-effort while the primary action request is still active.
+          }
+        }, 1500);
+      }
+
       async function refreshOverview() {
         const response = await fetch("/api/local-ops/overview");
         const payload = await response.json();
@@ -1050,35 +1363,30 @@ function renderLocalOpsConsolePage({ overview, port }) {
         renderSeriesOverview(payload);
       }
 
-      async function runAction(action, formId, button) {
+      async function runActionRequest(action, payload, button) {
         if (action === "refreshOverview") {
           await refreshOverview();
           return;
         }
-
-        const form = document.getElementById(formId);
-        const payload = form ? serializeForm(form) : {};
-        const payloadOverrides = button?.dataset?.payloadOverrides
-          ? JSON.parse(button.dataset.payloadOverrides)
-          : {};
-        Object.assign(payload, payloadOverrides);
+        const seriesSlug = payload.series || "";
         const dryRun = payload.dryRun === true;
-        const confirmation = button.dataset.confirmLive || (action === "publish-series" && !dryRun
-          ? "This will publish the selected series locally. Continue?"
-          : "");
-        if (confirmation && action === "publish-series" && !dryRun) {
-          const confirmed = window.confirm(confirmation);
-          if (!confirmed) return;
-        }
-        if (confirmation && action === "register" && payload.dryRun !== true) {
+        const confirmation = button.dataset.confirmLive
+          || ((action === "publish-series" || action.startsWith("workflow-")) && !dryRun
+            ? "This action can apply a live publish for the selected series. Continue?"
+            : action === "register" && payload.dryRun !== true
+              ? "This will register the series locally and update config/leagues.yaml. Continue?"
+              : "");
+        if (confirmation) {
           const confirmed = window.confirm(confirmation);
           if (!confirmed) return;
         }
 
-        statusBox.textContent = \`Running \${action}...\`;
-        resultBox.textContent = "Working...";
-        const buttons = Array.from(document.querySelectorAll("button[data-action]"));
+        statusBox.textContent = \`Submitting \${action}...\`;
+        resultBox.textContent = "Waiting for live operator logs...";
+        startOverviewPolling(seriesSlug);
+        const buttons = Array.from(document.querySelectorAll("button[data-action], button[data-retry-action]"));
         buttons.forEach((entry) => { entry.disabled = true; });
+        let keepPolling = false;
         try {
           const response = await fetch(\`/api/local-ops/actions/\${action}\`, {
             method: "POST",
@@ -1094,20 +1402,61 @@ function renderLocalOpsConsolePage({ overview, port }) {
           statusBox.textContent = result?.result?.message || result?.message || \`\${action} completed.\`;
           resultBox.textContent = JSON.stringify(result, null, 2);
           await refreshOverview();
+          const latestRun = getLatestRunForSeries(seriesSlug);
+          keepPolling = isRunPending(latestRun || result?.actionRun);
+          if (keepPolling) {
+            updateLiveRunOutput(seriesSlug);
+          } else {
+            stopOverviewPolling();
+          }
         } catch (error) {
-          statusBox.textContent = error.message || \`\${action} failed.\`;
-          resultBox.textContent = JSON.stringify({ error: error.message || "Unexpected action failure." }, null, 2);
+          try {
+            await refreshOverview();
+          } catch (_) {
+            // Keep the immediate failure response even if overview refresh fails.
+          }
+          const latestRun = getLatestRunForSeries(seriesSlug);
+          keepPolling = isRunPending(latestRun);
+          statusBox.textContent = latestRun?.message || error.message || \`\${action} failed.\`;
+          resultBox.textContent = latestRun?.recentLogLines?.length
+            ? latestRun.recentLogLines.join("\\n")
+            : JSON.stringify({ error: error.message || "Unexpected action failure." }, null, 2);
         } finally {
+          if (!keepPolling) {
+            stopOverviewPolling();
+          }
           buttons.forEach((entry) => { entry.disabled = false; });
         }
       }
 
+      async function runAction(action, formId, button) {
+        const form = document.getElementById(formId);
+        const payload = form ? serializeForm(form) : {};
+        const payloadOverrides = button?.dataset?.payloadOverrides
+          ? JSON.parse(button.dataset.payloadOverrides)
+          : {};
+        Object.assign(payload, payloadOverrides);
+        if (!payload.series && formId === "series-ops-form") {
+          payload.series = seriesSelect.value;
+        }
+        await runActionRequest(action, payload, button);
+      }
+
       document.addEventListener("click", (event) => {
-        const button = event.target.closest("button[data-use-series], button[data-action]");
+        const button = event.target.closest("button[data-use-series], button[data-action], button[data-retry-action]");
         if (!button) return;
 
         if (button.dataset.useSeries) {
           syncSeriesSelection(button.dataset.useSeries);
+          return;
+        }
+
+        if (button.dataset.retryAction) {
+          const payload = button.dataset.retryPayload ? JSON.parse(button.dataset.retryPayload) : {};
+          if (!payload.series) {
+            payload.series = seriesSelect.value;
+          }
+          runActionRequest(button.dataset.retryAction, payload, button);
           return;
         }
 

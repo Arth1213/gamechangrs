@@ -239,6 +239,19 @@ function renderLocalOpsConsolePage({ overview, port }) {
         display: grid;
         gap: 8px;
       }
+      .workflow-action-card {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(7, 16, 28, 0.45);
+        padding: 12px 14px;
+        display: grid;
+        gap: 8px;
+      }
+      .workflow-action-copy {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
       .workflow-list {
         display: grid;
         gap: 10px;
@@ -328,6 +341,11 @@ function renderLocalOpsConsolePage({ overview, port }) {
       .status-pill.queued {
         color: var(--accent-2);
         border-color: rgba(127, 179, 255, 0.35);
+      }
+      .status-pill.canceled,
+      .status-pill.cancelled {
+        color: var(--bad);
+        border-color: rgba(255, 138, 138, 0.35);
       }
       .status-pill.in_progress,
       .status-pill.stale,
@@ -453,6 +471,20 @@ function renderLocalOpsConsolePage({ overview, port }) {
         font-size: 13px;
       }
       .run-history-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .run-step-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .run-step-actions,
+      .queue-item-actions {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
@@ -632,7 +664,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
 
         <section class="panel span-12">
           <h2>Workflow Tracks</h2>
-          <p class="section-copy">These are the locked local-only operator paths. The buttons still call the existing low-level actions one step at a time; this page now tells you which step should run next.</p>
+          <p class="section-copy">These are the locked local-only operator paths. Dry-run and live-publish presets are split explicitly, and recent workflow runs can now be rerun from a chosen step.</p>
           <div class="workflow-guide-grid">
             <article class="workflow-guide">
               <h3>New Series</h3>
@@ -674,7 +706,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
 
         <section class="panel span-4">
           <h2>Queue Visibility</h2>
-          <p class="section-copy">Most recent worker-side queue summaries written under <code>storage/exports</code>.</p>
+          <p class="section-copy">Current local queue state plus the latest worker-side queue summaries written under <code>storage/exports</code>.</p>
           <div id="queue-grid" class="queue-grid"></div>
         </section>
 
@@ -871,6 +903,9 @@ function renderLocalOpsConsolePage({ overview, port }) {
           case "complete":
           case "completed":
             return "Complete";
+          case "canceled":
+          case "cancelled":
+            return "Canceled";
           case "queued":
             return "Queued";
           case "running":
@@ -896,6 +931,9 @@ function renderLocalOpsConsolePage({ overview, port }) {
           case "completed":
           case "complete":
             return "good";
+          case "canceled":
+          case "cancelled":
+            return "bad";
           case "queued":
           case "running":
             return "";
@@ -932,18 +970,166 @@ function renderLocalOpsConsolePage({ overview, port }) {
         return series.find((entry) => entry.slug === seriesSelect.value) || series[0];
       }
 
+      function renderInlineActionButton(label, action, payload = {}, options = {}) {
+        const className = options.className || "button-secondary button-small";
+        const formAttr = options.form ? \` data-form="\${escapeHtmlText(options.form)}"\` : "";
+        const confirmAttr = options.confirm
+          ? \` data-confirm-live="\${escapeHtmlText(options.confirm)}"\`
+          : "";
+        return \`
+          <button
+            type="button"
+            class="\${escapeHtmlText(className)}"
+            data-action="\${escapeHtmlText(action || "")}"
+            data-payload-overrides='\${escapeHtmlText(JSON.stringify(payload || {}))}'
+            \${formAttr}
+            \${confirmAttr}
+          >\${escapeHtmlText(label || "Run Action")}</button>
+        \`;
+      }
+
+      function renderRunControlButtons(run) {
+        const buttons = [];
+
+        if (run?.status === "queued" && run?.runId) {
+          buttons.push(renderInlineActionButton(
+            "Cancel Queued Run",
+            "cancel-run",
+            {
+              runId: run.runId,
+              series: run.seriesConfigKey || "",
+            },
+            {
+              className: "button-bad button-small",
+              confirm: "Remove this queued local run before it starts?",
+            }
+          ));
+        }
+
+        if (run?.workflowResume && run.status !== "queued" && run.status !== "running") {
+          buttons.push(renderInlineActionButton(
+            run.workflowResume.label || "Resume Remaining",
+            run.workflowResume.action || run.actionKey || "",
+            run.workflowResume.payload || {},
+            {
+              className: "button-primary button-small",
+              confirm: run.workflowResume.confirmLive
+                ? "This workflow rerun can apply a live publish for the selected series. Continue?"
+                : "",
+            }
+          ));
+        }
+
+        if (run?.retryInput && run.status !== "queued" && run.status !== "running") {
+          buttons.push(renderInlineActionButton(
+            "Retry Run",
+            run.actionKey || "",
+            run.retryInput || {},
+            {
+              className: "button-secondary button-small",
+              confirm: run.actionKey === "publish-series" && run.retryInput?.dryRun !== true
+                ? "This will publish the selected series locally. Continue?"
+                : "",
+            }
+          ));
+        }
+
+        return buttons.length
+          ? \`<div class="run-history-actions">\${buttons.join("")}</div>\`
+          : "";
+      }
+
+      function renderWorkflowRunSteps(run) {
+        const steps = Array.isArray(run?.workflowSteps) ? run.workflowSteps : [];
+        if (!steps.length) {
+          return "";
+        }
+
+        const rerunOptions = Array.isArray(run?.workflowRerunOptions) ? run.workflowRerunOptions : [];
+        const rerunByKey = new Map(rerunOptions.map((option) => [option.key, option]));
+        const completedCount = steps.filter((step) => step.status === "completed").length;
+        const requestedCount = run?.workflowRequestedSteps || steps.length;
+
+        return \`
+          <div>
+            <div class="workflow-track-header">
+              <div>
+                <h3>Step Summary</h3>
+                <small>\${escapeHtmlText(run.workflowLabel || "Guided workflow")}</small>
+              </div>
+              <span class="status-pill \${escapeHtmlText(run.status || "pending")}">\${escapeHtmlText(\`\${completedCount}/\${requestedCount} steps\`)}</span>
+            </div>
+            \${run.workflowStopReason ? \`<p class="series-note">\${escapeHtmlText(run.workflowStopReason)}</p>\` : ""}
+            <div class="workflow-step-grid">
+              \${steps.map((step) => {
+                const rerun = rerunByKey.get(step.key);
+                const meta = [];
+                if (step.dryRun === true) meta.push("Dry run");
+                if (step.dryRun === false) meta.push("Live publish");
+                meta.push(\`Updated \${formatTimestamp(step.updatedAt)}\`);
+                return \`
+                  <div class="workflow-step \${escapeHtmlText(step.status || "pending")}">
+                    <div class="workflow-step-header">
+                      <div>
+                        <strong>\${escapeHtmlText(step.label || step.key || "Step")}</strong>
+                      </div>
+                      <span class="status-pill \${escapeHtmlText(step.status || "pending")}">\${escapeHtmlText(statusLabel(step.status))}</span>
+                    </div>
+                    <p>\${escapeHtmlText(step.summary || "No step summary available.")}</p>
+                    <div class="run-step-meta">
+                      \${meta.map((item) => \`<span>\${escapeHtmlText(item)}</span>\`).join("")}
+                    </div>
+                    \${step.command ? \`<code class="mono">\${escapeHtmlText(step.command)}</code>\` : ""}
+                    \${rerun ? \`
+                      <div class="run-step-actions">
+                        \${renderInlineActionButton(
+                          "Rerun From Here",
+                          rerun.action || run.actionKey || "",
+                          rerun.payload || {},
+                          {
+                            className: "button-secondary button-small",
+                            confirm: rerun.confirmLive
+                              ? "This workflow rerun can apply a live publish for the selected series. Continue?"
+                              : "",
+                          }
+                        )}
+                      </div>
+                    \` : ""}
+                  </div>
+                \`;
+              }).join("")}
+            </div>
+          </div>
+        \`;
+      }
+
       function renderWorkflowTrack(track) {
         if (!track) return "";
-        const preset = track?.preset && track.preset.visible !== false
+        const presets = Array.isArray(track?.presets)
+          ? track.presets.filter((preset) => preset && preset.visible !== false)
+          : track?.preset && track.preset.visible !== false
+            ? [track.preset]
+            : [];
+        const presetMarkup = presets.length
           ? \`
             <div class="workflow-track-actions">
-              <button
-                type="button"
-                class="\${escapeHtmlText(track.preset.variant === "warn" ? "button-warn" : track.preset.variant === "secondary" ? "button-secondary" : "button-primary")} button-small"
-                data-action="\${escapeHtmlText(track.preset.action || "")}"
-                data-form="\${escapeHtmlText(track.preset.form || "series-ops-form")}"
-              >\${escapeHtmlText(track.preset.label || "Run Workflow")}</button>
-              <p>\${escapeHtmlText(track.preset.summary || "")}</p>
+              \${presets.map((preset) => \`
+                <div class="workflow-action-card">
+                  \${renderInlineActionButton(
+                    preset.label || "Run Workflow",
+                    preset.action || "",
+                    preset.payloadOverrides || {},
+                    {
+                      className: \`\${preset.variant === "warn" ? "button-warn" : preset.variant === "secondary" ? "button-secondary" : "button-primary"} button-small\`,
+                      form: preset.form || "series-ops-form",
+                      confirm: preset.confirmLive
+                        ? "This guided workflow can apply a live publish for the selected series. Continue?"
+                        : "",
+                    }
+                  )}
+                  \${preset.summary ? \`<div class="workflow-action-copy">\${escapeHtmlText(preset.summary)}</div>\` : ""}
+                </div>
+              \`).join("")}
             </div>
           \`
           : "";
@@ -956,7 +1142,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
               </div>
               <span class="status-pill \${escapeHtmlText(track.status || "pending")}">\${escapeHtmlText(statusLabel(track.status))}</span>
             </div>
-            \${preset}
+            \${presetMarkup}
             <div class="workflow-step-grid">
               \${(Array.isArray(track.steps) ? track.steps : []).map((step) => \`
                 <div class="workflow-step \${escapeHtmlText(step.status || "pending")}">
@@ -991,6 +1177,28 @@ function renderLocalOpsConsolePage({ overview, port }) {
         const note = run.note || "";
         const artifactPath = run.artifactPath || "No artifact path recorded";
         const commandPreview = run.commandPreview || "";
+        const workflowMeta = run.workflowKey
+          ? \`
+            <div class="run-monitor-grid">
+              <div class="stat">
+                <b>Workflow</b>
+                <span>\${escapeHtmlText(run.workflowLabel || run.workflowKey)}</span>
+              </div>
+              <div class="stat">
+                <b>Steps</b>
+                <span>\${escapeHtmlText(\`\${(Array.isArray(run.workflowSteps) ? run.workflowSteps.filter((step) => step.status === "completed").length : 0)}/\${run.workflowRequestedSteps || (Array.isArray(run.workflowSteps) ? run.workflowSteps.length : 0)}\`)}</span>
+              </div>
+              <div class="stat">
+                <b>Start Step</b>
+                <span>\${escapeHtmlText(run.workflowStartStepLabel || "Full chain")}</span>
+              </div>
+              <div class="stat">
+                <b>Run Mode</b>
+                <span>\${escapeHtmlText(run.workflowStoppedEarly ? "Stopped early" : "Full run")}</span>
+              </div>
+            </div>
+          \`
+          : "";
 
         return \`
           <section class="run-monitor">
@@ -1024,6 +1232,8 @@ function renderLocalOpsConsolePage({ overview, port }) {
                 <span>\${escapeHtmlText(Number.isFinite(run.durationMs) && run.durationMs >= 0 ? \`\${Math.round(run.durationMs / 1000)}s\` : "-")}</span>
               </div>
             </div>
+            \${workflowMeta}
+            \${renderRunControlButtons(run)}
             \${run.queuePosition ? \`<div class="meta-chip"><b>Queue Position</b><code>\${escapeHtmlText(run.queuePosition)}</code></div>\` : ""}
             \${run.pid ? \`<div class="meta-chip"><b>Worker PID</b><code>\${escapeHtmlText(run.pid)}</code></div>\` : ""}
             \${commandPreview ? \`<div class="meta-chip"><b>Command</b><code>\${escapeHtmlText(commandPreview)}</code></div>\` : ""}
@@ -1031,6 +1241,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
               <b>Artifact</b>
               <code>\${escapeHtmlText(artifactPath)}</code>
             </div>
+            \${renderWorkflowRunSteps(run)}
             \${logLines.length
               ? \`<pre class="run-log">\${escapeHtmlText(logLines.join("\\n"))}</pre>\`
               : '<div class="run-log-empty">No log lines were captured for this run.</div>'}
@@ -1063,18 +1274,10 @@ function renderLocalOpsConsolePage({ overview, port }) {
                     <span class="status-pill \${escapeHtmlText(run.status || "pending")}">\${escapeHtmlText(statusLabel(run.status))}</span>
                   </div>
                   <div class="series-note">\${escapeHtmlText(run.summary || run.note || "No run summary available.")}</div>
+                  \${run.workflowStopReason ? \`<div class="series-note">\${escapeHtmlText(run.workflowStopReason)}</div>\` : ""}
                   \${run.commandPreview ? \`<code class="mono">\${escapeHtmlText(run.commandPreview)}</code>\` : ""}
-                  <div class="run-history-actions">
-                    \${run.retryInput && run.status !== "queued" && run.status !== "running" ? \`
-                      <button
-                        type="button"
-                        class="button-secondary button-small"
-                        data-retry-action="\${escapeHtmlText(run.actionKey || "")}"
-                        data-retry-payload='\${escapeHtmlText(JSON.stringify(run.retryInput || {}))}'
-                        \${run.actionKey === "publish-series" && run.retryInput?.dryRun !== true ? 'data-confirm-live="This will publish the selected series locally. Continue?"' : ""}
-                      >Retry Run</button>
-                    \` : ""}
-                  </div>
+                  \${renderRunControlButtons(run)}
+                  \${renderWorkflowRunSteps(run)}
                 </div>
               \`).join("")}
             </div>
@@ -1185,6 +1388,22 @@ function renderLocalOpsConsolePage({ overview, port }) {
                         <strong>\${escapeHtmlText(run.seriesConfigKey || run.actionLabel || run.runId || "Run")}</strong>
                         <small>\${escapeHtmlText((run.actionLabel || run.actionKey || "Run") + " • " + statusLabel(run.status))}</small>
                         <span>\${escapeHtmlText(run.summary || run.message || run.note || "No summary available.")}</span>
+                        \${run.status === "queued" && run.runId ? \`
+                          <div class="queue-item-actions">
+                            \${renderInlineActionButton(
+                              "Cancel",
+                              "cancel-run",
+                              {
+                                runId: run.runId,
+                                series: run.seriesConfigKey || "",
+                              },
+                              {
+                                className: "button-bad button-small",
+                                confirm: "Remove this queued local run before it starts?",
+                              }
+                            )}
+                          </div>
+                        \` : ""}
                       </div>
                     \`).join("")}
                   </div>

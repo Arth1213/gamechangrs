@@ -59,6 +59,8 @@ const activeBackgroundRuns = new Map();
 
 function buildActionLabel(actionKey) {
   switch (normalizeText(actionKey).toLowerCase()) {
+    case "cancel-run":
+      return "Cancel Queued Run";
     case "probe":
       return "Probe Source";
     case "register":
@@ -120,6 +122,8 @@ function buildRetryInput(input = {}) {
   assignText("playerIds", Array.isArray(input.playerIds) ? input.playerIds.join(",") : input.playerIds);
   assignText("limit", input.limit);
   assignText("pauseMs", input.pauseMs);
+  assignText("fromStep", input.fromStep);
+  assignText("runId", input.runId);
 
   ["headless", "skipPipeline", "useStagedInventory", "force", "dryRun", "activate", "enabled"].forEach((key) => {
     if (typeof input[key] === "boolean") {
@@ -154,6 +158,8 @@ function summarizeActionInput(actionKey, input = {}) {
   assign("playerIds", Array.isArray(input.playerIds) ? input.playerIds.join(",") : input.playerIds);
   assign("limit", input.limit);
   assign("pauseMs", input.pauseMs);
+  assign("fromStep", input.fromStep);
+  assign("runId", input.runId);
 
   if (input.headless === true) {
     summary.headless = true;
@@ -291,8 +297,23 @@ function readRecentActionRuns(seriesConfigKey, entry = null, limit = LOCAL_OPS_R
       note: normalizeText(run.note),
       retryInput: run.retryInput || null,
       commandPreview: normalizeText(run.commandPreview),
+      artifactPath: normalizeText(run.artifactPath),
       queuePosition: toInteger(run.queuePosition),
       pid: toInteger(run.pid),
+      canCancel: run.status === "queued",
+      workflowKey: normalizeText(run.workflowKey),
+      workflowLabel: normalizeText(run.workflowLabel),
+      workflowDryRun: typeof run.workflowDryRun === "boolean" ? run.workflowDryRun : null,
+      workflowRequestedSteps: toInteger(run.workflowRequestedSteps),
+      workflowSkippedSteps: toInteger(run.workflowSkippedSteps),
+      workflowStartStepKey: normalizeText(run.workflowStartStepKey),
+      workflowStartStepLabel: normalizeText(run.workflowStartStepLabel),
+      workflowSteps: Array.isArray(run.workflowSteps) ? run.workflowSteps : [],
+      workflowPlanSteps: Array.isArray(run.workflowPlanSteps) ? run.workflowPlanSteps : [],
+      workflowRerunOptions: Array.isArray(run.workflowRerunOptions) ? run.workflowRerunOptions : [],
+      workflowResume: run.workflowResume || null,
+      workflowStoppedEarly: run.workflowStoppedEarly === true,
+      workflowStopReason: normalizeText(run.workflowStopReason),
     }));
 }
 
@@ -410,15 +431,18 @@ function buildWorkerCliInvocation(actionKey, input = {}) {
 function buildWorkflowCommandPreview(actionKey, input = {}) {
   const action = normalizeText(actionKey).toLowerCase();
   const seriesConfigKey = normalizeText(input.series) || "<series>";
+  const fromStep = normalizeText(input.fromStep);
+  const liveFlag = resolveWorkflowDryRun(input) ? "" : " --live-publish";
+  const fromStepFlag = fromStep ? ` --from-step ${fromStep}` : "";
   switch (action) {
     case "workflow-onboarding":
-      return `guided-workflow onboarding --series ${seriesConfigKey}`;
+      return `guided-workflow onboarding --series ${seriesConfigKey}${fromStepFlag}${liveFlag}`;
     case "workflow-refresh":
-      return `guided-workflow refresh --series ${seriesConfigKey}`;
+      return `guided-workflow refresh --series ${seriesConfigKey}${fromStepFlag}${liveFlag}`;
     case "workflow-publish":
-      return `guided-workflow publish --series ${seriesConfigKey}`;
+      return `guided-workflow publish --series ${seriesConfigKey}${fromStepFlag}${liveFlag}`;
     default:
-      return `guided-workflow ${action} --series ${seriesConfigKey}`;
+      return `guided-workflow ${action} --series ${seriesConfigKey}${fromStepFlag}${liveFlag}`;
   }
 }
 
@@ -654,6 +678,43 @@ function enqueueBackgroundAction(actionKey, input = {}) {
   });
 }
 
+function cancelQueuedBackgroundRun(input = {}) {
+  const runId = normalizeText(input.runId);
+  if (!runId) {
+    throw createLocalOpsActionError("A queued run id is required to cancel local background work.", 400);
+  }
+
+  const queuedIndex = backgroundRunQueue.findIndex((item) => item?.runContext?.runId === runId);
+  if (queuedIndex < 0) {
+    if (activeBackgroundRuns.has(runId)) {
+      throw createLocalOpsActionError("This local background run is already active and cannot be canceled from the queued-run control.", 409);
+    }
+    throw createLocalOpsActionError(`Queued local background run was not found: ${runId}`, 404);
+  }
+
+  const [queueItem] = backgroundRunQueue.splice(queuedIndex, 1);
+  if (!queueItem) {
+    throw createLocalOpsActionError(`Queued local background run was not found: ${runId}`, 404);
+  }
+
+  queueItem.runContext.log("[queue] canceled before execution started");
+  const actionRun = queueItem.runContext.markCanceled({
+    summary: `${queueItem.runContext.actionLabel} was canceled before execution started.`,
+  });
+
+  refreshQueuedRunPositions();
+
+  return {
+    ok: true,
+    canceled: true,
+    actionKey: "cancel-run",
+    runId,
+    seriesConfigKey: normalizeText(actionRun?.seriesConfigKey),
+    message: `${queueItem.runContext.actionLabel} removed from the queue.`,
+    actionRun,
+  };
+}
+
 function buildActionCompletionSummary(actionKey, execution) {
   const result = execution && execution.result ? execution.result : null;
 
@@ -802,6 +863,22 @@ function createActionRunContext(actionKey, input = {}, options = {}) {
     });
   }
 
+  function markCanceled(extra = {}) {
+    const finishedAt = new Date().toISOString();
+    return update({
+      status: "canceled",
+      ok: null,
+      startedAt: null,
+      finishedAt,
+      durationMs: Math.max(0, toTimestamp(finishedAt) - toTimestamp(state.createdAt)),
+      queuePosition: null,
+      pid: null,
+      message: `${buildActionLabel(actionKey)} was removed from the queue.`,
+      note: "Queued background work was canceled before execution started.",
+      ...extra,
+    });
+  }
+
   function markCompleted(execution) {
     const finishedAt = new Date().toISOString();
     const ok = execution?.ok !== false;
@@ -855,6 +932,7 @@ function createActionRunContext(actionKey, input = {}, options = {}) {
     log,
     markQueued,
     markRunning,
+    markCanceled,
     markCompleted,
     markFailed,
     getSnapshot,
@@ -1361,6 +1439,8 @@ function buildWorkflowPreset(action, label, summary, options = {}) {
     form: options.form || "series-ops-form",
     variant: options.variant || "primary",
     visible: options.visible !== false,
+    payloadOverrides: options.payloadOverrides || null,
+    confirmLive: options.confirmLive === true,
   };
 }
 
@@ -1539,6 +1619,29 @@ function buildOnboardingWorkflow(entry) {
   ];
 
   const requiredSteps = steps.filter((step) => step.optional !== true);
+  const showPreset = countStatus(requiredSteps, "pending") > 0 || countStatus(requiredSteps, "stale") > 0 || countStatus(requiredSteps, "blocked") > 0;
+  const presets = [
+    buildWorkflowPreset(
+      "workflow-onboarding",
+      "Run Onboarding Dry Run",
+      "Queues the remaining required onboarding steps and stops at publish simulation.",
+      {
+        visible: showPreset,
+        payloadOverrides: { dryRun: true },
+      }
+    ),
+    buildWorkflowPreset(
+      "workflow-onboarding",
+      "Run Onboarding Live Publish",
+      "Queues the remaining required onboarding steps and applies the live publish after validation clears.",
+      {
+        visible: showPreset,
+        variant: "warn",
+        payloadOverrides: { dryRun: false },
+        confirmLive: true,
+      }
+    ),
+  ];
 
   return {
     label: "New Series Onboarding",
@@ -1548,14 +1651,8 @@ function buildOnboardingWorkflow(entry) {
         : countStatus(requiredSteps, "stale") > 0 || countStatus(requiredSteps, "pending") > 0
           ? "in_progress"
           : "complete",
-    preset: buildWorkflowPreset(
-      "workflow-onboarding",
-      "Run Onboarding Chain",
-      "Queues the remaining required onboarding steps for this series. The Dry run publish checkbox controls whether the chain stops at publish simulation or applies a live publish.",
-      {
-        visible: countStatus(requiredSteps, "pending") > 0 || countStatus(requiredSteps, "stale") > 0 || countStatus(requiredSteps, "blocked") > 0,
-      }
-    ),
+    preset: presets[0],
+    presets,
     steps,
   };
 }
@@ -1727,18 +1824,33 @@ function buildRefreshWorkflow(entry) {
       countStatus(steps, "pending") > 0 ||
       countStatus(steps, "blocked") > 0 ||
       artifactTimestamp(refresh) > Math.max(artifactTimestamp(validation), artifactTimestamp(publishLiveArtifact)));
+  const presets = [
+    buildWorkflowPreset(
+      "workflow-refresh",
+      "Run Refresh Dry Run",
+      "Queues refresh, recompute, validation, and publish dry run for the selected series.",
+      {
+        variant: "secondary",
+        payloadOverrides: { dryRun: true },
+      }
+    ),
+    buildWorkflowPreset(
+      "workflow-refresh",
+      "Run Refresh Live Publish",
+      "Queues refresh, recompute, validation, and applies live publish after the validation gate clears.",
+      {
+        variant: "warn",
+        payloadOverrides: { dryRun: false },
+        confirmLive: true,
+      }
+    ),
+  ];
 
   return {
     label: "Existing Series Refresh",
     status: !refresh ? "standby" : hasRefreshWork ? "in_progress" : "complete",
-    preset: buildWorkflowPreset(
-      "workflow-refresh",
-      "Run Refresh Chain",
-      "Queues refresh, recompute, validation, and publish for the selected series. If Match id or DB match id is filled in below, the chain uses one-match refresh.",
-      {
-        variant: "secondary",
-      }
-    ),
+    preset: presets[0],
+    presets,
     steps,
     refreshReference,
   };
@@ -1816,6 +1928,30 @@ function buildPublishWorkflow(entry) {
   ];
 
   const liveIsCurrent = validation?.summary?.publishReady === true && publishLiveArtifact && isArtifactFresh(publishLiveArtifact, validation);
+  const showPreset = countStatus(steps, "pending") > 0 || countStatus(steps, "stale") > 0 || countStatus(steps, "blocked") > 0;
+  const presets = [
+    buildWorkflowPreset(
+      "workflow-publish",
+      "Validate + Dry Run",
+      "Runs the validation gate first, then executes the publish dry run only.",
+      {
+        variant: "secondary",
+        visible: showPreset,
+        payloadOverrides: { dryRun: true },
+      }
+    ),
+    buildWorkflowPreset(
+      "workflow-publish",
+      "Validate + Live Publish",
+      "Runs validation, publish dry run, and then applies live publish when the gate is clear.",
+      {
+        variant: "warn",
+        visible: showPreset,
+        payloadOverrides: { dryRun: false },
+        confirmLive: true,
+      }
+    ),
+  ];
 
   return {
     label: "Validate And Publish",
@@ -1827,15 +1963,8 @@ function buildPublishWorkflow(entry) {
         : countStatus(steps, "stale") > 0 || countStatus(steps, "pending") > 0
           ? "in_progress"
           : "complete",
-    preset: buildWorkflowPreset(
-      "workflow-publish",
-      "Run Validate + Publish Chain",
-      "Runs the validation gate first, then executes publish dry run and optionally live publish depending on the Dry run publish checkbox.",
-      {
-        variant: "warn",
-        visible: countStatus(steps, "pending") > 0 || countStatus(steps, "stale") > 0 || countStatus(steps, "blocked") > 0,
-      }
-    ),
+    preset: presets[0],
+    presets,
     steps,
   };
 }
@@ -2048,39 +2177,156 @@ function buildWorkflowActionPayload(input = {}, payloadOverrides = {}) {
   };
 }
 
+function buildWorkflowPlanStep(stepKey, actionKey, label, payload, seriesConfigKey) {
+  return {
+    key: normalizeText(stepKey) || normalizeText(actionKey).toLowerCase(),
+    actionKey: normalizeText(actionKey).toLowerCase(),
+    label: normalizeText(label) || buildActionLabel(actionKey),
+    payload: payload || {},
+    command: buildActionCommand(actionKey, seriesConfigKey, payload || {}),
+  };
+}
+
+function sliceWorkflowStepsFrom(steps, input = {}, workflowLabel = "Workflow") {
+  const fromStep = normalizeText(input.fromStep).toLowerCase();
+  if (!fromStep) {
+    return {
+      steps,
+      startIndex: 0,
+      startFromStepKey: null,
+      startFromStepLabel: null,
+    };
+  }
+
+  const startIndex = steps.findIndex((step) => {
+    const stepKey = normalizeText(step?.key).toLowerCase();
+    const actionKey = normalizeText(step?.actionKey).toLowerCase();
+    return stepKey === fromStep || actionKey === fromStep;
+  });
+
+  if (startIndex < 0) {
+    throw createLocalOpsActionError(`Workflow step was not found for ${workflowLabel}: ${input.fromStep}`, 400);
+  }
+
+  return {
+    steps: steps.slice(startIndex),
+    startIndex,
+    startFromStepKey: normalizeText(steps[startIndex]?.key) || null,
+    startFromStepLabel: normalizeText(steps[startIndex]?.label) || null,
+  };
+}
+
+function buildWorkflowPlanSummarySteps(steps = []) {
+  return steps.map((step) => ({
+    key: normalizeText(step?.key),
+    actionKey: normalizeText(step?.actionKey).toLowerCase(),
+    label: normalizeText(step?.label),
+    dryRun: step?.actionKey === "publish-series" ? toBoolean(step?.payload?.dryRun) : undefined,
+    command: normalizeText(step?.command),
+  }));
+}
+
+function buildWorkflowRerunOption(workflowActionKey, seriesConfigKey, input = {}, step) {
+  const stepKey = normalizeText(step?.key);
+  if (!stepKey) {
+    return null;
+  }
+
+  const payload = buildRetryInput({
+    ...input,
+    series: seriesConfigKey,
+    fromStep: stepKey,
+  });
+
+  return {
+    key: stepKey,
+    label: normalizeText(step?.label) || stepKey,
+    action: normalizeText(workflowActionKey).toLowerCase(),
+    payload,
+    command: buildWorkflowCommandPreview(workflowActionKey, payload),
+    confirmLive: resolveWorkflowDryRun(payload) === false,
+  };
+}
+
+function buildWorkflowResumeOption(workflowActionKey, seriesConfigKey, input = {}, step) {
+  const option = buildWorkflowRerunOption(workflowActionKey, seriesConfigKey, input, step);
+  if (!option) {
+    return null;
+  }
+
+  return {
+    ...option,
+    label: `Resume from ${option.label}`,
+  };
+}
+
+function updateWorkflowRunState(runContext, workflowActionKey, seriesConfigKey, input, plan, stepStates, options = {}) {
+  if (typeof runContext?.update !== "function") {
+    return;
+  }
+
+  const planSteps = Array.isArray(plan?.summarySteps) ? plan.summarySteps : [];
+  const resumeOption = options.resumeStep
+    ? buildWorkflowResumeOption(workflowActionKey, seriesConfigKey, input, options.resumeStep)
+    : null;
+
+  runContext.update({
+    workflowKey: normalizeText(plan?.workflowKey),
+    workflowLabel: normalizeText(plan?.label),
+    workflowDryRun: resolveWorkflowDryRun(input),
+    workflowRequestedSteps: Array.isArray(plan?.steps) ? plan.steps.length : 0,
+    workflowSkippedSteps: toInteger(plan?.skippedCount) || 0,
+    workflowStartStepKey: normalizeText(plan?.startFromStepKey),
+    workflowStartStepLabel: normalizeText(plan?.startFromStepLabel),
+    workflowPlanSteps: planSteps,
+    workflowSteps: Array.isArray(stepStates) ? stepStates.map((step) => ({ ...step })) : [],
+    workflowRerunOptions: planSteps
+      .map((step) => buildWorkflowRerunOption(workflowActionKey, seriesConfigKey, input, step))
+      .filter(Boolean),
+    workflowResume: resumeOption,
+    workflowStoppedEarly: options.stoppedEarly === true,
+    workflowStopReason: normalizeText(options.stopReason),
+  });
+}
+
 function buildWorkflowPublishSteps(input = {}) {
   const workflowDryRun = resolveWorkflowDryRun(input);
   const basePayload = buildWorkflowActionPayload(input);
   const steps = [
-    {
-      actionKey: "publish-series",
-      label: "Run publish dry run",
-      payload: {
+    buildWorkflowPlanStep(
+      "publish-series-dry-run",
+      "publish-series",
+      "Run publish dry run",
+      {
         ...basePayload,
         dryRun: true,
       },
-    },
+      normalizeText(input.series)
+    ),
   ];
 
   if (!workflowDryRun) {
-    steps.push({
-      actionKey: "publish-series",
-      label: "Apply live publish",
-      payload: {
+    steps.push(buildWorkflowPlanStep(
+      "publish-series-live",
+      "publish-series",
+      "Apply live publish",
+      {
         ...basePayload,
         dryRun: false,
       },
-    });
+      normalizeText(input.series)
+    ));
   }
 
   return steps;
 }
 
 function buildOnboardingWorkflowExecutionPlan(entry, input = {}) {
-  const steps = [];
   const requiredSteps = Array.isArray(entry?.workflow?.onboarding?.steps)
     ? entry.workflow.onboarding.steps.filter((step) => step.optional !== true)
     : [];
+  const rerunMode = Boolean(normalizeText(input.fromStep));
+  const candidateSteps = [];
 
   requiredSteps.forEach((step) => {
     if (!step?.action) {
@@ -2088,28 +2334,41 @@ function buildOnboardingWorkflowExecutionPlan(entry, input = {}) {
     }
 
     if (step.action === "publish-series") {
-      if (step.status === "pending" || step.status === "stale") {
-        steps.push(...buildWorkflowPublishSteps(buildWorkflowActionPayload(input, step.payloadOverrides || {})));
+      if (rerunMode || step.status === "pending" || step.status === "stale") {
+        candidateSteps.push(...buildWorkflowPublishSteps(buildWorkflowActionPayload(input, step.payloadOverrides || {})));
       }
       return;
     }
 
-    if (step.status === "pending" || step.status === "stale" || (step.action === "validate-series" && step.status === "blocked")) {
-      steps.push({
-        actionKey: step.action,
-        label: step.label,
-        payload: buildWorkflowActionPayload(input, step.payloadOverrides || {}),
-      });
+    if (rerunMode || step.status === "pending" || step.status === "stale" || (step.action === "validate-series" && step.status === "blocked")) {
+      candidateSteps.push(buildWorkflowPlanStep(
+        step.key || step.action,
+        step.action,
+        step.label,
+        buildWorkflowActionPayload(input, step.payloadOverrides || {}),
+        entry.slug
+      ));
     }
   });
+
+  const selection = sliceWorkflowStepsFrom(candidateSteps, input, "New Series Onboarding");
+  const steps = selection.steps;
+  const skippedCount = rerunMode
+    ? selection.startIndex
+    : requiredSteps.filter((step) => step.status === "complete").length;
 
   return {
     workflowKey: "onboarding",
     label: "New Series Onboarding",
     steps,
-    skippedCount: requiredSteps.filter((step) => step.status === "complete").length,
+    summarySteps: buildWorkflowPlanSummarySteps(steps),
+    skippedCount,
+    startFromStepKey: selection.startFromStepKey,
+    startFromStepLabel: selection.startFromStepLabel,
     message: steps.length
-      ? `Queued ${steps.length} onboarding step(s) for ${entry.label || entry.slug}.`
+      ? selection.startFromStepLabel
+        ? `Queued ${steps.length} onboarding step(s) for ${entry.label || entry.slug} starting from ${selection.startFromStepLabel}.`
+        : `Queued ${steps.length} onboarding step(s) for ${entry.label || entry.slug}.`
       : `No onboarding work is pending for ${entry.label || entry.slug}.`,
   };
 }
@@ -2125,60 +2384,86 @@ function buildRefreshWorkflowExecutionPlan(entry, input = {}) {
     skipPipeline: input.skipPipeline === undefined ? true : toBoolean(input.skipPipeline),
   });
 
-  const steps = [
-    {
-      actionKey: useMatchRefresh ? "refresh-match" : "refresh-series",
-      label: useMatchRefresh ? "Refresh selected match" : "Refresh series",
-      payload: refreshPayload,
-    },
-    {
-      actionKey: "compute-season",
-      label: "Recompute season aggregation",
-      payload: buildWorkflowActionPayload(input),
-    },
-    {
-      actionKey: "compute-composite",
-      label: "Recompute composite scoring",
-      payload: buildWorkflowActionPayload(input),
-    },
-    {
-      actionKey: "compute-intelligence",
-      label: "Recompute player intelligence",
-      payload: buildWorkflowActionPayload(input),
-    },
-    {
-      actionKey: "validate-series",
-      label: "Validate refreshed state",
-      payload: buildWorkflowActionPayload(input),
-    },
+  const candidateSteps = [
+    buildWorkflowPlanStep(
+      useMatchRefresh ? "refresh-match" : "refresh-series",
+      useMatchRefresh ? "refresh-match" : "refresh-series",
+      useMatchRefresh ? "Refresh selected match" : "Refresh series",
+      refreshPayload,
+      entry.slug
+    ),
+    buildWorkflowPlanStep(
+      "compute-season",
+      "compute-season",
+      "Recompute season aggregation",
+      buildWorkflowActionPayload(input),
+      entry.slug
+    ),
+    buildWorkflowPlanStep(
+      "compute-composite",
+      "compute-composite",
+      "Recompute composite scoring",
+      buildWorkflowActionPayload(input),
+      entry.slug
+    ),
+    buildWorkflowPlanStep(
+      "compute-intelligence",
+      "compute-intelligence",
+      "Recompute player intelligence",
+      buildWorkflowActionPayload(input),
+      entry.slug
+    ),
+    buildWorkflowPlanStep(
+      "validate-series",
+      "validate-series",
+      "Validate refreshed state",
+      buildWorkflowActionPayload(input),
+      entry.slug
+    ),
     ...buildWorkflowPublishSteps(buildWorkflowActionPayload(input)),
   ];
+  const selection = sliceWorkflowStepsFrom(candidateSteps, input, "Existing Series Refresh");
+  const steps = selection.steps;
 
   return {
     workflowKey: "refresh",
     label: "Existing Series Refresh",
     steps,
-    skippedCount: 0,
-    message: `Queued ${steps.length} refresh step(s) for ${entry.label || entry.slug}.`,
+    summarySteps: buildWorkflowPlanSummarySteps(steps),
+    skippedCount: selection.startIndex,
+    startFromStepKey: selection.startFromStepKey,
+    startFromStepLabel: selection.startFromStepLabel,
+    message: selection.startFromStepLabel
+      ? `Queued ${steps.length} refresh step(s) for ${entry.label || entry.slug} starting from ${selection.startFromStepLabel}.`
+      : `Queued ${steps.length} refresh step(s) for ${entry.label || entry.slug}.`,
   };
 }
 
 function buildPublishWorkflowExecutionPlan(entry, input = {}) {
-  const steps = [
-    {
-      actionKey: "validate-series",
-      label: "Validate publish gate",
-      payload: buildWorkflowActionPayload(input),
-    },
+  const candidateSteps = [
+    buildWorkflowPlanStep(
+      "validate-series",
+      "validate-series",
+      "Validate publish gate",
+      buildWorkflowActionPayload(input),
+      entry.slug
+    ),
     ...buildWorkflowPublishSteps(buildWorkflowActionPayload(input)),
   ];
+  const selection = sliceWorkflowStepsFrom(candidateSteps, input, "Validate And Publish");
+  const steps = selection.steps;
 
   return {
     workflowKey: "publish",
     label: "Validate And Publish",
     steps,
-    skippedCount: 0,
-    message: `Queued ${steps.length} publish step(s) for ${entry.label || entry.slug}.`,
+    summarySteps: buildWorkflowPlanSummarySteps(steps),
+    skippedCount: selection.startIndex,
+    startFromStepKey: selection.startFromStepKey,
+    startFromStepLabel: selection.startFromStepLabel,
+    message: selection.startFromStepLabel
+      ? `Queued ${steps.length} publish step(s) for ${entry.label || entry.slug} starting from ${selection.startFromStepLabel}.`
+      : `Queued ${steps.length} publish step(s) for ${entry.label || entry.slug}.`,
   };
 }
 
@@ -2197,20 +2482,26 @@ function buildWorkflowExecutionPlan(actionKey, entry, input = {}) {
 }
 
 async function executeWorkflowAction(actionKey, input = {}, runContext = null) {
+  const workflowActionKey = normalizeText(actionKey).toLowerCase();
   const logger = typeof runContext?.log === "function" ? runContext.log : () => {};
   const entry = loadSeriesWorkflowEntry(input.series);
   const plan = buildWorkflowExecutionPlan(actionKey, entry, {
     ...input,
     series: entry.slug,
   });
+  const stepStates = [];
 
   logger(`[workflow] ${plan.label}: plan build complete`);
   logger(`[workflow] ${plan.message}`);
+  updateWorkflowRunState(runContext, workflowActionKey, entry.slug, {
+    ...input,
+    series: entry.slug,
+  }, plan, stepStates);
 
   if (!Array.isArray(plan.steps) || plan.steps.length === 0) {
     return {
       ok: true,
-      actionKey: normalizeText(actionKey).toLowerCase(),
+      actionKey: workflowActionKey,
       seriesConfigKey: entry.slug,
       artifactPath: null,
       result: {
@@ -2220,38 +2511,78 @@ async function executeWorkflowAction(actionKey, input = {}, runContext = null) {
         stepsRequested: 0,
         stepsCompleted: 0,
         skippedSteps: plan.skippedCount || 0,
+        startFromStepKey: plan.startFromStepKey || null,
+        startFromStepLabel: plan.startFromStepLabel || null,
+        workflowPlanSteps: plan.summarySteps || [],
         message: plan.message,
       },
       message: plan.message,
     };
   }
-
-  const completedSteps = [];
   let lastExecution = null;
 
   for (let index = 0; index < plan.steps.length; index += 1) {
     const step = plan.steps[index];
-    logger(`[workflow] ${index + 1}/${plan.steps.length} ${step.label}: start`);
-    lastExecution = await executeLocalOpsActionInline(step.actionKey, {
-      ...step.payload,
+    const stepState = {
+      key: normalizeText(step.key) || normalizeText(step.actionKey),
+      actionKey: normalizeText(step.actionKey).toLowerCase(),
+      label: normalizeText(step.label),
+      status: "running",
+      summary: "Running...",
+      updatedAt: new Date().toISOString(),
+      dryRun: step.actionKey === "publish-series" ? toBoolean(step.payload?.dryRun) : undefined,
+      command: normalizeText(step.command),
+    };
+    stepStates.push(stepState);
+    updateWorkflowRunState(runContext, workflowActionKey, entry.slug, {
+      ...input,
       series: entry.slug,
-    }, runContext);
+    }, plan, stepStates);
+    logger(`[workflow] ${index + 1}/${plan.steps.length} ${step.label}: start`);
+    try {
+      lastExecution = await executeLocalOpsActionInline(step.actionKey, {
+        ...step.payload,
+        series: entry.slug,
+      }, runContext);
+    } catch (error) {
+      const failureMessage = normalizeText(error?.message) || `${step.label} failed.`;
+      stepState.status = "failed";
+      stepState.summary = failureMessage;
+      stepState.updatedAt = new Date().toISOString();
+      updateWorkflowRunState(runContext, workflowActionKey, entry.slug, {
+        ...input,
+        series: entry.slug,
+      }, plan, stepStates, {
+        stoppedEarly: true,
+        stopReason: failureMessage,
+        resumeStep: stepState,
+      });
+      logger(`[workflow] ${index + 1}/${plan.steps.length} ${step.label}: ${failureMessage}`);
+      throw error;
+    }
+
+    if (lastExecution?.ok === false) {
+      const failureMessage = normalizeText(lastExecution?.result?.message || lastExecution?.message) || `${step.label} failed.`;
+      stepState.status = "failed";
+      stepState.summary = failureMessage;
+      stepState.updatedAt = new Date().toISOString();
+      updateWorkflowRunState(runContext, workflowActionKey, entry.slug, {
+        ...input,
+        series: entry.slug,
+      }, plan, stepStates, {
+        stoppedEarly: true,
+        stopReason: failureMessage,
+        resumeStep: stepState,
+      });
+      logger(`[workflow] ${index + 1}/${plan.steps.length} ${step.label}: ${failureMessage}`);
+      throw createLocalOpsActionError(failureMessage, 500);
+    }
+
     const stepSummary = buildActionCompletionSummary(step.actionKey, lastExecution);
     logger(`[workflow] ${index + 1}/${plan.steps.length} ${step.label}: ${stepSummary}`);
-    completedSteps.push({
-      actionKey: step.actionKey,
-      label: step.label,
-      summary: stepSummary,
-      dryRun: step.actionKey === "publish-series" ? toBoolean(step.payload?.dryRun) : undefined,
-    });
-
-    if (step.actionKey === "validate-series" && lastExecution?.result?.publishReady !== true) {
-      throw createLocalOpsActionError(
-        normalizeText(lastExecution?.result?.message)
-          || "Validation did not clear the publish gate. The guided workflow stopped before publish.",
-        409
-      );
-    }
+    stepState.status = "completed";
+    stepState.summary = stepSummary;
+    stepState.updatedAt = new Date().toISOString();
 
     if (step.actionKey === "refresh-series" || step.actionKey === "refresh-match") {
       const selectedMatchCount = toInteger(lastExecution?.result?.selectedMatchCount) || 0;
@@ -2260,9 +2591,16 @@ async function executeWorkflowAction(actionKey, input = {}, runContext = null) {
       if (selectedMatchCount === 0 && newMatchCount === 0 && updatedMatchCount === 0) {
         const message = "No refreshed match changes were detected. The guided workflow stopped before recompute.";
         logger(`[workflow] ${message}`);
+        updateWorkflowRunState(runContext, workflowActionKey, entry.slug, {
+          ...input,
+          series: entry.slug,
+        }, plan, stepStates, {
+          stoppedEarly: true,
+          stopReason: message,
+        });
         return {
           ok: true,
-          actionKey: normalizeText(actionKey).toLowerCase(),
+          actionKey: workflowActionKey,
           seriesConfigKey: entry.slug,
           artifactPath: lastExecution?.artifactPath || null,
           result: {
@@ -2270,25 +2608,54 @@ async function executeWorkflowAction(actionKey, input = {}, runContext = null) {
             workflowLabel: plan.label,
             dryRun: resolveWorkflowDryRun(input),
             stepsRequested: plan.steps.length,
-            stepsCompleted: completedSteps.length,
+            stepsCompleted: stepStates.filter((candidate) => candidate.status === "completed").length,
             skippedSteps: plan.skippedCount || 0,
+            startFromStepKey: plan.startFromStepKey || null,
+            startFromStepLabel: plan.startFromStepLabel || null,
             stoppedEarly: true,
             stopReason: message,
-            completedSteps,
+            completedSteps: stepStates.map((candidate) => ({ ...candidate })),
+            workflowPlanSteps: plan.summarySteps || [],
             message,
           },
           message,
         };
       }
     }
+
+    if (step.actionKey === "validate-series" && lastExecution?.result?.publishReady !== true) {
+      const message = normalizeText(lastExecution?.result?.message)
+        || "Validation did not clear the publish gate. The guided workflow stopped before publish.";
+      stepState.status = "blocked";
+      stepState.summary = stepSummary;
+      stepState.updatedAt = new Date().toISOString();
+      updateWorkflowRunState(runContext, workflowActionKey, entry.slug, {
+        ...input,
+        series: entry.slug,
+      }, plan, stepStates, {
+        stoppedEarly: true,
+        stopReason: message,
+        resumeStep: stepState,
+      });
+      throw createLocalOpsActionError(message, 409);
+    }
+
+    updateWorkflowRunState(runContext, workflowActionKey, entry.slug, {
+      ...input,
+      series: entry.slug,
+    }, plan, stepStates);
   }
 
-  const message = `${plan.label} completed. ${completedSteps.length} step(s) ran.`;
+  const message = `${plan.label} completed. ${stepStates.length} step(s) ran.`;
   logger(`[workflow] ${message}`);
+  updateWorkflowRunState(runContext, workflowActionKey, entry.slug, {
+    ...input,
+    series: entry.slug,
+  }, plan, stepStates);
 
   return {
     ok: true,
-    actionKey: normalizeText(actionKey).toLowerCase(),
+    actionKey: workflowActionKey,
     seriesConfigKey: entry.slug,
     artifactPath: lastExecution?.artifactPath || null,
     result: {
@@ -2296,9 +2663,12 @@ async function executeWorkflowAction(actionKey, input = {}, runContext = null) {
       workflowLabel: plan.label,
       dryRun: resolveWorkflowDryRun(input),
       stepsRequested: plan.steps.length,
-      stepsCompleted: completedSteps.length,
+      stepsCompleted: stepStates.filter((candidate) => candidate.status === "completed").length,
       skippedSteps: plan.skippedCount || 0,
-      completedSteps,
+      startFromStepKey: plan.startFromStepKey || null,
+      startFromStepLabel: plan.startFromStepLabel || null,
+      completedSteps: stepStates.map((candidate) => ({ ...candidate })),
+      workflowPlanSteps: plan.summarySteps || [],
       message,
     },
     message,
@@ -2694,6 +3064,10 @@ async function executeLocalOpsActionInline(action, input, runContext) {
 
 async function runLocalOpsAction(actionKey, input = {}) {
   const action = normalizeText(actionKey).toLowerCase();
+  if (action === "cancel-run") {
+    return cancelQueuedBackgroundRun(input);
+  }
+
   if (isBackgroundAction(action)) {
     return enqueueBackgroundAction(action, input);
   }

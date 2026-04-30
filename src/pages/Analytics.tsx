@@ -94,7 +94,57 @@ type RequestableSeriesEntry = SeriesWorkspaceCard & {
   currentAccessTone: "none" | "viewer" | "admin";
 };
 
-const EXAMPLE_SEARCHES = ["Shreyak Porecha", "Nikhil Natarajan"];
+type FeaturedSeriesPlayer = {
+  displayName: string;
+  playerId: number;
+  divisionId: number | null;
+  teamName: string;
+  divisionLabel: string;
+  roleLabel: string;
+};
+
+const FEATURED_SERIES_PLAYERS: Record<string, FeaturedSeriesPlayer[]> = {
+  "bay-area-usac-hub-2026": [
+    {
+      displayName: "Shreyak Porecha",
+      playerId: 176,
+      divisionId: 3,
+      teamName: "DCL LEGENDS",
+      divisionLabel: "U15 Phase 2 Div 1",
+      roleLabel: "Bowling All-Rounder",
+    },
+    {
+      displayName: "Nikhil Natarajan",
+      playerId: 177,
+      divisionId: 3,
+      teamName: "BCA BRAVEHEARTS",
+      divisionLabel: "U15 Phase 2 Div 1",
+      roleLabel: "Bowling All-Rounder",
+    },
+  ],
+  "bay-area-youth-cricket-hub-2025-milc-2025-27": [
+    {
+      displayName: "Unmukt Chand",
+      playerId: 732,
+      divisionId: 33,
+      teamName: "Kings XI Dallas",
+      divisionLabel: "All Divisions",
+      roleLabel: "Batter",
+    },
+    {
+      displayName: "Aaron Johnson",
+      playerId: 1030,
+      divisionId: 33,
+      teamName: "San Ramon Grizzlies",
+      divisionLabel: "All Divisions",
+      roleLabel: "Bowling All-Rounder",
+    },
+  ],
+};
+
+const INTELLIGENCE_FIRST_SERIES = new Set([
+  "bay-area-youth-cricket-hub-2025-milc-2025-27",
+]);
 const LANDING_HERO_STRIP = [
   {
     label: "First Use Case",
@@ -374,6 +424,15 @@ function buildAnalyticsSearchParams(searchQuery?: string, seriesConfigKey?: stri
   return params;
 }
 
+function getFeaturedSeriesPlayers(seriesConfigKey: string) {
+  return FEATURED_SERIES_PLAYERS[seriesConfigKey] ?? [];
+}
+
+function shouldPreferIntelligenceReport(seriesConfigKey?: string | null) {
+  const normalizedConfigKey = seriesConfigKey?.trim();
+  return normalizedConfigKey ? INTELLIGENCE_FIRST_SERIES.has(normalizedConfigKey) : false;
+}
+
 function normalizeSeriesCards(summary: CricketDashboardSummaryResponse | null): SeriesWorkspaceCard[] {
   if (!summary) {
     return [];
@@ -584,6 +643,7 @@ function SearchResultCard({
   const teamCoverage = joinCoverageLabels(result.teamNames, "Team not available");
   const divisionCoverage = joinCoverageLabels(result.divisionLabels);
   const roleCoverage = joinCoverageLabels(result.roleLabels, "Player");
+  const preferIntelligenceReport = shouldPreferIntelligenceReport(seriesConfigKey);
   const routeState: CricketPlayerReportRouteState = {
     displayName: result.displayName,
     teamName: teamCoverage,
@@ -618,18 +678,37 @@ function SearchResultCard({
         </div>
 
         <div className="flex w-full flex-col gap-3 md:w-auto">
-          <Button asChild className="w-full md:w-auto">
-            <Link to={inAppReportUrl} state={routeState}>
-              Executive Report
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="w-full md:w-auto">
-            <Link to={intelligenceReportUrl} state={routeState}>
-              Player Intelligence
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
+          {preferIntelligenceReport ? (
+            <>
+              <Button asChild className="w-full md:w-auto">
+                <Link to={intelligenceReportUrl} state={routeState}>
+                  Player Intelligence
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full md:w-auto">
+                <Link to={inAppReportUrl} state={routeState}>
+                  Executive Report
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild className="w-full md:w-auto">
+                <Link to={inAppReportUrl} state={routeState}>
+                  Executive Report
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full md:w-auto">
+                <Link to={intelligenceReportUrl} state={routeState}>
+                  Player Intelligence
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
       </CardHeader>
 
@@ -675,6 +754,7 @@ function SearchResultCard({
 
 type SeriesPlayerSearchPanelProps = {
   selectedSeries: SeriesWorkspaceCard;
+  featuredPlayers: FeaturedSeriesPlayer[];
   query: string;
   setQuery: (value: string) => void;
   status: SearchStatus;
@@ -682,12 +762,12 @@ type SeriesPlayerSearchPanelProps = {
   errorMessage: string | null;
   combinedResults: CombinedCricketPlayerSearchResult[];
   onSearch: (event: FormEvent<HTMLFormElement>) => void;
-  onExampleSearch: (value: string) => void;
   onRetrySearch: () => void;
 };
 
 function SeriesPlayerSearchPanel({
   selectedSeries,
+  featuredPlayers,
   query,
   setQuery,
   status,
@@ -695,7 +775,6 @@ function SeriesPlayerSearchPanel({
   errorMessage,
   combinedResults,
   onSearch,
-  onExampleSearch,
   onRetrySearch,
 }: SeriesPlayerSearchPanelProps) {
   return (
@@ -711,13 +790,39 @@ function SeriesPlayerSearchPanel({
             </h4>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {EXAMPLE_SEARCHES.map((name) => (
-              <Button key={name} type="button" variant="outline" size="sm" onClick={() => onExampleSearch(name)}>
-                {name}
-              </Button>
-            ))}
-          </div>
+          {featuredPlayers.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {featuredPlayers.map((player) => {
+                const intelligenceReportUrl = getRootCricketPlayerIntelligenceRoute(
+                  {
+                    playerId: player.playerId,
+                    divisionId: player.divisionId,
+                  },
+                  {
+                    searchQuery: player.displayName,
+                    seriesConfigKey: selectedSeries.configKey,
+                  }
+                );
+                const routeState: CricketPlayerReportRouteState = {
+                  displayName: player.displayName,
+                  teamName: player.teamName,
+                  divisionLabel: player.divisionLabel,
+                  roleLabel: player.roleLabel,
+                  searchQuery: player.displayName,
+                  seriesConfigKey: selectedSeries.configKey,
+                  seriesName: selectedSeries.seriesName,
+                };
+
+                return (
+                  <Button key={player.playerId} asChild type="button" variant="outline" size="sm">
+                    <Link to={intelligenceReportUrl} state={routeState}>
+                      {player.displayName}
+                    </Link>
+                  </Button>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
 
         <form className="flex flex-col gap-3 sm:flex-row" onSubmit={onSearch}>
@@ -823,7 +928,6 @@ type SeriesWorkspaceOverviewProps = {
   errorMessage: string | null;
   combinedResults: CombinedCricketPlayerSearchResult[];
   onSearch: (event: FormEvent<HTMLFormElement>) => void;
-  onExampleSearch: (value: string) => void;
   onRetrySearch: () => void;
 };
 
@@ -841,7 +945,6 @@ function SeriesWorkspaceOverview({
   errorMessage,
   combinedResults,
   onSearch,
-  onExampleSearch,
   onRetrySearch,
 }: SeriesWorkspaceOverviewProps) {
   const hasSeriesCards = seriesCards.length > 0;
@@ -1043,6 +1146,7 @@ function SeriesWorkspaceOverview({
                 <div className="mt-6">
                   <SeriesPlayerSearchPanel
                     selectedSeries={seriesCard}
+                    featuredPlayers={getFeaturedSeriesPlayers(seriesCard.configKey)}
                     query={query}
                     setQuery={setQuery}
                     status={status}
@@ -1050,7 +1154,6 @@ function SeriesWorkspaceOverview({
                     errorMessage={errorMessage}
                     combinedResults={combinedResults}
                     onSearch={onSearch}
-                    onExampleSearch={onExampleSearch}
                     onRetrySearch={onRetrySearch}
                   />
                 </div>
@@ -2031,23 +2134,6 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     setSearchParams(buildAnalyticsSearchParams(trimmedQuery, selectedSeriesKey));
   };
 
-  const handleExampleSearch = (value: string) => {
-    setQuery(value);
-
-    if (value === currentUrlQuery) {
-      if (!selectedSeriesKey) {
-        setErrorMessage("Live series context is unavailable right now.");
-        setStatus("error");
-        return;
-      }
-
-      void runSearch(value, selectedSeriesKey);
-      return;
-    }
-
-    setSearchParams(buildAnalyticsSearchParams(value, selectedSeriesKey));
-  };
-
   const handleRetrySearch = () => {
     if (lastQuery.length >= 3 && selectedSeriesKey) {
       void runSearch(lastQuery, selectedSeriesKey);
@@ -2440,7 +2526,6 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                 errorMessage={errorMessage}
                 combinedResults={combinedResults}
                 onSearch={handleSearch}
-                onExampleSearch={handleExampleSearch}
                 onRetrySearch={handleRetrySearch}
               />
             </div>

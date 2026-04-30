@@ -24,6 +24,12 @@ PORT=4012 npm run ops:ui:start
 
 Then open `http://127.0.0.1:4012/local-ops` and use the series action buttons.
 
+The localhost console now shows:
+
+- whether the selected series is currently live or still mid-refresh
+- which recompute or validation step is next
+- the latest queue summaries written by the worker-side refresh processors
+
 ## Series-wide refresh
 
 Terminal:

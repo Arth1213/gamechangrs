@@ -11,6 +11,13 @@ Use one of these:
 1. Terminal commands from inside `bay-area-u15`
 2. Localhost console at `http://127.0.0.1:<port>/local-ops`
 
+The localhost console now includes:
+
+- per-series workflow tracks
+- current artifact-backed step status
+- a recommended next action for the selected series
+- queue summary visibility for the local workers
+
 Start the console with:
 
 ```bash

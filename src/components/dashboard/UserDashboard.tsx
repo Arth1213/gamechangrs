@@ -403,14 +403,14 @@ export const UserDashboard = () => {
         </div>
 
         <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-          <Link to="/techniqueai" className="group">
+          <Link to="/techniqueai" className="group block h-full">
             <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-elevated">
               <div className="mb-6 flex items-start gap-3">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15">
                   <Zap className="h-7 w-7 text-primary" />
                 </div>
               </div>
-              <div className="space-y-4">
+              <div className="flex flex-1 flex-col gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Video analysis</p>
                   <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Technique AI</h2>
@@ -424,7 +424,7 @@ export const UserDashboard = () => {
                       : "No video analysis yet."}
                   </p>
                 </div>
-                <div className="flex items-center justify-between text-sm font-medium text-primary">
+                <div className="mt-auto flex items-center justify-between text-sm font-medium text-primary">
                   <span>{hasTechniqueActivity ? "Open Technique AI" : "Try Technique AI"}</span>
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </div>
@@ -432,14 +432,14 @@ export const UserDashboard = () => {
             </div>
           </Link>
 
-          <Link to="/analytics" className="group">
+          <Link to="/analytics" className="group block h-full">
             <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-elevated">
               <div className="mb-6 flex items-start gap-3">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-400/15">
                   <BarChart3 className="h-7 w-7 text-emerald-300" />
                 </div>
               </div>
-              <div className="space-y-4">
+              <div className="flex flex-1 flex-col gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-emerald-300/80">Selector intelligence</p>
                   <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Analytics</h2>
@@ -448,7 +448,7 @@ export const UserDashboard = () => {
                   <p className="font-display text-xl font-bold text-foreground">Live player reports</p>
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Series workspace</p>
                 </div>
-                <div className="flex items-center justify-between text-sm font-medium text-emerald-300">
+                <div className="mt-auto flex items-center justify-between text-sm font-medium text-emerald-300">
                   <span>Open Analytics</span>
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </div>
@@ -456,14 +456,14 @@ export const UserDashboard = () => {
             </div>
           </Link>
 
-          <Link to="/coaching-marketplace" className="group">
+          <Link to="/coaching-marketplace" className="group block h-full">
             <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-accent/25 hover:shadow-elevated">
               <div className="mb-6 flex items-start gap-3">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/15">
                   <Brain className="h-7 w-7 text-accent" />
                 </div>
               </div>
-              <div className="space-y-4">
+              <div className="flex flex-1 flex-col gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-accent/80">Coach and player network</p>
                   <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Coaching Marketplace</h2>
@@ -473,7 +473,7 @@ export const UserDashboard = () => {
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Active profiles</p>
                   <p className="mt-2 text-sm text-muted-foreground">{loading ? "Loading..." : coachingDetail}</p>
                 </div>
-                <div className="flex items-center justify-between text-sm font-medium text-accent">
+                <div className="mt-auto flex items-center justify-between text-sm font-medium text-accent">
                   <span>{hasCoachingActivity ? "Open Coaching Marketplace" : "Try Coaching Marketplace"}</span>
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </div>
@@ -481,14 +481,14 @@ export const UserDashboard = () => {
             </div>
           </Link>
 
-          <Link to="/marketplace" className="group">
+          <Link to="/marketplace" className="group block h-full">
             <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-accent/25 hover:shadow-elevated">
               <div className="mb-6 flex items-start gap-3">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-400/15">
                   <ShoppingBag className="h-7 w-7 text-amber-300" />
                 </div>
               </div>
-              <div className="space-y-4">
+              <div className="flex flex-1 flex-col gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-amber-300/80">Buy, sell, donate</p>
                   <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Gear Marketplace</h2>
@@ -498,7 +498,7 @@ export const UserDashboard = () => {
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Active listings</p>
                   <p className="mt-2 text-sm text-muted-foreground">{latestListing ? latestListing.title : "No listings yet."}</p>
                 </div>
-                <div className="flex items-center justify-between text-sm font-medium text-amber-300">
+                <div className="mt-auto flex items-center justify-between text-sm font-medium text-amber-300">
                   <span>{hasGearActivity ? "Open Gear Marketplace" : "Try Gear Marketplace"}</span>
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </div>

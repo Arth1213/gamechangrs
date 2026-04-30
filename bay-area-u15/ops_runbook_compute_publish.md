@@ -32,6 +32,13 @@ Then open `http://127.0.0.1:4012/local-ops` and use:
 - `Validate publish readiness`
 - `Publish current DB state`
 
+The localhost console workflow panel now makes this explicit per series by showing:
+
+- whether onboarding is already complete
+- whether a refresh has introduced stale compute steps
+- whether validation or publish needs to be rerun
+- the exact terminal command for the recommended next action
+
 ## Locked execution order
 
 1. fact ingest or refresh completes

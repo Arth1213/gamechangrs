@@ -112,8 +112,10 @@ function renderLocalOpsConsolePage({ overview, port }) {
       }
       .panel {
         padding: 22px;
+        min-width: 0;
       }
       .span-12 { grid-column: span 12; }
+      .span-8 { grid-column: span 8; }
       .span-7 { grid-column: span 7; }
       .span-5 { grid-column: span 5; }
       .span-6 { grid-column: span 6; }
@@ -141,12 +143,23 @@ function renderLocalOpsConsolePage({ overview, port }) {
         display: grid;
         gap: 12px;
       }
+      .series-card-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        align-items: flex-start;
+      }
       .series-card h3 {
         margin: 0;
         font-size: 18px;
       }
       .series-card small {
         color: var(--muted);
+      }
+      .series-note {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
       }
       .badge-row {
         display: flex;
@@ -189,6 +202,201 @@ function renderLocalOpsConsolePage({ overview, port }) {
       .stat span {
         font-size: 20px;
         font-weight: 600;
+      }
+      .workflow-guide-grid,
+      .workflow-track-grid,
+      .queue-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 14px;
+      }
+      .workflow-guide,
+      .workflow-track,
+      .queue-card {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 18px;
+        display: grid;
+        gap: 12px;
+      }
+      .workflow-guide h3,
+      .workflow-track h3,
+      .queue-card h3 {
+        margin: 0;
+        font-size: 17px;
+      }
+      .workflow-guide p,
+      .workflow-track p,
+      .queue-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+      .workflow-list {
+        display: grid;
+        gap: 10px;
+      }
+      .workflow-list-item {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(7, 16, 28, 0.45);
+        padding: 12px 14px;
+        display: grid;
+        gap: 6px;
+      }
+      .workflow-list-item strong {
+        font-size: 13px;
+      }
+      .workflow-list-item span,
+      .workflow-list-item code {
+        color: var(--muted);
+        font-size: 12px;
+        word-break: break-word;
+      }
+      .selected-series-shell {
+        display: grid;
+        gap: 18px;
+      }
+      .selected-series-top {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 14px;
+      }
+      .selected-series-top h3 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+      .selected-series-top p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .selected-series-meta {
+        min-width: 260px;
+        display: grid;
+        gap: 10px;
+      }
+      .selected-series-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+      .selected-series-actions code {
+        display: block;
+        max-width: 100%;
+        word-break: break-word;
+      }
+      .workflow-track-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .workflow-track-header small {
+        color: var(--muted);
+      }
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        border: 1px solid var(--line);
+        color: var(--muted);
+      }
+      .status-pill.complete,
+      .workflow-step.complete .status-pill {
+        color: var(--good);
+        border-color: rgba(105, 225, 182, 0.35);
+      }
+      .status-pill.in_progress,
+      .status-pill.stale,
+      .status-pill.standby,
+      .workflow-step.stale .status-pill,
+      .workflow-step.standby .status-pill {
+        color: var(--warn);
+        border-color: rgba(245, 183, 107, 0.35);
+      }
+      .status-pill.blocked,
+      .workflow-step.blocked .status-pill {
+        color: var(--bad);
+        border-color: rgba(255, 138, 138, 0.35);
+      }
+      .workflow-step-grid {
+        display: grid;
+        gap: 10px;
+      }
+      .workflow-step {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(7, 16, 28, 0.48);
+        padding: 12px 14px;
+        display: grid;
+        gap: 8px;
+      }
+      .workflow-step-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .workflow-step-header strong {
+        font-size: 13px;
+      }
+      .workflow-step p {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+      .workflow-step code {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        word-break: break-word;
+      }
+      .workflow-step.complete {
+        background: rgba(13, 41, 31, 0.32);
+      }
+      .workflow-step.stale,
+      .workflow-step.standby {
+        background: rgba(63, 42, 17, 0.28);
+      }
+      .workflow-step.blocked {
+        background: rgba(68, 24, 24, 0.3);
+      }
+      .queue-list {
+        display: grid;
+        gap: 10px;
+      }
+      .queue-item {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(7, 16, 28, 0.45);
+        padding: 12px 14px;
+        display: grid;
+        gap: 6px;
+      }
+      .queue-item strong {
+        font-size: 13px;
+      }
+      .queue-item small,
+      .queue-item span {
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .mono {
+        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+      }
+      .button-small {
+        padding: 8px 12px;
+        font-size: 12px;
       }
       form {
         display: grid;
@@ -294,7 +502,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
         color: var(--muted);
       }
       @media (max-width: 980px) {
-        .span-7, .span-5, .span-6, .span-4 { grid-column: span 12; }
+        .span-8, .span-7, .span-5, .span-6, .span-4 { grid-column: span 12; }
         .field-grid, .field-grid.three { grid-template-columns: 1fr; }
       }
     </style>
@@ -332,8 +540,56 @@ function renderLocalOpsConsolePage({ overview, port }) {
       <div class="grid">
         <section class="panel span-12">
           <h2>Series Overview</h2>
-          <p class="section-copy">Current local registry state and the latest validation/publish artifacts for each configured series.</p>
+          <p class="section-copy">Current local registry state, current workflow status, and the next safe operator step for each configured series.</p>
           <div id="series-grid" class="series-grid"></div>
+        </section>
+
+        <section class="panel span-12">
+          <h2>Workflow Tracks</h2>
+          <p class="section-copy">These are the locked local-only operator paths. The buttons still call the existing low-level actions one step at a time; this page now tells you which step should run next.</p>
+          <div class="workflow-guide-grid">
+            <article class="workflow-guide">
+              <h3>New Series</h3>
+              <p>Use this when onboarding a new series from source probe to live publish.</p>
+              <div class="workflow-list">
+                <div class="workflow-list-item"><strong>1. Probe</strong><span>Probe the source URL and confirm executive/intelligence viability.</span></div>
+                <div class="workflow-list-item"><strong>2. Register</strong><span>Register the series locally under the correct entity with the source reference locked.</span></div>
+                <div class="workflow-list-item"><strong>3. Stage → Run</strong><span>Stage discovery and inventory, then run initial ingest for match facts.</span></div>
+                <div class="workflow-list-item"><strong>4. Compute → Validate → Publish</strong><span>Build season, composite, intelligence, then validate and publish.</span></div>
+              </div>
+            </article>
+            <article class="workflow-guide">
+              <h3>Refresh Existing</h3>
+              <p>Use this when new matches land or when a specific match needs to be refreshed.</p>
+              <div class="workflow-list">
+                <div class="workflow-list-item"><strong>1. Refresh</strong><span>Run series refresh or a one-match refresh locally.</span></div>
+                <div class="workflow-list-item"><strong>2. Recompute</strong><span>Rebuild season aggregation, composite scoring, and player intelligence.</span></div>
+                <div class="workflow-list-item"><strong>3. Validate</strong><span>Check publish readiness again after the refreshed data path.</span></div>
+                <div class="workflow-list-item"><strong>4. Publish</strong><span>Apply the refreshed dataset only after the validation gate is clean.</span></div>
+              </div>
+            </article>
+            <article class="workflow-guide">
+              <h3>Operator Rules</h3>
+              <p>Keep refresh and onboarding local. The hosted frontend remains a read-only consumer of prepared outputs.</p>
+              <div class="workflow-list">
+                <div class="workflow-list-item"><strong>Hosted boundary</strong><span>No scrape, no raw ingest, no recompute orchestration from the live app.</span></div>
+                <div class="workflow-list-item"><strong>Local boundary</strong><span>Probe, register, stage, run, refresh, compute, validate, and publish from this machine.</span></div>
+                <div class="workflow-list-item"><strong>Debug rule</strong><span>Use artifact timestamps, queue summaries, and the selected-series workflow below before rerunning steps blindly.</span></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel span-8">
+          <h2>Selected Series Workflow</h2>
+          <p class="section-copy">This is the operator view for the series currently selected in the series actions form.</p>
+          <div id="selected-series-workflow" class="selected-series-shell"></div>
+        </section>
+
+        <section class="panel span-4">
+          <h2>Queue Visibility</h2>
+          <p class="section-copy">Most recent worker-side queue summaries written under <code>storage/exports</code>.</p>
+          <div id="queue-grid" class="queue-grid"></div>
         </section>
 
         <section class="panel span-5">
@@ -482,7 +738,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
 
         <section class="panel span-6">
           <h2>Runbooks</h2>
-          <p class="section-copy">These markdown runbooks remain the source of truth for the local operator flow.</p>
+          <p class="section-copy">The markdown runbooks remain the explicit source of truth. The workflow panels above now mirror that order and the current artifact state.</p>
           <div class="stats">
             <div class="stat"><b>Runbook</b><span>ops_runbook_new_series.md</span></div>
             <div class="stat"><b>Runbook</b><span>ops_runbook_manual_refresh.md</span></div>
@@ -495,7 +751,7 @@ function renderLocalOpsConsolePage({ overview, port }) {
           <p class="section-copy">This surface is intentionally local-only. It does not change the hosted Game-Changrs frontend unless you run a real publish operation for a validated series.</p>
           <div class="stats">
             <div class="stat"><b>Hosted boundary</b><span>Read-only consumer</span></div>
-            <div class="stat"><b>Local boundary</b><span>Probe → Register → Stage → Refresh → Compute → Validate → Publish</span></div>
+            <div class="stat"><b>Local boundary</b><span>Probe → Register → Stage → Run/Refresh → Compute → Validate → Publish</span></div>
             <div class="stat"><b>Access rule</b><span>Requires LOCAL_OPS_ENABLE_UI and loopback origin</span></div>
           </div>
         </section>
@@ -504,11 +760,44 @@ function renderLocalOpsConsolePage({ overview, port }) {
 
     <script>
       const initialOverview = ${initialOverviewJson};
-
+      let currentOverview = initialOverview;
       const seriesGrid = document.getElementById("series-grid");
       const seriesSelect = document.getElementById("series-select");
+      const selectedSeriesWorkflow = document.getElementById("selected-series-workflow");
+      const queueGrid = document.getElementById("queue-grid");
       const statusBox = document.getElementById("status-box");
       const resultBox = document.getElementById("result-box");
+
+      function formatTimestamp(value) {
+        if (!value) return "Not run yet";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return String(value);
+        return new Intl.DateTimeFormat("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(date);
+      }
+
+      function statusLabel(status) {
+        switch (status) {
+          case "complete":
+            return "Complete";
+          case "in_progress":
+            return "In Progress";
+          case "blocked":
+            return "Blocked";
+          case "stale":
+            return "Needs Rerun";
+          case "standby":
+            return "Standby";
+          case "pending":
+          default:
+            return "Pending";
+        }
+      }
 
       function badgeToneForSeries(series) {
         const validation = series?.artifacts?.validation?.summary;
@@ -525,11 +814,152 @@ function renderLocalOpsConsolePage({ overview, port }) {
           .replace(/'/g, "&#39;");
       }
 
+      function getSelectedSeries(payload) {
+        const series = Array.isArray(payload?.series) ? payload.series : [];
+        if (!series.length) return null;
+        return series.find((entry) => entry.slug === seriesSelect.value) || series[0];
+      }
+
+      function renderWorkflowTrack(track) {
+        if (!track) return "";
+        return \`
+          <article class="workflow-track">
+            <div class="workflow-track-header">
+              <div>
+                <h3>\${escapeHtmlText(track.label || "Workflow")}</h3>
+                <small>\${escapeHtmlText(statusLabel(track.status))}</small>
+              </div>
+              <span class="status-pill \${escapeHtmlText(track.status || "pending")}">\${escapeHtmlText(statusLabel(track.status))}</span>
+            </div>
+            <div class="workflow-step-grid">
+              \${(Array.isArray(track.steps) ? track.steps : []).map((step) => \`
+                <div class="workflow-step \${escapeHtmlText(step.status || "pending")}">
+                  <div class="workflow-step-header">
+                    <div>
+                      <strong>\${escapeHtmlText(step.label || step.key || "Step")}</strong>
+                      \${step.optional ? '<small class="hint">Optional</small>' : ""}
+                    </div>
+                    <span class="status-pill \${escapeHtmlText(step.status || "pending")}">\${escapeHtmlText(statusLabel(step.status))}</span>
+                  </div>
+                  <p>\${escapeHtmlText(step.summary || "No summary available.")}</p>
+                  <small class="hint">Updated: \${escapeHtmlText(formatTimestamp(step.updatedAt))}</small>
+                  \${step.command ? \`<code class="mono">\${escapeHtmlText(step.command)}</code>\` : ""}
+                </div>
+              \`).join("")}
+            </div>
+          </article>
+        \`;
+      }
+
+      function renderSelectedSeriesWorkflow(payload) {
+        const selectedSeries = getSelectedSeries(payload);
+        if (!selectedSeries) {
+          selectedSeriesWorkflow.innerHTML = '<div class="status-box">No registered series found in config/leagues.yaml.</div>';
+          return;
+        }
+
+        const workflow = selectedSeries.workflow || {};
+        const nextAction = workflow.nextRecommendedAction || null;
+        const validation = selectedSeries?.artifacts?.validation?.summary;
+        const publish = selectedSeries?.artifacts?.publish?.summary;
+
+        const nextActionButton = nextAction
+          ? \`<button
+              type="button"
+              class="\${nextAction.standby ? "button-secondary" : "button-primary"}"
+              data-action="\${escapeHtmlText(nextAction.action || "")}"
+              data-form="series-ops-form"
+              data-payload-overrides='\${escapeHtmlText(JSON.stringify(nextAction.payloadOverrides || {}))}'
+              \${nextAction.payloadOverrides?.dryRun === false ? 'data-confirm-live="This will run a live publish for the selected series. Continue?"' : ""}
+            >\${escapeHtmlText(nextAction.label || "Run Next Step")}</button>\`
+          : "";
+
+        selectedSeriesWorkflow.innerHTML = \`
+          <div class="selected-series-top">
+            <div>
+              <h3>\${escapeHtmlText(selectedSeries.label || selectedSeries.slug)}</h3>
+              <p>\${escapeHtmlText(workflow.headline || "Workflow summary unavailable.")}</p>
+              <p class="series-note">\${escapeHtmlText(workflow.note || "")}</p>
+              <div class="badge-row" style="margin-top: 12px;">
+                <span class="badge \${selectedSeries.enabled ? "good" : "warn"}">\${selectedSeries.enabled ? "Live in hosted app" : "Local only"}</span>
+                <span class="badge \${badgeToneForSeries(selectedSeries)}">\${validation?.publishReady ? "Publish Ready" : "Validation Pending"}</span>
+                <span class="badge">\${escapeHtmlText(selectedSeries.sourceSystem || "source")}</span>
+                <span class="badge">\${escapeHtmlText(selectedSeries.targetAgeGroup || "Age group not set")}</span>
+              </div>
+            </div>
+            <div class="selected-series-meta">
+              <div class="meta-chip">
+                <b>Recommended Next Step</b>
+                <code>\${escapeHtmlText(nextAction?.command || "No immediate action required.")}</code>
+              </div>
+              <div class="meta-chip">
+                <b>Last Validation</b>
+                <code>\${escapeHtmlText(formatTimestamp(selectedSeries?.artifacts?.validation?.updatedAt))}</code>
+              </div>
+              <div class="meta-chip">
+                <b>Last Publish</b>
+                <code>\${escapeHtmlText(publish ? formatTimestamp(selectedSeries?.artifacts?.publish?.updatedAt) : "Not published yet")}</code>
+              </div>
+            </div>
+          </div>
+          <div class="selected-series-actions">
+            \${nextActionButton}
+            <button type="button" class="button-secondary" data-action="refreshOverview">Refresh Overview</button>
+          </div>
+          <div class="workflow-track-grid">
+            \${renderWorkflowTrack(workflow.onboarding)}
+            \${renderWorkflowTrack(workflow.refresh)}
+            \${renderWorkflowTrack(workflow.publish)}
+          </div>
+        \`;
+      }
+
+      function renderQueueGrid(payload) {
+        const queueCards = [
+          {
+            label: "Series Ops Queue",
+            queue: payload?.queues?.seriesOperations || null,
+          },
+          {
+            label: "Manual Refresh Queue",
+            queue: payload?.queues?.manualRefresh || null,
+          },
+        ];
+
+        queueGrid.innerHTML = queueCards.map((entry) => {
+          const queue = entry.queue;
+          const requests = Array.isArray(queue?.summary?.requests) ? queue.summary.requests : [];
+          return \`
+            <article class="queue-card">
+              <div class="workflow-track-header">
+                <div>
+                  <h3>\${escapeHtmlText(entry.label)}</h3>
+                  <small>\${escapeHtmlText(queue ? formatTimestamp(queue.updatedAt) : "No summary yet")}</small>
+                </div>
+                <span class="status-pill \${queue ? "complete" : "standby"}">\${escapeHtmlText(queue ? \`\${queue.summary.processedCount || 0} processed\` : "No data")}</span>
+              </div>
+              \${requests.length ? \`
+                <div class="queue-list">
+                  \${requests.map((request) => \`
+                    <div class="queue-item">
+                      <strong>\${escapeHtmlText(request.seriesConfigKey || request.operationKey || request.requestId || "Request")}</strong>
+                      <small>\${escapeHtmlText(request.requestStatus || "status unknown")}</small>
+                      <span>\${escapeHtmlText(request.resultSummary || "No summary available.")}</span>
+                    </div>
+                  \`).join("")}
+                </div>
+              \` : '<p>No processed requests have been written into this summary yet.</p>'}
+            </article>
+          \`;
+        }).join("");
+      }
+
       function renderSeriesOverview(payload) {
         const series = Array.isArray(payload?.series) ? payload.series : [];
         seriesGrid.innerHTML = series.map((entry) => {
           const validation = entry?.artifacts?.validation?.summary;
           const publish = entry?.artifacts?.publish?.summary;
+          const workflow = entry?.workflow || {};
           const tone = badgeToneForSeries(entry);
           const validationLabel = validation
             ? validation.publishReady
@@ -539,11 +969,15 @@ function renderLocalOpsConsolePage({ overview, port }) {
           const parsed = validation?.coverage
             ? \`\${validation.coverage.parsedMatchCount || 0} / \${validation.coverage.matchCount || 0}\`
             : "-";
+          const nextAction = workflow.nextRecommendedAction;
           return \`
             <article class="series-card">
-              <div>
-                <h3>\${escapeHtmlText(entry.label || entry.slug)}</h3>
-                <small>\${escapeHtmlText(entry.slug)}</small>
+              <div class="series-card-top">
+                <div>
+                  <h3>\${escapeHtmlText(entry.label || entry.slug)}</h3>
+                  <small>\${escapeHtmlText(entry.slug)}</small>
+                </div>
+                <button type="button" class="button-secondary button-small" data-use-series="\${escapeHtmlText(entry.slug)}">Use Series</button>
               </div>
               <div class="badge-row">
                 <span class="badge \${entry.enabled ? "good" : "warn"}">\${entry.enabled ? "Enabled" : "Disabled"}</span>
@@ -564,6 +998,13 @@ function renderLocalOpsConsolePage({ overview, port }) {
                   <span>\${escapeHtmlText(publish?.dryRun ? "Dry Run" : publish?.ok ? "Applied" : "-")}</span>
                 </div>
               </div>
+              <div class="series-note">
+                \${escapeHtmlText(workflow.headline || "No workflow summary available.")}
+              </div>
+              <div class="series-note">
+                \${escapeHtmlText(nextAction?.reason || workflow.note || "")}
+              </div>
+              \${nextAction ? \`<code class="mono">\${escapeHtmlText(nextAction.command || "")}</code>\` : ""}
             </article>
           \`;
         }).join("");
@@ -572,7 +1013,12 @@ function renderLocalOpsConsolePage({ overview, port }) {
         seriesSelect.innerHTML = series.map((entry) => \`<option value="\${escapeHtmlText(entry.slug)}">\${escapeHtmlText(entry.label || entry.slug)}</option>\`).join("");
         if (series.some((entry) => entry.slug === currentValue)) {
           seriesSelect.value = currentValue;
+        } else if (series[0]) {
+          seriesSelect.value = series[0].slug;
         }
+
+        renderSelectedSeriesWorkflow(payload);
+        renderQueueGrid(payload);
       }
 
       function serializeForm(form) {
@@ -591,17 +1037,35 @@ function renderLocalOpsConsolePage({ overview, port }) {
         return payload;
       }
 
+      function syncSeriesSelection(seriesSlug) {
+        if (!seriesSlug) return;
+        seriesSelect.value = seriesSlug;
+        renderSelectedSeriesWorkflow(currentOverview);
+      }
+
       async function refreshOverview() {
         const response = await fetch("/api/local-ops/overview");
         const payload = await response.json();
+        currentOverview = payload;
         renderSeriesOverview(payload);
       }
 
       async function runAction(action, formId, button) {
+        if (action === "refreshOverview") {
+          await refreshOverview();
+          return;
+        }
+
         const form = document.getElementById(formId);
-        const payload = serializeForm(form);
+        const payload = form ? serializeForm(form) : {};
+        const payloadOverrides = button?.dataset?.payloadOverrides
+          ? JSON.parse(button.dataset.payloadOverrides)
+          : {};
+        Object.assign(payload, payloadOverrides);
         const dryRun = payload.dryRun === true;
-        const confirmation = button.dataset.confirmLive;
+        const confirmation = button.dataset.confirmLive || (action === "publish-series" && !dryRun
+          ? "This will publish the selected series locally. Continue?"
+          : "");
         if (confirmation && action === "publish-series" && !dryRun) {
           const confirmed = window.confirm(confirmation);
           if (!confirmed) return;
@@ -638,10 +1102,21 @@ function renderLocalOpsConsolePage({ overview, port }) {
         }
       }
 
-      document.querySelectorAll("button[data-action]").forEach((button) => {
-        button.addEventListener("click", () => {
-          runAction(button.dataset.action, button.dataset.form, button);
-        });
+      document.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-use-series], button[data-action]");
+        if (!button) return;
+
+        if (button.dataset.useSeries) {
+          syncSeriesSelection(button.dataset.useSeries);
+          return;
+        }
+
+        if (!button.dataset.action) return;
+        runAction(button.dataset.action, button.dataset.form, button);
+      });
+
+      seriesSelect.addEventListener("change", () => {
+        renderSelectedSeriesWorkflow(currentOverview);
       });
 
       renderSeriesOverview(initialOverview);

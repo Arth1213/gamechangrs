@@ -30,6 +30,17 @@ function roundMetric(value, digits = 2) {
   return roundNumeric(numeric, digits);
 }
 
+function safeDivide(numerator, denominator) {
+  const left = toNumber(numerator, null);
+  const right = toNumber(denominator, null);
+
+  if (left === null || right === null || right === 0) {
+    return null;
+  }
+
+  return left / right;
+}
+
 function normalizeBucketLabel(value, fallback = "") {
   const normalized = normalizeText(value).toLowerCase();
   const map = {
@@ -61,6 +72,77 @@ function normalizeBucketLabel(value, fallback = "") {
         .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
         .join(" ")
     : "Unknown";
+}
+
+function formatPhaseBucketLabel(value) {
+  const normalized = normalizeText(value).toLowerCase();
+  switch (normalized) {
+    case "powerplay":
+      return "Powerplay";
+    case "middle":
+      return "Middle overs";
+    case "death":
+      return "Death overs";
+    case "overall":
+      return "Overall";
+    default:
+      return normalizeBucketLabel(value, value);
+  }
+}
+
+function formatRoleBucketLabel(value) {
+  const normalized = normalizeText(value).toLowerCase();
+  switch (normalized) {
+    case "opener":
+      return "opener";
+    case "top_order":
+      return "top-order batter";
+    case "middle_order":
+      return "middle-order batter";
+    case "lower_order":
+      return "lower-order batter";
+    default:
+      return "flex role";
+  }
+}
+
+function averageNumbers(values, digits = 0) {
+  const numeric = values
+    .map((value) => toNumber(value, null))
+    .filter((value) => value !== null);
+
+  if (!numeric.length) {
+    return null;
+  }
+
+  return roundMetric(
+    numeric.reduce((sum, value) => sum + value, 0) / numeric.length,
+    digits
+  );
+}
+
+function mostCommonValue(values) {
+  const counts = new Map();
+
+  for (const value of values) {
+    const normalized = normalizeText(value);
+    if (!normalized) {
+      continue;
+    }
+    counts.set(normalized, (counts.get(normalized) || 0) + 1);
+  }
+
+  let bestValue = "";
+  let bestCount = -1;
+
+  for (const [value, count] of counts.entries()) {
+    if (count > bestCount) {
+      bestValue = value;
+      bestCount = count;
+    }
+  }
+
+  return bestValue || "";
 }
 
 function formatBowlingStyle(row) {
@@ -316,6 +398,343 @@ function buildPressureProfile(profileRow) {
   };
 }
 
+async function loadSummaryStats(client, input) {
+  const scopeDivisionId = input.scopeType === "division" ? input.divisionId : null;
+  const scopeParams = [input.seriesId, scopeDivisionId, input.playerId];
+
+  const battingRow = (
+    await client.query(
+      `
+        select
+          count(distinct bi.match_id)::int as matches,
+          count(*)::int as innings,
+          count(*) filter (
+            where bi.is_not_out = true
+               or replace(lower(btrim(coalesce(bi.dismissal_type, ''))), ' ', '_') = 'not_out'
+          )::int as not_outs,
+          sum(coalesce(bi.runs, 0))::int as runs,
+          sum(coalesce(bi.balls_faced, 0))::int as balls_faced,
+          sum(coalesce(bi.fours, 0))::int as fours,
+          sum(coalesce(bi.sixes, 0))::int as sixes,
+          count(*) filter (where coalesce(bi.runs, 0) between 50 and 99)::int as fifties,
+          count(*) filter (where coalesce(bi.runs, 0) >= 100)::int as hundreds
+        from public.batting_innings bi
+        join public.match m on m.id = bi.match_id
+        where m.series_id = $1
+          and ($2::bigint is null or m.division_id is not distinct from $2)
+          and bi.player_id = $3
+          and bi.did_not_bat = false
+      `,
+      scopeParams
+    )
+  ).rows[0] || {};
+
+  const bowlingRow = (
+    await client.query(
+      `
+        select
+          count(distinct bs.match_id)::int as matches,
+          sum(coalesce(bs.legal_balls, 0))::int as legal_balls,
+          sum(coalesce(bs.runs_conceded, 0))::int as runs_conceded,
+          sum(coalesce(bs.wickets, 0))::int as wickets,
+          sum(coalesce(bs.wides, 0))::int as wides,
+          sum(coalesce(bs.no_balls, 0))::int as no_balls,
+          count(*) filter (where coalesce(bs.wickets, 0) = 4)::int as four_wicket_hauls,
+          count(*) filter (where coalesce(bs.wickets, 0) >= 5)::int as five_wicket_hauls
+        from public.bowling_spell bs
+        join public.match m on m.id = bs.match_id
+        where m.series_id = $1
+          and ($2::bigint is null or m.division_id is not distinct from $2)
+          and bs.player_id = $3
+      `,
+      scopeParams
+    )
+  ).rows[0] || {};
+
+  const bowlingBoundaryRow = (
+    await client.query(
+      `
+        select
+          count(*) filter (where be.batter_runs = 4)::int as fours_given,
+          count(*) filter (where be.batter_runs = 6)::int as sixes_given
+        from public.ball_event be
+        join public.match m on m.id = be.match_id
+        where m.series_id = $1
+          and ($2::bigint is null or m.division_id is not distinct from $2)
+          and be.bowler_player_id = $3
+      `,
+      scopeParams
+    )
+  ).rows[0] || {};
+
+  const fieldingRow = (
+    await client.query(
+      `
+        select
+          count(distinct fe.match_id)::int as matches,
+          count(*) filter (where lower(coalesce(fe.dismissal_type, '')) = 'caught')::int as catches,
+          count(*) filter (
+            where coalesce(fe.is_direct_run_out, false) = true
+               or coalesce(fe.is_indirect_run_out, false) = true
+               or lower(coalesce(fe.dismissal_type, '')) = 'run_out'
+          )::int as run_outs,
+          count(*) filter (where lower(coalesce(fe.dismissal_type, '')) = 'stumped')::int as stumpings
+        from public.fielding_event fe
+        join public.match m on m.id = fe.match_id
+        where m.series_id = $1
+          and ($2::bigint is null or m.division_id is not distinct from $2)
+          and fe.fielder_player_id = $3
+      `,
+      scopeParams
+    )
+  ).rows[0] || {};
+
+  const battingInnings = toInteger(battingRow.innings) || 0;
+  const battingNotOuts = toInteger(battingRow.not_outs) || 0;
+  const battingRuns = toInteger(battingRow.runs) || 0;
+  const battingBallsFaced = toInteger(battingRow.balls_faced) || 0;
+  const battingOuts = Math.max(battingInnings - battingNotOuts, 0);
+  const bowlingLegalBalls = toInteger(bowlingRow.legal_balls) || 0;
+  const bowlingRunsConceded = toInteger(bowlingRow.runs_conceded) || 0;
+
+  return {
+    batting: {
+      matches: toInteger(battingRow.matches) || 0,
+      innings: battingInnings,
+      runs: battingRuns,
+      ballsFaced: battingBallsFaced,
+      strikeRate: roundMetric(safeDivide(battingRuns * 100, battingBallsFaced)),
+      average: roundMetric(safeDivide(battingRuns, battingOuts)),
+      fifties: toInteger(battingRow.fifties) || 0,
+      hundreds: toInteger(battingRow.hundreds) || 0,
+      fours: toInteger(battingRow.fours) || 0,
+      sixes: toInteger(battingRow.sixes) || 0,
+      notOuts: battingNotOuts,
+    },
+    bowling: {
+      matches: toInteger(bowlingRow.matches) || 0,
+      wickets: toInteger(bowlingRow.wickets) || 0,
+      legalBalls: bowlingLegalBalls,
+      economy: roundMetric(safeDivide(bowlingRunsConceded * 6, bowlingLegalBalls)),
+      fourWicketHauls: toInteger(bowlingRow.four_wicket_hauls) || 0,
+      fiveWicketHauls: toInteger(bowlingRow.five_wicket_hauls) || 0,
+      wides: toInteger(bowlingRow.wides) || 0,
+      noBalls: toInteger(bowlingRow.no_balls) || 0,
+      foursGiven: toInteger(bowlingBoundaryRow.fours_given) || 0,
+      sixesGiven: toInteger(bowlingBoundaryRow.sixes_given) || 0,
+    },
+    fielding: {
+      matches: toInteger(fieldingRow.matches) || 0,
+      catches: toInteger(fieldingRow.catches) || 0,
+      runOuts: toInteger(fieldingRow.run_outs) || 0,
+      stumpings: toInteger(fieldingRow.stumpings) || 0,
+    },
+  };
+}
+
+async function loadAdditionalInsightContext(client, input) {
+  const scopeDivisionId = input.scopeType === "division" ? input.divisionId : null;
+  const params = [input.seriesId, scopeDivisionId, input.playerId];
+
+  const [
+    battingHeadToHeadResult,
+    bowlingHeadToHeadResult,
+    battingEntryResult,
+    bowlingEntryResult,
+    battingRoleResult,
+    bowlingRoleResult,
+  ] = await Promise.all([
+    client.query(
+      `
+        select
+          bw.display_name as opponent_name,
+          count(distinct pm.match_id)::int as match_count,
+          sum(pm.balls)::int as balls,
+          sum(pm.batter_runs)::int as runs,
+          sum(pm.dismissals)::int as dismissals
+        from public.player_matchup pm
+        join public.player bw on bw.id = pm.bowler_player_id
+        where pm.series_id = $1
+          and ($2::bigint is null or pm.division_id is not distinct from $2)
+          and pm.batter_player_id = $3
+        group by bw.display_name
+        order by sum(pm.balls) desc, sum(pm.batter_runs) desc, sum(pm.dismissals) asc, bw.display_name asc
+        limit 1
+      `,
+      params
+    ),
+    client.query(
+      `
+        select
+          bt.display_name as opponent_name,
+          count(distinct pm.match_id)::int as match_count,
+          sum(pm.balls)::int as balls,
+          sum(pm.total_runs)::int as runs_conceded,
+          sum(pm.dismissals)::int as dismissals
+        from public.player_matchup pm
+        join public.player bt on bt.id = pm.batter_player_id
+        where pm.series_id = $1
+          and ($2::bigint is null or pm.division_id is not distinct from $2)
+          and pm.bowler_player_id = $3
+        group by bt.display_name
+        order by sum(pm.balls) desc, sum(pm.dismissals) desc, sum(pm.total_runs) asc, bt.display_name asc
+        limit 1
+      `,
+      params
+    ),
+    client.query(
+      `
+        with first_ball as (
+          select distinct on (be.match_id, be.innings_id)
+            be.phase,
+            greatest(coalesce(be.score_after_runs, 0) - coalesce(be.total_runs, 0), 0)::int as score_before,
+            greatest(
+              coalesce(be.wickets_after, 0) - case when be.wicket_flag = true and be.player_out_id = $3 then 1 else 0 end,
+              0
+            )::int as wickets_before,
+            be.over_no
+          from public.ball_event be
+          join public.match m on m.id = be.match_id
+          where m.series_id = $1
+            and ($2::bigint is null or m.division_id is not distinct from $2)
+            and be.striker_player_id = $3
+          order by
+            be.match_id,
+            be.innings_id,
+            be.over_no,
+            be.ball_in_over,
+            coalesce(be.event_index, 0),
+            be.id
+        )
+        select *
+        from first_ball
+      `,
+      params
+    ),
+    client.query(
+      `
+        with first_ball as (
+          select distinct on (be.match_id, be.innings_id)
+            be.phase,
+            greatest(coalesce(be.score_after_runs, 0) - coalesce(be.total_runs, 0), 0)::int as score_before,
+            greatest(
+              coalesce(be.wickets_after, 0) - case when be.wicket_flag = true and be.wicket_credited_to_bowler = true then 1 else 0 end,
+              0
+            )::int as wickets_before,
+            be.over_no
+          from public.ball_event be
+          join public.match m on m.id = be.match_id
+          where m.series_id = $1
+            and ($2::bigint is null or m.division_id is not distinct from $2)
+            and be.bowler_player_id = $3
+          order by
+            be.match_id,
+            be.innings_id,
+            be.over_no,
+            be.ball_in_over,
+            coalesce(be.event_index, 0),
+            be.id
+        )
+        select *
+        from first_ball
+      `,
+      params
+    ),
+    client.query(
+      `
+        select
+          case
+            when bi.batting_position = 1 then 'opener'
+            when bi.batting_position between 2 and 3 then 'top_order'
+            when bi.batting_position between 4 and 6 then 'middle_order'
+            when bi.batting_position >= 7 then 'lower_order'
+            else 'unclassified'
+          end as role_bucket,
+          count(*)::int as innings_count,
+          round(avg(bi.batting_position)::numeric, 1) as average_position
+        from public.batting_innings bi
+        join public.match m on m.id = bi.match_id
+        where m.series_id = $1
+          and ($2::bigint is null or m.division_id is not distinct from $2)
+          and bi.player_id = $3
+          and bi.did_not_bat = false
+        group by role_bucket
+        order by innings_count desc, average_position asc nulls last, role_bucket asc
+      `,
+      params
+    ),
+    client.query(
+      `
+        select
+          coalesce(nullif(lower(btrim(be.phase)), ''), 'unknown') as phase_bucket,
+          count(*) filter (where be.is_legal_ball = true)::int as legal_balls,
+          sum(case when be.wicket_flag = true and be.wicket_credited_to_bowler = true then 1 else 0 end)::int as wickets
+        from public.ball_event be
+        join public.match m on m.id = be.match_id
+        where m.series_id = $1
+          and ($2::bigint is null or m.division_id is not distinct from $2)
+          and be.bowler_player_id = $3
+        group by phase_bucket
+        having count(*) filter (where be.is_legal_ball = true) > 0
+        order by legal_balls desc, wickets desc, phase_bucket asc
+      `,
+      params
+    ),
+  ]);
+
+  const battingHeadToHeadRow = battingHeadToHeadResult.rows[0] || null;
+  const bowlingHeadToHeadRow = bowlingHeadToHeadResult.rows[0] || null;
+
+  return {
+    headToHead: {
+      batting: battingHeadToHeadRow
+        ? {
+            opponentName: normalizeText(battingHeadToHeadRow.opponent_name),
+            matchCount: toInteger(battingHeadToHeadRow.match_count) || 0,
+            balls: toInteger(battingHeadToHeadRow.balls) || 0,
+            runs: toInteger(battingHeadToHeadRow.runs) || 0,
+            dismissals: toInteger(battingHeadToHeadRow.dismissals) || 0,
+          }
+        : null,
+      bowling: bowlingHeadToHeadRow
+        ? {
+            opponentName: normalizeText(bowlingHeadToHeadRow.opponent_name),
+            matchCount: toInteger(bowlingHeadToHeadRow.match_count) || 0,
+            balls: toInteger(bowlingHeadToHeadRow.balls) || 0,
+            runsConceded: toInteger(bowlingHeadToHeadRow.runs_conceded) || 0,
+            dismissals: toInteger(bowlingHeadToHeadRow.dismissals) || 0,
+          }
+        : null,
+    },
+    entryContext: {
+      batting: battingEntryResult.rows.map((row) => ({
+        phase: normalizeText(row.phase),
+        scoreBefore: toInteger(row.score_before) || 0,
+        wicketsBefore: toInteger(row.wickets_before) || 0,
+        overNo: toInteger(row.over_no) || 0,
+      })),
+      bowling: bowlingEntryResult.rows.map((row) => ({
+        phase: normalizeText(row.phase),
+        scoreBefore: toInteger(row.score_before) || 0,
+        wicketsBefore: toInteger(row.wickets_before) || 0,
+        overNo: toInteger(row.over_no) || 0,
+      })),
+    },
+    roleUsage: {
+      batting: battingRoleResult.rows.map((row) => ({
+        roleBucket: normalizeText(row.role_bucket),
+        inningsCount: toInteger(row.innings_count) || 0,
+        averagePosition: roundMetric(row.average_position, 1),
+      })),
+      bowling: bowlingRoleResult.rows.map((row) => ({
+        phaseBucket: normalizeText(row.phase_bucket),
+        legalBalls: toInteger(row.legal_balls) || 0,
+        wickets: toInteger(row.wickets) || 0,
+      })),
+    },
+  };
+}
+
 function buildLens(input) {
   const scopeMatchups = filterScopeRows(input.matchupRows, input.scopeType, input.divisionId);
   const scopeDismissals = filterScopeRows(input.dismissalRows, input.scopeType, input.divisionId);
@@ -429,7 +848,7 @@ function buildSignalCards(input) {
       tone: "good",
       metricLabel: "Strike Rate",
       metricValue: battingStrength.strikeRate,
-      note: `${battingStrength.runsScored} runs from ${battingStrength.legalBalls} balls across ${battingStrength.matchCount} matches.`,
+      note: `Scored ${battingStrength.runsScored} runs from ${battingStrength.legalBalls} balls against this bowling type across ${battingStrength.matchCount} matches.`,
     });
   }
 
@@ -440,7 +859,7 @@ function buildSignalCards(input) {
       tone: "good",
       metricLabel: "Economy",
       metricValue: bowlingStrength.economy,
-      note: `${bowlingStrength.wickets} wickets from ${bowlingStrength.legalBalls} balls with ${bowlingStrength.dotBallPct || 0}% dot balls.`,
+      note: `Took ${bowlingStrength.wickets} wickets from ${bowlingStrength.legalBalls} balls against this batter type and kept a ${bowlingStrength.dotBallPct || 0}% dot-ball rate.`,
     });
   }
 
@@ -451,7 +870,7 @@ function buildSignalCards(input) {
       tone: "watch",
       metricLabel: "Dismissals",
       metricValue: dismissalRisk.dismissalCount,
-      note: `${dismissalRisk.dismissalType || "wicket"} is the leading mode with ${dismissalRisk.averageRunsAtDismissal || 0} average runs at dismissal.`,
+      note: `Most wickets here have come through ${dismissalRisk.dismissalType || "this dismissal type"}, usually around ${dismissalRisk.averageRunsAtDismissal || 0} runs at dismissal.`,
     });
   }
 
@@ -462,47 +881,47 @@ function buildSignalCards(input) {
       tone: "watch",
       metricLabel: "Balls per dismissal",
       metricValue: battingRisk.ballsPerDismissal,
-      note: `${battingRisk.dismissals} dismissals from ${battingRisk.legalBalls} balls in this split.`,
+      note: `Dismissed ${battingRisk.dismissals} times in ${battingRisk.legalBalls} balls against this bowling type.`,
     });
   }
 
   const pressure = input.lens.pressureProfile;
   if (pressure?.boundaryAfterThreeDotsPct !== null && pressure?.boundaryAfterThreeDotsPct !== undefined) {
     pressureSignals.push({
-      label: "Boundary release after 3 dots",
+      label: "Boundary after dot-ball pressure",
       tone: pressure.boundaryAfterThreeDotsPct >= 15 ? "good" : "watch",
       metricLabel: "Percent",
       metricValue: pressure.boundaryAfterThreeDotsPct,
-      note: "Tracks whether dot-ball pressure still leaks a release boundary.",
+      note: "Shows how often the player still finds a boundary after dot-ball pressure builds.",
     });
   }
   if (pressure?.dismissalAfterThreeDotsPct !== null && pressure?.dismissalAfterThreeDotsPct !== undefined) {
     pressureSignals.push({
-      label: "Dismissal after 3 dots",
+      label: "Wicket after dot-ball pressure",
       tone: pressure.dismissalAfterThreeDotsPct >= 12 ? "watch" : "good",
       metricLabel: "Percent",
       metricValue: pressure.dismissalAfterThreeDotsPct,
-      note: "Signals how often sustained dot-ball pressure produces a wicket.",
+      note: "Shows how often dot-ball pressure turns into a wicket.",
     });
   }
   if (pressure?.battingHighLeverageStrikeRate !== null && pressure?.battingHighLeverageStrikeRate !== undefined) {
     pressureSignals.push({
-      label: "High-leverage batting",
+      label: "Batting in pressure overs",
       tone: pressure.battingHighLeverageStrikeRate >= 110 ? "good" : "watch",
       metricLabel: "Strike Rate",
       metricValue: pressure.battingHighLeverageStrikeRate,
-      note: "Series response when the leverage state rises late or under squeeze.",
+      note: "Shows how the player scores when the game pressure rises.",
     });
   } else if (
     pressure?.bowlingHighLeverageEconomy !== null
     && pressure?.bowlingHighLeverageEconomy !== undefined
   ) {
     pressureSignals.push({
-      label: "High-leverage bowling",
+      label: "Bowling in pressure overs",
       tone: pressure.bowlingHighLeverageEconomy <= 8 ? "good" : "watch",
       metricLabel: "Economy",
       metricValue: pressure.bowlingHighLeverageEconomy,
-      note: "Series control when the over context is high leverage.",
+      note: "Shows how well the player controls the game when pressure rises.",
     });
   }
 
@@ -520,45 +939,304 @@ function buildTacticalPlan(lens) {
   const battingRisk = pickRiskBattingSplit(lens.batting.byBowlerType);
   if (battingRisk) {
     battingPlan.push(
-      `Sustain ${battingRisk.splitLabel} exposure where possible. This is the lowest-stability batting split in the current intelligence sample.`
+      `Most vulnerable batting setup is against ${battingRisk.splitLabel} in the current live sample.`
     );
   }
 
   const dismissalRisk = lens.dismissals[0] || null;
   if (dismissalRisk) {
     battingPlan.push(
-      `${dismissalRisk.bowlerStyleLabel} has produced the leading dismissal pattern so far, especially via ${dismissalRisk.dismissalType || "wickets"}.`
+      `${dismissalRisk.bowlerStyleLabel} has produced the most dismissals so far, especially by ${dismissalRisk.dismissalType || "wickets"}.`
     );
   }
 
   if (lens.pressureProfile?.dismissalDotThreshold !== null && lens.pressureProfile?.dismissalDotThreshold !== undefined) {
     battingPlan.push(
-      `Dot-ball squeeze matters here. Dismissals have tended to arrive after ${lens.pressureProfile.dismissalDotThreshold} consecutive dots on average.`
+      `Dot-ball pressure matters here. Dismissals have often come after about ${lens.pressureProfile.dismissalDotThreshold} dots in a row.`
     );
   }
 
   const bowlingStrength = pickBestBowlingSplit(lens.bowling.byBatterHand);
   if (bowlingStrength) {
     bowlingPlan.push(
-      `Use this bowler against ${bowlingStrength.splitLabel} where possible. That split is the cleanest current wicket-and-control profile.`
+      `Best bowling setup is against ${bowlingStrength.splitLabel}. That is the cleanest wicket-and-control matchup right now.`
     );
   }
 
   if (lens.pressureProfile?.bowlingPressureControlErrorPct !== null && lens.pressureProfile?.bowlingPressureControlErrorPct !== undefined) {
     bowlingPlan.push(
-      `Pressure overs carry a ${lens.pressureProfile.bowlingPressureControlErrorPct}% control-error rate through wides and no-balls.`
+      `Under pressure, bowling control errors sit at ${lens.pressureProfile.bowlingPressureControlErrorPct}% through wides and no-balls.`
     );
   }
 
   if (lens.pressureProfile?.bowlingHighLeverageEconomy !== null && lens.pressureProfile?.bowlingHighLeverageEconomy !== undefined) {
     bowlingPlan.push(
-      `High-leverage economy is ${lens.pressureProfile.bowlingHighLeverageEconomy}. Use that as the late-innings control marker.`
+      `Bowling economy in pressure overs is ${lens.pressureProfile.bowlingHighLeverageEconomy}. Use that as the late-innings control marker.`
     );
   }
 
   return {
     battingPlan: battingPlan.slice(0, MAX_SIGNAL_ROWS),
     bowlingPlan: bowlingPlan.slice(0, MAX_SIGNAL_ROWS),
+  };
+}
+
+function pickBestPhaseSplit(rowsByPhase, perspective) {
+  const candidates = [];
+
+  for (const phaseBucket of ["powerplay", "middle", "death"]) {
+    const phaseRows = rowsByPhase?.[phaseBucket] || [];
+    for (const row of phaseRows) {
+      if ((row.legalBalls || 0) >= MIN_SPLIT_SAMPLE_BALLS) {
+        candidates.push({ phaseBucket, row });
+      }
+    }
+  }
+
+  if (!candidates.length) {
+    return null;
+  }
+
+  return candidates.sort((left, right) => {
+    if (perspective === "bowling") {
+      const wicketDiff = (right.row.wickets || 0) - (left.row.wickets || 0);
+      if (wicketDiff !== 0) {
+        return wicketDiff;
+      }
+
+      const economyLeft = toNumber(left.row.economy, Number.POSITIVE_INFINITY);
+      const economyRight = toNumber(right.row.economy, Number.POSITIVE_INFINITY);
+      if (economyLeft !== economyRight) {
+        return economyLeft - economyRight;
+      }
+    } else {
+      const strikeRateDiff = toNumber(right.row.strikeRate, -1) - toNumber(left.row.strikeRate, -1);
+      if (strikeRateDiff !== 0) {
+        return strikeRateDiff;
+      }
+
+      const runDiff = (right.row.runsScored || 0) - (left.row.runsScored || 0);
+      if (runDiff !== 0) {
+        return runDiff;
+      }
+    }
+
+    return (right.row.legalBalls || 0) - (left.row.legalBalls || 0);
+  })[0] || null;
+}
+
+function buildHeadToHeadInsight(context) {
+  const parts = [];
+
+  if (context?.headToHead?.batting?.opponentName) {
+    const batting = context.headToHead.batting;
+    parts.push(
+      `Most repeated batting duel is against ${batting.opponentName}: ${batting.runs} runs from ${batting.balls} balls across ${batting.matchCount} matches${batting.dismissals ? `, with ${batting.dismissals} dismissals` : ""}.`
+    );
+  }
+
+  if (context?.headToHead?.bowling?.opponentName) {
+    const bowling = context.headToHead.bowling;
+    parts.push(
+      `Most repeated bowling duel is against ${bowling.opponentName}: ${bowling.balls} balls, ${bowling.runsConceded} runs conceded, and ${bowling.dismissals} wickets across ${bowling.matchCount} matches.`
+    );
+  }
+
+  return parts.join(" ") || "No repeated named duel has enough tracked sample yet.";
+}
+
+function buildPhaseMatchupInsight(lens) {
+  const batting = pickBestPhaseSplit(lens?.batting?.byBowlerTypePhase, "batting");
+  const bowling = pickBestPhaseSplit(lens?.bowling?.byBatterHandPhase, "bowling");
+  const parts = [];
+
+  if (batting?.row) {
+    parts.push(
+      `Batting impact is strongest against ${batting.row.splitLabel} in the ${formatPhaseBucketLabel(batting.phaseBucket)}: ${batting.row.runsScored} runs from ${batting.row.legalBalls} balls at ${batting.row.strikeRate} strike rate.`
+    );
+  }
+
+  if (bowling?.row) {
+    parts.push(
+      `Bowling control is strongest against ${bowling.row.splitLabel} in the ${formatPhaseBucketLabel(bowling.phaseBucket)}: ${bowling.row.wickets} wickets from ${bowling.row.legalBalls} balls at ${bowling.row.economy} economy.`
+    );
+  }
+
+  return parts.join(" ") || "No phase-plus-matchup read is available yet beyond the core lens tables.";
+}
+
+function buildEntryStateInsight(context) {
+  const battingRows = context?.entryContext?.batting || [];
+  const bowlingRows = context?.entryContext?.bowling || [];
+  const parts = [];
+
+  if (battingRows.length) {
+    parts.push(
+      `Batting entries usually start around ${averageNumbers(battingRows.map((row) => row.scoreBefore), 0)} runs with ${averageNumbers(battingRows.map((row) => row.wicketsBefore), 0)} wickets down, most often in the ${formatPhaseBucketLabel(mostCommonValue(battingRows.map((row) => row.phase)))}.`
+    );
+  }
+
+  if (bowlingRows.length) {
+    parts.push(
+      `Bowling usually begins in the ${formatPhaseBucketLabel(mostCommonValue(bowlingRows.map((row) => row.phase)))}, with the opposition around ${averageNumbers(bowlingRows.map((row) => row.scoreBefore), 0)} runs and ${averageNumbers(bowlingRows.map((row) => row.wicketsBefore), 0)} wickets down at first use.`
+    );
+  }
+
+  return parts.join(" ") || "First-use match context is not available yet from the live event sample.";
+}
+
+function buildRoleUsageInsight(context) {
+  const battingRole = context?.roleUsage?.batting?.[0] || null;
+  const bowlingRole = context?.roleUsage?.bowling?.[0] || null;
+  const parts = [];
+
+  if (battingRole) {
+    parts.push(
+      `Used mostly as a ${formatRoleBucketLabel(battingRole.roleBucket)} across ${battingRole.inningsCount} innings.`
+    );
+  }
+
+  if (bowlingRole) {
+    parts.push(
+      `Bowling workload sits mainly in the ${formatPhaseBucketLabel(bowlingRole.phaseBucket)}, with ${bowlingRole.legalBalls} legal balls in that phase.`
+    );
+  }
+
+  return parts.join(" ") || "Role usage is still building from the current sample.";
+}
+
+function buildRhythmInsight(profile) {
+  if (!profile) {
+    return "Pressure rhythm markers are still building from the live sample.";
+  }
+
+  const parts = [];
+
+  if (profile.boundaryDotThreshold !== null && profile.boundaryDotThreshold !== undefined) {
+    parts.push(`Boundary release usually comes after about ${profile.boundaryDotThreshold} dots.`);
+  }
+
+  if (profile.dismissalDotThreshold !== null && profile.dismissalDotThreshold !== undefined) {
+    parts.push(`Dismissal pressure appears after about ${profile.dismissalDotThreshold} dots.`);
+  }
+
+  if (
+    profile.boundaryAfterThreeDotsPct !== null
+    && profile.boundaryAfterThreeDotsPct !== undefined
+    && profile.dismissalAfterThreeDotsPct !== null
+    && profile.dismissalAfterThreeDotsPct !== undefined
+  ) {
+    parts.push(
+      `After three dots, boundary response is ${profile.boundaryAfterThreeDotsPct}% and wicket risk is ${profile.dismissalAfterThreeDotsPct}%.`
+    );
+  }
+
+  if (profile.battingHighLeverageStrikeRate !== null && profile.battingHighLeverageStrikeRate !== undefined) {
+    parts.push(`High-pressure batting strike rate is ${profile.battingHighLeverageStrikeRate}.`);
+  } else if (
+    profile.bowlingHighLeverageEconomy !== null
+    && profile.bowlingHighLeverageEconomy !== undefined
+  ) {
+    parts.push(`High-pressure bowling economy is ${profile.bowlingHighLeverageEconomy}.`);
+  }
+
+  if (
+    profile.bowlingPressureControlErrorPct !== null
+    && profile.bowlingPressureControlErrorPct !== undefined
+  ) {
+    parts.push(`Pressure control errors sit at ${profile.bowlingPressureControlErrorPct}% through wides and no-balls.`);
+  }
+
+  return parts.join(" ") || "Pressure rhythm markers are still building from the live sample.";
+}
+
+function buildDismissalClusterInsight(dismissals) {
+  const leadingDismissal = dismissals?.[0] || null;
+
+  if (!leadingDismissal) {
+    return "No dismissal cluster is available yet in the live sample.";
+  }
+
+  return `Wickets are clustering most against ${leadingDismissal.bowlerStyleLabel}, mainly through ${leadingDismissal.dismissalType || "dismissal events"}. The current pattern shows dismissals around ${leadingDismissal.averageRunsAtDismissal || 0} runs and ${leadingDismissal.averageBallsFacedAtDismissal || 0} balls into the innings.`;
+}
+
+function buildEvidenceRankedMatchInsight(commentaryRows) {
+  if (!commentaryRows?.length) {
+    return "No evidence-ranked match cluster is available yet from commentary-backed events.";
+  }
+
+  const matchMap = new Map();
+
+  for (const row of commentaryRows) {
+    const matchId = toInteger(row.match_id);
+    if (!matchId) {
+      continue;
+    }
+
+    const existing = matchMap.get(matchId) || {
+      matchId,
+      matchDate: row.match_date,
+      matchTitle: normalizeText(row.match_title),
+      score: 0,
+      evidenceCount: 0,
+    };
+
+    existing.score += toNumber(row.total_event_weight, 0) + toNumber(row.leverage_score, 0);
+    existing.evidenceCount += 1;
+    matchMap.set(matchId, existing);
+  }
+
+  const topMatches = [...matchMap.values()]
+    .sort((left, right) => {
+      if (right.score !== left.score) {
+        return right.score - left.score;
+      }
+      return right.evidenceCount - left.evidenceCount;
+    })
+    .slice(0, 3);
+
+  if (!topMatches.length) {
+    return "No evidence-ranked match cluster is available yet from commentary-backed events.";
+  }
+
+  const labels = topMatches.map((match) => `${formatDate(match.matchDate)} ${match.matchTitle}`.trim());
+  return `The first matches to review are ${labels.join(", ")}. These currently carry the strongest commentary-backed evidence for this player.`;
+}
+
+function buildAdditionalInsights(input) {
+  return {
+    matchupAndUsage: [
+      {
+        title: "Named head-to-heads",
+        detail: buildHeadToHeadInsight(input.context),
+      },
+      {
+        title: "Phase and matchup lens",
+        detail: buildPhaseMatchupInsight(input.lens),
+      },
+      {
+        title: "Entry-state context",
+        detail: buildEntryStateInsight(input.context),
+      },
+      {
+        title: "Role usage patterns",
+        detail: buildRoleUsageInsight(input.context),
+      },
+    ],
+    pressureAndEvidence: [
+      {
+        title: "Rhythm signals",
+        detail: buildRhythmInsight(input.lens?.pressureProfile || null),
+      },
+      {
+        title: "Dismissal clustering",
+        detail: buildDismissalClusterInsight(input.lens?.dismissals || []),
+      },
+      {
+        title: "Evidence-ranked matches",
+        detail: buildEvidenceRankedMatchInsight(input.commentaryRows || []),
+      },
+    ],
   };
 }
 
@@ -869,11 +1547,25 @@ async function getPlayerIntelligenceReport(input) {
       profileRows,
     });
 
-    const commentaryRows = await loadCommentaryRows(client, {
-      seriesId: context.seriesId,
-      divisionId: focusedScope.scopeType === "division" ? focusedScope.divisionId : null,
-      playerId,
-    });
+    const [commentaryRows, summaryStats, additionalInsightContext] = await Promise.all([
+      loadCommentaryRows(client, {
+        seriesId: context.seriesId,
+        divisionId: focusedScope.scopeType === "division" ? focusedScope.divisionId : null,
+        playerId,
+      }),
+      loadSummaryStats(client, {
+        seriesId: context.seriesId,
+        scopeType: focusedScope.scopeType,
+        divisionId: focusedScope.divisionId,
+        playerId,
+      }),
+      loadAdditionalInsightContext(client, {
+        seriesId: context.seriesId,
+        scopeType: focusedScope.scopeType,
+        divisionId: focusedScope.divisionId,
+        playerId,
+      }),
+    ]);
 
     const header = {
       playerName: normalizeText(selectedSeason.player_name),
@@ -932,16 +1624,26 @@ async function getPlayerIntelligenceReport(input) {
           "player_intelligence_matchup",
           "player_intelligence_dismissal",
           "player_intelligence_profile",
+          "batting_innings",
+          "bowling_spell",
           "ball_event",
+          "fielding_event",
+          "player_matchup",
         ],
       },
       header,
+      summaryStats,
       tacticalSummary: buildSignalCards({
         lens: focusedLens,
       }),
       focusedLens,
       seriesLens: focusedScope.scopeType === "division" ? seriesLens : null,
       tacticalPlan: buildTacticalPlan(focusedLens),
+      additionalInsights: buildAdditionalInsights({
+        lens: focusedLens,
+        context: additionalInsightContext,
+        commentaryRows,
+      }),
       commentaryEvidence: buildCommentaryEvidence(commentaryRows, playerId),
     };
   });

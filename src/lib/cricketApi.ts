@@ -1038,6 +1038,45 @@ export type CricketPlayerIntelligenceEvidenceItem = {
   headline?: string;
 };
 
+export type CricketPlayerIntelligenceAdditionalInsightItem = {
+  title?: string;
+  detail?: string;
+};
+
+export type CricketPlayerIntelligenceSummaryStats = {
+  batting?: {
+    matches?: number | null;
+    innings?: number | null;
+    runs?: number | null;
+    ballsFaced?: number | null;
+    strikeRate?: number | null;
+    average?: number | null;
+    fifties?: number | null;
+    hundreds?: number | null;
+    fours?: number | null;
+    sixes?: number | null;
+    notOuts?: number | null;
+  };
+  bowling?: {
+    matches?: number | null;
+    wickets?: number | null;
+    legalBalls?: number | null;
+    economy?: number | null;
+    fourWicketHauls?: number | null;
+    fiveWicketHauls?: number | null;
+    wides?: number | null;
+    noBalls?: number | null;
+    foursGiven?: number | null;
+    sixesGiven?: number | null;
+  };
+  fielding?: {
+    matches?: number | null;
+    catches?: number | null;
+    runOuts?: number | null;
+    stumpings?: number | null;
+  };
+};
+
 export type CricketPlayerIntelligenceResponse = {
   meta?: {
     generatedAt?: string;
@@ -1087,6 +1126,7 @@ export type CricketPlayerIntelligenceResponse = {
     confidenceScore?: number | null;
     confidenceLabel?: string;
   };
+  summaryStats?: CricketPlayerIntelligenceSummaryStats;
   tacticalSummary?: {
     strengths?: CricketPlayerIntelligenceSignalCard[];
     watchouts?: CricketPlayerIntelligenceSignalCard[];
@@ -1097,6 +1137,10 @@ export type CricketPlayerIntelligenceResponse = {
   tacticalPlan?: {
     battingPlan?: string[];
     bowlingPlan?: string[];
+  };
+  additionalInsights?: {
+    matchupAndUsage?: CricketPlayerIntelligenceAdditionalInsightItem[];
+    pressureAndEvidence?: CricketPlayerIntelligenceAdditionalInsightItem[];
   };
   commentaryEvidence?: {
     batting?: CricketPlayerIntelligenceEvidenceItem[];

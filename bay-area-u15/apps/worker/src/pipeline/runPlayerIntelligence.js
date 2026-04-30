@@ -121,15 +121,37 @@ async function loadDismissalRows(client, seriesId) {
         bi.runs,
         bi.balls_faced,
         bi.dismissal_type,
-        bowler.bowling_style as bowler_bowling_style,
-        bowler.bowling_style_detail as bowler_bowling_style_detail,
-        bowler.bowling_style_bucket as bowler_bowling_style_bucket
+        coalesce(primary_bowler.bowling_style, fallback_bowler.bowling_style) as bowler_bowling_style,
+        coalesce(primary_bowler.bowling_style_detail, fallback_bowler.bowling_style_detail) as bowler_bowling_style_detail,
+        coalesce(primary_bowler.bowling_style_bucket, fallback_bowler.bowling_style_bucket) as bowler_bowling_style_bucket
       from public.batting_innings bi
       join public.match m on m.id = bi.match_id
-      left join public.player bowler on bowler.id = bi.dismissed_by_player_id
+      left join public.player primary_bowler on primary_bowler.id = bi.dismissed_by_player_id
+      left join lateral (
+        select
+          event_bowler.bowling_style,
+          event_bowler.bowling_style_detail,
+          event_bowler.bowling_style_bucket
+        from public.ball_event be
+        left join public.player event_bowler on event_bowler.id = be.bowler_player_id
+        where bi.dismissed_by_player_id is null
+          and be.match_id = bi.match_id
+          and be.player_out_id = bi.player_id
+          and be.wicket_flag = true
+          and be.bowler_player_id is not null
+          and lower(coalesce(bi.dismissal_type, '')) not like 'run out%'
+          and lower(coalesce(bi.dismissal_type, '')) not like 'run_out%'
+          and lower(coalesce(bi.dismissal_type, '')) not like 'retired%'
+          and lower(coalesce(bi.dismissal_type, '')) not like 'obstruct%'
+          and lower(coalesce(bi.dismissal_type, '')) not like 'timed out%'
+          and lower(coalesce(bi.dismissal_type, '')) not like 'handled%'
+        order by be.id desc
+        limit 1
+      ) fallback_bowler on true
       where m.series_id = $1
         and bi.did_not_bat = false
         and bi.dismissal_type is not null
+        and replace(lower(btrim(coalesce(bi.dismissal_type, ''))), ' ', '_') <> 'not_out'
       order by m.match_date nulls last, m.id, bi.player_id
     `,
     [seriesId]

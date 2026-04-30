@@ -18,11 +18,12 @@ const About = () => {
       role: "Advisor / Mentor",
       bio: "Experienced advisor supporting strategic growth, cricket direction, and long-term development of the platform.",
       initials: "SS",
+      linkedin: "https://www.linkedin.com/in/samirnshah/",
     },
     {
       name: "Arjun Shah",
       role: "Technical Advisor",
-      bio: "Technical advisor guiding product architecture, engineering decisions, and platform scalability.",
+      bio: "Advisor on Cricket related matter",
       initials: "AS",
     },
     // Second row - Open positions

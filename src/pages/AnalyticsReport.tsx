@@ -442,6 +442,7 @@ const AnalyticsReport = () => {
           { key: "batting", title: "Batting", data: group.stats?.batting },
           { key: "bowling", title: "Bowling", data: group.stats?.bowling },
           { key: "fielding", title: "Fielding", data: group.stats?.fielding },
+          { key: "wicketkeeping", title: "Wicketkeeping", data: group.stats?.wicketkeeping },
         ].filter((item) => item.data && ((item.data.value !== null && item.data.value !== undefined) || item.data.detail)),
       }))
       .filter((group) => group.items.length > 0);

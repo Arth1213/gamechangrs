@@ -1,5 +1,10 @@
 "use strict";
 
+const fs = require("fs");
+const path = require("path");
+
+const STORAGE_EXPORTS_DIR = path.resolve(__dirname, "../../../../storage/exports");
+
 const {
   average,
   clamp,
@@ -531,12 +536,22 @@ async function getPlayerReport(input) {
     const currentSeriesStats = await loadStatPanels(client, {
       playerId,
       seriesId: context.seriesId,
+      seriesConfigKey: context.configKey,
+      divisionId: selectedDivisionId,
       scope: "series",
     });
     const overallStats = await loadStatPanels(client, {
       playerId,
       seriesId: context.seriesId,
+      seriesConfigKey: context.configKey,
+      divisionId: selectedDivisionId,
       scope: "overall",
+    });
+    const contextPerformanceScores = await loadContextPerformanceScores(client, {
+      playerId,
+      seriesId: context.seriesId,
+      divisionId: selectedDivisionId,
+      roleType: normalizeText(selectedSeason.role_type),
     });
     const peerRows = await loadPeerRows(client, {
       seriesId: context.seriesId,
@@ -561,6 +576,7 @@ async function getPlayerReport(input) {
       wicketkeepingSummary,
       currentSeriesStats,
       overallStats,
+      contextPerformanceScores,
       peerRows,
     });
 
@@ -680,10 +696,345 @@ async function loadStatPanels(client, input) {
     params
   );
 
+  const snapshotStats = result.rows.reduce((acc, row) => {
+    acc[normalizeText(row.stat_type)] = row;
+    return acc;
+  }, {});
+
+  if (Object.keys(snapshotStats).length) {
+    return snapshotStats;
+  }
+
+  if (input.scope === "series") {
+    return loadSeriesFactStats(client, input);
+  }
+
+  if (input.scope === "overall") {
+    return loadOverallProfileStats(input);
+  }
+
+  return snapshotStats;
+}
+
+async function loadSeriesFactStats(client, input) {
+  const result = await client.query(
+    `
+      select *
+      from (
+        select
+          'batting'::text as stat_type,
+          count(distinct bi.match_id)::int as matches,
+          count(*) filter (where coalesce(bi.did_not_bat, false) = false)::int as innings,
+          count(*) filter (
+            where coalesce(bi.did_not_bat, false) = false
+              and coalesce(bi.is_not_out, false) = true
+          )::int as not_outs,
+          coalesce(sum(case when coalesce(bi.did_not_bat, false) = false then bi.runs else 0 end), 0)::int as runs,
+          coalesce(sum(case when coalesce(bi.did_not_bat, false) = false then bi.balls_faced else 0 end), 0)::int as balls_faced,
+          coalesce(sum(case when coalesce(bi.did_not_bat, false) = false then bi.fours else 0 end), 0)::int as fours,
+          coalesce(sum(case when coalesce(bi.did_not_bat, false) = false then bi.sixes else 0 end), 0)::int as sixes,
+          count(*) filter (
+            where coalesce(bi.did_not_bat, false) = false
+              and bi.runs between 50 and 99
+          )::int as fifties,
+          count(*) filter (
+            where coalesce(bi.did_not_bat, false) = false
+              and bi.runs >= 100
+          )::int as hundreds,
+          max(case when coalesce(bi.did_not_bat, false) = false then bi.runs end)::text as highest_score,
+          round(
+            coalesce(sum(case when coalesce(bi.did_not_bat, false) = false then bi.runs else 0 end), 0)::numeric
+              / nullif(
+                count(*) filter (
+                  where coalesce(bi.did_not_bat, false) = false
+                    and coalesce(bi.is_not_out, false) = false
+                ),
+                0
+              ),
+            2
+          ) as batting_average,
+          round(
+            coalesce(sum(case when coalesce(bi.did_not_bat, false) = false then bi.runs else 0 end), 0)::numeric
+              * 100
+              / nullif(
+                coalesce(sum(case when coalesce(bi.did_not_bat, false) = false then bi.balls_faced else 0 end), 0),
+                0
+              ),
+            2
+          ) as strike_rate,
+          null::numeric(10,2) as overs_decimal,
+          null::int as legal_balls,
+          null::int as maidens,
+          null::int as runs_conceded,
+          null::int as wickets,
+          null::text as best_bowling,
+          null::numeric(10,2) as bowling_average,
+          null::numeric(10,2) as bowling_strike_rate,
+          null::numeric(10,2) as economy,
+          null::int as dots,
+          null::int as wides,
+          null::int as no_balls,
+          null::int as catches,
+          null::int as wk_catches,
+          null::int as direct_run_outs,
+          null::int as indirect_run_outs,
+          null::int as stumpings,
+          null::int as total_fielding
+        from batting_innings bi
+        join match m on m.id = bi.match_id
+        where m.series_id = $1
+          and m.division_id is not distinct from $2
+          and bi.player_id = $3
+        having count(distinct bi.match_id) > 0
+
+        union all
+
+        select
+          'bowling'::text as stat_type,
+          count(distinct bs.match_id)::int as matches,
+          null::int as innings,
+          null::int as not_outs,
+          null::int as runs,
+          null::int as balls_faced,
+          null::int as fours,
+          null::int as sixes,
+          null::int as fifties,
+          null::int as hundreds,
+          null::text as highest_score,
+          null::numeric(10,2) as batting_average,
+          null::numeric(10,2) as strike_rate,
+          round(coalesce(sum(bs.overs_decimal), 0)::numeric, 2) as overs_decimal,
+          coalesce(sum(bs.legal_balls), 0)::int as legal_balls,
+          coalesce(sum(bs.maidens), 0)::int as maidens,
+          coalesce(sum(bs.runs_conceded), 0)::int as runs_conceded,
+          coalesce(sum(bs.wickets), 0)::int as wickets,
+          (array_agg(bs.best_figures order by bs.wickets desc, bs.runs_conceded asc, bs.legal_balls desc))[1] as best_bowling,
+          round(
+            coalesce(sum(bs.runs_conceded), 0)::numeric / nullif(coalesce(sum(bs.wickets), 0), 0),
+            2
+          ) as bowling_average,
+          round(
+            coalesce(sum(bs.legal_balls), 0)::numeric / nullif(coalesce(sum(bs.wickets), 0), 0),
+            2
+          ) as bowling_strike_rate,
+          round(
+            coalesce(sum(bs.runs_conceded), 0)::numeric * 6 / nullif(coalesce(sum(bs.legal_balls), 0), 0),
+            2
+          ) as economy,
+          coalesce(sum(bs.dot_balls), 0)::int as dots,
+          coalesce(sum(bs.wides), 0)::int as wides,
+          coalesce(sum(bs.no_balls), 0)::int as no_balls,
+          null::int as catches,
+          null::int as wk_catches,
+          null::int as direct_run_outs,
+          null::int as indirect_run_outs,
+          null::int as stumpings,
+          null::int as total_fielding
+        from bowling_spell bs
+        join match m on m.id = bs.match_id
+        where m.series_id = $1
+          and m.division_id is not distinct from $2
+          and bs.player_id = $3
+        having count(distinct bs.match_id) > 0
+
+        union all
+
+        select
+          'fielding'::text as stat_type,
+          count(distinct fe.match_id)::int as matches,
+          null::int as innings,
+          null::int as not_outs,
+          null::int as runs,
+          null::int as balls_faced,
+          null::int as fours,
+          null::int as sixes,
+          null::int as fifties,
+          null::int as hundreds,
+          null::text as highest_score,
+          null::numeric(10,2) as batting_average,
+          null::numeric(10,2) as strike_rate,
+          null::numeric(10,2) as overs_decimal,
+          null::int as legal_balls,
+          null::int as maidens,
+          null::int as runs_conceded,
+          null::int as wickets,
+          null::text as best_bowling,
+          null::numeric(10,2) as bowling_average,
+          null::numeric(10,2) as bowling_strike_rate,
+          null::numeric(10,2) as economy,
+          null::int as dots,
+          null::int as wides,
+          null::int as no_balls,
+          count(*) filter (
+            where lower(coalesce(fe.dismissal_type, '')) = 'caught'
+              and coalesce(fe.is_wicketkeeper_event, false) = false
+          )::int as catches,
+          count(*) filter (
+            where lower(coalesce(fe.dismissal_type, '')) = 'caught'
+              and coalesce(fe.is_wicketkeeper_event, false) = true
+          )::int as wk_catches,
+          count(*) filter (where coalesce(fe.is_direct_run_out, false) = true)::int as direct_run_outs,
+          count(*) filter (where coalesce(fe.is_indirect_run_out, false) = true)::int as indirect_run_outs,
+          count(*) filter (where lower(coalesce(fe.dismissal_type, '')) = 'stumped')::int as stumpings,
+          count(*)::int as total_fielding
+        from fielding_event fe
+        join match m on m.id = fe.match_id
+        where m.series_id = $1
+          and m.division_id is not distinct from $2
+          and fe.fielder_player_id = $3
+        having count(*) > 0
+      ) stats
+      order by stat_type
+    `,
+    [input.seriesId, input.divisionId, input.playerId]
+  );
+
   return result.rows.reduce((acc, row) => {
     acc[normalizeText(row.stat_type)] = row;
     return acc;
   }, {});
+}
+
+function loadOverallProfileStats(input) {
+  const profileDir = path.resolve(
+    STORAGE_EXPORTS_DIR,
+    normalizeText(input.seriesConfigKey),
+    "raw",
+    "player_profiles",
+    String(input.playerId)
+  );
+  const profileHtmlPath = path.join(profileDir, "profile.html");
+
+  if (!fs.existsSync(profileHtmlPath)) {
+    return {};
+  }
+
+  const html = normalizeText(fs.readFileSync(profileHtmlPath, "utf8"));
+  if (!html) {
+    return {};
+  }
+
+  const description =
+    matchFirstGroup(html, /<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i) ||
+    matchFirstGroup(html, /<meta\s+content=["']([^"']+)["']\s+name=["']description["']/i);
+  const matches =
+    parseIntegerMatch(description, /\bM:\s*([\d,]+)/i) ||
+    parseIntegerMatch(html, /Matches<br>\s*<span>\s*([\d,]+)\s*<\/span>/i);
+  const runs =
+    parseIntegerMatch(description, /\bR:\s*([\d,]+)/i) ||
+    parseIntegerMatch(html, /Runs<br>\s*<span>\s*([\d,]+)\s*<\/span>/i);
+  const wickets =
+    parseIntegerMatch(description, /\bW:\s*([\d,]+)/i) ||
+    parseIntegerMatch(html, /Wickets<br>\s*<span>\s*([\d,]+)\s*<\/span>/i);
+  const strikeRate = parseNumberMatch(description, /\bSR:\s*([\d.]+)/i);
+  const economy = parseNumberMatch(description, /\bEcon:\s*([\d.]+)/i);
+
+  const stats = {};
+
+  if (matches !== null || runs !== null || strikeRate !== null) {
+    stats.batting = {
+      stat_type: "batting",
+      profile_source: "public_profile",
+      matches,
+      runs,
+      strike_rate: strikeRate,
+    };
+  }
+
+  if (matches !== null || wickets !== null || economy !== null) {
+    stats.bowling = {
+      stat_type: "bowling",
+      profile_source: "public_profile",
+      matches,
+      wickets,
+      economy,
+    };
+  }
+
+  return stats;
+}
+
+async function loadContextPerformanceScores(client, input) {
+  const byRole = await fetchContextPerformanceScores(client, input, normalizeText(input.roleType));
+  if (byRole) {
+    return byRole;
+  }
+
+  if (normalizeText(input.roleType)) {
+    return fetchContextPerformanceScores(client, input, "");
+  }
+
+  return {
+    eliteOpponentScore: null,
+    eliteOpponentRaw: null,
+    matchImpactScore: null,
+    matchImpactRaw: null,
+  };
+}
+
+async function fetchContextPerformanceScores(client, input, roleType) {
+  const result = await fetchOne(
+    client,
+    `
+      with aggregates as (
+        select
+          pma.player_id,
+          avg(pma.player_strength_adjusted_score)::numeric(10,4) as elite_raw,
+          avg(pma.match_impact_score)::numeric(10,4) as impact_raw
+        from player_match_advanced pma
+        join match m on m.id = pma.match_id
+        where m.series_id = $1
+          and pma.division_id is not distinct from $2
+          and ($3::text = '' or pma.role_type = $3)
+        group by pma.player_id
+      ),
+      elite_ranked as (
+        select
+          player_id,
+          elite_raw,
+          case
+            when count(*) over () > 1
+              then round((percent_rank() over (order by elite_raw) * 100)::numeric, 4)
+            else 50::numeric
+          end as elite_score
+        from aggregates
+        where elite_raw is not null
+      ),
+      impact_ranked as (
+        select
+          player_id,
+          impact_raw,
+          case
+            when count(*) over () > 1
+              then round((percent_rank() over (order by impact_raw) * 100)::numeric, 4)
+            else 50::numeric
+          end as impact_score
+        from aggregates
+        where impact_raw is not null
+      )
+      select
+        er.elite_raw,
+        er.elite_score,
+        ir.impact_raw,
+        ir.impact_score
+      from elite_ranked er
+      full outer join impact_ranked ir on ir.player_id = er.player_id
+      where coalesce(er.player_id, ir.player_id) = $4
+      limit 1
+    `,
+    [input.seriesId, input.divisionId, roleType, input.playerId]
+  );
+
+  if (!result) {
+    return null;
+  }
+
+  return {
+    eliteOpponentScore: clamp(toNumber(result.elite_score, null), 0, 100),
+    eliteOpponentRaw: toNumber(result.elite_raw, null),
+    matchImpactScore: clamp(toNumber(result.impact_score, null), 0, 100),
+    matchImpactRaw: toNumber(result.impact_raw, null),
+  };
 }
 
 async function loadPeerRows(client, input) {
@@ -754,17 +1105,8 @@ function deriveReportMetrics(input) {
   const recentFormScore = toNumber(selectedSeason.recent_form_score, 0);
   const developmentTrendScore = toNumber(selectedSeason.development_trend_score, 0);
   const div1SplitScore = deriveDiv1SplitScore(input.seasonRows, compositeScore);
-
-  const matchImpactScore = average(
-    input.matchRows.map((row) => toNumber(row.match_impact_score, null)).filter(Number.isFinite),
-    0
-  );
-  const eliteOpponentScore = average(
-    input.matchRows
-      .map((row) => toNumber(row.player_strength_adjusted_score, null))
-      .filter(Number.isFinite),
-    0
-  );
+  const matchImpactScore = toNumber(input.contextPerformanceScores?.matchImpactScore, null);
+  const eliteOpponentScore = toNumber(input.contextPerformanceScores?.eliteOpponentScore, null);
 
   const phasePerformance = buildPhasePerformance(input.ballEventRows, input.playerId);
   const matchupTables = buildMatchupTables(input.matchupRows, input.playerId);
@@ -936,10 +1278,12 @@ function deriveReportMetrics(input) {
       versatilityScore,
       strongOppositionScore,
       eliteOpponentScore,
+      eliteOpponentRaw: toNumber(input.contextPerformanceScores?.eliteOpponentRaw, null),
       recentFormScore,
       developmentTrendScore,
       div1SplitScore,
       matchImpactScore,
+      matchImpactRaw: toNumber(input.contextPerformanceScores?.matchImpactRaw, null),
     },
     standardStats,
     drilldowns: {
@@ -1060,10 +1404,11 @@ function buildPrimarySkillNote(roleType, battingScore, bowlingScore, fieldingSco
 }
 
 function buildContextCard(label, value, note) {
+  const safeValue = toNumber(value, null);
   return {
     label,
-    value: roundNumeric(value),
-    tone: toneForScore(value),
+    value: roundNumeric(safeValue),
+    tone: toneForScore(safeValue),
     note,
   };
 }
@@ -1367,20 +1712,114 @@ function buildStatPanel(statMap) {
   const batting = statMap.batting || {};
   const bowling = statMap.bowling || {};
   const fielding = statMap.fielding || {};
+  const wicketkeeping = statMap.wicketkeeping || {};
 
   return {
-    batting: {
-      value: toInteger(batting.runs) || 0,
-      detail: `${toInteger(batting.matches) || 0} matches${batting.highest_score ? ` • HS ${normalizeText(batting.highest_score)}` : ""}${Number.isFinite(toNumber(batting.strike_rate, null)) ? ` • SR ${toNumber(batting.strike_rate).toFixed(1)}` : ""}`,
-    },
-    bowling: {
-      value: toInteger(bowling.wickets) || 0,
-      detail: `${formatOvers(bowling.overs_decimal, bowling.legal_balls)}${Number.isFinite(toNumber(bowling.economy, null)) ? ` • Econ ${toNumber(bowling.economy).toFixed(2)}` : ""}${bowling.best_bowling ? ` • BBF ${normalizeText(bowling.best_bowling)}` : ""}`,
-    },
-    fielding: {
-      value: toInteger(fielding.total_fielding) || 0,
-      detail: `${toInteger(fielding.catches) || 0} catches • ${toInteger(fielding.direct_run_outs) || 0} direct RO • ${toInteger(fielding.indirect_run_outs) || 0} indirect RO`,
-    },
+    batting: buildBattingStatEntry(batting),
+    bowling: buildBowlingStatEntry(bowling),
+    fielding: buildFieldingStatEntry(fielding, wicketkeeping),
+    wicketkeeping: buildWicketkeepingStatEntry(wicketkeeping, fielding),
+  };
+}
+
+function buildBattingStatEntry(batting) {
+  if (!batting || !Object.keys(batting).length) {
+    return null;
+  }
+
+  const isPublicProfile = normalizeLabel(batting.profile_source) === "public_profile";
+  return {
+    value: toInteger(batting.runs) || 0,
+    detail: isPublicProfile
+      ? `${toInteger(batting.matches) || 0} CricClubs matches${Number.isFinite(toNumber(batting.strike_rate, null)) ? ` • SR ${toNumber(batting.strike_rate).toFixed(1)}` : ""}`
+      : `${toInteger(batting.matches) || 0} matches${batting.highest_score ? ` • HS ${normalizeText(batting.highest_score)}` : ""}${Number.isFinite(toNumber(batting.strike_rate, null)) ? ` • SR ${toNumber(batting.strike_rate).toFixed(1)}` : ""}`,
+  };
+}
+
+function buildBowlingStatEntry(bowling) {
+  if (!bowling || !Object.keys(bowling).length) {
+    return null;
+  }
+
+  const isPublicProfile = normalizeLabel(bowling.profile_source) === "public_profile";
+  return {
+    value: toInteger(bowling.wickets) || 0,
+    detail: isPublicProfile
+      ? `${toInteger(bowling.matches) || 0} CricClubs matches${Number.isFinite(toNumber(bowling.economy, null)) ? ` • Econ ${toNumber(bowling.economy).toFixed(2)}` : ""}`
+      : `${formatOvers(bowling.overs_decimal, bowling.legal_balls)}${Number.isFinite(toNumber(bowling.economy, null)) ? ` • Econ ${toNumber(bowling.economy).toFixed(2)}` : ""}${bowling.best_bowling ? ` • BBF ${normalizeText(bowling.best_bowling)}` : ""}`,
+  };
+}
+
+function buildFieldingStatEntry(fielding, wicketkeeping) {
+  const fieldingSource = fielding && Object.keys(fielding).length ? fielding : {};
+  const wicketkeepingSource = wicketkeeping && Object.keys(wicketkeeping).length ? wicketkeeping : fieldingSource;
+  if (!Object.keys(fieldingSource).length && !Object.keys(wicketkeepingSource).length) {
+    return null;
+  }
+
+  const catches = toInteger(fieldingSource.catches) || 0;
+  const directRunOuts = toInteger(fieldingSource.direct_run_outs) || 0;
+  const indirectRunOuts = toInteger(fieldingSource.indirect_run_outs) || 0;
+  const wkCatches = toInteger(wicketkeepingSource.wk_catches) || 0;
+  const stumpings = toInteger(wicketkeepingSource.stumpings) || 0;
+  const totalFielding = toInteger(fieldingSource.total_fielding) || 0;
+  const inferredOtherFielding = Math.max(
+    totalFielding - catches - directRunOuts - indirectRunOuts - wkCatches - stumpings,
+    0
+  );
+  const fieldingValue = catches + directRunOuts + indirectRunOuts + inferredOtherFielding;
+
+  if (fieldingValue <= 0) {
+    return null;
+  }
+
+  const detailParts = [
+    `${catches} catches`,
+    `${directRunOuts} direct RO`,
+    `${indirectRunOuts} indirect RO`,
+  ];
+
+  if (inferredOtherFielding > 0) {
+    detailParts.push(`${inferredOtherFielding} other involvement`);
+  }
+
+  return {
+    value: fieldingValue,
+    detail: detailParts.join(" • "),
+  };
+}
+
+function buildWicketkeepingStatEntry(wicketkeeping, fielding) {
+  const wicketkeepingSource =
+    wicketkeeping && Object.keys(wicketkeeping).length
+      ? wicketkeeping
+      : fielding && Object.keys(fielding).length
+        ? fielding
+        : {};
+
+  if (!Object.keys(wicketkeepingSource).length) {
+    return null;
+  }
+
+  const wkCatches = toInteger(wicketkeepingSource.wk_catches) || 0;
+  const stumpings = toInteger(wicketkeepingSource.stumpings) || 0;
+  const matches = toInteger(wicketkeepingSource.matches) || 0;
+  const wicketkeepingValue = wkCatches + stumpings;
+
+  if (wicketkeepingValue <= 0) {
+    return null;
+  }
+
+  const detailParts = [];
+  if (matches > 0) {
+    detailParts.push(`${matches} matches`);
+  }
+  detailParts.push(`${wkCatches} wk catches`);
+  detailParts.push(`${stumpings} stumpings`);
+
+  return {
+    value: wicketkeepingValue,
+    detail: detailParts.join(" • "),
   };
 }
 
@@ -1974,15 +2413,31 @@ function joinReadable(parts) {
 }
 
 function formatOvers(oversDecimal, legalBalls) {
+  const balls = toInteger(legalBalls);
+  if (balls) {
+    return `${Math.floor(balls / 6)}.${balls % 6} overs`;
+  }
   const decimal = toNumber(oversDecimal, null);
   if (decimal !== null) {
     return `${decimal.toFixed(1)} overs`;
   }
-  const balls = toInteger(legalBalls);
   if (!balls) {
     return "0 overs";
   }
   return `${Math.floor(balls / 6)}.${balls % 6} overs`;
+}
+
+function matchFirstGroup(value, pattern) {
+  const match = normalizeText(value).match(pattern);
+  return normalizeText(match?.[1]);
+}
+
+function parseIntegerMatch(value, pattern) {
+  return toInteger(matchFirstGroup(value, pattern));
+}
+
+function parseNumberMatch(value, pattern) {
+  return toNumber(matchFirstGroup(value, pattern), null);
 }
 
 module.exports = {

@@ -3337,7 +3337,7 @@ function renderPlayerReportPage(report) {
   const renderStatTile = (label, stat, fallbackDetail) => `
     <div class="stats-tile">
       <div class="stats-tile-label">${escapeHtml(label)}</div>
-      <div class="stats-tile-value">${escapeHtml(displayDataValue(stat?.value ?? 0))}</div>
+      <div class="stats-tile-value">${escapeHtml(stat ? displayDataValue(stat.value) : "—")}</div>
       <div class="stats-tile-copy">${detailWithBreaks(stat?.detail, fallbackDetail)}</div>
     </div>
   `;
@@ -3926,6 +3926,7 @@ function renderPlayerReportPage(report) {
                   ${renderStatTile("Batting", currentSeriesStats.batting, "No current-series batting stats returned.")}
                   ${renderStatTile("Bowling", currentSeriesStats.bowling, "No current-series bowling stats returned.")}
                   ${renderStatTile("Fielding", currentSeriesStats.fielding, "No current-series fielding stats returned.")}
+                  ${renderStatTile("Wicketkeeping", currentSeriesStats.wicketkeeping, "No current-series wicketkeeping stats returned.")}
                 </div>
               </div>
               <div class="stats-box">
@@ -3934,6 +3935,7 @@ function renderPlayerReportPage(report) {
                   ${renderStatTile("Batting", overallStats.batting, "No overall batting stats returned.")}
                   ${renderStatTile("Bowling", overallStats.bowling, "No overall bowling stats returned.")}
                   ${renderStatTile("Fielding", overallStats.fielding, "No overall fielding stats returned.")}
+                  ${renderStatTile("Wicketkeeping", overallStats.wicketkeeping, "No overall wicketkeeping stats returned.")}
                 </div>
               </div>
             </div>

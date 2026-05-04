@@ -51,7 +51,6 @@ Backed up:
 - local ops runbooks and worker logic in git
 - edge function inventory was readable for:
   - `analytics-player-report-chat`
-  - `public-site-metrics`
 
 Constraints observed during backup:
 

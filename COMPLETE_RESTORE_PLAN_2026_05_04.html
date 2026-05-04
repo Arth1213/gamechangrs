@@ -1,0 +1,300 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+body { font-family: Arial, Helvetica, sans-serif; color:#111827; margin: 54px; line-height: 1.38; font-size: 12pt; }
+h1 { font-size: 26pt; margin: 0 0 10px; color:#0f172a; }
+h2 { font-size: 18pt; margin: 24px 0 8px; color:#0f172a; border-bottom: 1px solid #d1d5db; padding-bottom: 4px; }
+h3 { font-size: 14pt; margin: 18px 0 6px; color:#111827; }
+p { margin: 0 0 8px; }
+.code { font-family: Menlo, Consolas, monospace; background:#f8fafc; border:1px solid #d1d5db; padding:10px 12px; white-space: pre-wrap; margin: 6px 0 12px; }
+</style>
+</head><body>
+<h1>Game-Changrs Complete Restore Plan</h1>
+<p>Date: 2026-05-04</p>
+<p>Purpose:</p>
+<p>&#8226; restore Game-Changrs from a clean laptop or clean workspace</p>
+<p>&#8226; restore both the frontend and the cricket analytics/local-ops backend</p>
+<p>&#8226; restore from either the latest GitHub code or the fixed 2026-05-03 restore point</p>
+<h2>Summary</h2>
+<h3>Restore stages</h3>
+<p><b>Stage 0</b>: Get backup files and account access ready. Output: OneDrive backup folder available locally.</p>
+<p><b>Stage 1</b>: Recreate the repo. Output: `gamechangrs-phase10-deploy/` restored on disk.</p>
+<p><b>Stage 2</b>: Restore secret files. Output: `.env` and `bay-area-u15/.env` back in place.</p>
+<p><b>Stage 3</b>: Install dependencies and tools. Output: local machine can run frontend and API.</p>
+<p><b>Stage 4</b>: Start and verify locally. Output: frontend, API, and local ops open successfully.</p>
+<p><b>Stage 5</b>: Reconnect cloud systems. Output: Supabase, Render, Lovable, DNS confirmed.</p>
+<p><b>Stage 6</b>: Republish production if needed. Output: `game-changrs.com` and Render API live again.</p>
+<h3>Restore modes</h3>
+<p>Use one of these:</p>
+<p><b>1.</b> Latest current system</p>
+<p>   Use GitHub <span style="font-family: Menlo, Consolas, monospace; background:#f3f4f6;">main</span>.</p>
+<p><b>2.</b> Fixed restore point snapshot</p>
+<p>   Use GitHub branch <span style="font-family: Menlo, Consolas, monospace; background:#f3f4f6;">backup/2026_05-03-Game-Changrs-Restore-Point</span> or the offline git bundle.</p>
+<h3>Restore anchors</h3>
+<p>&#8226; Repo: `https://github.com/Arth1213/gamechangrs.git`</p>
+<p>&#8226; Latest known doc commit on `main`: `0b967834ec818c1f1898d5c2a1c13a14d8f063a3`</p>
+<p>&#8226; Restore backup branch: `backup/2026_05-03-Game-Changrs-Restore-Point`</p>
+<p>&#8226; Restore backup branch commit: `60f80447b7b601e8a1ecdf72b1063db5a029d222`</p>
+<p>&#8226; Restore backup tag: `2026_05-03-Game-Changrs-Restore-Point`</p>
+<p>&#8226; Restore backup tag commit: `41dbf58eebb8b3a8950e09279c41cd2783c08c32`</p>
+<h2>Stage 0: What You Need Before Starting</h2>
+<h3>Backup folder</h3>
+<p>Primary OneDrive backup root:</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503`</p>
+<p>Restore-point folder inside OneDrive:</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point`</p>
+<h3>Required backup files</h3>
+<p>Code backups:</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/gamechangrs-2026_05-03-restore.bundle`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/gamechangrs-github-source-2026_05_03.tar.gz`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/gamechangrs-worktree-2026_05_03.tar.gz`</p>
+<p>Secret and env backups:</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/root.env.restore-copy`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/bay-area-u15.env.restore-copy`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/raw-secret-files/bay-area-u15/.env`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/render-and-api-secret-values-20260503.md`</p>
+<p>Reference docs:</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/RESTORE_README_2026_05_03.md`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/RESTORE_CHECKLIST_FOR_OPERATOR_2026_05_04.md`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/ENV_REQUIREMENTS_2026_05_03.md`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/CLOUD_RECOVERY_STATUS_2026_05_03.md`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/game_changrs_preservation_record_2026_05_03.md`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/CODEX_RESTORE_PROMPT_2026_05_03.txt`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/CODEX_CLEAN_SLATE_RESTORE_PROMPT_2026_05_04.txt`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/START_HERE_FOR_RESTORE_2026_05_04.md`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/START_HERE_FOR_RESTORE_2026_05_04.txt`</p>
+<h3>External access still required</h3>
+<p>&#8226; GitHub account/repo access</p>
+<p>&#8226; Supabase analytics project access</p>
+<p>&#8226; Render service access</p>
+<p>&#8226; Lovable project access</p>
+<p>&#8226; IONOS DNS/domain access</p>
+<p>&#8226; OpenAI API key source of truth</p>
+<h3>Known gap</h3>
+<p>The main app Supabase project ref <span style="font-family: Menlo, Consolas, monospace; background:#f3f4f6;">snlutvotzeijzqdwlank</span> is not currently visible from the accessible Supabase account context. If app auth or app-managed data breaks, that project access will still need to be recovered separately.</p>
+<h2>Stage 1: Recreate The Repo</h2>
+<h3>Option A: Restore the latest current system from GitHub `main`</h3>
+<p>Command:</p>
+<div class="code">mkdir -p /Users/artharun/Downloads/GAME-CHANGRS</div>
+<p>What it does:</p>
+<p>&#8226; creates the parent workspace directory</p>
+<p>Command:</p>
+<div class="code">cd /Users/artharun/Downloads/GAME-CHANGRS
+git clone https://github.com/Arth1213/gamechangrs.git gamechangrs-phase10-deploy</div>
+<p>What it does:</p>
+<p>&#8226; clones the repo from GitHub into a clean folder named `gamechangrs-phase10-deploy`</p>
+<p>Command:</p>
+<div class="code">cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy
+git checkout main
+git pull origin main</div>
+<p>What it does:</p>
+<p>&#8226; switches to `main`</p>
+<p>&#8226; updates local code to the latest pushed production-aligned code</p>
+<h3>Option B: Restore the fixed backup branch snapshot</h3>
+<p>Command:</p>
+<div class="code">mkdir -p /Users/artharun/Downloads/GAME-CHANGRS
+cd /Users/artharun/Downloads/GAME-CHANGRS
+git clone https://github.com/Arth1213/gamechangrs.git gamechangrs-phase10-deploy
+cd gamechangrs-phase10-deploy
+git checkout backup/2026_05-03-Game-Changrs-Restore-Point</div>
+<p>What it does:</p>
+<p>&#8226; restores the pinned backup branch snapshot with the preserved restore docs</p>
+<h3>Option C: Offline restore from the git bundle</h3>
+<p>Command:</p>
+<div class="code">mkdir -p /Users/artharun/Downloads/GAME-CHANGRS
+cd /Users/artharun/Downloads/GAME-CHANGRS
+git clone /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/gamechangrs-2026_05-03-restore.bundle gamechangrs-phase10-deploy
+cd gamechangrs-phase10-deploy
+git checkout backup/2026_05-03-Game-Changrs-Restore-Point</div>
+<p>What it does:</p>
+<p>&#8226; rebuilds the repo without using GitHub</p>
+<p>&#8226; uses the offline git bundle stored in OneDrive</p>
+<h2>Stage 2: Restore Secret Files</h2>
+<h3>Restore the root frontend env file</h3>
+<p>Command:</p>
+<div class="code">cp /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/root.env.restore-copy /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/.env</div>
+<p>What it does:</p>
+<p>&#8226; puts the frontend `.env` back into the repo root</p>
+<h3>Restore the analytics/local-ops env file</h3>
+<p>Command:</p>
+<div class="code">mkdir -p /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15
+cp /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/raw-secret-files/bay-area-u15/.env /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15/.env</div>
+<p>What it does:</p>
+<p>&#8226; ensures the `bay-area-u15` folder exists</p>
+<p>&#8226; restores the local ops/API `.env`</p>
+<h3>Optional secret reference file</h3>
+<p>Reference file:</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/render-and-api-secret-values-20260503.md`</p>
+<p>What it is for:</p>
+<p>&#8226; source-of-truth backup for Render/API-related secret values that were intentionally kept out of git</p>
+<h2>Stage 3: Install Local Prerequisites And Dependencies</h2>
+<h3>Tools expected on the machine</h3>
+<p>&#8226; Git</p>
+<p>&#8226; Node.js and npm</p>
+<p>&#8226; Supabase CLI</p>
+<h3>Install root app dependencies</h3>
+<p>Command:</p>
+<div class="code">cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy
+npm install</div>
+<p>What it does:</p>
+<p>&#8226; installs the frontend dependencies for the root app</p>
+<h3>Install analytics/local-ops dependencies</h3>
+<p>Command:</p>
+<div class="code">cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15
+npm install</div>
+<p>What it does:</p>
+<p>&#8226; installs the Node dependencies for the cricket API and local ops</p>
+<h2>Stage 4: Start The System Locally</h2>
+<h3>Start the frontend</h3>
+<p>Command:</p>
+<div class="code">cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy
+npm run dev</div>
+<p>What it does:</p>
+<p>&#8226; starts the frontend dev server</p>
+<p>&#8226; prints the local URL in the terminal</p>
+<p>What to do next:</p>
+<p>&#8226; open the URL printed by Vite</p>
+<p>&#8226; verify the home page loads</p>
+<p>&#8226; verify login page loads</p>
+<h3>Start the cricket API and local ops server</h3>
+<p>Command:</p>
+<div class="code">cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15
+set -a
+source .env
+set +a
+npm run api:start</div>
+<p>What it does:</p>
+<p>&#8226; loads all env vars from `bay-area-u15/.env`</p>
+<p>&#8226; starts the analytics API/local ops server using those values</p>
+<p>What to do next:</p>
+<p>&#8226; use the port printed by the server</p>
+<p>&#8226; if `LOCAL_OPS_ENABLE_UI` is enabled, open `http://127.0.0.1:&lt;API_PORT&gt;/local-ops`</p>
+<p>&#8226; verify analytics API health if a health route is available</p>
+<h2>Stage 5: Verify The Local Restore</h2>
+<h3>Minimum verification checklist</h3>
+<p>Verify these:</p>
+<p>&#8226; frontend home page loads</p>
+<p>&#8226; sign-in page loads</p>
+<p>&#8226; analytics pages load</p>
+<p>&#8226; a player report opens</p>
+<p>&#8226; `bay-area-u15` API starts without env errors</p>
+<p>&#8226; local ops page opens if enabled</p>
+<h3>If something fails</h3>
+<p>Check in this order:</p>
+<p><b>1.</b> `.env` restored to repo root</p>
+<p><b>2.</b> `bay-area-u15/.env` restored correctly</p>
+<p><b>3.</b> `npm install` completed in both locations</p>
+<p><b>4.</b> local API terminal output for missing env vars</p>
+<p><b>5.</b> Supabase access and database connection values</p>
+<h2>Stage 6: Restore Cloud Connections</h2>
+<h3>Supabase analytics project</h3>
+<p>Known project:</p>
+<p>&#8226; project name: `game-changrs-cricket-analytics`</p>
+<p>&#8226; ref: `azgebbtasywunltdhdby`</p>
+<p>What to do:</p>
+<p><b>1.</b> sign in to Supabase</p>
+<p><b>2.</b> confirm the analytics project is visible</p>
+<p><b>3.</b> restore/check:</p>
+<p>&#8226; `SUPABASE_URL`</p>
+<p>&#8226; `SUPABASE_ANON_KEY`</p>
+<p>&#8226; `SUPABASE_SERVICE_ROLE_KEY`</p>
+<p>&#8226; `DATABASE_URL`</p>
+<p><b>4.</b> confirm functions:</p>
+<p>&#8226; `analytics-player-report-chat`</p>
+<p>&#8226; `public-site-metrics`</p>
+<p>Useful commands:</p>
+<div class="code">cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy
+supabase login
+supabase projects list
+supabase link --project-ref azgebbtasywunltdhdby
+supabase functions list --project-ref azgebbtasywunltdhdby</div>
+<h3>Render API service</h3>
+<p>Known service:</p>
+<p>&#8226; `https://gamechangrs-cricket-api.onrender.com`</p>
+<p>Known config:</p>
+<p>&#8226; root directory: `bay-area-u15`</p>
+<p>&#8226; build command: `npm install`</p>
+<p>&#8226; start command: `npm run api:start`</p>
+<p>What to do:</p>
+<p><b>1.</b> open the Render service</p>
+<p><b>2.</b> verify env vars</p>
+<p><b>3.</b> verify branch is `main`</p>
+<p><b>4.</b> run a manual deploy if needed</p>
+<h3>Lovable frontend</h3>
+<p>Known project:</p>
+<p>&#8226; `https://lovable.dev/projects/e14399ba-fbf2-42cf-bf82-4c38048ee762`</p>
+<p>Known repo link:</p>
+<p>&#8226; `Arth1213/gamechangrs`</p>
+<p>Known branch:</p>
+<p>&#8226; `main`</p>
+<p>What to do:</p>
+<p><b>1.</b> open the Lovable project</p>
+<p><b>2.</b> confirm repo connection is still healthy</p>
+<p><b>3.</b> sync from GitHub `main` if needed</p>
+<p><b>4.</b> publish</p>
+<p><b>5.</b> verify `game-changrs.com`</p>
+<h3>IONOS DNS/domain</h3>
+<p>Known live domain:</p>
+<p>&#8226; `game-changrs.com`</p>
+<p>What to do:</p>
+<p><b>1.</b> sign in to IONOS</p>
+<p><b>2.</b> open `game-changrs.com`</p>
+<p><b>3.</b> verify DNS records still exist</p>
+<p><b>4.</b> verify `_lovable` TXT verification record still exists</p>
+<p><b>5.</b> verify root `A @ -&gt; 185.158.133.1`</p>
+<h2>Stage 7: Production Republish</h2>
+<h3>Frontend republish path</h3>
+<p><b>1.</b> push the desired code to GitHub `main`</p>
+<p><b>2.</b> open Lovable</p>
+<p><b>3.</b> sync/pull latest GitHub changes if needed</p>
+<p><b>4.</b> publish</p>
+<p><b>5.</b> verify the site on `game-changrs.com`</p>
+<h3>Backend republish path</h3>
+<p><b>1.</b> push the desired backend code to GitHub `main`</p>
+<p><b>2.</b> open Render service `gamechangrs-cricket-api`</p>
+<p><b>3.</b> trigger manual deploy if auto-deploy did not run</p>
+<p><b>4.</b> verify the Render service health URL or API response</p>
+<h2>Stage 8: Clean-Slate Codex Handoff</h2>
+<h3>What you physically do first</h3>
+<p><b>1.</b> Put the OneDrive backup folder back onto the machine so this path exists:</p>
+<p><span style="font-family: Menlo, Consolas, monospace; background:#f3f4f6;">/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503</span></p>
+<p><b>2.</b> Make sure the backup folder still contains:</p>
+<p>&#8226; `root.env.restore-copy`</p>
+<p>&#8226; `raw-secret-files/bay-area-u15/.env`</p>
+<p>&#8226; `render-and-api-secret-values-20260503.md`</p>
+<p>&#8226; `2026_05-03-Game-Changrs-Restore-Point/`</p>
+<p><b>3.</b> Open Codex in a new workspace.</p>
+<p><b>4.</b> Point Codex at:</p>
+<p><span style="font-family: Menlo, Consolas, monospace; background:#f3f4f6;">/Users/artharun/Downloads/GAME-CHANGRS</span></p>
+<h3>Exact Codex prompt to paste</h3>
+<div class="code">Restore Game-Changrs from a clean slate using the backup files at /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503.
+
+Requirements:
+1. Recreate the repo at /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy.
+2. Prefer cloning from GitHub https://github.com/Arth1213/gamechangrs.git and checking out main if GitHub is reachable.
+3. If GitHub is not reachable, restore from the git bundle at /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/gamechangrs-2026_05-03-restore.bundle and use backup/2026_05-03-Game-Changrs-Restore-Point.
+4. Restore .env from /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/root.env.restore-copy.
+5. Restore bay-area-u15/.env from /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/raw-secret-files/bay-area-u15/.env.
+6. Run npm install in the repo root and in bay-area-u15.
+7. Start the frontend and the bay-area-u15 API locally.
+8. Verify the frontend home page, sign-in page, analytics pages, and local ops page if enabled.
+9. Tell me exactly what external accounts or secrets are still needed after the local restore.
+
+Use these reference docs while restoring:
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/RESTORE_README_2026_05_03.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/RESTORE_CHECKLIST_FOR_OPERATOR_2026_05_04.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/CLOUD_RECOVERY_STATUS_2026_05_03.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/game_changrs_preservation_record_2026_05_03.md
+
+Do the work end to end. Do not ask me to rediscover file paths that are already listed above.</div>
+<h2>Stage 9: Files To Open First During A Disaster Recovery</h2>
+<p>Open these in this order:</p>
+<p><b>1.</b> `COMPLETE_RESTORE_PLAN_2026_05_04.md`</p>
+<p><b>2.</b> `RESTORE_CHECKLIST_FOR_OPERATOR_2026_05_04.md`</p>
+<p><b>3.</b> `game_changrs_preservation_record_2026_05_03.md`</p>
+<p><b>4.</b> `render-and-api-secret-values-20260503.md`</p>
+<h2>Final Notes</h2>
+<p>&#8226; Use `main` when you want the latest current system.</p>
+<p>&#8226; Use the backup branch when you want the preserved restore-point workflow.</p>
+<p>&#8226; Do not commit `.env` files back into git.</p>
+<p>&#8226; The main unresolved dependency is the missing visibility into Supabase project ref `snlutvotzeijzqdwlank`.</p>
+</body></html>

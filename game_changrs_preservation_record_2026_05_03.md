@@ -183,7 +183,6 @@ Preserved values or source of truth:
 
 Known functions:
 - `analytics-player-report-chat`
-- `public-site-metrics`
 
 Other deployed functions:
 - none

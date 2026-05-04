@@ -20,7 +20,6 @@ supabase/migrations/20251209015233_21cb386d-90da-4451-9472-d9f2257b989f.sql
 supabase/migrations/20251209015729_834e7a3c-a58a-4688-9b12-60a64b33ff63.sql
 supabase/migrations/20251210000000_create_contact_submissions.sql
 supabase/migrations/20251210000001_create_coaching_marketplace.sql
-supabase/migrations/20251211061055_5191551a-00d0-41c6-b523-fab609d64927.sql
 supabase/migrations/20251211070736_0ca1b0aa-5bbb-468f-bc29-cc71fa1f600d.sql
 supabase/migrations/20251211071446_2f2da6a3-5495-4593-86c4-9924db042ebb.sql
 supabase/migrations/20251211072656_de4d4ca3-1251-4ad8-8901-270a44b96bf6.sql
@@ -31,3 +30,4 @@ supabase/migrations/20251212065627_14139909-8f34-475c-9370-27c48096b0bf.sql
 supabase/migrations/20251212070440_31fcf0e5-f45b-4f4d-bf28-01155e222215.sql
 supabase/migrations/20251212072152_997e509a-d9f0-458d-949f-68a3c06096df.sql
 supabase/migrations/20251214041710_7ca07e31-e892-4053-8af2-b75451d64a7e.sql
+supabase/migrations/20260504222500_fix_players_rls_recursion.sql

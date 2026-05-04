@@ -102,7 +102,7 @@ Top-level `supabase/migrations` now contains both original app migrations and la
 
 Several app functions depend on runtime secrets:
 
-- `LOVABLE_API_KEY`
+- `OPENAI_API_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SUPABASE_URL`
 - `RESEND_API_KEY`

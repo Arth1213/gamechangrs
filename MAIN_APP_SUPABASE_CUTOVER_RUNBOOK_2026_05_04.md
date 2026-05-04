@@ -83,6 +83,9 @@ Apply only the app-owned schema to the new project.
    - `migration-manifests/main_app_supabase_migrations_2026_05_04.txt`
 3. Do not apply:
    - `migration-manifests/analytics_local_ops_owned_by_azgebbtasywunltdhdby_2026_05_04.txt`
+4. Do not apply duplicate migration:
+   - `supabase/migrations/20251211061055_5191551a-00d0-41c6-b523-fab609d64927.sql`
+   - It conflicts with `20251210000001_create_coaching_marketplace.sql` and is superseded by that earlier marketplace bootstrap plus later additive migrations.
 
 ### Validate
 
@@ -135,7 +138,7 @@ Do not deploy analytics-only functions here unless there is a deliberate reason:
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `LOVABLE_API_KEY`
+- `OPENAI_API_KEY`
 - `RESEND_API_KEY`
 - `SITE_URL=https://game-changrs.com`
 
@@ -144,6 +147,7 @@ Do not deploy analytics-only functions here unless there is a deliberate reason:
 - Function deploys succeed.
 - `contact-form` returns 200 for valid input.
 - `analyze-cricket` returns a valid analysis payload.
+- `generate-career-summary`, `scrape-profile-url`, and `analyze-gear-image` return valid AI payloads.
 - `contact-seller` returns success against a seeded test listing.
 
 ### Revert

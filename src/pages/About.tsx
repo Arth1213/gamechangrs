@@ -1,8 +1,19 @@
+import { usePublicSiteStats } from "@/hooks/usePublicSiteStats";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Target, Heart, Zap, Users, Award, Globe, Linkedin, ExternalLink } from "lucide-react";
 
+function formatCount(value: number | null) {
+  if (value === null || !Number.isFinite(value)) {
+    return "--";
+  }
+
+  return new Intl.NumberFormat("en-US").format(value);
+}
+
 const About = () => {
+  const { playerCount, seriesCount, computedMatchCount, gearDonationCount } = usePublicSiteStats();
+
   const team = [
     // First row - Current team
     {
@@ -70,6 +81,13 @@ const About = () => {
     },
   ];
 
+  const impactStats = [
+    { icon: Award, value: formatCount(playerCount), label: "Athletes Analyzed" },
+    { icon: Globe, value: formatCount(seriesCount), label: "Series Analyzed" },
+    { icon: Target, value: formatCount(computedMatchCount), label: "Matches Analyzed" },
+    { icon: Heart, value: formatCount(gearDonationCount), label: "Active Gear Donations" },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -107,12 +125,7 @@ const About = () => {
               </p>
             </div>
             <div className="grid grid-cols-2 gap-6">
-              {[
-                { icon: Award, value: "10K+", label: "Athletes Helped" },
-                { icon: Globe, value: "25+", label: "States Covered" },
-                { icon: Users, value: "500+", label: "Partner Teams" },
-                { icon: Heart, value: "5K+", label: "Gear Donated" },
-              ].map((stat) => (
+              {impactStats.map((stat) => (
                 <div
                   key={stat.label}
                   className="p-6 rounded-2xl bg-gradient-card border border-border text-center"

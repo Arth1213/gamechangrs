@@ -21,10 +21,10 @@ const About = () => {
       linkedin: "https://www.linkedin.com/in/samirnshah/",
     },
     {
-      name: "Arjun Shah",
+      name: "TBD",
       role: "Technical Advisor",
       bio: "Advisor on Cricket related matter",
-      initials: "AS",
+      initials: "TB",
     },
     // Second row - Open positions
     {

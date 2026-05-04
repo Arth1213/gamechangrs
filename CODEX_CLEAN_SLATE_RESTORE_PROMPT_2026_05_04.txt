@@ -1,0 +1,33 @@
+Restore Game-Changrs from a clean slate using the backup files at /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503.
+
+Before starting, confirm these files exist:
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/root.env.restore-copy
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/bay-area-u15.env.restore-copy
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/raw-secret-files/bay-area-u15/.env
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/render-and-api-secret-values-20260503.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/gamechangrs-2026_05-03-restore.bundle
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/COMPLETE_RESTORE_PLAN_2026_05_04.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/START_HERE_FOR_RESTORE_2026_05_04.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/START_HERE_FOR_RESTORE_2026_05_04.txt
+
+Requirements:
+1. Recreate the repo at /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy.
+2. Prefer cloning from GitHub https://github.com/Arth1213/gamechangrs.git and checking out main if GitHub is reachable.
+3. If GitHub is not reachable, restore from the git bundle at /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/gamechangrs-2026_05-03-restore.bundle and use backup/2026_05-03-Game-Changrs-Restore-Point.
+4. Restore .env from /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/root.env.restore-copy.
+5. Restore bay-area-u15/.env from /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/raw-secret-files/bay-area-u15/.env.
+6. Run npm install in the repo root and in bay-area-u15.
+7. Start the frontend and the bay-area-u15 API locally.
+8. Verify the frontend home page, sign-in page, analytics pages, and local ops page if enabled.
+9. Tell me exactly what external accounts or secrets are still needed after the local restore.
+
+Use these reference docs while restoring:
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/START_HERE_FOR_RESTORE_2026_05_04.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/START_HERE_FOR_RESTORE_2026_05_04.txt
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/RESTORE_README_2026_05_03.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/RESTORE_CHECKLIST_FOR_OPERATOR_2026_05_04.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/CLOUD_RECOVERY_STATUS_2026_05_03.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/game_changrs_preservation_record_2026_05_03.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/COMPLETE_RESTORE_PLAN_2026_05_04.md
+
+Do the work end to end. Do not ask me to rediscover file paths that are already listed above.

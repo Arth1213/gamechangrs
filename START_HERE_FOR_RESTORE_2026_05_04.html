@@ -1,0 +1,49 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+body { font-family: Arial, Helvetica, sans-serif; color:#111827; margin: 54px; line-height: 1.38; font-size: 12pt; }
+h1 { font-size: 26pt; margin: 0 0 10px; color:#0f172a; }
+h2 { font-size: 18pt; margin: 24px 0 8px; color:#0f172a; border-bottom: 1px solid #d1d5db; padding-bottom: 4px; }
+h3 { font-size: 14pt; margin: 18px 0 6px; color:#111827; }
+p { margin: 0 0 8px; }
+.code { font-family: Menlo, Consolas, monospace; background:#f8fafc; border:1px solid #d1d5db; padding:10px 12px; white-space: pre-wrap; margin: 6px 0 12px; }
+</style>
+</head><body>
+<h1>Start Here For Restore</h1>
+<p>Date: 2026-05-04</p>
+<p>Use this file first if you need to restore Game-Changrs from a clean machine.</p>
+<h2>What To Open First</h2>
+<p>Open these in this order:</p>
+<p><b>1.</b> `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/START_HERE_FOR_RESTORE_2026_05_04.md`</p>
+<p><b>2.</b> `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/COMPLETE_RESTORE_PLAN_2026_05_04.md`</p>
+<p><b>3.</b> `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/game_changrs_preservation_record_2026_05_03.md`</p>
+<p><b>4.</b> `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/render-and-api-secret-values-20260503.md`</p>
+<h2>Files That Must Exist In OneDrive</h2>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/root.env.restore-copy`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/bay-area-u15.env.restore-copy`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/raw-secret-files/bay-area-u15/.env`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/render-and-api-secret-values-20260503.md`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/gamechangrs-2026_05-03-restore.bundle`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/COMPLETE_RESTORE_PLAN_2026_05_04.md`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/COMPLETE_RESTORE_PLAN_2026_05_04.docx`</p>
+<p>&#8226; `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/CODEX_CLEAN_SLATE_RESTORE_PROMPT_2026_05_04.txt`</p>
+<h2>Fast Restore Path</h2>
+<p><b>1.</b> Restore or sync the OneDrive backup folder to the machine.</p>
+<p><b>2.</b> Open Codex with workspace `/Users/artharun/Downloads/GAME-CHANGRS`.</p>
+<p><b>3.</b> Paste the prompt from:</p>
+<p><span style="font-family: Menlo, Consolas, monospace; background:#f3f4f6;">/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/CODEX_CLEAN_SLATE_RESTORE_PROMPT_2026_05_04.txt</span></p>
+<p><b>4.</b> Let Codex recreate the repo, restore `.env` files, install dependencies, and start the services.</p>
+<p><b>5.</b> If GitHub is unavailable, Codex should use the git bundle from the OneDrive restore folder.</p>
+<h2>If You Want To Restore Manually</h2>
+<p>Use the full command-by-command guide here:</p>
+<p><span style="font-family: Menlo, Consolas, monospace; background:#f3f4f6;">/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/2026_05-03-Game-Changrs-Restore-Point/COMPLETE_RESTORE_PLAN_2026_05_04.md</span></p>
+<h2>Known External Dependencies</h2>
+<p>You still need:</p>
+<p>&#8226; GitHub repo access</p>
+<p>&#8226; Supabase analytics project access</p>
+<p>&#8226; Render service access</p>
+<p>&#8226; Lovable project access</p>
+<p>&#8226; IONOS DNS access</p>
+<p>&#8226; OpenAI API key source of truth</p>
+<h2>Known Gap</h2>
+<p>Supabase project ref <span style="font-family: Menlo, Consolas, monospace; background:#f3f4f6;">snlutvotzeijzqdwlank</span> is not currently visible from the accessible Supabase account context and may still need separate recovery.</p>
+</body></html>

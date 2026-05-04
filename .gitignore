@@ -11,10 +11,12 @@ node_modules
 dist
 dist-ssr
 *.local
+*.env
 bay-area-u15/storage/
 bay-area-u15/.cache/
 bay-area-u15/playwright-report/
 bay-area-u15/test-results/
+supabase/.temp/
 
 # Editor directories and files
 .vscode/*

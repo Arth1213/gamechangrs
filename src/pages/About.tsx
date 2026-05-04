@@ -1,7 +1,7 @@
 import { usePublicSiteStats } from "@/hooks/usePublicSiteStats";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { Target, Heart, Zap, Users, Award, Globe, Linkedin, ExternalLink } from "lucide-react";
+import { Target, Heart, Zap, Users, Award, Linkedin, ExternalLink, Video, Package } from "lucide-react";
 
 function formatCount(value: number | null) {
   if (value === null || !Number.isFinite(value)) {
@@ -12,7 +12,7 @@ function formatCount(value: number | null) {
 }
 
 const About = () => {
-  const { playerCount, seriesCount, computedMatchCount, gearDonationCount } = usePublicSiteStats();
+  const { playerCount, computedMatchCount, gearDonationCount, videoAnalysisCount } = usePublicSiteStats();
 
   const team = [
     // First row - Current team
@@ -83,9 +83,9 @@ const About = () => {
 
   const impactStats = [
     { icon: Award, value: formatCount(playerCount), label: "Athletes Analyzed" },
-    { icon: Globe, value: formatCount(seriesCount), label: "Series Analyzed" },
     { icon: Target, value: formatCount(computedMatchCount), label: "Matches Analyzed" },
-    { icon: Heart, value: formatCount(gearDonationCount), label: "Active Gear Donations" },
+    { icon: Video, value: formatCount(videoAnalysisCount), label: "Videos Analyzed" },
+    { icon: Package, value: formatCount(gearDonationCount), label: "Gears Donated" },
   ];
 
   return (

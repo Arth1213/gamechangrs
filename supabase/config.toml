@@ -7,7 +7,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.contact-seller]
-verify_jwt = false
+verify_jwt = true
 
 [functions.contact-form]
 verify_jwt = false
@@ -16,7 +16,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-session-notification]
-verify_jwt = false
+verify_jwt = true
 
 [functions.scrape-profile-url]
 verify_jwt = true
@@ -25,7 +25,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.cricclubs-player-analytics]
-verify_jwt = false
+verify_jwt = true
 
 [functions.analytics-player-report-chat]
 verify_jwt = true

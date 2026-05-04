@@ -66,8 +66,11 @@ curl -sS http://127.0.0.1:4012/api/local-ops/overview
   - `Run Onboarding Chain`
   - `Run Refresh Chain`
   - `Run Validate + Publish Chain`
+- `Run Comparison` to compare the latest run against the immediately previous run for the same series.
+- `Run Triage` to see interrupted, failed, stale, or canceled runs that still need operator follow-up.
 - `Series Actions` only when a specific low-level step needs to be run manually.
 - `Queue Visibility`, `Latest Operator Run`, and `Recent Runs` to monitor active work and retry prior runs.
+- `Open Run` on any saved run to inspect one run in detail, including saved JSON, log tail, and previous-run comparison.
 
 ## Publish safety
 

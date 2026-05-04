@@ -207,12 +207,109 @@ function renderStepCards(stepLogs = []) {
   `;
 }
 
+function renderPreviousRunComparison(comparison = null) {
+  if (!comparison?.available) {
+    return `
+      <section class="panel span-8">
+        <div class="panel-header">
+          <div>
+            <h2>Previous Run Comparison</h2>
+            <p class="section-copy">${escapeHtml(comparison?.summary || "A previous run is not available for comparison yet.")}</p>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  const changes = Array.isArray(comparison?.changes) ? comparison.changes : [];
+  const latestRun = comparison?.latestRun || {};
+  const previousRun = comparison?.previousRun || {};
+
+  return `
+    <section class="panel span-8">
+      <div class="panel-header">
+        <div>
+          <h2>Previous Run Comparison</h2>
+          <p class="section-copy">${escapeHtml(comparison.summary || "Comparison unavailable.")}</p>
+          ${comparison.note ? `<p class="section-copy">${escapeHtml(comparison.note)}</p>` : ""}
+        </div>
+        <span class="status-pill ${escapeHtml(comparison.limited ? "warn" : "good")}">${escapeHtml(comparison.limited ? "Limited history" : "Snapshot compare")}</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><b>Current Run</b><span>${escapeHtml(latestRun.actionLabel || latestRun.runId || "-")}</span></div>
+        <div class="stat"><b>Current Status</b><span>${escapeHtml(statusLabel(latestRun.status))}</span></div>
+        <div class="stat"><b>Previous Run</b><span>${escapeHtml(previousRun.actionLabel || previousRun.runId || "-")}</span></div>
+        <div class="stat"><b>Previous Status</b><span>${escapeHtml(statusLabel(previousRun.status))}</span></div>
+      </div>
+      ${changes.length
+        ? `
+          <div class="compare-grid">
+            ${changes.map((change) => `
+              <article class="compare-card ${escapeHtml(change.tone || "")}">
+                <b>${escapeHtml(change.label || "Change")}</b>
+                <div class="compare-flow">
+                  <span>Before</span>
+                  <strong>${escapeHtml(change.before || "Not recorded")}</strong>
+                </div>
+                <div class="compare-flow">
+                  <span>After</span>
+                  <strong>${escapeHtml(change.after || "Not recorded")}</strong>
+                </div>
+              </article>
+            `).join("")}
+          </div>
+        `
+        : '<div class="empty">No readiness movement was recorded between these two runs.</div>'}
+    </section>
+  `;
+}
+
+function renderRunTriagePanel(triage = null) {
+  const items = Array.isArray(triage?.items) ? triage.items : [];
+  return `
+    <section class="panel span-4">
+      <div class="panel-header">
+        <div>
+          <h2>Series Triage</h2>
+          <p class="section-copy">${escapeHtml(triage?.summary || "No triage summary available.")}</p>
+        </div>
+      </div>
+      ${triage?.note ? `<div class="empty" style="margin-bottom: 12px;">${escapeHtml(triage.note)}</div>` : ""}
+      ${items.length
+        ? `
+          <div class="triage-grid">
+            ${items.map((run) => `
+              <article class="triage-card ${escapeHtml(toneForStatus(run.status))}">
+                <div class="step-top">
+                  <div>
+                    <h3>${escapeHtml(run.actionLabel || run.actionKey || "Run")}</h3>
+                    <div class="step-meta">
+                      <span class="status-pill ${escapeHtml(toneForStatus(run.status))}">${escapeHtml(statusLabel(run.status))}</span>
+                      <span>${escapeHtml(formatTimestamp(run.createdAt || run.startedAt))}</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="step-summary">${escapeHtml(run.triageReason || run.summary || run.note || "No triage summary available.")}</p>
+                <div class="action-grid">
+                  ${run.runId ? renderButtonLink("Open Run", `/local-ops/runs/${encodeURIComponent(run.runId)}`, "button-secondary") : ""}
+                </div>
+              </article>
+            `).join("")}
+          </div>
+        `
+        : '<div class="empty">No interrupted, failed, stale, or canceled runs are waiting for follow-up.</div>'}
+    </section>
+  `;
+}
+
 function renderLocalOpsRunPage({ detail, port }) {
   const run = detail?.run || {};
   const runId = run.runId || "unknown-run";
   const seriesLabel = detail?.series?.label || run.seriesConfigKey || "Global run";
   const workflowSteps = Array.isArray(detail?.workflowStepLogs) ? detail.workflowStepLogs : [];
   const logLines = Array.isArray(detail?.logLines) ? detail.logLines : [];
+  const comparison = detail?.previousRunComparison || null;
+  const triage = detail?.runTriage || null;
   const title = `${run.actionLabel || run.actionKey || "Local Ops Run"} · ${runId}`;
   const startCommand = `PORT=${port} npm run ops:ui:start`;
 
@@ -456,6 +553,49 @@ function renderLocalOpsRunPage({ detail, port }) {
         display: grid;
         gap: 14px;
       }
+      .compare-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-top: 14px;
+      }
+      .compare-card,
+      .triage-card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 18px;
+        display: grid;
+        gap: 10px;
+      }
+      .compare-card.good,
+      .triage-card.good { background: rgba(13, 41, 31, 0.32); }
+      .compare-card.warn,
+      .triage-card.warn { background: rgba(63, 42, 17, 0.28); }
+      .compare-card.bad,
+      .triage-card.bad { background: rgba(68, 24, 24, 0.3); }
+      .compare-card b {
+        display: block;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .compare-flow {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .compare-flow strong {
+        color: var(--text);
+        font-size: 14px;
+      }
+      .triage-grid {
+        display: grid;
+        gap: 12px;
+      }
       .step-card {
         border: 1px solid var(--line);
         border-radius: 18px;
@@ -583,6 +723,10 @@ function renderLocalOpsRunPage({ detail, port }) {
           </div>
           <div id="status-box" class="status-box" style="margin-top: 14px;">Run actions post back to the local API and then redirect to the saved run id.</div>
         </section>
+
+        ${renderPreviousRunComparison(comparison)}
+
+        ${renderRunTriagePanel(triage)}
 
         <section class="panel span-12">
           <div class="panel-header">

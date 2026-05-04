@@ -57,6 +57,7 @@ const WORKFLOW_ACTIONS = new Set([
 ]);
 const RECOVERABLE_RUN_STATUSES = new Set(["queued", "running"]);
 const INTERRUPTED_WORKFLOW_STEP_STATUSES = new Set(["running", "queued", "in_progress", "standby"]);
+const RUN_TRIAGE_STATUSES = new Set(["interrupted", "failed", "stale", "canceled", "cancelled"]);
 
 const backgroundRunQueue = [];
 const activeBackgroundRuns = new Map();
@@ -362,6 +363,7 @@ function readRecentActionRuns(seriesConfigKey, entry = null, limit = LOCAL_OPS_R
       workflowResume: run.workflowResume || null,
       workflowStoppedEarly: run.workflowStoppedEarly === true,
       workflowStopReason: normalizeText(run.workflowStopReason),
+      seriesStateSnapshot: run.seriesStateSnapshot || null,
     }));
 }
 
@@ -915,6 +917,7 @@ function createActionRunContext(actionKey, input = {}, options = {}) {
 
   function markCanceled(extra = {}) {
     const finishedAt = new Date().toISOString();
+    const seriesStateSnapshot = loadSeriesSnapshotForRun(seriesConfigKey);
     return update({
       status: "canceled",
       ok: null,
@@ -925,6 +928,7 @@ function createActionRunContext(actionKey, input = {}, options = {}) {
       pid: null,
       message: `${buildActionLabel(actionKey)} was removed from the queue.`,
       note: "Queued background work was canceled before execution started.",
+      seriesStateSnapshot: seriesStateSnapshot || state.seriesStateSnapshot || null,
       ...extra,
     });
   }
@@ -934,6 +938,8 @@ function createActionRunContext(actionKey, input = {}, options = {}) {
     const ok = execution?.ok !== false;
     const summary = buildActionCompletionSummary(actionKey, execution);
     const startedAt = state.startedAt || state.createdAt;
+    const resolvedSeriesKey = normalizeText(seriesConfigKey || execution?.seriesConfigKey);
+    const seriesStateSnapshot = loadSeriesSnapshotForRun(resolvedSeriesKey);
     persistState({
       status: ok ? "completed" : "failed",
       ok,
@@ -946,6 +952,7 @@ function createActionRunContext(actionKey, input = {}, options = {}) {
       note: ok
         ? normalizeText(execution?.message || summary)
         : normalizeText(execution?.result?.message || execution?.message || ""),
+      seriesStateSnapshot: seriesStateSnapshot || state.seriesStateSnapshot || null,
     });
     return getSnapshot();
   }
@@ -954,6 +961,7 @@ function createActionRunContext(actionKey, input = {}, options = {}) {
     const finishedAt = new Date().toISOString();
     const message = normalizeText(error?.message || error || `${buildActionLabel(actionKey)} failed.`);
     const startedAt = state.startedAt || state.createdAt;
+    const seriesStateSnapshot = loadSeriesSnapshotForRun(seriesConfigKey);
     persistState({
       status: "failed",
       ok: false,
@@ -963,6 +971,7 @@ function createActionRunContext(actionKey, input = {}, options = {}) {
       summary: message,
       message,
       note: normalizeText(error?.stack),
+      seriesStateSnapshot: seriesStateSnapshot || state.seriesStateSnapshot || null,
     });
     return getSnapshot();
   }
@@ -1172,6 +1181,499 @@ function summarizePublish(payload) {
     dryRun: payload.dryRun === true,
     message: payload.message,
     dbUpdate: payload.dbUpdate || null,
+  };
+}
+
+function workflowStatusLabel(status) {
+  switch (normalizeText(status).toLowerCase()) {
+    case "complete":
+    case "completed":
+      return "Complete";
+    case "blocked":
+      return "Blocked";
+    case "stale":
+      return "Needs rerun";
+    case "in_progress":
+      return "In progress";
+    case "standby":
+      return "Standby";
+    case "failed":
+      return "Failed";
+    case "interrupted":
+      return "Interrupted";
+    case "queued":
+      return "Queued";
+    case "running":
+      return "Running";
+    case "canceled":
+    case "cancelled":
+      return "Canceled";
+    case "pending":
+    default:
+      return "Pending";
+  }
+}
+
+function formatCoverageValueLabel(coverage = {}) {
+  const requiredParsedMatchCount = toInteger(coverage?.requiredParsedMatchCount);
+  const parsedMatchCount = toInteger(coverage?.parsedMatchCount);
+  const matchCount = toInteger(coverage?.matchCount);
+
+  if (requiredParsedMatchCount > 0) {
+    return `${parsedMatchCount || 0}/${requiredParsedMatchCount} playable matches`;
+  }
+
+  if (matchCount > 0) {
+    return `${parsedMatchCount || 0}/${matchCount} matches`;
+  }
+
+  return "Not available";
+}
+
+function buildValidationReadinessLabel(status, publishReady, counts = {}) {
+  const normalizedStatus = normalizeText(status).toLowerCase();
+  const blockerCount = toInteger(counts?.fail) || 0;
+  const warningCount = toInteger(counts?.warn) || 0;
+
+  if (publishReady === true || normalizedStatus === "complete" || normalizedStatus === "completed") {
+    return `Publish ready${warningCount > 0 ? ` (${warningCount} warning${warningCount === 1 ? "" : "s"})` : ""}`;
+  }
+
+  if (normalizedStatus === "blocked") {
+    return `Blocked${blockerCount > 0 ? ` (${blockerCount} blocker${blockerCount === 1 ? "" : "s"})` : ""}`;
+  }
+
+  if (normalizedStatus === "stale") {
+    return "Validation stale";
+  }
+
+  if (normalizedStatus === "failed") {
+    return "Validation failed";
+  }
+
+  if (normalizedStatus === "interrupted") {
+    return "Validation interrupted";
+  }
+
+  if (normalizedStatus === "running") {
+    return "Validation running";
+  }
+
+  if (normalizedStatus === "queued") {
+    return "Validation queued";
+  }
+
+  if (normalizedStatus === "standby") {
+    return "Validation standby";
+  }
+
+  return "Not validated";
+}
+
+function buildLivePublishLabel(status, options = {}) {
+  const normalizedStatus = normalizeText(status).toLowerCase();
+  const liveCurrent = options?.liveCurrent === true;
+  const dryRunCurrent = options?.dryRunCurrent === true;
+  const enabled = options?.enabled === true;
+
+  if (liveCurrent || normalizedStatus === "complete" || normalizedStatus === "completed") {
+    return "Live publish current";
+  }
+
+  if (normalizedStatus === "stale") {
+    return "Live publish stale";
+  }
+
+  if (normalizedStatus === "blocked") {
+    return "Live publish blocked";
+  }
+
+  if (normalizedStatus === "failed") {
+    return "Live publish failed";
+  }
+
+  if (normalizedStatus === "interrupted") {
+    return "Live publish interrupted";
+  }
+
+  if (normalizedStatus === "running") {
+    return "Live publish running";
+  }
+
+  if (normalizedStatus === "queued") {
+    return "Live publish queued";
+  }
+
+  if (normalizedStatus === "standby") {
+    return enabled ? "Refresh when new matches land" : "Local only";
+  }
+
+  if (normalizedStatus === "pending") {
+    return enabled ? "Live publish pending" : dryRunCurrent ? "Dry run current, live publish pending" : "Live publish pending";
+  }
+
+  return enabled ? "Live publish pending" : "Local only";
+}
+
+function parseValidationCountsFromSummary(summary = "") {
+  const text = normalizeText(summary);
+  if (!text) {
+    return {
+      fail: 0,
+      warn: 0,
+    };
+  }
+
+  const blockingMatch = text.match(/(\d+)\s+blocking\s+checks?/i);
+  const warningMatch = text.match(/(\d+)\s+warning(?:\s+checks?)?/i);
+
+  return {
+    fail: blockingMatch ? toInteger(blockingMatch[1]) || 0 : 0,
+    warn: warningMatch ? toInteger(warningMatch[1]) || 0 : 0,
+  };
+}
+
+function buildRunSnapshotFromWorkflowInference(run = {}) {
+  if (!run || (!Array.isArray(run.workflowSteps) && !normalizeText(run.actionKey))) {
+    return null;
+  }
+
+  const workflowSteps = Array.isArray(run.workflowSteps) ? run.workflowSteps : [];
+  const validationStep = workflowSteps.find((step) => normalizeText(step?.actionKey).toLowerCase() === "validate-series")
+    || null;
+  const publishDryRunStep = workflowSteps.find((step) => normalizeText(step?.key).toLowerCase() === "publish-series-dry-run")
+    || null;
+  const publishLiveStep = workflowSteps.find((step) => normalizeText(step?.key).toLowerCase() === "publish-series-live")
+    || null;
+  const actionKey = normalizeText(run.actionKey).toLowerCase();
+  const retryInput = run.retryInput || {};
+  const currentStatus = normalizeText(run.status).toLowerCase();
+  const publishActionDryRun = actionKey === "publish-series" && toBoolean(retryInput.dryRun);
+  const publishActionLive = actionKey === "publish-series" && retryInput.dryRun !== true;
+  const inferredCounts = parseValidationCountsFromSummary(validationStep?.summary || run.summary || run.message || "");
+  const inferredPublishReady = /publish ready/i.test(validationStep?.summary || run.summary || run.message || "");
+  const liveStatus = publishLiveStep?.status
+    || (publishActionLive ? currentStatus : "")
+    || "";
+  const dryRunStatus = publishDryRunStep?.status
+    || (publishActionDryRun ? currentStatus : "")
+    || "";
+  const liveCurrent = normalizeText(liveStatus).toLowerCase() === "completed";
+  const dryRunCurrent = normalizeText(dryRunStatus).toLowerCase() === "completed";
+
+  if (!validationStep && !publishDryRunStep && !publishLiveStep && actionKey !== "publish-series" && actionKey !== "validate-series") {
+    return null;
+  }
+
+  return {
+    capturedAt: normalizeText(run.finishedAt || run.updatedAt || run.createdAt) || null,
+    source: "workflow-inference",
+    limited: true,
+    seriesConfigKey: normalizeText(run.seriesConfigKey) || null,
+    validation: {
+      status: normalizeText(validationStep?.status || (inferredPublishReady ? "completed" : actionKey === "validate-series" ? currentStatus : "")) || "pending",
+      label: buildValidationReadinessLabel(
+        normalizeText(validationStep?.status || (inferredPublishReady ? "completed" : actionKey === "validate-series" ? currentStatus : "")),
+        inferredPublishReady,
+        inferredCounts
+      ),
+      publishReady: inferredPublishReady,
+      updatedAt: normalizeText(validationStep?.updatedAt || run.finishedAt || run.updatedAt) || null,
+      blockingCount: toInteger(inferredCounts.fail) || 0,
+      warningCount: toInteger(inferredCounts.warn) || 0,
+      summary: normalizeText(validationStep?.summary || ""),
+    },
+    publish: {
+      status: normalizeText(liveStatus) || normalizeText(dryRunStatus) || "pending",
+      label: buildLivePublishLabel(liveStatus, {
+        enabled: true,
+        liveCurrent,
+        dryRunCurrent,
+      }),
+      updatedAt: normalizeText(publishLiveStep?.updatedAt || run.finishedAt || run.updatedAt) || null,
+      liveUpdatedAt: normalizeText(publishLiveStep?.updatedAt || (publishActionLive ? run.finishedAt || run.updatedAt : "")) || null,
+      dryRunUpdatedAt: normalizeText(publishDryRunStep?.updatedAt || (publishActionDryRun ? run.finishedAt || run.updatedAt : "")) || null,
+      liveCurrent,
+      dryRunCurrent,
+      summary: normalizeText(publishLiveStep?.summary || publishDryRunStep?.summary || ""),
+    },
+    coverage: null,
+    nextActionLabel: "",
+    nextActionCommand: "",
+    nextActionReason: "",
+    workflowStatuses: {},
+    blockers: toInteger(inferredCounts.fail) || 0,
+    warnings: toInteger(inferredCounts.warn) || 0,
+  };
+}
+
+function buildSeriesReadinessSnapshot(entry, workflow = null) {
+  if (!entry) {
+    return null;
+  }
+
+  const hydratedWorkflow = workflow || buildSeriesWorkflow(entry);
+  const validationArtifact = entry?.artifacts?.validation || null;
+  const publishArtifact = entry?.artifacts?.publish || null;
+  const publishDryRunArtifact = publishArtifact?.summary?.dryRun === true ? publishArtifact : null;
+  const publishLiveArtifact = publishArtifact?.summary?.dryRun === false ? publishArtifact : null;
+  const validationStep = Array.isArray(hydratedWorkflow?.publish?.steps)
+    ? hydratedWorkflow.publish.steps.find((step) => step.key === "validate-series")
+    : null;
+  const livePublishStep = Array.isArray(hydratedWorkflow?.publish?.steps)
+    ? hydratedWorkflow.publish.steps.find((step) => step.key === "publish-series-live")
+    : null;
+  const coverage = validationArtifact?.summary?.coverage || {};
+  const counts = validationArtifact?.summary?.counts || {};
+  const liveCurrent = Boolean(
+    validationArtifact?.summary?.publishReady === true
+      && publishLiveArtifact
+      && isArtifactFresh(publishLiveArtifact, validationArtifact)
+  );
+  const dryRunCurrent = Boolean(
+    validationArtifact?.summary?.publishReady === true
+      && publishDryRunArtifact
+      && isArtifactFresh(publishDryRunArtifact, validationArtifact)
+  );
+
+  return {
+    capturedAt: new Date().toISOString(),
+    source: "persisted-series-state",
+    limited: false,
+    seriesConfigKey: normalizeText(entry.slug) || null,
+    seriesLabel: normalizeText(entry.label) || normalizeText(entry.slug) || null,
+    enabled: entry.enabled === true,
+    liveSeriesCurrent: isLiveSeriesCurrent(entry, hydratedWorkflow),
+    headline: normalizeText(hydratedWorkflow?.headline),
+    note: normalizeText(hydratedWorkflow?.note),
+    validation: {
+      status: normalizeText(validationStep?.status || ""),
+      label: buildValidationReadinessLabel(validationStep?.status, validationArtifact?.summary?.publishReady === true, counts),
+      publishReady: validationArtifact?.summary?.publishReady === true,
+      updatedAt: normalizeText(validationArtifact?.updatedAt) || null,
+      blockingCount: toInteger(counts?.fail) || 0,
+      warningCount: toInteger(counts?.warn) || 0,
+      summary: normalizeText(validationStep?.summary || validationArtifact?.summary?.message),
+    },
+    publish: {
+      status: normalizeText(livePublishStep?.status || ""),
+      label: buildLivePublishLabel(livePublishStep?.status, {
+        enabled: entry.enabled === true,
+        liveCurrent,
+        dryRunCurrent,
+      }),
+      updatedAt: normalizeText(publishArtifact?.updatedAt) || null,
+      liveUpdatedAt: normalizeText(publishLiveArtifact?.updatedAt) || null,
+      dryRunUpdatedAt: normalizeText(publishDryRunArtifact?.updatedAt) || null,
+      liveCurrent,
+      dryRunCurrent,
+      summary: normalizeText(livePublishStep?.summary || publishArtifact?.summary?.message),
+    },
+    coverage: validationArtifact?.summary?.coverage
+      ? {
+          divisionCount: toInteger(coverage?.divisionCount) || 0,
+          matchCount: toInteger(coverage?.matchCount) || 0,
+          requiredParsedMatchCount: toInteger(coverage?.requiredParsedMatchCount) || 0,
+          parsedMatchCount: toInteger(coverage?.parsedMatchCount) || 0,
+          parsedCoveragePct: Number.isFinite(Number(coverage?.parsedCoveragePct)) ? Number(coverage.parsedCoveragePct) : null,
+          seasonRowCount: toInteger(coverage?.seasonRowCount) || 0,
+          compositeRowCount: toInteger(coverage?.compositeRowCount) || 0,
+          intelligenceProfileCount: toInteger(coverage?.intelligenceProfileCount) || 0,
+        }
+      : null,
+    nextActionLabel: normalizeText(hydratedWorkflow?.nextRecommendedAction?.label),
+    nextActionCommand: normalizeText(hydratedWorkflow?.nextRecommendedAction?.command),
+    nextActionReason: normalizeText(hydratedWorkflow?.nextRecommendedAction?.reason),
+    workflowStatuses: {
+      onboarding: normalizeText(hydratedWorkflow?.onboarding?.status),
+      refresh: normalizeText(hydratedWorkflow?.refresh?.status),
+      publish: normalizeText(hydratedWorkflow?.publish?.status),
+    },
+    blockers: toInteger(counts?.fail) || 0,
+    warnings: toInteger(counts?.warn) || 0,
+  };
+}
+
+function loadSeriesSnapshotForRun(seriesConfigKey) {
+  const seriesSlug = normalizeText(seriesConfigKey);
+  if (!seriesSlug) {
+    return null;
+  }
+
+  try {
+    const config = loadYamlConfig(CONFIG_PATH);
+    const seriesEntries = Array.isArray(config?.series) ? config.series : [];
+    const seriesEntry = seriesEntries.find((entry) => normalizeText(entry?.slug) === seriesSlug) || null;
+    if (!seriesEntry) {
+      return null;
+    }
+    const overviewEntry = buildSeriesOverviewEntry(seriesEntry);
+    const workflow = buildSeriesWorkflow(overviewEntry);
+    return buildSeriesReadinessSnapshot(overviewEntry, workflow);
+  } catch (error) {
+    return null;
+  }
+}
+
+function resolveRunReadinessSnapshot(run = {}, options = {}) {
+  if (run?.seriesStateSnapshot) {
+    return run.seriesStateSnapshot;
+  }
+
+  if (options.currentEntry) {
+    const currentSnapshot = buildSeriesReadinessSnapshot(options.currentEntry, options.currentWorkflow || buildSeriesWorkflow(options.currentEntry));
+    if (currentSnapshot) {
+      return currentSnapshot;
+    }
+  }
+
+  return buildRunSnapshotFromWorkflowInference(run);
+}
+
+function buildRunComparisonChange(key, label, before, after, tone = "") {
+  if (!before && !after) {
+    return null;
+  }
+  if (String(before || "") === String(after || "")) {
+    return null;
+  }
+  return {
+    key,
+    label,
+    before: before || "Not recorded",
+    after: after || "Not recorded",
+    tone: normalizeText(tone),
+  };
+}
+
+function buildRunComparisonSummary(latestRun, previousRun, changes = [], limited = false) {
+  const majorChanges = changes.filter((change) =>
+    ["run-status", "validation", "live-publish", "parsed-coverage", "next-action"].includes(change.key)
+  );
+
+  if (!majorChanges.length) {
+    return {
+      summary: `No readiness movement was recorded between ${latestRun?.actionLabel || latestRun?.actionKey || "the latest run"} and ${previousRun?.actionLabel || previousRun?.actionKey || "the previous run"}.`,
+      note: limited ? "One or both runs use inferred history because they predate persisted readiness snapshots." : "",
+    };
+  }
+
+  const headline = majorChanges
+    .slice(0, 2)
+    .map((change) => `${change.label} moved from ${change.before} to ${change.after}.`)
+    .join(" ");
+
+  return {
+    summary: headline,
+    note: limited ? "One or both runs use inferred history because they predate persisted readiness snapshots." : "",
+  };
+}
+
+function buildRunComparison(latestRun = null, previousRun = null, latestSnapshot = null, previousSnapshot = null) {
+  if (!latestRun || !previousRun) {
+    return {
+      available: false,
+      summary: "A previous run is not available for comparison yet.",
+      note: "",
+      changes: [],
+    };
+  }
+
+  const latestResolvedSnapshot = latestSnapshot || resolveRunReadinessSnapshot(latestRun);
+  const previousResolvedSnapshot = previousSnapshot || resolveRunReadinessSnapshot(previousRun);
+  const limited = Boolean(
+    !latestResolvedSnapshot
+      || !previousResolvedSnapshot
+      || latestResolvedSnapshot?.limited
+      || previousResolvedSnapshot?.limited
+  );
+  const changes = [
+    buildRunComparisonChange(
+      "run-status",
+      "Run status",
+      workflowStatusLabel(previousRun.status),
+      workflowStatusLabel(latestRun.status),
+      normalizeText(latestRun.status).toLowerCase() === "completed" ? "good" : ""
+    ),
+    buildRunComparisonChange(
+      "validation",
+      "Validation",
+      previousResolvedSnapshot?.validation?.label,
+      latestResolvedSnapshot?.validation?.label,
+      latestResolvedSnapshot?.validation?.publishReady ? "good" : latestResolvedSnapshot?.blockers > 0 ? "bad" : ""
+    ),
+    buildRunComparisonChange(
+      "live-publish",
+      "Live publish",
+      previousResolvedSnapshot?.publish?.label,
+      latestResolvedSnapshot?.publish?.label,
+      latestResolvedSnapshot?.publish?.liveCurrent ? "good" : ""
+    ),
+    buildRunComparisonChange(
+      "parsed-coverage",
+      "Parsed coverage",
+      previousResolvedSnapshot?.coverage ? formatCoverageValueLabel(previousResolvedSnapshot.coverage) : "",
+      latestResolvedSnapshot?.coverage ? formatCoverageValueLabel(latestResolvedSnapshot.coverage) : "",
+      ""
+    ),
+    buildRunComparisonChange(
+      "next-action",
+      "Recommended next step",
+      previousResolvedSnapshot?.nextActionLabel,
+      latestResolvedSnapshot?.nextActionLabel,
+      ""
+    ),
+  ].filter(Boolean);
+  const summary = buildRunComparisonSummary(latestRun, previousRun, changes, limited);
+
+  return {
+    available: true,
+    limited,
+    latestRunId: normalizeText(latestRun.runId),
+    previousRunId: normalizeText(previousRun.runId),
+    latestRun: {
+      runId: normalizeText(latestRun.runId),
+      actionLabel: normalizeText(latestRun.actionLabel || latestRun.actionKey),
+      status: normalizeText(latestRun.status),
+      createdAt: normalizeText(latestRun.createdAt || latestRun.startedAt),
+    },
+    previousRun: {
+      runId: normalizeText(previousRun.runId),
+      actionLabel: normalizeText(previousRun.actionLabel || previousRun.actionKey),
+      status: normalizeText(previousRun.status),
+      createdAt: normalizeText(previousRun.createdAt || previousRun.startedAt),
+    },
+    latestSnapshot: latestResolvedSnapshot || null,
+    previousSnapshot: previousResolvedSnapshot || null,
+    changes,
+    summary: normalizeText(summary.summary),
+    note: normalizeText(summary.note),
+  };
+}
+
+function buildRunTriage(recentRuns = []) {
+  const items = (Array.isArray(recentRuns) ? recentRuns : [])
+    .filter((run) => {
+      const runStatus = normalizeText(run?.status).toLowerCase();
+      return RUN_TRIAGE_STATUSES.has(runStatus) || (run?.workflowStoppedEarly === true && runStatus !== "completed");
+    })
+    .slice(0, 3)
+    .map((run) => ({
+      ...run,
+      triageReason: normalizeText(run.workflowStopReason || run.note || run.summary || run.message),
+      triageActionLabel: normalizeText(run.workflowResume?.label || (run.retryInput ? "Retry Run" : "")),
+      triageCommand: normalizeText(run.workflowResume?.command || run.commandPreview),
+    }));
+
+  return {
+    itemCount: items.length,
+    items,
+    summary: items.length
+      ? `${items.length} recent run${items.length === 1 ? "" : "s"} need attention before you trust the workflow state.`
+      : "No interrupted, failed, stale, or canceled runs are waiting for operator follow-up.",
+    note: items.length
+      ? "Resume from the saved workflow step when possible. Retry the whole run only when the saved step state is no longer trustworthy."
+      : "",
   };
 }
 
@@ -2735,12 +3237,28 @@ function getLocalOpsRunDetail(runId) {
   const seriesEntries = Array.isArray(config?.series) ? config.series : [];
   const seriesEntry = seriesEntries.find((entry) => normalizeText(entry?.slug) === normalizeText(rawStatus.seriesConfigKey)) || null;
   const overviewEntry = seriesEntry ? buildSeriesOverviewEntry(seriesEntry) : null;
+  const workflow = overviewEntry ? buildSeriesWorkflow(overviewEntry) : null;
   const hydratedRun = deriveLatestRunStatus({
     ...rawStatus,
     ...resolvePersistedRunPaths(rawStatus, statusPath),
   }, overviewEntry);
   const logLines = readLogLines(hydratedRun.logPath, LOCAL_OPS_RUN_DETAIL_LOG_LIMIT);
   const artifactPayload = hydratedRun.artifactPath ? readJsonIfExists(hydratedRun.artifactPath) : null;
+  const recentRuns = normalizeText(hydratedRun.seriesConfigKey)
+    ? readRecentActionRuns(hydratedRun.seriesConfigKey, overviewEntry, LOCAL_OPS_RUN_HISTORY_LIMIT + 4)
+    : [];
+  const currentRunIndex = recentRuns.findIndex((candidate) => normalizeText(candidate?.runId) === targetRunId);
+  const previousRun = currentRunIndex >= 0 ? recentRuns[currentRunIndex + 1] || null : null;
+  const comparison = buildRunComparison(
+    hydratedRun,
+    previousRun,
+    resolveRunReadinessSnapshot(hydratedRun, {
+      currentEntry: currentRunIndex === 0 ? overviewEntry : null,
+      currentWorkflow: currentRunIndex === 0 ? workflow : null,
+    }),
+    resolveRunReadinessSnapshot(previousRun)
+  );
+  const runTriage = buildRunTriage(recentRuns);
 
   return {
     ok: true,
@@ -2763,6 +3281,9 @@ function getLocalOpsRunDetail(runId) {
     artifact: artifactPayload,
     logLines,
     workflowStepLogs: buildWorkflowStepLogSlices(hydratedRun, logLines),
+    previousRunComparison: comparison,
+    runTriage,
+    recentRuns,
   };
 }
 
@@ -3192,10 +3713,23 @@ async function getLocalOpsOverview() {
     .sort((left, right) => Number(right.enabled) - Number(left.enabled) || left.label.localeCompare(right.label))
     .map((entry) => {
       const workflow = buildSeriesWorkflow(entry);
+      const latestRun = readLatestActionRun(entry.slug, entry);
+      const recentRuns = readRecentActionRuns(entry.slug, entry);
+      const previousRun = recentRuns.find((run) => normalizeText(run?.runId) !== normalizeText(latestRun?.runId)) || null;
       return {
         ...entry,
-        latestRun: readLatestActionRun(entry.slug, entry),
-        recentRuns: readRecentActionRuns(entry.slug, entry),
+        latestRun,
+        recentRuns,
+        latestRunComparison: buildRunComparison(
+          latestRun,
+          previousRun,
+          resolveRunReadinessSnapshot(latestRun, {
+            currentEntry: entry,
+            currentWorkflow: workflow,
+          }),
+          resolveRunReadinessSnapshot(previousRun)
+        ),
+        runTriage: buildRunTriage(recentRuns),
         workflow,
       };
     });
@@ -3217,6 +3751,7 @@ async function getLocalOpsOverview() {
       "ops_runbook_manual_refresh.md",
       "ops_runbook_compute_publish.md",
       "local_ops_operator_console_start_guide.md",
+      "local_ops_operator_email_reference_2026-04-30.md",
     ],
   };
 }

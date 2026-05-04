@@ -458,6 +458,46 @@ function renderLocalOpsConsolePage({ overview, port }) {
         display: grid;
         gap: 10px;
       }
+      .comparison-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px;
+      }
+      .comparison-card {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(7, 16, 28, 0.45);
+        padding: 14px 16px;
+        display: grid;
+        gap: 8px;
+      }
+      .comparison-card.good {
+        background: rgba(13, 41, 31, 0.32);
+      }
+      .comparison-card.warn {
+        background: rgba(63, 42, 17, 0.28);
+      }
+      .comparison-card.bad {
+        background: rgba(68, 24, 24, 0.3);
+      }
+      .comparison-card b {
+        display: block;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .comparison-flow {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .comparison-flow strong {
+        color: var(--text);
+        font-size: 14px;
+      }
       .run-history-item {
         border: 1px solid var(--line);
         border-radius: 16px;
@@ -1293,6 +1333,110 @@ function renderLocalOpsConsolePage({ overview, port }) {
         \`;
       }
 
+      function renderRunComparison(comparison) {
+        if (!comparison?.available) {
+          return \`
+            <section class="run-monitor">
+              <div class="run-monitor-header">
+                <div>
+                  <h3>Run Comparison</h3>
+                  <p>\${escapeHtmlText(comparison?.summary || "A previous run is not available for comparison yet.")}</p>
+                </div>
+              </div>
+            </section>
+          \`;
+        }
+
+        const changes = Array.isArray(comparison?.changes) ? comparison.changes : [];
+        const latestRun = comparison?.latestRun || {};
+        const previousRun = comparison?.previousRun || {};
+
+        return \`
+          <section class="run-monitor">
+            <div class="run-monitor-header">
+              <div>
+                <h3>Run Comparison</h3>
+                <p>\${escapeHtmlText(comparison.summary || "Comparison unavailable.")}</p>
+                \${comparison.note ? \`<p class="series-note">\${escapeHtmlText(comparison.note)}</p>\` : ""}
+              </div>
+              <span class="status-pill \${escapeHtmlText(comparison.limited ? "standby" : "complete")}">\${escapeHtmlText(comparison.limited ? "Limited history" : "Snapshot compare")}</span>
+            </div>
+            <div class="run-monitor-grid">
+              <div class="stat">
+                <b>Latest Run</b>
+                <span>\${escapeHtmlText(latestRun.actionLabel || latestRun.runId || "-")}</span>
+              </div>
+              <div class="stat">
+                <b>Latest Status</b>
+                <span>\${escapeHtmlText(statusLabel(latestRun.status))}</span>
+              </div>
+              <div class="stat">
+                <b>Previous Run</b>
+                <span>\${escapeHtmlText(previousRun.actionLabel || previousRun.runId || "-")}</span>
+              </div>
+              <div class="stat">
+                <b>Previous Status</b>
+                <span>\${escapeHtmlText(statusLabel(previousRun.status))}</span>
+              </div>
+            </div>
+            \${changes.length
+              ? \`
+                <div class="comparison-grid">
+                  \${changes.map((change) => \`
+                    <div class="comparison-card \${escapeHtmlText(change.tone || "")}">
+                      <b>\${escapeHtmlText(change.label || "Change")}</b>
+                      <div class="comparison-flow">
+                        <span>Before</span>
+                        <strong>\${escapeHtmlText(change.before || "Not recorded")}</strong>
+                      </div>
+                      <div class="comparison-flow">
+                        <span>After</span>
+                        <strong>\${escapeHtmlText(change.after || "Not recorded")}</strong>
+                      </div>
+                    </div>
+                  \`).join("")}
+                </div>
+              \`
+              : '<div class="run-log-empty">No readiness movement was recorded between these two runs.</div>'}
+          </section>
+        \`;
+      }
+
+      function renderRunTriage(triage) {
+        const items = Array.isArray(triage?.items) ? triage.items : [];
+        return \`
+          <section class="run-monitor">
+            <div class="run-monitor-header">
+              <div>
+                <h3>Run Triage</h3>
+                <p>\${escapeHtmlText(triage?.summary || "No triage summary available.")}</p>
+                \${triage?.note ? \`<p class="series-note">\${escapeHtmlText(triage.note)}</p>\` : ""}
+              </div>
+            </div>
+            \${items.length
+              ? \`
+                <div class="run-history">
+                  \${items.map((run) => \`
+                    <div class="run-history-item">
+                      <div class="run-history-header">
+                        <div>
+                          <strong>\${escapeHtmlText(run.actionLabel || run.actionKey || "Run")}</strong>
+                          <small class="hint">\${escapeHtmlText(formatTimestamp(run.createdAt || run.startedAt))}</small>
+                        </div>
+                        <span class="status-pill \${escapeHtmlText(run.status || "pending")}">\${escapeHtmlText(statusLabel(run.status))}</span>
+                      </div>
+                      <div class="series-note">\${escapeHtmlText(run.triageReason || run.summary || run.note || "No triage summary available.")}</div>
+                      \${run.triageCommand ? \`<code class="mono">\${escapeHtmlText(run.triageCommand)}</code>\` : ""}
+                      \${renderRunControlButtons(run)}
+                    </div>
+                  \`).join("")}
+                </div>
+              \`
+              : '<div class="run-log-empty">No interrupted, failed, stale, or canceled runs are waiting for follow-up.</div>'}
+          </section>
+        \`;
+      }
+
       function renderRecentRuns(runs) {
         const items = Array.isArray(runs) ? runs : [];
         if (!items.length) {
@@ -1343,6 +1487,8 @@ function renderLocalOpsConsolePage({ overview, port }) {
         const publish = selectedSeries?.artifacts?.publish?.summary;
         const latestRun = selectedSeries?.latestRun || null;
         const recentRuns = selectedSeries?.recentRuns || [];
+        const latestRunComparison = selectedSeries?.latestRunComparison || null;
+        const runTriage = selectedSeries?.runTriage || null;
 
         const nextActionButton = nextAction
           ? \`<button
@@ -1388,6 +1534,8 @@ function renderLocalOpsConsolePage({ overview, port }) {
             <button type="button" class="button-secondary" data-action="refreshOverview">Refresh Overview</button>
           </div>
           \${renderLatestRun(latestRun)}
+          \${renderRunComparison(latestRunComparison)}
+          \${renderRunTriage(runTriage)}
           \${renderRecentRuns(recentRuns)}
           <div class="workflow-track-grid">
             \${renderWorkflowTrack(workflow.onboarding)}

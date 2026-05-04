@@ -7,7 +7,7 @@ Date: 2026-05-03
 ## Restore Anchor
 
 - GitHub repo: `https://github.com/Arth1213/gamechangrs.git`
-- Restore commit: `098ef38`
+- Restore commit: `5bbc0de`
 - Restore branch: `backup/2026_05-03-Game-Changrs-Restore-Point`
 - Restore tag: `2026_05-03-Game-Changrs-Restore-Point`
 
@@ -32,6 +32,16 @@ Date: 2026-05-03
 
 ## Restore Inventory
 
+### Primary Backup Location
+
+Primary synced backup location:
+
+`/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503`
+
+Local mirror created on this machine:
+
+`/Users/artharun/Downloads/GAME-CHANGRS-BACKUPS/2026_05-03-Game-Changrs-Restore-Point`
+
 ### Code Anchors
 
 - GitHub branch: `backup/2026_05-03-Game-Changrs-Restore-Point`
@@ -41,7 +51,11 @@ Date: 2026-05-03
 
 ### Local Backup Artifacts
 
-Expected backup directory:
+Primary OneDrive backup directory:
+
+`/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503`
+
+Local backup directory:
 
 `/Users/artharun/Downloads/GAME-CHANGRS-BACKUPS/2026_05-03-Game-Changrs-Restore-Point`
 
@@ -53,7 +67,10 @@ Expected artifacts:
 - `gamechangrs-github-source-2026_05-03.tar.gz`
 - `RESTORE_README_2026_05_03.md`
 - `ENV_REQUIREMENTS_2026_05_03.md`
+- `CLOUD_RECOVERY_STATUS_2026_05_03.md`
 - `CODEX_RESTORE_PROMPT_2026_05_03.txt`
+- `root.env.restore-copy`
+- `bay-area-u15.env.restore-copy`
 
 ## Cloud Components To Restore Or Reconnect
 
@@ -135,6 +152,16 @@ Restore requirement:
 ## New Laptop Restore Procedure
 
 ### 1. Recreate the workspace
+
+Preferred first source:
+
+- `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503`
+
+Fallback sources:
+
+- `/Users/artharun/Downloads/GAME-CHANGRS-BACKUPS/2026_05-03-Game-Changrs-Restore-Point`
+- GitHub branch/tag
+- the portable git bundle
 
 ```bash
 mkdir -p /Users/artharun/Downloads/GAME-CHANGRS
@@ -279,4 +306,3 @@ You also need:
 See:
 
 - `CODEX_RESTORE_PROMPT_2026_05_03.txt`
-

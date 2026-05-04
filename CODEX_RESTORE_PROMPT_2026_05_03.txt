@@ -6,7 +6,7 @@ Repository:
 Restore anchors:
 - branch: backup/2026_05-03-Game-Changrs-Restore-Point
 - tag: 2026_05-03-Game-Changrs-Restore-Point
-- commit: 098ef38
+- commit: 5bbc0de
 
 Tasks:
 1. Recreate the repo workspace from the restore tag or the local git bundle backup.

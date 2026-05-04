@@ -7,9 +7,16 @@ Date: 2026-05-03
 ## Restore Anchor
 
 - GitHub repo: `https://github.com/Arth1213/gamechangrs.git`
-- Restore commit: `5bbc0de`
+- Restore backup branch commit: `60f80447b7b601e8a1ecdf72b1063db5a029d222`
+- Restore backup tag commit: `41dbf58eebb8b3a8950e09279c41cd2783c08c32`
 - Restore branch: `backup/2026_05-03-Game-Changrs-Restore-Point`
 - Restore tag: `2026_05-03-Game-Changrs-Restore-Point`
+
+Note:
+
+- The backup branch and backup tag currently point to different commits.
+- Use the backup branch when you want the most complete restore documentation set.
+- Use the backup tag when you want the original tagged snapshot exactly as tagged on 2026-05-03.
 
 ## What This Restore Point Covers
 

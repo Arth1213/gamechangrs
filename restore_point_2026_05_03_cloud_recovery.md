@@ -10,7 +10,8 @@ This document records what was backed up from cloud-connected systems at restore
 
 Backed up:
 
-- repo commit `0b91824`
+- repo backup branch `backup/2026_05-03-Game-Changrs-Restore-Point`
+- repo backup branch commit `60f80447b7b601e8a1ecdf72b1063db5a029d222`
 - branch `backup/2026_05-03-Game-Changrs-Restore-Point`
 - tag `2026_05-03-Game-Changrs-Restore-Point`
 - local portable git bundle
@@ -123,4 +124,3 @@ For a stronger disaster-recovery posture, the next improvement should be:
 2. produce scheduled SQL dumps for both Supabase-backed databases
 3. store those dumps in a secure backup location outside the laptop
 4. keep the secret archive separate from the code archive
-

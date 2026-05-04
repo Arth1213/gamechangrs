@@ -71,6 +71,7 @@ Expected artifacts:
 - `CODEX_RESTORE_PROMPT_2026_05_03.txt`
 - `root.env.restore-copy`
 - `bay-area-u15.env.restore-copy`
+- `raw-secret-files/bay-area-u15/.env`
 
 ## Cloud Components To Restore Or Reconnect
 
@@ -181,10 +182,23 @@ git checkout 2026_05-03-Game-Changrs-Restore-Point
 
 ### 2. Restore local secret files
 
-Restore these files from the secret backup archive:
+Primary OneDrive secret file paths:
+
+- `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/root.env.restore-copy`
+- `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/raw-secret-files/bay-area-u15/.env`
+
+Restore these back into the repo as:
 
 - `.env`
 - `bay-area-u15/.env`
+
+Example:
+
+```bash
+cp /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/root.env.restore-copy /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/.env
+mkdir -p /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15
+cp /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260503/raw-secret-files/bay-area-u15/.env /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15/.env
+```
 
 ### 3. Install dependencies
 

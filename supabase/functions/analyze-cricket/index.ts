@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { errorStatus, requestStructuredObject } from "../_shared/openai.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,6 +25,199 @@ interface AnalysisRequest {
   frameCount: number;
 }
 
+const KEY_JOINTS = [
+  "nose",
+  "left_shoulder",
+  "right_shoulder",
+  "left_elbow",
+  "right_elbow",
+  "left_wrist",
+  "right_wrist",
+  "left_hip",
+  "right_hip",
+  "left_knee",
+  "right_knee",
+  "left_ankle",
+  "right_ankle",
+] as const;
+
+const angleValueSchema = {
+  type: "object",
+  properties: {
+    value: { type: "number" },
+    optimal: { type: "string" },
+    assessment: { type: "string" },
+  },
+  required: ["value", "optimal", "assessment"],
+  additionalProperties: false,
+} as const;
+
+const analysisSchema = {
+  type: "object",
+  properties: {
+    overallScore: { type: "number" },
+    overallGrade: {
+      type: "string",
+      enum: ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F"],
+    },
+    summary: { type: "string" },
+    aspects: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          score: { type: "number" },
+          status: {
+            type: "string",
+            enum: ["excellent", "good", "needs_improvement", "poor"],
+          },
+          feedback: { type: "string" },
+          keyPoints: {
+            type: "array",
+            items: { type: "string" },
+          },
+        },
+        required: ["name", "score", "status", "feedback", "keyPoints"],
+        additionalProperties: false,
+      },
+    },
+    strengths: {
+      type: "array",
+      items: { type: "string" },
+    },
+    areasForImprovement: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          issue: { type: "string" },
+          severity: { type: "string", enum: ["high", "medium", "low"] },
+          drill: { type: "string" },
+        },
+        required: ["issue", "severity", "drill"],
+        additionalProperties: false,
+      },
+    },
+    angleAnalysis: {
+      type: "object",
+      properties: {
+        elbowAngle: angleValueSchema,
+        kneeAngle: angleValueSchema,
+        shoulderAngle: angleValueSchema,
+        hipAngle: angleValueSchema,
+      },
+      required: ["elbowAngle", "kneeAngle", "shoulderAngle", "hipAngle"],
+      additionalProperties: false,
+    },
+    comparisonToElite: { type: "string" },
+    nextSteps: {
+      type: "array",
+      items: { type: "string" },
+    },
+  },
+  required: [
+    "overallScore",
+    "overallGrade",
+    "summary",
+    "aspects",
+    "strengths",
+    "areasForImprovement",
+    "angleAnalysis",
+    "comparisonToElite",
+    "nextSteps",
+  ],
+  additionalProperties: false,
+} as const;
+
+function round(value: number, decimals = 3) {
+  const factor = Math.pow(10, decimals);
+  return Math.round(value * factor) / factor;
+}
+
+function normalizeAngleName(name: string) {
+  return name.replace(/^(left|right)_/, "");
+}
+
+function sampleEvenly<T>(items: T[], sampleSize: number) {
+  if (items.length <= sampleSize) {
+    return items;
+  }
+
+  const indexes = new Set<number>();
+  for (let i = 0; i < sampleSize; i++) {
+    const index = Math.round((i * (items.length - 1)) / (sampleSize - 1));
+    indexes.add(index);
+  }
+
+  return Array.from(indexes)
+    .sort((a, b) => a - b)
+    .map((index) => items[index]);
+}
+
+function summarizePoseData(poseData: PoseData[]) {
+  const validFrames = poseData.filter((frame) => frame.joints.length > 0 || frame.angles.length > 0);
+  const sourceFrames = validFrames.length > 0 ? validFrames : poseData;
+  const sampledFrames = sampleEvenly(sourceFrames, Math.min(12, Math.max(sourceFrames.length, 1))).map((frame, index) => {
+    const importantJoints = Object.fromEntries(
+      frame.joints
+        .filter((joint) => KEY_JOINTS.includes(joint.name as typeof KEY_JOINTS[number]))
+        .map((joint) => [
+          joint.name,
+          {
+            x: round(joint.x),
+            y: round(joint.y),
+            confidence: round(joint.confidence, 2),
+          },
+        ]),
+    );
+
+    const angles = Object.fromEntries(
+      frame.angles.map((angle) => [angle.name, round(angle.value, 1)]),
+    );
+
+    return {
+      sampledFrame: index + 1,
+      joints: importantJoints,
+      angles,
+    };
+  });
+
+  const angleBuckets = new Map<string, number[]>();
+  for (const frame of validFrames) {
+    for (const angle of frame.angles) {
+      const key = normalizeAngleName(angle.name);
+      const bucket = angleBuckets.get(key) || [];
+      bucket.push(angle.value);
+      angleBuckets.set(key, bucket);
+    }
+  }
+
+  const angleStats = Object.fromEntries(
+    Array.from(angleBuckets.entries()).map(([name, values]) => {
+      const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      return [
+        name,
+        {
+          average: round(average, 1),
+          min: round(min, 1),
+          max: round(max, 1),
+          sampleCount: values.length,
+        },
+      ];
+    }),
+  );
+
+  return {
+    frameCount: poseData.length,
+    validFrameCount: validFrames.length,
+    sampledFrames,
+    angleStats,
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -31,92 +225,38 @@ serve(async (req) => {
 
   try {
     const { mode, poseData, frameCount } = await req.json() as AnalysisRequest;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+
+    if (!mode || !Array.isArray(poseData) || typeof frameCount !== "number") {
+      throw new Error("mode, poseData, and frameCount are required");
+    }
+    if (poseData.length === 0) {
+      throw new Error("No pose data provided");
     }
 
     console.log(`Analyzing ${mode} technique with ${frameCount} frames`);
 
-    const systemPrompt = `You are an expert cricket coach and biomechanics analyst. You analyze cricket ${mode} technique from pose estimation data and provide detailed, actionable feedback.
+    const poseSummary = summarizePoseData(poseData);
+
+    const systemPrompt = `You are an expert cricket coach and biomechanics analyst. You analyze cricket ${mode} technique from pose-estimation summaries and provide evidence-based, actionable feedback.
 
 Your analysis should cover these key areas for ${mode === 'batting' ? 'BATTING' : 'BOWLING'}:
 
 ${mode === 'batting' ? `
 BATTING TECHNIQUE ASPECTS:
-1. **Stance & Setup** (Weight: 15%)
-   - Feet shoulder-width apart
-   - Balanced weight distribution (50-50 or 60-40 back foot)
-   - Relaxed grip, top hand dominant
-   - Head still and eyes level
-
-2. **Backlift & Trigger Movement** (Weight: 15%)
-   - Bat comes straight back or slight angle
-   - Minimal loop in backlift
-   - Smooth trigger movement to get into position
-   - Head and eyes tracking the ball
-
-3. **Front Foot Play** (Weight: 20%)
-   - Lead with the front shoulder
-   - Front foot to the pitch of the ball
-   - Head over front knee
-   - Full face of bat to the ball
-
-4. **Back Foot Play** (Weight: 20%)
-   - Quick back and across movement
-   - Weight transfer to back foot
-   - High elbow position
-   - Playing under the eyes
-
-5. **Shot Execution** (Weight: 15%)
-   - Timing of bat swing
-   - Point of contact relative to body
-   - Extension through the shot
-   - Balance at point of contact
-
-6. **Follow Through** (Weight: 15%)
-   - Full extension of arms
-   - High finish for lofted shots
-   - Controlled finish for defensive shots
-   - Balance maintained post-shot
+1. Stance & Setup
+2. Backlift & Trigger Movement
+3. Front Foot Play
+4. Back Foot Play
+5. Shot Execution
+6. Follow Through
 ` : `
 BOWLING TECHNIQUE ASPECTS:
-1. **Run-Up & Approach** (Weight: 15%)
-   - Consistent run-up length and rhythm
-   - Gradual acceleration to the crease
-   - Smooth transition to delivery stride
-   - Eyes fixed on target
-
-2. **Bound & Gather** (Weight: 20%)
-   - Explosive penultimate stride (bound)
-   - Body aligned towards target
-   - Back foot landing position
-   - Momentum channeled forward
-
-3. **Back Foot Contact** (Weight: 15%)
-   - Parallel to crease or slightly angled
-   - Braced back leg for pace bowlers
-   - Hip rotation initiation
-   - Arm position during loading
-
-4. **Front Foot Contact** (Weight: 20%)
-   - Braced front leg at delivery
-   - Front arm pulling down and in
-   - Hip-shoulder separation
-   - Head position and stability
-
-5. **Arm Action & Release** (Weight: 20%)
-   - High arm action (close to vertical)
-   - Elbow alignment for no-ball compliance
-   - Wrist position at release
-   - Ball release point relative to head
-
-6. **Follow Through** (Weight: 10%)
-   - Arm follows through past hip
-   - Body rotation complete
-   - Balance and deceleration
-   - Ready position for fielding
+1. Run-Up & Approach
+2. Bound & Gather
+3. Back Foot Contact
+4. Front Foot Contact
+5. Arm Action & Release
+6. Follow Through
 `}
 
 SCORING GUIDELINES:
@@ -126,94 +266,51 @@ SCORING GUIDELINES:
 - 60-69: Developing player with clear areas to improve
 - Below 60: Significant technical issues to address
 
-Provide your response in this exact JSON format:
-{
-  "overallScore": number (0-100),
-  "overallGrade": "A+" | "A" | "A-" | "B+" | "B" | "B-" | "C+" | "C" | "C-" | "D" | "F",
-  "summary": "2-3 sentence overview of the technique",
-  "aspects": [
-    {
-      "name": "Aspect Name",
-      "score": number (0-100),
-      "status": "excellent" | "good" | "needs_improvement" | "poor",
-      "feedback": "Detailed feedback for this aspect",
-      "keyPoints": ["Point 1", "Point 2", "Point 3"]
-    }
-  ],
-  "strengths": ["Strength 1", "Strength 2", "Strength 3"],
-  "areasForImprovement": [
-    {
-      "issue": "Issue description",
-      "severity": "high" | "medium" | "low",
-      "drill": "Recommended drill or exercise to fix this"
-    }
-  ],
-  "angleAnalysis": {
-    "elbowAngle": { "value": number, "optimal": string, "assessment": string },
-    "kneeAngle": { "value": number, "optimal": string, "assessment": string },
-    "shoulderAngle": { "value": number, "optimal": string, "assessment": string },
-    "hipAngle": { "value": number, "optimal": string, "assessment": string }
-  },
-  "comparisonToElite": "How this technique compares to elite players",
-  "nextSteps": ["Step 1", "Step 2", "Step 3"]
-}`;
+Use only evidence visible in the supplied pose summary. Keep strengths and next steps concise. When angle averages are provided, use those values directly or very close to them in angleAnalysis.`;
 
-    const userPrompt = `Analyze this ${mode} technique based on the following pose estimation data captured over ${frameCount} frames:
+    const userPrompt = `Analyze this ${mode} technique from the following pose summary:
 
-${JSON.stringify(poseData, null, 2)}
+${JSON.stringify(poseSummary)}
 
-Provide a comprehensive analysis with scores, detailed feedback for each technical aspect, and specific drills for improvement. Be encouraging but honest about areas needing work.`;
+Return a complete JSON analysis. Include exactly 6 aspect entries, at least 3 strengths, at least 3 improvement items, and 3 next steps. Be encouraging but direct about weaknesses.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        response_format: { type: "json_object" },
-      }),
+    const analysis = await requestStructuredObject<{
+      overallScore: number;
+      overallGrade: string;
+      summary: string;
+      aspects: Array<{
+        name: string;
+        score: number;
+        status: "excellent" | "good" | "needs_improvement" | "poor";
+        feedback: string;
+        keyPoints: string[];
+      }>;
+      strengths: string[];
+      areasForImprovement: Array<{
+        issue: string;
+        severity: "high" | "medium" | "low";
+        drill: string;
+      }>;
+      angleAnalysis: {
+        elbowAngle: { value: number; optimal: string; assessment: string };
+        kneeAngle: { value: number; optimal: string; assessment: string };
+        shoulderAngle: { value: number; optimal: string; assessment: string };
+        hipAngle: { value: number; optimal: string; assessment: string };
+      };
+      comparisonToElite: string;
+      nextSteps: string[];
+    }>({
+      name: "cricket_technique_analysis",
+      schema: analysisSchema,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.2,
+      maxCompletionTokens: 1800,
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const analysisText = data.choices?.[0]?.message?.content;
-    
-    if (!analysisText) {
-      throw new Error("No analysis generated");
-    }
-
     console.log("Analysis generated successfully");
-    
-    let analysis;
-    try {
-      analysis = JSON.parse(analysisText);
-    } catch {
-      console.error("Failed to parse analysis JSON:", analysisText);
-      throw new Error("Invalid analysis format");
-    }
 
     return new Response(JSON.stringify({ analysis }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -221,10 +318,10 @@ Provide a comprehensive analysis with scores, detailed feedback for each technic
 
   } catch (error) {
     console.error("Analysis error:", error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Analysis failed" 
+    return new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : "Analysis failed"
     }), {
-      status: 500,
+      status: errorStatus(error),
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

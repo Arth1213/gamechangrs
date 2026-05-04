@@ -1,9 +1,79 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { errorStatus, requestStructuredObject } from "../_shared/openai.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const coachSchema = {
+  type: "object",
+  properties: {
+    name: { type: "string" },
+    bio: { type: "string" },
+    location: { type: "string" },
+    years_experience: { type: ["number", "null"] },
+    teams_coached: { type: "array", items: { type: "string" } },
+    notable_players_coached: { type: "array", items: { type: "string" } },
+    specialties: {
+      type: "array",
+      items: {
+        type: "string",
+        enum: ["batting", "bowling", "fielding", "fitness", "mental conditioning"],
+      },
+    },
+    coaching_level: {
+      type: ["string", "null"],
+      enum: ["beginner", "intermediate", "advanced", null],
+    },
+  },
+  required: [
+    "name",
+    "bio",
+    "location",
+    "years_experience",
+    "teams_coached",
+    "notable_players_coached",
+    "specialties",
+    "coaching_level",
+  ],
+  additionalProperties: false,
+} as const;
+
+const playerSchema = {
+  type: "object",
+  properties: {
+    name: { type: "string" },
+    location: { type: "string" },
+    playing_role: { type: "string" },
+    age_group: {
+      type: ["string", "null"],
+      enum: ["U10", "U11", "U12", "U13", "U14", "U15", "U16", "U19", "U21", "Adult", "Masters", null],
+    },
+    experience_level: {
+      type: ["string", "null"],
+      enum: ["beginner", "intermediate", "advanced", null],
+    },
+    matches_played: { type: ["number", "null"] },
+    batting_average: { type: ["number", "null"] },
+    batting_strike_rate: { type: ["number", "null"] },
+    bowling_economy: { type: ["number", "null"] },
+    best_figures: { type: ["string", "null"] },
+  },
+  required: [
+    "name",
+    "location",
+    "playing_role",
+    "age_group",
+    "experience_level",
+    "matches_played",
+    "batting_average",
+    "batting_strike_rate",
+    "bowling_economy",
+    "best_figures",
+  ],
+  additionalProperties: false,
+} as const;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -16,6 +86,12 @@ serve(async (req) => {
     if (!url) {
       return new Response(
         JSON.stringify({ success: false, error: 'URL is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (profileType !== "coach" && profileType !== "player") {
+      return new Response(
+        JSON.stringify({ success: false, error: 'profileType must be coach or player' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -61,102 +137,25 @@ serve(async (req) => {
       );
     }
 
-    // Use Lovable AI to extract profile data
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY not configured');
-      return new Response(
-        JSON.stringify({ success: false, error: 'AI service not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const systemPrompt = profileType === 'coach' 
-      ? `You are a data extractor for cricket coach profiles. Extract the following information from the provided webpage content. Return ONLY a valid JSON object with these fields (use null for fields you cannot find):
-{
-  "name": "full name of the coach",
-  "bio": "brief biography or description (max 500 chars)",
-  "location": "city, state, country",
-  "years_experience": number or null,
-  "teams_coached": ["array of team names"],
-  "notable_players_coached": ["array of player names"],
-  "specialties": ["batting", "bowling", "fielding", "fitness", "mental conditioning"],
-  "coaching_level": "beginner" | "intermediate" | "advanced"
-}`
-      : `You are a data extractor for cricket player profiles. Extract the following information from the provided webpage content. Return ONLY a valid JSON object with these fields (use null for fields you cannot find):
-{
-  "name": "full name of the player",
-  "location": "city, state, country",
-  "playing_role": "batsman, bowler, all-rounder, wicket-keeper, etc",
-  "age_group": "U10" | "U11" | "U12" | "U13" | "U14" | "U15" | "U16" | "U19" | "U21" | "Adult" | "Masters" | null,
-  "experience_level": "beginner" | "intermediate" | "advanced",
-  "matches_played": number or null,
-  "batting_average": number or null,
-  "batting_strike_rate": number or null,
-  "bowling_economy": number or null,
-  "best_figures": "string like 5/25" or null
-}`;
+      ? `You extract structured cricket coach profile data from webpage text. Use only details that are clearly supported by the provided page content. If a field is not supported, return null for scalar values and [] for arrays. Keep bio under 500 characters.`
+      : `You extract structured cricket player profile data from webpage text. Use only details that are clearly supported by the provided page content. If a field is not supported, return null for numeric/scalar values. Do not invent statistics.`;
 
     console.log('Sending content to AI for extraction...');
 
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Extract profile information from this webpage content:\n\n${pageContent}` }
-        ],
-      }),
+    const extractedData = await requestStructuredObject<Record<string, unknown>>({
+      name: profileType === "coach" ? "coach_profile" : "player_profile",
+      schema: profileType === "coach" ? coachSchema : playerSchema,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: `Profile type: ${profileType}\nExtract profile information from this webpage content:\n\n${pageContent}`,
+        },
+      ],
+      temperature: 0,
+      maxCompletionTokens: 900,
     });
-
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('AI API error:', aiResponse.status, errorText);
-      
-      if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'AI credits exhausted. Please add credits to continue.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ success: false, error: 'AI extraction failed' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const aiData = await aiResponse.json();
-    const extractedText = aiData.choices?.[0]?.message?.content || '';
-    
-    console.log('AI response:', extractedText);
-
-    // Parse the JSON from AI response
-    let extractedData = {};
-    try {
-      // Find JSON in the response (it might be wrapped in markdown code blocks)
-      const jsonMatch = extractedText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        extractedData = JSON.parse(jsonMatch[0]);
-      }
-    } catch (parseError) {
-      console.error('Error parsing AI response:', parseError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Could not parse extracted data' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     // Filter out null values and empty arrays
     const cleanedData: Record<string, any> = {};
@@ -177,7 +176,7 @@ serve(async (req) => {
     console.error('Error in scrape-profile-url:', error);
     return new Response(
       JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: errorStatus(error), headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

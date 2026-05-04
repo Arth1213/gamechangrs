@@ -1,0 +1,26 @@
+Restore Game-Changrs from the restore point named 2026_05-03-Game-Changrs-Restore-Point.
+
+Repository:
+- https://github.com/Arth1213/gamechangrs.git
+
+Restore anchors:
+- branch: backup/2026_05-03-Game-Changrs-Restore-Point
+- tag: 2026_05-03-Game-Changrs-Restore-Point
+- commit: 098ef38
+
+Tasks:
+1. Recreate the repo workspace from the restore tag or the local git bundle backup.
+2. Restore both secret env files from the local secret backup archive:
+   - .env
+   - bay-area-u15/.env
+3. Install dependencies for the root app and the bay-area-u15 stack.
+4. Verify Supabase config.toml, migrations, and functions exist in the repo.
+5. Verify or relink the Supabase project and redeploy any missing edge functions.
+6. Verify the Render cricket API service configuration and required env vars.
+7. Start the root frontend locally.
+8. Start the bay-area-u15 cricket API locally on port 4011.
+9. Start the local ops console on port 4012.
+10. Run health checks and verify the documented URLs.
+11. Report any missing cloud credentials, secrets, or provider access clearly without inventing values.
+
+Do not overwrite anything outside the restore workspace unless explicitly required.

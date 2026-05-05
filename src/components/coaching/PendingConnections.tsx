@@ -92,7 +92,7 @@ export const PendingConnections = ({
     }
   };
 
-  const acceptConnection = async (connectionId: string, requesterEmail: string, requesterName: string) => {
+  const acceptConnection = async (connectionId: string, requesterName: string) => {
     setActionLoading(connectionId);
     try {
       // Update connection to verified
@@ -108,15 +108,9 @@ export const PendingConnections = ({
       if (updateError) throw updateError;
 
       // Send confirmation email
-      const userName = user?.user_metadata?.full_name || "User";
       await supabase.functions.invoke("send-connection-email", {
         body: {
           connectionId,
-          recipientEmail: requesterEmail,
-          recipientName: requesterName,
-          senderName: userName,
-          senderType: userType,
-          verificationCode: "",
           action: "accepted",
         },
       });
@@ -198,10 +192,6 @@ export const PendingConnections = ({
           const otherPartyName = userType === "coach" 
             ? conn.player?.name 
             : conn.coach?.name;
-          const otherPartyEmail = userType === "coach"
-            ? conn.player?.email
-            : conn.coach?.email;
-
           return (
             <div
               key={conn.id}
@@ -227,7 +217,7 @@ export const PendingConnections = ({
                     <Button
                       size="sm"
                       variant="default"
-                      onClick={() => acceptConnection(conn.id, otherPartyEmail || "", otherPartyName || "")}
+                      onClick={() => acceptConnection(conn.id, otherPartyName || "")}
                       disabled={actionLoading === conn.id}
                     >
                       {actionLoading === conn.id ? (

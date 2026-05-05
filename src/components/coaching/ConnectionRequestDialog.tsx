@@ -134,11 +134,6 @@ export const ConnectionRequestDialog = ({
       const { error: emailError } = await supabase.functions.invoke("send-connection-email", {
         body: {
           connectionId: connection.id,
-          recipientEmail: targetEmail,
-          recipientName: targetName,
-          senderName: senderName,
-          senderType: senderType,
-          verificationCode: verificationCode,
           action: "request",
         },
       });

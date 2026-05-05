@@ -12,7 +12,6 @@ import { Link } from "react-router-dom";
 const VerifyConnectionPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { toast } = useToast();
   
   const [loading, setLoading] = useState(true);
@@ -118,18 +117,10 @@ const VerifyConnectionPage = () => {
       if (updateError) throw updateError;
 
       // Send confirmation email to the requester
-      if (connectionDetails?.senderEmail) {
-        // Get recipient details (the person accepting)
-        let recipientName = user?.user_metadata?.full_name || "User";
-
+      if (connectionDetails) {
         await supabase.functions.invoke("send-connection-email", {
           body: {
             connectionId,
-            recipientEmail: connectionDetails.senderEmail,
-            recipientName: connectionDetails.senderName,
-            senderName: recipientName,
-            senderType: connectionDetails.senderType === "player" ? "coach" : "player",
-            verificationCode: code,
             action: "accepted",
           },
         });

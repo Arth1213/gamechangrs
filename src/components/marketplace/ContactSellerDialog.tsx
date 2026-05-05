@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,13 +37,26 @@ export function ContactSellerDialog({
 }: ContactSellerDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const accountName =
+    user?.user_metadata?.full_name
+    || user?.user_metadata?.name
+    || user?.email?.split("@")[0]
+    || "";
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
+    name: accountName,
     email: user?.email || "",
     message: `Hi,\n\nI'm interested in your listing "${listingTitle}" on the Gear Marketplace.\n\nPlease let me know if it's still available.\n\nThanks!`,
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  useEffect(() => {
+    setFormData((current) => ({
+      ...current,
+      name: current.name || accountName,
+      email: user?.email || current.email,
+    }));
+  }, [accountName, user?.email]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,8 +81,6 @@ export function ContactSellerDialog({
       const { error } = await supabase.functions.invoke("contact-seller", {
         body: {
           listingId,
-          buyerName: formData.name,
-          buyerEmail: formData.email,
           message: formData.message,
         },
       });
@@ -82,7 +93,7 @@ export function ContactSellerDialog({
       });
       onOpenChange(false);
       setFormData({
-        name: "",
+        name: accountName,
         email: user?.email || "",
         message: "",
       });
@@ -107,7 +118,7 @@ export function ContactSellerDialog({
             Contact Seller
           </DialogTitle>
           <DialogDescription>
-            Send a message about "{listingTitle}". Both you and the seller will receive this email to facilitate direct communication.
+            Send a message about "{listingTitle}". The message will be sent from your signed-in GameChangrs account email, and both you and the seller will receive the email thread.
           </DialogDescription>
         </DialogHeader>
 
@@ -120,6 +131,8 @@ export function ContactSellerDialog({
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Enter your name"
               maxLength={100}
+              readOnly
+              disabled
             />
             {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
           </div>
@@ -133,6 +146,8 @@ export function ContactSellerDialog({
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="Enter your email"
               maxLength={255}
+              readOnly
+              disabled
             />
             {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
           </div>
@@ -156,7 +171,7 @@ export function ContactSellerDialog({
           <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
             <ShieldCheck className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
             <p className="text-xs text-muted-foreground">
-              Both you and the seller will be copied on the email. This allows you to negotiate and arrange the transaction directly over email. We don't process payments.
+              Your signed-in GameChangrs account identity is used for this message. Both you and the seller will be copied so you can negotiate directly over email. We don't process payments.
             </p>
           </div>
 

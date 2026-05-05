@@ -1,10 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAuthenticatedUser } from "../_shared/auth.ts";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 
 interface ContactRequest {
   listingId: string;
-  buyerName: string;
-  buyerEmail: string;
   message: string;
 }
 
@@ -20,13 +19,16 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const authenticatedUser = await requireAuthenticatedUser(req);
 
-    const { listingId, buyerName, buyerEmail, message }: ContactRequest = await req.json();
+    const { listingId, message }: ContactRequest = await req.json();
+    const buyerEmail = authenticatedUser.email;
+    const buyerName = authenticatedUser.fullName || "GameChangrs User";
 
     console.log(`Contact request for listing ${listingId} from ${buyerEmail}`);
 
     // Validate inputs
-    if (!listingId || !buyerName || !buyerEmail || !message) {
+    if (!listingId || !buyerEmail || !message) {
       console.error("Missing required fields");
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
@@ -112,9 +114,8 @@ Deno.serve(async (req) => {
     // The seller's email is never exposed to the frontend
     console.log("Contact request processed successfully");
     console.log(`Seller email (not exposed to client): ${sellerContact.contact_email}`);
-    console.log(`Buyer: ${buyerName} <${buyerEmail}>`);
+    console.log(`Buyer user ${authenticatedUser.userId}: ${buyerName} <${buyerEmail}>`);
     console.log(`Listing: ${listing.title}`);
-    console.log(`Message preview: ${message.substring(0, 100)}...`);
     console.log(`Message preview: ${message.substring(0, 100)}...`);
 
     // Email service integration (Resend example)
@@ -220,9 +221,16 @@ Please arrange transactions safely and verify identities before meeting.
     );
   } catch (error) {
     console.error("Unexpected error:", error);
+    const status =
+      typeof error === "object"
+      && error !== null
+      && "status" in error
+      && typeof (error as { status?: unknown }).status === "number"
+        ? (error as { status: number }).status
+        : 500;
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: error instanceof Error ? error.message : "Internal server error" }),
+      { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

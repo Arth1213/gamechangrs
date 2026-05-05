@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAuthenticatedUser } from "../_shared/auth.ts";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 
 interface SeriesOnboardingRequest {
@@ -33,13 +34,14 @@ Deno.serve(async (req) => {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const platformAdminEmail = Deno.env.get("PLATFORM_ADMIN_EMAIL") || "helloarth09@gmail.com";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const authenticatedUser = await requireAuthenticatedUser(req);
 
     const body = (await req.json()) as SeriesOnboardingRequest;
 
-    const requesterName = normalizeText(body.requesterName);
-    const requesterEmail = normalizeText(body.requesterEmail);
+    const requesterName = authenticatedUser.fullName || normalizeText(body.requesterName);
+    const requesterEmail = authenticatedUser.email || normalizeText(body.requesterEmail);
     const requesterPhone = normalizeText(body.requesterPhone);
-    const requesterUserId = normalizeText(body.requesterUserId);
+    const requesterUserId = authenticatedUser.userId;
     const organizationName = normalizeText(body.organizationName);
     const sourceSystem = normalizeText(body.sourceSystem);
     const seriesName = normalizeText(body.seriesName);
@@ -157,12 +159,19 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error("request-series-onboarding failed:", error);
+    const status =
+      typeof error === "object"
+      && error !== null
+      && "status" in error
+      && typeof (error as { status?: unknown }).status === "number"
+        ? (error as { status: number }).status
+        : 500;
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Internal server error",
       }),
       {
-        status: 500,
+        status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );

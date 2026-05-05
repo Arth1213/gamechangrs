@@ -54,7 +54,7 @@ const handler = async (req: Request): Promise<Response> => {
     };
     const formattedDate = sessionDate.toLocaleString('en-US', dateOptions);
 
-    const baseUrl = "https://e14399ba-fbf2-42cf-bf82-4c38048ee762.lovableproject.com";
+    const baseUrl = Deno.env.get("SITE_URL") || "https://game-changrs.com";
 
     // Prepare emails for both coach and player
     const emails: Array<{ to: string; subject: string; html: string }> = [];

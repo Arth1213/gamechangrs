@@ -162,6 +162,9 @@ export function SeriesOnboardingRequestPanel({
           <CardDescription className="max-w-3xl text-sm leading-7">
             {description}
           </CardDescription>
+          <p className="text-xs text-muted-foreground">
+            The request is tied to your signed-in GameChangrs account identity. Name and email are shown for confirmation.
+          </p>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -173,6 +176,8 @@ export function SeriesOnboardingRequestPanel({
               value={formState.requesterName}
               onChange={(event) => setFormState((current) => ({ ...current, requesterName: event.target.value }))}
               placeholder="Your full name"
+              readOnly
+              disabled
             />
           </div>
 
@@ -184,6 +189,8 @@ export function SeriesOnboardingRequestPanel({
               value={formState.requesterEmail}
               onChange={(event) => setFormState((current) => ({ ...current, requesterEmail: event.target.value }))}
               placeholder="you@example.com"
+              readOnly
+              disabled
             />
           </div>
 

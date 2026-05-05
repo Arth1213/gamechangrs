@@ -24,6 +24,7 @@ import { CricketAdminSeriesResponse, fetchCricketAdminSeries } from "@/lib/crick
 type ConsoleStatus = "loading" | "ready" | "error";
 
 const LOCAL_OPS_URL = "http://127.0.0.1:4012/local-ops";
+const LOCAL_OPS_WORKDIR = "/Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15";
 
 const PlatformAdminConsole = () => {
   const { session, user } = useAuth();
@@ -113,6 +114,19 @@ const PlatformAdminConsole = () => {
       href: LOCAL_OPS_URL,
       icon: ExternalLink,
       external: true,
+      startupTitle: "Start it locally first",
+      startupLines: [
+        `cd ${LOCAL_OPS_WORKDIR}`,
+        "set -a",
+        "source .env",
+        "set +a",
+        "PORT=4012 npm run ops:ui:start",
+      ],
+      startupNotes: [
+        "Leave that terminal open while you use local-ops.",
+        "If port 4012 is already occupied, use another port and open that same port in the browser URL.",
+        "Quick check: curl -sS http://127.0.0.1:4012/health",
+      ],
     },
   ] as const;
 
@@ -270,11 +284,32 @@ const PlatformAdminConsole = () => {
                         </div>
                         <h2 className="mt-4 font-display text-2xl font-bold text-foreground">{item.title}</h2>
                         <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.description}</p>
+                        {"startupLines" in item ? (
+                          <div className="mt-4 rounded-2xl border border-border/80 bg-card/70 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground/80">
+                              {item.startupTitle}
+                            </p>
+                            <div className="mt-3 space-y-1">
+                              {item.startupLines.map((line) => (
+                                <p key={line} className="font-mono text-xs leading-6 text-foreground/85">
+                                  {line}
+                                </p>
+                              ))}
+                            </div>
+                            <div className="mt-3 space-y-2">
+                              {item.startupNotes.map((line) => (
+                                <p key={line} className="text-xs leading-6 text-muted-foreground">
+                                  {line}
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
                         <div className="mt-5">
                           <Button asChild variant={item.external ? "outline" : "hero"}>
                             {item.external ? (
                               <a href={item.href} target="_blank" rel="noreferrer">
-                                Open
+                                {"startupLines" in item ? "Open local-ops" : "Open"}
                                 <ExternalLink className="h-4 w-4" />
                               </a>
                             ) : (

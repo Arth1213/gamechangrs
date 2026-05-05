@@ -1177,6 +1177,22 @@ function buildStoredFeedback(report: TrackerReport) {
   };
 }
 
+function sanitizeFileNameSegment(value: string) {
+  return value
+    .replace(/[^a-z0-9._-]+/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
+}
+
+function getErrorMessage(error: unknown) {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
+  }
+
+  return "The report could not be saved.";
+}
+
 interface TechniqueAIProps {
   onReportSaved?: () => Promise<void> | void;
 }
@@ -1376,11 +1392,37 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
     }
 
     setIsSavingReport(true);
+    let uploadedVideoPath: string | null = null;
     try {
       const durationLabel =
         videoRef.current && Number.isFinite(videoRef.current.duration)
           ? `${videoRef.current.duration.toFixed(1)}s`
           : null;
+      let publicVideoUrl: string | null = null;
+
+      if (selectedFile) {
+        const extensionMatch = /\.[^.]+$/.exec(selectedFile.name);
+        const safeBaseName = sanitizeFileNameSegment(selectedFile.name.replace(/\.[^.]+$/, "")) || "analysis-video";
+        const safeExtension = extensionMatch ? extensionMatch[0].toLowerCase() : ".mp4";
+        uploadedVideoPath = `${user.id}/${Date.now()}-${safeBaseName}${safeExtension}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("analysis-videos")
+          .upload(uploadedVideoPath, selectedFile, {
+            cacheControl: "3600",
+            contentType: selectedFile.type || undefined,
+            upsert: false,
+          });
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from("analysis-videos")
+          .getPublicUrl(uploadedVideoPath);
+        publicVideoUrl = publicUrlData.publicUrl;
+      }
 
       const { data, error: saveError } = await supabase
         .from("analysis_results")
@@ -1393,7 +1435,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
           feedback: buildStoredFeedback(analysis),
           drills: analysis.drills,
           video_duration: durationLabel,
-          video_url: null,
+          video_url: publicVideoUrl,
         })
         .select("id")
         .single();
@@ -1403,11 +1445,15 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
       }
 
       setSavedReportId(data.id);
-      toast.success("Technique AI report saved.");
       await onReportSaved?.();
+      toast.success("Technique AI report saved. Open it now or find it in Saved Reports.");
     } catch (saveError) {
       console.error(saveError);
-      toast.error("The report could not be saved.");
+      if (uploadedVideoPath) {
+        await supabase.storage.from("analysis-videos").remove([uploadedVideoPath]);
+      }
+
+      toast.error(getErrorMessage(saveError));
     } finally {
       setIsSavingReport(false);
     }
@@ -1457,7 +1503,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
 
   return (
     <div className="space-y-8">
-      <div className="grid gap-6 xl:grid-cols-[1.05fr,1fr]">
+      <div className="grid gap-6 min-[1700px]:grid-cols-[1.05fr,1fr]">
         <section className="rounded-3xl border border-border bg-gradient-card p-6 md:p-8">
           <div className="mb-6 flex items-start justify-between gap-4">
             <div>
@@ -1610,7 +1656,15 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
                   </span>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm">
+                  <p className="font-medium text-foreground">Save flow</p>
+                  <p className="mt-1 leading-6 text-muted-foreground">
+                    Analyze the clip first, then save the report. The saved video and analysis report will appear in
+                    the Saved Reports library with the date and time.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
                   <Button onClick={runAnalysis} disabled={isProcessing || !isModelReady} variant="hero">
                     {isProcessing ? <Activity className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                     {isProcessing ? "Reading pose..." : isModelReady ? "Analyze batting clip" : "Loading pose model..."}
@@ -1621,7 +1675,13 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
                     variant="outline"
                   >
                     <Save className="h-4 w-4" />
-                    {savedReportId ? "Report saved" : isSavingReport ? "Saving report..." : "Save report"}
+                    {savedReportId
+                      ? "Report saved"
+                      : isSavingReport
+                        ? "Saving report..."
+                        : analysis
+                          ? "Save report"
+                          : "Save after analysis"}
                   </Button>
                   <Button onClick={exportPdfReport} disabled={!analysis} variant="outline">
                     <FileDown className="h-4 w-4" />
@@ -1636,11 +1696,22 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
                       <Link to={`/analysis/${savedReportId}`}>Open saved report</Link>
                     </Button>
                   ) : null}
-                  <Button onClick={clearVideo} variant="destructive">
+                  {savedReportId ? (
+                    <Button variant="outline" asChild>
+                      <Link to="/analysis-history">View all saved reports</Link>
+                    </Button>
+                  ) : null}
+                  <Button onClick={clearVideo} variant="destructive" className="sm:col-span-2">
                     <Trash2 className="h-4 w-4" />
                     Remove video
                   </Button>
                 </div>
+
+                {savedReportId ? (
+                  <p className="text-sm text-muted-foreground">
+                    This analysis is now in your Technique AI library and full history.
+                  </p>
+                ) : null}
 
                 {(isProcessing || stage === "scoring") && (
                   <div className="space-y-3 rounded-2xl border border-border bg-background/40 p-4">

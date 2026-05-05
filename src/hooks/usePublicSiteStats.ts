@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { fetchCricketDashboardSummary } from "@/lib/cricketApi";
-import {
-  fetchPublicGearDonationCount,
-  fetchPublicVideoAnalysisCount,
-} from "@/lib/publicSiteMetrics";
+import { fetchPublicSiteMetricSnapshot } from "@/lib/publicSiteMetrics";
 
 type PublicSiteStats = {
   playerCount: number | null;
@@ -64,27 +61,20 @@ export function usePublicSiteStats() {
       }
     }
 
-    async function loadGearDonationCount(requestId: number) {
+    async function loadPublicMetricSnapshot(requestId: number) {
       try {
-        const gearDonationCount = await fetchPublicGearDonationCount();
-        updateStats({ gearDonationCount }, requestId);
-      } catch (_) {
-        // Preserve the last successful value if the refresh fails.
-      }
-    }
-
-    async function loadVideoAnalysisCount(requestId: number) {
-      try {
-        const videoAnalysisCount = await fetchPublicVideoAnalysisCount(controller.signal);
+        const { gearDonationCount, videoAnalysisCount } = await fetchPublicSiteMetricSnapshot(controller.signal);
         if (controller.signal.aborted) {
           return;
         }
 
-        updateStats({ videoAnalysisCount }, requestId);
+        updateStats({ gearDonationCount, videoAnalysisCount }, requestId);
       } catch (_) {
         if (controller.signal.aborted) {
           return;
         }
+
+        // Preserve the last successful values if the refresh fails.
       }
     }
 
@@ -93,8 +83,7 @@ export function usePublicSiteStats() {
       const requestId = refreshId;
 
       void loadCricketStats(requestId);
-      void loadGearDonationCount(requestId);
-      void loadVideoAnalysisCount(requestId);
+      void loadPublicMetricSnapshot(requestId);
     }
 
     refreshStats();

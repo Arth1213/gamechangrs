@@ -1257,8 +1257,8 @@ function SeriesAccessRequestPanel({
     const validSeriesKeys = new Set(entries.map((entry) => entry.configKey));
     const normalizedPreferred = preferredSeriesKey?.trim() || "";
     const nextSeriesKey =
-      (normalizedPreferred && validSeriesKeys.has(normalizedPreferred) ? normalizedPreferred : "")
-      || (validSeriesKeys.has(requestSeriesKey) ? requestSeriesKey : "")
+      (validSeriesKeys.has(requestSeriesKey) ? requestSeriesKey : "")
+      || (normalizedPreferred && validSeriesKeys.has(normalizedPreferred) ? normalizedPreferred : "")
       || entries[0]?.configKey
       || "";
 
@@ -2239,7 +2239,7 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                     </CardDescription>
                   </div>
                 </CardHeader>
-                <CardContent className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+                <CardContent className="space-y-4">
                   <div className="rounded-2xl border border-border/80 bg-background/60 p-5">
                     <p className="text-[11px] uppercase tracking-[0.16em] text-primary">
                       {isPlatformAdminViewer ? "Platform-admin scope" : "Send this to your admin"}

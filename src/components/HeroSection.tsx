@@ -54,7 +54,7 @@ export const HeroSection = () => {
           <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)] lg:gap-12 xl:gap-16">
             <div className="text-center lg:text-left">
               <h1 className="font-display text-3xl sm:text-5xl md:text-6xl lg:text-[4.3rem] font-bold text-foreground leading-tight mb-4 sm:mb-5 animate-slide-up">
-                Sports Analytics, AI &amp; Science for{" "}
+                Sports Analytics, AI for{" "}
                 <span className="text-gradient-primary">Smarter Cricket</span>
               </h1>
 

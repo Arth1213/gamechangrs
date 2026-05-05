@@ -6,6 +6,7 @@ import {
   BarChart3,
   Brain,
   GraduationCap,
+  ShieldCheck,
   type LucideIcon,
   ShoppingBag,
   UserCircle,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlatformAdminStatus } from "@/hooks/usePlatformAdminStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchCricketDashboardSummary } from "@/lib/cricketApi";
 import { Coach, Player, Session } from "@/types/coaching";
@@ -123,7 +125,8 @@ function getProfileActivityTitle(
 }
 
 export const UserDashboard = () => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
+  const { isPlatformAdmin } = usePlatformAdminStatus(session?.access_token);
   const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [coachProfile, setCoachProfile] = useState<Coach | null>(null);
@@ -425,7 +428,36 @@ export const UserDashboard = () => {
           </div>
         </div>
 
-        <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div className={`mb-10 grid grid-cols-1 gap-6 md:grid-cols-2 ${isPlatformAdmin ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
+          {isPlatformAdmin ? (
+            <Link to="/platform-admin" className="group block h-full">
+              <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-cyan-400/25 hover:shadow-elevated">
+                <div className="mb-6 flex items-start gap-3">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-400/15">
+                    <ShieldCheck className="h-7 w-7 text-cyan-200" />
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-cyan-200/80">Private operator surface</p>
+                    <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Platform Console</h2>
+                  </div>
+                  <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+                    <p className="font-display text-3xl font-bold text-foreground">Admin</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Global scope</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Governance, analytics admin surfaces, local-ops launch, and safe DB workflow guidance.
+                    </p>
+                  </div>
+                  <div className="mt-auto flex items-center justify-between text-sm font-medium text-cyan-200">
+                    <span>Open Platform Console</span>
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ) : null}
+
           <Link to="/techniqueai" className="group block h-full">
             <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-elevated">
               <div className="mb-6 flex items-start gap-3">

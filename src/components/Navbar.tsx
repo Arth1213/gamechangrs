@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, LogOut, User } from "lucide-react";
+import { Menu, X, LogOut, ShieldCheck, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationBell } from "@/components/NotificationBell";
 import { CricketBrandTile } from "@/components/CricketBrandTile";
+import { usePlatformAdminStatus } from "@/hooks/usePlatformAdminStatus";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +24,8 @@ export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, signOut, loading } = useAuth();
+  const { user, session, signOut, loading } = useAuth();
+  const { isPlatformAdmin } = usePlatformAdminStatus(session?.access_token);
 
   const handleSignOut = async () => {
     await signOut();
@@ -86,6 +88,14 @@ export const Navbar = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
+                  {isPlatformAdmin ? (
+                    <DropdownMenuItem asChild>
+                      <Link to="/platform-admin" className="cursor-pointer">
+                        <ShieldCheck className="w-4 h-4 mr-2" />
+                        Platform Console
+                      </Link>
+                    </DropdownMenuItem>
+                  ) : null}
                   <DropdownMenuItem asChild>
                     <Link to="/settings" className="cursor-pointer">
                       <User className="w-4 h-4 mr-2" />
@@ -141,17 +151,27 @@ export const Navbar = () => {
             ))}
             <div className="pt-2 space-y-2">
               {user ? (
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start gap-2"
-                  onClick={() => {
-                    handleSignOut();
-                    setIsOpen(false);
-                  }}
-                >
-                  <LogOut className="w-4 h-4" />
-                  Sign Out
-                </Button>
+                <>
+                  {isPlatformAdmin ? (
+                    <Button variant="outline" className="w-full justify-start gap-2" asChild>
+                      <Link to="/platform-admin" onClick={() => setIsOpen(false)}>
+                        <ShieldCheck className="w-4 h-4" />
+                        Platform Console
+                      </Link>
+                    </Button>
+                  ) : null}
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start gap-2"
+                    onClick={() => {
+                      handleSignOut();
+                      setIsOpen(false);
+                    }}
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </Button>
+                </>
               ) : (
                 <Button variant="hero" className="w-full" asChild>
                   <Link to="/auth" onClick={() => setIsOpen(false)}>

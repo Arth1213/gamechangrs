@@ -15,6 +15,7 @@ import AnalyticsIntelligenceReport from "./pages/AnalyticsIntelligenceReport";
 import AnalyticsAdminGateway from "./pages/AnalyticsAdminGateway";
 import AnalyticsPlatformAdmin from "./pages/AnalyticsPlatformAdmin";
 import AnalyticsAdmin from "./pages/AnalyticsAdmin";
+import PlatformAdminConsole from "./pages/PlatformAdminConsole";
 import AnalysisDetail from "./pages/AnalysisDetail";
 import AnalysisHistory from "./pages/AnalysisHistory";
 import Marketplace from "./pages/Marketplace";
@@ -63,6 +64,11 @@ const App = () => (
             <Route path="/analytics/admin/platform" element={
               <ProtectedRoute>
                 <AnalyticsPlatformAdmin />
+              </ProtectedRoute>
+            } />
+            <Route path="/platform-admin" element={
+              <ProtectedRoute>
+                <PlatformAdminConsole />
               </ProtectedRoute>
             } />
             <Route path="/analytics/admin/series" element={

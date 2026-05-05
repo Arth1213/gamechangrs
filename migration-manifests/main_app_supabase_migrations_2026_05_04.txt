@@ -31,3 +31,4 @@ supabase/migrations/20251212070440_31fcf0e5-f45b-4f4d-bf28-01155e222215.sql
 supabase/migrations/20251212072152_997e509a-d9f0-458d-949f-68a3c06096df.sql
 supabase/migrations/20251214041710_7ca07e31-e892-4053-8af2-b75451d64a7e.sql
 supabase/migrations/20260504222500_fix_players_rls_recursion.sql
+supabase/migrations/20260505084500_public_site_metric_snapshot.sql

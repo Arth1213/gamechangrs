@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchCricketDashboardSummary } from "@/lib/cricketApi";
 import { Coach, Player, Session } from "@/types/coaching";
 
 interface AnalysisResult {
@@ -131,6 +132,7 @@ export const UserDashboard = () => {
   const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [matchedCoaches, setMatchedCoaches] = useState<Coach[]>([]);
   const [matchedPlayers, setMatchedPlayers] = useState<Player[]>([]);
+  const [analyticsSeriesCount, setAnalyticsSeriesCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -289,6 +291,27 @@ export const UserDashboard = () => {
     };
 
     fetchData();
+
+    let cancelled = false;
+    fetchCricketDashboardSummary()
+      .then((summary) => {
+        if (cancelled) {
+          return;
+        }
+
+        setAnalyticsSeriesCount(summary.seriesCards?.length ?? 0);
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+
+        setAnalyticsSeriesCount(0);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Athlete";
@@ -445,8 +468,8 @@ export const UserDashboard = () => {
                   <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Analytics</h2>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
-                  <p className="font-display text-xl font-bold text-foreground">Live player reports</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Series workspace</p>
+                  <p className="font-display text-3xl font-bold text-foreground">{analyticsSeriesCount}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Series analyzed</p>
                 </div>
                 <div className="mt-auto flex items-center justify-between text-sm font-medium text-emerald-300">
                   <span>Open Analytics</span>

@@ -6,9 +6,12 @@ import {
   ArrowRight,
   ArrowUpRight,
   CheckCircle2,
+  Eye,
+  EyeOff,
   HeartHandshake,
   Mail,
   MapPin,
+  Pencil,
   Package,
   Plus,
   Search,
@@ -17,6 +20,8 @@ import {
   Sparkles,
   Store,
   Tag,
+  Trash2,
+  X,
 } from "lucide-react";
 
 import { Navbar } from "@/components/Navbar";
@@ -57,6 +62,10 @@ interface Listing {
 }
 
 type ListingMode = "sale" | "donation";
+
+type EditableListing = Listing & {
+  contactEmail: string;
+};
 
 const featuredRetailPartner = {
   name: "East Bay Cricket Shop",
@@ -106,6 +115,18 @@ function formatListingPrice(listing: Listing) {
     return `$${listing.price.toLocaleString()}`;
   }
   return "Price on request";
+}
+
+function isCompletedListing(listing: Listing) {
+  return listing.is_active === false;
+}
+
+function getCompletedListingLabel(listing: Listing) {
+  return listing.listing_type === "donation" ? "Donated" : "Sold";
+}
+
+function getCompletedListingActionLabel(listing: Listing) {
+  return listing.listing_type === "donation" ? "Mark as Donated" : "Mark as Sold";
 }
 
 function MarketplaceHeroCard({
@@ -492,17 +513,29 @@ function MarketplaceSearchSection({
 
 function OwnerListingsSection({
   ownerListings,
+  completedListingsCount,
+  showCompletedListings,
   isLoading,
   onCreateListing,
   onRefresh,
-  onDelist,
+  onToggleShowCompleted,
+  onEdit,
+  onDelete,
+  onMarkCompleted,
 }: {
   ownerListings: Listing[];
+  completedListingsCount: number;
+  showCompletedListings: boolean;
   isLoading: boolean;
   onCreateListing: (mode: ListingMode) => void;
   onRefresh: () => void;
-  onDelist: (listingId: string) => void;
+  onToggleShowCompleted: () => void;
+  onEdit: (listing: Listing) => void;
+  onDelete: (listing: Listing) => void;
+  onMarkCompleted: (listing: Listing) => void;
 }) {
+  const hasHiddenCompletedListings = !showCompletedListings && completedListingsCount > 0;
+
   return (
     <section className="border-b border-border py-8">
       <div className="container mx-auto px-4">
@@ -520,6 +553,12 @@ function OwnerListingsSection({
               <Tag className="h-4 w-4" />
               Sell Gear
             </Button>
+            <Button variant="outline" onClick={onToggleShowCompleted}>
+              {showCompletedListings ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showCompletedListings
+                ? "Hide Sold/Donated"
+                : `Show Sold/Donated${completedListingsCount > 0 ? ` (${completedListingsCount})` : ""}`}
+            </Button>
           </div>
         </div>
 
@@ -529,8 +568,14 @@ function OwnerListingsSection({
           </div>
         ) : ownerListings.length === 0 ? (
           <div className="rounded-3xl border border-border bg-gradient-card p-8">
-            <h3 className="font-display text-xl font-bold text-foreground">No active listings yet</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Your gear will appear here once you create the first listing.</p>
+            <h3 className="font-display text-xl font-bold text-foreground">
+              {hasHiddenCompletedListings ? "No live listings right now" : "No active listings yet"}
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {hasHiddenCompletedListings
+                ? `You have ${completedListingsCount} sold/donated item${completedListingsCount === 1 ? "" : "s"} hidden from this view. Use Show Sold/Donated to review them.`
+                : "Your gear will appear here once you create the first listing."}
+            </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Button onClick={() => onCreateListing("donation")}>
                 <HeartHandshake className="h-4 w-4" />
@@ -540,6 +585,12 @@ function OwnerListingsSection({
                 <Tag className="h-4 w-4" />
                 Sell Gear
               </Button>
+              {hasHiddenCompletedListings ? (
+                <Button variant="outline" onClick={onToggleShowCompleted}>
+                  <Eye className="h-4 w-4" />
+                  Show Sold/Donated
+                </Button>
+              ) : null}
             </div>
           </div>
         ) : (
@@ -574,6 +625,18 @@ function OwnerListingsSection({
                         Your listing
                       </span>
                     </div>
+
+                    {isCompletedListing(listing) ? (
+                      <>
+                        <div className="absolute inset-0 bg-background/45" />
+                        <div className="absolute -left-12 top-7 rotate-[-28deg] bg-destructive px-14 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-destructive-foreground shadow-lg">
+                          {getCompletedListingLabel(listing)}
+                        </div>
+                        <div className="absolute right-4 bottom-4 rounded-full bg-background/90 p-2 text-destructive">
+                          <X className="h-5 w-5" />
+                        </div>
+                      </>
+                    ) : null}
                   </div>
 
                   <div className="p-6">
@@ -614,9 +677,19 @@ function OwnerListingsSection({
                       <p className="mt-5 line-clamp-4 text-sm leading-6 text-muted-foreground">{listing.description}</p>
                     ) : null}
 
-                    <div className="mt-5 flex gap-3">
-                      <Button variant="outline" onClick={() => onDelist(listing.id)}>
-                        Mark as Sold
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <Button variant="outline" onClick={() => onEdit(listing)}>
+                        <Pencil className="h-4 w-4" />
+                        Update
+                      </Button>
+                      {!isCompletedListing(listing) ? (
+                        <Button variant="outline" onClick={() => onMarkCompleted(listing)}>
+                          {getCompletedListingActionLabel(listing)}
+                        </Button>
+                      ) : null}
+                      <Button variant="ghost" onClick={() => onDelete(listing)}>
+                        <Trash2 className="h-4 w-4" />
+                        Delete
                       </Button>
                       <Button variant="ghost" onClick={onRefresh}>
                         Refresh
@@ -640,8 +713,14 @@ function MarketplaceCard({
   listing: Listing;
   onContact: (listing: Listing) => void;
 }) {
+  const isCompleted = isCompletedListing(listing);
+
   return (
-    <div className="group overflow-hidden rounded-3xl border border-border bg-card/80 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-elevated">
+    <div
+      className={`group overflow-hidden rounded-3xl border border-border bg-card/80 transition-all duration-300 ${
+        isCompleted ? "opacity-70" : "hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-elevated"
+      }`}
+    >
       <div className="relative aspect-[4/3] overflow-hidden bg-secondary/50">
         {listing.image_url ? (
           <img
@@ -671,6 +750,15 @@ function MarketplaceCard({
             </span>
           ) : null}
         </div>
+
+        {isCompleted ? (
+          <>
+            <div className="absolute inset-0 bg-background/45" />
+            <div className="absolute -left-12 top-6 rotate-[-28deg] bg-destructive px-14 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-destructive-foreground shadow-lg">
+              {getCompletedListingLabel(listing)}
+            </div>
+          </>
+        ) : null}
       </div>
 
       <div className="p-4">
@@ -706,9 +794,15 @@ function MarketplaceCard({
         ) : null}
 
         <div className="mt-5">
-          <Button variant="hero" size="sm" className="w-full" onClick={() => onContact(listing)}>
-            <Mail className="mr-1 h-3.5 w-3.5" />
-            {listing.listing_type === "donation" ? "Request by Email" : "Connect by Email"}
+          <Button variant="hero" size="sm" className="w-full" disabled={isCompleted} onClick={() => onContact(listing)}>
+            {isCompleted ? (
+              getCompletedListingLabel(listing)
+            ) : (
+              <>
+                <Mail className="mr-1 h-3.5 w-3.5" />
+                {listing.listing_type === "donation" ? "Request by Email" : "Connect by Email"}
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -723,7 +817,10 @@ const Marketplace = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createListingMode, setCreateListingMode] = useState<ListingMode>("sale");
-  const [delistingId, setDelistingId] = useState<string | null>(null);
+  const [showCompletedListings, setShowCompletedListings] = useState(false);
+  const [editingListing, setEditingListing] = useState<EditableListing | null>(null);
+  const [statusListing, setStatusListing] = useState<Listing | null>(null);
+  const [deleteListing, setDeleteListing] = useState<Listing | null>(null);
   const [contactListing, setContactListing] = useState<Listing | null>(null);
   const { toast } = useToast();
   const { user, loading } = useAuth();
@@ -737,7 +834,6 @@ const Marketplace = () => {
         .select(
           "id, title, description, price, original_price, condition, location, image_url, category, listing_type, is_owner, is_active, created_at",
         )
-        .eq("is_active", true)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -775,11 +871,16 @@ const Marketplace = () => {
     return matchesCategory && matchesSearch;
   });
 
-  const ownerListings = filteredListings.filter((listing) => listing.is_owner);
-  const marketplaceListings = filteredListings.filter((listing) => !listing.is_owner);
-  const allPublicListings = listings.filter((listing) => !listing.is_owner);
+  const ownerListings = filteredListings.filter(
+    (listing) => listing.is_owner && (showCompletedListings || !isCompletedListing(listing)),
+  );
+  const marketplaceListings = filteredListings.filter(
+    (listing) => !listing.is_owner && !isCompletedListing(listing),
+  );
+  const allPublicListings = listings.filter((listing) => !listing.is_owner && !isCompletedListing(listing));
   const donationCount = allPublicListings.filter((listing) => listing.listing_type === "donation").length;
-  const ownerListingCount = listings.filter((listing) => listing.is_owner).length;
+  const ownerListingCount = listings.filter((listing) => listing.is_owner && !isCompletedListing(listing)).length;
+  const completedOwnerListingsCount = listings.filter((listing) => listing.is_owner && isCompletedListing(listing)).length;
   const publicListingCount = allPublicListings.length;
   const categoryCount = Math.max(categories.length - 1, 0);
   const previewCategories = categories.filter((item) => item !== "All").slice(0, 5);
@@ -795,12 +896,40 @@ const Marketplace = () => {
     if (!requireAuth("create a listing")) {
       return;
     }
+    setEditingListing(null);
     setCreateListingMode(mode);
     setCreateDialogOpen(true);
   };
 
-  const handleDelist = async () => {
-    if (!delistingId) {
+  const handleEditListing = async (listing: Listing) => {
+    try {
+      const { data, error } = await supabase
+        .from("seller_contacts")
+        .select("contact_email")
+        .eq("listing_id", listing.id)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      setEditingListing({
+        ...listing,
+        contactEmail: data?.contact_email || user?.email || "",
+      });
+      setCreateDialogOpen(true);
+    } catch (error) {
+      console.error("Error loading listing for edit:", error);
+      toast({
+        title: "Could not load listing",
+        description: "The listing details could not be opened for editing.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMarkCompleted = async () => {
+    if (!statusListing) {
       return;
     }
 
@@ -808,7 +937,7 @@ const Marketplace = () => {
       const { error } = await supabase
         .from("marketplace_listings")
         .update({ is_active: false })
-        .eq("id", delistingId)
+        .eq("id", statusListing.id)
         .eq("user_id", user?.id);
 
       if (error) {
@@ -816,15 +945,44 @@ const Marketplace = () => {
       }
 
       toast({
-        title: "Listing removed",
-        description: "Your item has been delisted from the marketplace.",
+        title: `${getCompletedListingLabel(statusListing)} listing`,
+        description: "Your item has been moved out of the live marketplace feed.",
       });
-      fetchListings();
+      void fetchListings();
     } catch (error) {
-      console.error("Error delisting:", error);
-      toast({ title: "Failed to delist item", variant: "destructive" });
+      console.error("Error updating listing status:", error);
+      toast({ title: "Failed to update listing", variant: "destructive" });
     } finally {
-      setDelistingId(null);
+      setStatusListing(null);
+    }
+  };
+
+  const handleDeleteListing = async () => {
+    if (!deleteListing) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("marketplace_listings")
+        .delete()
+        .eq("id", deleteListing.id)
+        .eq("user_id", user?.id);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Listing deleted",
+        description: "The listing has been removed from your gear workspace.",
+      });
+      void fetchListings();
+    } catch (error) {
+      console.error("Error deleting listing:", error);
+      toast({ title: "Failed to delete listing", variant: "destructive" });
+    } finally {
+      setDeleteListing(null);
     }
   };
 
@@ -877,10 +1035,15 @@ const Marketplace = () => {
       {user ? (
         <OwnerListingsSection
           ownerListings={ownerListings}
+          completedListingsCount={completedOwnerListingsCount}
+          showCompletedListings={showCompletedListings}
           isLoading={isLoading}
           onCreateListing={handleCreateListing}
           onRefresh={fetchListings}
-          onDelist={setDelistingId}
+          onToggleShowCompleted={() => setShowCompletedListings((current) => !current)}
+          onEdit={handleEditListing}
+          onDelete={setDeleteListing}
+          onMarkCompleted={setStatusListing}
         />
       ) : null}
 
@@ -1010,9 +1173,17 @@ const Marketplace = () => {
 
       <CreateListingDialog
         open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onSuccess={fetchListings}
+        onOpenChange={(open) => {
+          setCreateDialogOpen(open);
+          if (!open) {
+            setEditingListing(null);
+          }
+        }}
+        onSuccess={() => {
+          void fetchListings();
+        }}
         initialListingType={createListingMode}
+        listingToEdit={editingListing}
       />
 
       {contactListing ? (
@@ -1024,17 +1195,36 @@ const Marketplace = () => {
         />
       ) : null}
 
-      <AlertDialog open={Boolean(delistingId)} onOpenChange={() => setDelistingId(null)}>
+      <AlertDialog open={Boolean(statusListing)} onOpenChange={() => setStatusListing(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Mark as Sold / Remove Listing?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {statusListing ? `${getCompletedListingActionLabel(statusListing)}?` : "Update Listing Status?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove your listing from the marketplace. This action cannot be undone.
+              This removes the item from the live marketplace feed and marks it as {statusListing ? getCompletedListingLabel(statusListing).toLowerCase() : "completed"}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelist}>Remove Listing</AlertDialogAction>
+            <AlertDialogAction onClick={handleMarkCompleted}>
+              {statusListing ? getCompletedListingActionLabel(statusListing) : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={Boolean(deleteListing)} onOpenChange={() => setDeleteListing(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Listing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the listing and its contact record. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteListing}>Delete Listing</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -15,6 +15,18 @@ interface CreateListingDialogProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   initialListingType?: "sale" | "donation";
+  listingToEdit?: {
+    id: string;
+    title: string | null;
+    description: string | null;
+    category: string | null;
+    condition: string | null;
+    listing_type: string | null;
+    price: number | null;
+    location: string | null;
+    image_url: string | null;
+    contactEmail: string;
+  } | null;
 }
 
 export function CreateListingDialog({
@@ -22,6 +34,7 @@ export function CreateListingDialog({
   onOpenChange,
   onSuccess,
   initialListingType = "sale",
+  listingToEdit = null,
 }: CreateListingDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -48,12 +61,30 @@ export function CreateListingDialog({
       return;
     }
 
+    if (listingToEdit) {
+      setFormData({
+        title: listingToEdit.title || "",
+        description: listingToEdit.description || "",
+        category: listingToEdit.category || "Cricket",
+        condition: listingToEdit.condition || "Good",
+        listingType: listingToEdit.listing_type === "donation" ? "donation" : "sale",
+        price: typeof listingToEdit.price === "number" ? String(listingToEdit.price) : "",
+        contactEmail: listingToEdit.contactEmail || user?.email || "",
+        location: listingToEdit.location || "",
+      });
+      setImagePreview(listingToEdit.image_url || null);
+      setImageBase64(listingToEdit.image_url || null);
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
       listingType: initialListingType,
       contactEmail: user?.email || prev.contactEmail,
     }));
-  }, [open, initialListingType, user?.email]);
+    setImagePreview(null);
+    setImageBase64(null);
+  }, [open, initialListingType, listingToEdit, user?.email]);
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -128,7 +159,45 @@ export function CreateListingDialog({
 
     setIsSubmitting(true);
     try {
-      // First, create the listing
+      const listingPayload = {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        condition: formData.condition,
+        listing_type: formData.listingType,
+        price: formData.listingType === "sale" ? parseFloat(formData.price) : null,
+        location: formData.location || null,
+        image_url: imageBase64 || null,
+      };
+
+      if (listingToEdit) {
+        const { error: listingError } = await supabase
+          .from("marketplace_listings")
+          .update(listingPayload)
+          .eq("id", listingToEdit.id)
+          .eq("user_id", user.id);
+
+        if (listingError) throw listingError;
+
+        const { error: contactError } = await supabase
+          .from("seller_contacts")
+          .upsert(
+            {
+              listing_id: listingToEdit.id,
+              contact_email: formData.contactEmail,
+            },
+            { onConflict: "listing_id" },
+          );
+
+        if (contactError) throw contactError;
+
+        toast({ title: "Listing updated successfully!" });
+        onSuccess();
+        onOpenChange(false);
+        resetForm();
+        return;
+      }
+
       const { data: listing, error: listingError } = await supabase
         .from("marketplace_listings")
         .insert({
@@ -186,6 +255,7 @@ export function CreateListingDialog({
   };
 
   const isDonation = formData.listingType === "donation";
+  const isEditing = Boolean(listingToEdit);
   const handleDialogOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       resetForm();
@@ -197,9 +267,11 @@ export function CreateListingDialog({
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isDonation ? "Donate Gear" : "Sell Gear"}</DialogTitle>
+          <DialogTitle>
+            {isEditing ? "Update Listing" : isDonation ? "Donate Gear" : "Sell Gear"}
+          </DialogTitle>
           <DialogDescription>
-            Upload an image, review the AI-filled details, and publish the listing. Game-Changrs only introduces the two sides. The exchange continues by email offline.
+            Upload an image, review the AI-filled details, and {isEditing ? "save the changes" : "publish the listing"}. Game-Changrs only introduces the two sides. The exchange continues by email offline.
           </DialogDescription>
         </DialogHeader>
 
@@ -389,10 +461,10 @@ export function CreateListingDialog({
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creating Listing...
+                {isEditing ? "Updating Listing..." : "Creating Listing..."}
               </>
             ) : (
-              "Create Listing"
+              isEditing ? "Update Listing" : "Create Listing"
             )}
           </Button>
         </form>

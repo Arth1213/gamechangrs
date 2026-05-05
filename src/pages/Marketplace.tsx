@@ -413,35 +413,6 @@ function MarketplaceWorkspaceHero({
                 <MarketplaceHeroCard label="Community feed" value={publicListingCount} />
                 <MarketplaceHeroCard label="Donation opportunities" value={donationCount} tone="warm" />
               </div>
-
-              <div className="mt-6 rounded-2xl border border-border/80 bg-background/60 p-5">
-                <p className="text-xs uppercase tracking-[0.16em] text-primary/80">Workspace actions</p>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-border bg-card/80 p-4">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
-                      <HeartHandshake className="h-5 w-5 text-primary" />
-                    </div>
-                    <p className="mt-4 text-sm font-semibold text-foreground">Donate gear</p>
-                    <p className="mt-1 text-sm text-muted-foreground">Publish a free listing and route the first email introduction through the marketplace.</p>
-                  </div>
-                  <div className="rounded-2xl border border-border bg-card/80 p-4">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
-                      <Tag className="h-5 w-5 text-primary" />
-                    </div>
-                    <p className="mt-4 text-sm font-semibold text-foreground">Sell gear</p>
-                    <p className="mt-1 text-sm text-muted-foreground">Set the asking price, publish the item, and let the buyer continue directly by email.</p>
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-500" />
-                    <p className="text-sm text-muted-foreground">
-                      <span className="font-medium text-foreground">Connection only:</span> Game-Changrs does not process payment. Buyer and seller continue the exchange by email after the introduction.
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -1023,14 +994,12 @@ const Marketplace = () => {
         />
       )}
 
-      <MarketplaceOverviewStrip
-        title={user ? "What stays in this workspace" : "How the marketplace works"}
-        description={
-          user
-            ? "Your listings, the live community feed, and the retail fallback stay organized in one place."
-            : "List used gear, make the introduction by email, and use the retail fallback when new gear is needed."
-        }
-      />
+      {!user ? (
+        <MarketplaceOverviewStrip
+          title="How the marketplace works"
+          description="List used gear, make the introduction by email, and use the retail fallback when new gear is needed."
+        />
+      ) : null}
 
       {user ? (
         <OwnerListingsSection
@@ -1129,28 +1098,17 @@ const Marketplace = () => {
         </div>
       </section>
 
-      <section className="border-t border-border bg-gradient-card py-10">
-        <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-4xl rounded-[28px] border border-border bg-card/80 p-8 text-center">
-            <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">Ready to move gear?</h2>
-            <p className="mb-6 mt-2 text-sm text-muted-foreground">
-              Use Game-Changrs to make the introduction. Buyer and seller continue directly by email after that.
-            </p>
+      {!user ? (
+        <>
+          <section className="border-t border-border bg-gradient-card py-10">
+            <div className="container mx-auto px-4">
+              <div className="mx-auto max-w-4xl rounded-[28px] border border-border bg-card/80 p-8 text-center">
+                <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">Ready to move gear?</h2>
+                <p className="mb-6 mt-2 text-sm text-muted-foreground">
+                  Use Game-Changrs to make the introduction. Buyer and seller continue directly by email after that.
+                </p>
 
-            <div className="flex flex-wrap justify-center gap-3">
-              {user ? (
-                <>
-                  <Button variant="hero" size="default" onClick={() => handleCreateListing("donation")}>
-                    <HeartHandshake className="h-4 w-4" />
-                    Donate Gear
-                  </Button>
-                  <Button variant="outline" size="default" onClick={() => handleCreateListing("sale")}>
-                    <Tag className="h-4 w-4" />
-                    Sell Gear
-                  </Button>
-                </>
-              ) : (
-                <>
+                <div className="flex flex-wrap justify-center gap-3">
                   <Button variant="hero" size="default" asChild>
                     <Link to="/auth">
                       Donate Gear
@@ -1160,14 +1118,14 @@ const Marketplace = () => {
                   <Button variant="outline" size="default" asChild>
                     <Link to="/auth">Sell Gear</Link>
                   </Button>
-                </>
-              )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
 
-      <MarketplaceRetailPartner />
+          <MarketplaceRetailPartner />
+        </>
+      ) : null}
 
       <Footer />
 

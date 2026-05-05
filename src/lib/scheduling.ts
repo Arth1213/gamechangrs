@@ -2,7 +2,15 @@
  * Scheduling and availability utilities
  */
 
+import { addDays } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+
 import { CoachAvailability, BlockedDate, Session, TimeSlot, WeeklyAvailability } from "@/types/coaching";
+
+interface GenerateTimeSlotsOptions {
+  coachTimezone?: string;
+  displayTimezone?: string;
+}
 
 /**
  * Get day of week from date (0 = Sunday, 6 = Saturday)
@@ -28,6 +36,44 @@ export function minutesToTime(minutes: number): string {
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
 
+function getDateKey(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+function getDateKeyInTimezone(date: Date, timezone?: string): string {
+  return timezone ? formatInTimeZone(date, timezone, "yyyy-MM-dd") : getDateKey(date);
+}
+
+function getDayOfWeekFromDateKey(dateKey: string): number {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).getUTCDay();
+}
+
+function buildUtcDate(dateKey: string, time: string, dayOffset: number = 0): Date {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + dayOffset, hours, minutes, 0, 0));
+}
+
+function resolveUtcDateForCoachLocalDate(dateKey: string, utcTime: string, coachTimezone: string): Date {
+  for (const dayOffset of [-1, 0, 1]) {
+    const candidate = buildUtcDate(dateKey, utcTime, dayOffset);
+    if (formatInTimeZone(candidate, coachTimezone, "yyyy-MM-dd") === dateKey) {
+      return candidate;
+    }
+  }
+
+  return buildUtcDate(dateKey, utcTime);
+}
+
+function getCandidateCoachDateKeys(date: Date, coachTimezone: string): string[] {
+  return Array.from(
+    new Set(
+      [-1, 0, 1].map((dayOffset) => formatInTimeZone(addDays(date, dayOffset), coachTimezone, "yyyy-MM-dd")),
+    ),
+  );
+}
+
 /**
  * Check if a date is blocked
  */
@@ -35,7 +81,7 @@ export function isDateBlocked(
   date: Date,
   blockedDates: BlockedDate[]
 ): boolean {
-  const dateStr = date.toISOString().split('T')[0];
+  const dateStr = getDateKey(date);
   return blockedDates.some(bd => bd.blocked_date === dateStr);
 }
 
@@ -121,8 +167,73 @@ export function generateTimeSlots(
   blockedDates: BlockedDate[],
   durationMinutes: number = 60,
   bufferMinutes: number = 0,
-  slotIntervalMinutes: number = 30
+  slotIntervalMinutes: number = 30,
+  options: GenerateTimeSlotsOptions = {}
 ): TimeSlot[] {
+  const { coachTimezone, displayTimezone } = options;
+
+  if (coachTimezone) {
+    const selectedDateKey = getDateKeyInTimezone(date, displayTimezone ?? coachTimezone);
+    const slotDurationMs = durationMinutes * 60000;
+    const slotIntervalMs = slotIntervalMinutes * 60000;
+    const slotsByStart = new Map<number, TimeSlot>();
+
+    availability.forEach((availabilityWindow) => {
+      const coachDateKeys = availabilityWindow.specific_date
+        ? [availabilityWindow.specific_date]
+        : getCandidateCoachDateKeys(date, coachTimezone).filter(
+            (coachDateKey) => getDayOfWeekFromDateKey(coachDateKey) === availabilityWindow.day_of_week,
+          );
+
+      coachDateKeys.forEach((coachDateKey) => {
+        if (blockedDates.some((blockedDate) => blockedDate.blocked_date === coachDateKey)) {
+          return;
+        }
+
+        let slotStart = resolveUtcDateForCoachLocalDate(
+          coachDateKey,
+          availabilityWindow.start_time_utc,
+          coachTimezone,
+        );
+        let slotBoundaryEnd = resolveUtcDateForCoachLocalDate(
+          coachDateKey,
+          availabilityWindow.end_time_utc,
+          coachTimezone,
+        );
+
+        if (slotBoundaryEnd.getTime() <= slotStart.getTime()) {
+          slotBoundaryEnd = addDays(slotBoundaryEnd, 1);
+        }
+
+        while (slotStart.getTime() + slotDurationMs <= slotBoundaryEnd.getTime()) {
+          const slotEnd = new Date(slotStart.getTime() + slotDurationMs);
+          const displayDateKey = getDateKeyInTimezone(slotStart, displayTimezone ?? coachTimezone);
+
+          if (displayDateKey === selectedDateKey) {
+            const hasConflict = hasTimeConflict(slotStart, durationMinutes, existingSessions, bufferMinutes);
+            const slotStartTime = slotStart.getTime();
+
+            if (!slotsByStart.has(slotStartTime)) {
+              slotsByStart.set(slotStartTime, {
+                start: new Date(slotStart),
+                end: slotEnd,
+                available: !hasConflict,
+                existing_session: existingSessions.find((session) => {
+                  const sessionStart = new Date(session.session_date_time_utc);
+                  return sessionStart.getTime() === slotStartTime;
+                }),
+              });
+            }
+          }
+
+          slotStart = new Date(slotStart.getTime() + slotIntervalMs);
+        }
+      });
+    });
+
+    return Array.from(slotsByStart.values()).sort((left, right) => left.start.getTime() - right.start.getTime());
+  }
+
   const slots: TimeSlot[] = [];
   
   // Check if date is blocked
@@ -130,7 +241,7 @@ export function generateTimeSlots(
     return slots;
   }
   
-  const dateStr = date.toISOString().split('T')[0];
+  const dateStr = getDateKey(date);
   const dayOfWeek = getDayOfWeek(date);
   
   // First check for specific date availability
@@ -253,4 +364,3 @@ export function formatTimeSlot(
   
   return formatter.format(slot.start);
 }
-

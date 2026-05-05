@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Restore Point</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      background: #f5f7fb;
+      color: #172033;
+      line-height: 1.55;
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 48px 24px 72px;
+    }
+    h1, h2, h3 { line-height: 1.2; }
+    h1 { font-size: 2rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.4rem; }
+    p, li { font-size: 1rem; }
+    ul { padding-left: 1.4rem; }
+    pre {
+      background: #0f172a;
+      color: #e5eefc;
+      padding: 16px;
+      border-radius: 12px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.4rem;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      border: 1px solid #dbe4f0;
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #eaf0f8;
+    }
+    .toplink {
+      display: inline-block;
+      margin-bottom: 1rem;
+      color: #0f5bd8;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="toplink" href="START_HERE_2026_05_04.html">Back to Start Here</a>
+    <h1>Game-Changrs Restore Point - 2026-05-04</h1>
+<h2>Purpose</h2>
+<p>This is the current restore-point guide for the live Game-Changrs stack after:</p>
+<ul>
+<li>main app Supabase cutover to `tpiegapsjeetvwsybjiu`</li>
+<li>analytics/local-ops retention on `azgebbtasywunltdhdby`</li>
+<li>live production publish on `game-changrs.com`</li>
+</ul>
+<p>Use this document when you need to rebuild the project from scratch on this Mac or on a replacement machine.</p>
+<h2>Current source-of-truth locations</h2>
+<h3>Working repo</h3>
+<ul>
+<li>Repo path: `/Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy`</li>
+<li>GitHub repo: `https://github.com/Arth1213/gamechangrs.git`</li>
+</ul>
+<h3>OneDrive backup root</h3>
+<ul>
+<li>`/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504`</li>
+</ul>
+<h3>Local backup root</h3>
+<ul>
+<li>`/Users/artharun/Downloads/GAME-CHANGRS-BACKUPS/2026_05-04-Game-Changrs-Live-Bundle`</li>
+</ul>
+<h2>What must be preserved</h2>
+<p>You need all of the following to do a complete restore:</p>
+<p>1. A repo snapshot.</p>
+<p>2. A portable Git bundle.</p>
+<p>3. Root frontend `.env`.</p>
+<p>4. `bay-area-u15/.env`.</p>
+<p>5. The main app Supabase project identifiers and API keys.</p>
+<p>6. The analytics Postgres connection details.</p>
+<p>7. Render/Lovable/IONOS/Resend reference values.</p>
+<p>8. Database dumps for every recoverable Supabase/Postgres database.</p>
+<h2>Restore files to expect</h2>
+<h3>Code and repo artifacts</h3>
+<ul>
+<li>`gamechangrs-2026_05_04-live-bundle.bundle`</li>
+<li>`gamechangrs-phase10-deploy-2026_05_04-live-bundle.tar.gz`</li>
+<li>`gamechangrs-github-source-2026_05_04-live-bundle.tar.gz`</li>
+</ul>
+<h3>Docs</h3>
+<ul>
+<li>`START_HERE_2026_05_04.html`</li>
+<li>`RESTORE_POINT_2026_05_04.html`</li>
+<li>`ARCHITECTURE_2026_05_04.html`</li>
+<li>`CONFIG_REFERENCE_2026_05_04.html`</li>
+<li>`LOCAL_OPS_START_2026_05_04.html`</li>
+<li>`RESTORE_POINT_2026_05_04.md`</li>
+<li>`ARCHITECTURE_2026_05_04.md`</li>
+<li>`CONFIG_REFERENCE_2026_05_04.md`</li>
+<li>`LOCAL_OPS_START_2026_05_04.md`</li>
+<li>`CODEX_RESTORE_PROMPT_2026_05_04.txt`</li>
+</ul>
+<h3>Local-only secret/value companions</h3>
+<ul>
+<li>`CONFIG_VALUES_LOCAL_ONLY_2026_05_04.md`</li>
+<li>`root.env.restore-copy`</li>
+<li>`bay-area-u15.env.restore-copy`</li>
+</ul>
+<h3>Database backups</h3>
+<ul>
+<li>`supabase-main-app-schema-2026_05_04.sql`</li>
+<li>`supabase-main-app.dump`</li>
+<li>`supabase-analytics-schema-2026_05_04.sql`</li>
+<li>`supabase-analytics.dump`</li>
+</ul>
+<h2>Full rebuild from scratch</h2>
+<h3>Option A: Restore from GitHub</h3>
+<pre><code>
+cd /Users/artharun/Downloads
+git clone https://github.com/Arth1213/gamechangrs.git GAME-CHANGRS/gamechangrs-phase10-deploy
+cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy
+git checkout main
+</code></pre>
+<h3>Option B: Restore from the portable Git bundle</h3>
+<pre><code>
+cd /Users/artharun/Downloads/GAME-CHANGRS-BACKUPS/2026_05-04-Game-Changrs-Live-Bundle
+git clone gamechangrs-2026_05_04-live-bundle.bundle /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy
+cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy
+git checkout main
+</code></pre>
+<h3>Restore the root frontend env</h3>
+<pre><code>
+cp /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/root.env.restore-copy /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/.env
+</code></pre>
+<h3>Restore the analytics/local-ops env</h3>
+<pre><code>
+cp /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/bay-area-u15.env.restore-copy /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15/.env
+</code></pre>
+<h3>Install the frontend app</h3>
+<pre><code>
+cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy
+npm install
+</code></pre>
+<h3>Install the analytics/local-ops workspace</h3>
+<pre><code>
+cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15
+npm install
+</code></pre>
+<h3>Validate local frontend</h3>
+<pre><code>
+cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy
+npm run dev -- --host 127.0.0.1 --port 8084
+</code></pre>
+<p>Expected checks:</p>
+<ul>
+<li>login page loads</li>
+<li>marketplace loads</li>
+<li>coaching marketplace loads</li>
+<li>Technique AI loads</li>
+<li>analytics pages can authenticate against the Render API</li>
+</ul>
+<h3>Validate local local-ops/API</h3>
+<pre><code>
+cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15
+PORT=4012 npm run ops:ui:start
+</code></pre>
+<p>Expected checks:</p>
+<ul>
+<li>`http://127.0.0.1:4012/health`</li>
+<li>`http://127.0.0.1:4012/local-ops`</li>
+</ul>
+<h2>Cloud reconnect order</h2>
+<p>1. Confirm the Supabase org is still `dlurarovcdxflspxonnu`.</p>
+<p>2. Confirm the main app Supabase project is `tpiegapsjeetvwsybjiu`.</p>
+<p>3. Confirm the analytics database is still `azgebbtasywunltdhdby`.</p>
+<p>4. Confirm Render `gamechangrs-cricket-api` env values.</p>
+<p>5. Confirm Lovable project is still connected to GitHub `main`.</p>
+<p>6. Confirm `game-changrs.com` DNS in IONOS still points to the Lovable publish target.</p>
+<p>7. Confirm Resend keys/domain state if email flows are required.</p>
+<h2>Codex restore option</h2>
+<p>Use this prompt file:</p>
+<ul>
+<li>`/Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/docs/2026_05_04_live_bundle/CODEX_RESTORE_PROMPT_2026_05_04.txt`</li>
+</ul>
+<p>Use these input files:</p>
+<ul>
+<li>`/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/START_HERE_2026_05_04.html`</li>
+<li>`/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/RESTORE_POINT_2026_05_04.md`</li>
+<li>`/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/CONFIG_VALUES_LOCAL_ONLY_2026_05_04.md`</li>
+</ul>
+<h3>What Codex should do</h3>
+<p>1. Recreate the repo from GitHub or the bundle.</p>
+<p>2. Put `root.env.restore-copy` at repo root as `.env`.</p>
+<p>3. Put `bay-area-u15.env.restore-copy` at `bay-area-u15/.env`.</p>
+<p>4. Install root dependencies and `bay-area-u15` dependencies.</p>
+<p>5. Start frontend and local-ops.</p>
+<p>6. Report any missing external credentials or cloud access gaps.</p>
+<h2>Known reality checks</h2>
+<ul>
+<li>The marketplace ownership issue for `helloarth09@gmail.com` was repaired by moving the live row to the current auth UUID.</li>
+<li>Only one live marketplace row was present at this checkpoint. There is no second live marketplace listing recoverable from the current app database snapshot.</li>
+<li>The analytics stack remains on its own database. Do not merge it into the main app project during restore.</li>
+</ul>
+  </main>
+</body>
+</html>

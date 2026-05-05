@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Architecture</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      background: #f5f7fb;
+      color: #172033;
+      line-height: 1.55;
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 48px 24px 72px;
+    }
+    h1, h2, h3 { line-height: 1.2; }
+    h1 { font-size: 2rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.4rem; }
+    p, li { font-size: 1rem; }
+    ul { padding-left: 1.4rem; }
+    pre {
+      background: #0f172a;
+      color: #e5eefc;
+      padding: 16px;
+      border-radius: 12px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.4rem;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      border: 1px solid #dbe4f0;
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #eaf0f8;
+    }
+    .toplink {
+      display: inline-block;
+      margin-bottom: 1rem;
+      color: #0f5bd8;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="toplink" href="START_HERE_2026_05_04.html">Back to Start Here</a>
+    <h1>Game-Changrs Architecture - 2026-05-04</h1>
+<h2>Stack summary</h2>
+<p>Game-Changrs is split into two backend data domains:</p>
+<p>1. Main app/auth/coaching/marketplace on dedicated Supabase project `tpiegapsjeetvwsybjiu`</p>
+<p>2. Cricket analytics/local-ops compute on dedicated analytics project/database `azgebbtasywunltdhdby`</p>
+<h2>Component table</h2>
+<table>
+<thead><tr><th>Component</th><th>Location</th><th>Runtime</th><th>Purpose</th><th>Primary data source</th><th>Backup posture</th></tr></thead>
+<tbody>
+<tr><td>Frontend app</td><td>repo root</td><td>Vite + React</td><td>Public site, auth flows, marketplace, coaching, Technique AI UI</td><td>Main app Supabase + Render API</td><td>repo bundle + tar + env copy</td></tr>
+<tr><td>Main app Supabase</td><td>`tpiegapsjeetvwsybjiu`</td><td>Supabase</td><td>Auth, app tables, app storage, app edge functions</td><td>Supabase app project</td><td>API key references + schema/dump backup</td></tr>
+<tr><td>App edge functions</td><td>`supabase/functions`</td><td>Deno on Supabase</td><td>contact form, seller email, session email, AI helpers</td><td>Main app Supabase secrets/env</td><td>repo + function env reference</td></tr>
+<tr><td>Coaching marketplace</td><td>frontend + app DB</td><td>React + Supabase</td><td>coach/player profiles, connections, booking</td><td>main app tables</td><td>in app DB backup</td></tr>
+<tr><td>Gear marketplace</td><td>frontend + app DB</td><td>React + Supabase</td><td>listing creation, public feed, seller contact handoff</td><td>`marketplace_listings` + `public_marketplace_listings`</td><td>in app DB backup</td></tr>
+<tr><td>Technique AI</td><td>frontend + app DB</td><td>React + Supabase</td><td>local analysis + saved reports</td><td>`analysis_results` table</td><td>repo + app DB backup</td></tr>
+<tr><td>Hosted cricket API</td><td>`bay-area-u15/apps/api`</td><td>Node/Express on Render</td><td>analytics pages, auth-aware series access, local-ops UI</td><td>analytics DB + app auth validation</td><td>repo + Render config doc</td></tr>
+<tr><td>Local-ops console</td><td>`bay-area-u15/apps/api`</td><td>Node/Express local</td><td>series onboarding, workflow controls, operator console</td><td>analytics DB</td><td>repo + `bay-area-u15/.env` backup</td></tr>
+<tr><td>Worker pipeline</td><td>`bay-area-u15/apps/worker`</td><td>Node local</td><td>discovery, inventory, ingest, compute, publish</td><td>analytics DB</td><td>repo + `bay-area-u15/.env` backup</td></tr>
+<tr><td>Analytics database</td><td>`azgebbtasywunltdhdby`</td><td>Supabase Postgres</td><td>series data, matches, player intelligence, access model</td><td>analytics DB</td><td>logical dump + schema backup</td></tr>
+<tr><td>Render service</td><td>`gamechangrs-cricket-api`</td><td>Render</td><td>hosted analytics/backend API</td><td>analytics DB + app auth config</td><td>external service + backup doc</td></tr>
+<tr><td>Lovable project</td><td>project `e14399ba-fbf2-42cf-bf82-4c38048ee762`</td><td>Lovable</td><td>frontend publish and custom-domain delivery</td><td>GitHub main sync</td><td>external service + backup doc</td></tr>
+<tr><td>GitHub repo</td><td>`Arth1213/gamechangrs`</td><td>GitHub</td><td>source of truth for code history</td><td>git</td><td>pushed commits + git bundle</td></tr>
+<tr><td>Domain + DNS</td><td>IONOS</td><td>DNS</td><td>`game-changrs.com` custom domain routing</td><td>IONOS DNS records</td><td>external account + DNS reference doc</td></tr>
+<tr><td>Email provider</td><td>Resend</td><td>API</td><td>transactional email for app flows</td><td>Supabase function env</td><td>external account + secret/value doc</td></tr>
+</tbody></table>
+<h2>Main app Supabase ownership</h2>
+<p>The app project owns:</p>
+<ul>
+<li>Auth</li>
+<li>`players`</li>
+<li>`coaches`</li>
+<li>`coaching_categories`</li>
+<li>`connections`</li>
+<li>`sessions`</li>
+<li>`ratings`</li>
+<li>`marketplace_listings`</li>
+<li>`public_marketplace_listings`</li>
+<li>`seller_contacts`</li>
+<li>`analysis_results`</li>
+<li>`contact_submissions`</li>
+<li>`coach_availability`</li>
+<li>`blocked_dates`</li>
+<li>buckets such as `profile-pictures` and `analysis-videos`</li>
+</ul>
+<h2>Analytics project ownership</h2>
+<p>The analytics/local-ops project owns:</p>
+<ul>
+<li>series registry</li>
+<li>staging/inventory/compute/publish workflow state</li>
+<li>player intelligence and analytics data model</li>
+<li>entity/series access model for analytics</li>
+<li>local operator workflow state</li>
+</ul>
+<h2>Auth boundary</h2>
+<p>The analytics API does not use the analytics Supabase project for user auth. It validates bearer tokens against the main app Supabase project via:</p>
+<ul>
+<li>`bay-area-u15/apps/api/src/lib/auth.js`</li>
+</ul>
+<p>That means:</p>
+<ul>
+<li>`SUPABASE_URL` and `SUPABASE_ANON_KEY` in the API env must point at the main app project</li>
+<li>`DATABASE_URL` in the API env must keep pointing at analytics</li>
+</ul>
+<h2>Current production map</h2>
+<ul>
+<li>Public app domain: `https://game-changrs.com`</li>
+<li>Hosted analytics API: `https://gamechangrs-cricket-api.onrender.com`</li>
+<li>Main app Supabase: `https://tpiegapsjeetvwsybjiu.supabase.co`</li>
+<li>Analytics project ref: `azgebbtasywunltdhdby`</li>
+</ul>
+<h2>High-risk areas</h2>
+<h3>Risk 1: auth drift</h3>
+<p>If Render auth settings drift away from the app project, analytics/admin pages break even when the database is healthy.</p>
+<h3>Risk 2: schema cross-contamination</h3>
+<p>Do not push analytics-only migrations into the app project.</p>
+<h3>Risk 3: secret drift</h3>
+<p>Resend, Lovable, Supabase, and Render values live outside git and must be preserved in the backup bundle.</p>
+<h3>Risk 4: false restore confidence</h3>
+<p>The codebase alone is not enough. Full recovery requires external system access plus the local-only config/value backup.</p>
+  </main>
+</body>
+</html>

@@ -380,11 +380,13 @@ function TechniqueAIWorkspace({
   latestAnalysis,
   authLoading,
   historyLoading,
+  onReportSaved,
 }: {
   analyses: AnalysisResult[];
   latestAnalysis: AnalysisResult | null;
   authLoading: boolean;
   historyLoading: boolean;
+  onReportSaved: () => Promise<void> | void;
 }) {
   const getScoreTone = (score: number) => {
     if (score >= 80) return "text-emerald-300 bg-emerald-500/15 border-emerald-500/20";
@@ -549,7 +551,7 @@ function TechniqueAIWorkspace({
                 <h2 className="font-display text-2xl font-bold text-foreground">New Analysis</h2>
               </div>
             </div>
-            <TechniqueAIComponent />
+            <TechniqueAIComponent onReportSaved={onReportSaved} />
           </div>
         </div>
       </section>
@@ -562,27 +564,28 @@ const TechniqueAI = () => {
   const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchAnalyses = async () => {
-      if (!user) {
-        setAnalyses([]);
-        setHistoryLoading(false);
-        return;
-      }
-
-      const { data } = await supabase
-        .from("analysis_results")
-        .select("id, mode, overall_score, created_at, video_duration, video_url")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(6);
-
-      setAnalyses(data || []);
+  const fetchAnalyses = async () => {
+    if (!user) {
+      setAnalyses([]);
       setHistoryLoading(false);
-    };
+      return;
+    }
 
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from("analysis_results")
+      .select("id, mode, overall_score, created_at, video_duration, video_url")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    setAnalyses(data || []);
+    setHistoryLoading(false);
+  };
+
+  useEffect(() => {
     if (!authLoading) {
-      fetchAnalyses();
+      void fetchAnalyses();
     }
   }, [user, authLoading]);
 
@@ -613,6 +616,7 @@ const TechniqueAI = () => {
           latestAnalysis={latestAnalysis}
           authLoading={authLoading}
           historyLoading={historyLoading}
+          onReportSaved={fetchAnalyses}
         />
       ) : (
         <TechniqueAIGuestLanding />

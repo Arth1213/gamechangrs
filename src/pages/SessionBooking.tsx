@@ -1,19 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { startOfDay } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { useParams, useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Clock, Calendar as CalendarIcon, Star } from "lucide-react";
+import { ArrowLeft, Clock, Globe, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Coach, CoachAvailability, BlockedDate, Session, TimeSlot } from "@/types/coaching";
-import { generateTimeSlots, formatTimeSlot, canCancelSession } from "@/lib/scheduling";
-import { formatDate } from "@/lib/helpers";
+import { generateTimeSlots } from "@/lib/scheduling";
+import { getTimezoneLabel } from "@/lib/timezones";
 
 const SessionBooking = () => {
   const { coachId } = useParams<{ coachId: string }>();
@@ -30,18 +31,15 @@ const SessionBooking = () => {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
   const [connection, setConnection] = useState<any>(null);
+  const [playerTimezone, setPlayerTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+  const timezoneLabel = `${getTimezoneLabel(playerTimezone)} (${playerTimezone})`;
 
   useEffect(() => {
     if (coachId && user) {
       fetchData();
     }
   }, [coachId, user]);
-
-  useEffect(() => {
-    if (selectedDate && availability.length > 0) {
-      // Time slots will be generated when date is selected
-    }
-  }, [selectedDate, availability, existingSessions, blockedDates]);
 
   const fetchData = async () => {
     if (!coachId || !user) return;
@@ -71,7 +69,7 @@ const SessionBooking = () => {
       // Fetch player
       const { data: playerData } = await supabase
         .from("players")
-        .select("id")
+        .select("id, timezone")
         .eq("user_id", user.id)
         .single();
 
@@ -84,6 +82,8 @@ const SessionBooking = () => {
         navigate("/coaching-marketplace/player-signup");
         return;
       }
+
+      setPlayerTimezone(playerData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
 
       // Check connection
       const { data: connectionData } = await supabase
@@ -180,7 +180,7 @@ const SessionBooking = () => {
     }
   };
 
-  const getAvailableSlots = (): TimeSlot[] => {
+  const availableSlots = useMemo(() => {
     if (!selectedDate || availability.length === 0) return [];
 
     return generateTimeSlots(
@@ -189,13 +189,24 @@ const SessionBooking = () => {
       existingSessions,
       blockedDates,
       duration,
-      0, // buffer minutes (can be made configurable)
-      30 // slot interval
-    );
+      0,
+      30,
+      {
+        coachTimezone: coach?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        displayTimezone: playerTimezone,
+      },
+    ).filter((slot) => slot.available);
+  }, [selectedDate, availability, existingSessions, blockedDates, duration, coach, playerTimezone]);
+
+  const formatDateInPlayerTimezone = (date: Date | string, pattern: string = "EEEE, MMMM d, yyyy") => {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    return formatInTimeZone(dateObj, playerTimezone, pattern);
   };
 
-  const availableSlots = getAvailableSlots();
-  const availableSlotsOnly = availableSlots.filter((s) => s.available);
+  const formatTimeInPlayerTimezone = (date: Date | string, pattern: string = "h:mm a") => {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    return formatInTimeZone(dateObj, playerTimezone, pattern);
+  };
 
   if (loading) {
     return (
@@ -258,6 +269,10 @@ const SessionBooking = () => {
                 <p className="text-muted-foreground">
                   Select a date and time for your coaching session
                 </p>
+                <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Globe className="w-4 h-4" />
+                  Times shown in {timezoneLabel}
+                </div>
               </div>
 
               {/* Duration Selection */}
@@ -285,9 +300,9 @@ const SessionBooking = () => {
                   onSelect={setSelectedDate}
                   disabled={(date) => {
                     // Disable past dates
-                    if (date < new Date()) return true;
+                    if (date < startOfDay(new Date())) return true;
                     // Disable blocked dates
-                    const dateStr = date.toISOString().split("T")[0];
+                    const dateStr = formatInTimeZone(date, coach.timezone || playerTimezone, "yyyy-MM-dd");
                     return blockedDates.some((bd) => bd.blocked_date === dateStr);
                   }}
                   className="rounded-md border"
@@ -297,8 +312,13 @@ const SessionBooking = () => {
               {/* Time Slots */}
               {selectedDate && (
                 <div className="rounded-2xl bg-gradient-card border border-border p-6">
-                  <Label className="text-lg font-semibold mb-4 block">Select Time</Label>
-                  {availableSlotsOnly.length === 0 ? (
+                  <Label className="text-lg font-semibold mb-4 block">
+                    Select Time
+                    <span className="ml-2 text-sm font-normal text-muted-foreground">
+                      {formatDateInPlayerTimezone(selectedDate, "EEE, MMM d")}
+                    </span>
+                  </Label>
+                  {availableSlots.length === 0 ? (
                     <div className="text-center py-8">
                       <p className="text-muted-foreground mb-4">
                         No available time slots for this date.
@@ -309,7 +329,7 @@ const SessionBooking = () => {
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {availableSlotsOnly.map((slot, index) => (
+                      {availableSlots.map((slot, index) => (
                         <Button
                           key={index}
                           variant={selectedSlot?.start.getTime() === slot.start.getTime() ? "default" : "outline"}
@@ -318,10 +338,7 @@ const SessionBooking = () => {
                         >
                           <Clock className="w-4 h-4 mb-1" />
                           <span className="text-sm">
-                            {new Date(slot.start).toLocaleTimeString([], {
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
+                            {formatTimeInPlayerTimezone(slot.start)}
                           </span>
                         </Button>
                       ))}
@@ -338,20 +355,13 @@ const SessionBooking = () => {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Date:</span>
                       <span className="font-medium">
-                        {formatDate(selectedSlot.start, "long")}
+                        {formatDateInPlayerTimezone(selectedSlot.start)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Time:</span>
                       <span className="font-medium">
-                        {new Date(selectedSlot.start).toLocaleTimeString([], {
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })} -{" "}
-                        {new Date(selectedSlot.end).toLocaleTimeString([], {
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
+                        {formatTimeInPlayerTimezone(selectedSlot.start)} - {formatTimeInPlayerTimezone(selectedSlot.end)}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -381,4 +391,3 @@ const SessionBooking = () => {
 };
 
 export default SessionBooking;
-

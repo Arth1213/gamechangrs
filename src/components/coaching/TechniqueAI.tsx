@@ -7,11 +7,13 @@ import {
   FileDown,
   Info,
   Play,
+  Save,
   Sparkles,
   Trash2,
   Upload,
   Video,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PoseOverlay } from "@/components/coaching/PoseOverlay";
 import { usePoseDetection, type Joint, type PoseFrame } from "@/hooks/usePoseDetection";
+import { supabase } from "@/integrations/supabase/client";
 
 type Handedness = "right" | "left";
 type CameraAngle = "side-on" | "front-on" | "three-quarter";
@@ -1143,7 +1146,42 @@ function buildTechniquePdfLines(args: {
   return elements;
 }
 
-export function TechniqueAI() {
+function buildStoredPhaseScores(report: TrackerReport) {
+  return Object.fromEntries(report.phaseScores.map((phase) => [phase.key, phase.score]));
+}
+
+function buildStoredFeedback(report: TrackerReport) {
+  const strengths = report.phaseScores
+    .filter((phase) => phase.score >= 80)
+    .slice(0, 3)
+    .map((phase) => `${phase.label}: ${phase.score}/100`);
+
+  const nextSteps = report.findings.slice(0, 3).map((finding) => finding.fix);
+
+  return {
+    band: report.band,
+    heading: report.heading,
+    summary: report.summary,
+    strengths: strengths.length > 0 ? strengths : ["Report saved successfully."],
+    eliteComparison: report.summary,
+    nextSteps: nextSteps.length > 0 ? nextSteps : report.drills.slice(0, 3).map((drill) => drill.description),
+    findings: report.findings.map((finding) => ({
+      title: finding.title,
+      severity: finding.severity,
+      fix: finding.fix,
+      drill: finding.drill,
+      tip: finding.tip,
+      category: finding.category,
+    })),
+    snapshots: report.snapshots,
+  };
+}
+
+interface TechniqueAIProps {
+  onReportSaved?: () => Promise<void> | void;
+}
+
+export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
   const { user } = useAuth();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -1154,6 +1192,8 @@ export function TechniqueAI() {
   const [shotType, setShotType] = useState<ShotType>("straight-drive");
   const [bowlingType, setBowlingType] = useState<BowlingType>("pace");
   const [videoDimensions, setVideoDimensions] = useState({ width: 960, height: 540 });
+  const [isSavingReport, setIsSavingReport] = useState(false);
+  const [savedReportId, setSavedReportId] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const analysisCacheRef = useRef(new Map<string, TrackerReport>());
@@ -1217,6 +1257,7 @@ export function TechniqueAI() {
     setSelectedFile(file);
     setVideoUrl(nextUrl);
     setAnalysis(null);
+    setSavedReportId(null);
     setStage("idle");
     reset();
   };
@@ -1239,6 +1280,7 @@ export function TechniqueAI() {
     setSelectedFile(null);
     setVideoUrl(null);
     setAnalysis(null);
+    setSavedReportId(null);
     setStage("idle");
     reset();
   };
@@ -1271,6 +1313,7 @@ export function TechniqueAI() {
 
       setStage("pose");
       setAnalysis(null);
+      setSavedReportId(null);
       const frames = await processVideo(selectedFile);
       setStage("scoring");
 
@@ -1319,6 +1362,55 @@ export function TechniqueAI() {
 
     await navigator.clipboard.writeText(text);
     toast.success("Analysis summary copied.");
+  };
+
+  const saveReport = async () => {
+    if (!user) {
+      toast.error("Sign in to save this report.");
+      return;
+    }
+
+    if (!analysis) {
+      toast.error("Run an analysis before saving.");
+      return;
+    }
+
+    setIsSavingReport(true);
+    try {
+      const durationLabel =
+        videoRef.current && Number.isFinite(videoRef.current.duration)
+          ? `${videoRef.current.duration.toFixed(1)}s`
+          : null;
+
+      const { data, error: saveError } = await supabase
+        .from("analysis_results")
+        .insert({
+          user_id: user.id,
+          mode: "batting",
+          overall_score: analysis.score,
+          scores: buildStoredPhaseScores(analysis),
+          angles: {},
+          feedback: buildStoredFeedback(analysis),
+          drills: analysis.drills,
+          video_duration: durationLabel,
+          video_url: null,
+        })
+        .select("id")
+        .single();
+
+      if (saveError) {
+        throw saveError;
+      }
+
+      setSavedReportId(data.id);
+      toast.success("Technique AI report saved.");
+      await onReportSaved?.();
+    } catch (saveError) {
+      console.error(saveError);
+      toast.error("The report could not be saved.");
+    } finally {
+      setIsSavingReport(false);
+    }
   };
 
   const exportPdfReport = () => {
@@ -1523,6 +1615,14 @@ export function TechniqueAI() {
                     {isProcessing ? <Activity className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                     {isProcessing ? "Reading pose..." : isModelReady ? "Analyze batting clip" : "Loading pose model..."}
                   </Button>
+                  <Button
+                    onClick={saveReport}
+                    disabled={!analysis || isSavingReport || Boolean(savedReportId)}
+                    variant="outline"
+                  >
+                    <Save className="h-4 w-4" />
+                    {savedReportId ? "Report saved" : isSavingReport ? "Saving report..." : "Save report"}
+                  </Button>
                   <Button onClick={exportPdfReport} disabled={!analysis} variant="outline">
                     <FileDown className="h-4 w-4" />
                     Export report as PDF
@@ -1531,6 +1631,11 @@ export function TechniqueAI() {
                     <Clipboard className="h-4 w-4" />
                     Copy summary
                   </Button>
+                  {savedReportId ? (
+                    <Button variant="outline" asChild>
+                      <Link to={`/analysis/${savedReportId}`}>Open saved report</Link>
+                    </Button>
+                  ) : null}
                   <Button onClick={clearVideo} variant="destructive">
                     <Trash2 className="h-4 w-4" />
                     Remove video

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { format, startOfDay } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Coach, CoachAvailability, BlockedDate, Session, TimeSlot } from "@/types/coaching";
 import { generateTimeSlots } from "@/lib/scheduling";
-import { formatInTimeZone, toZonedTime } from "date-fns-tz";
-import { cn } from "@/lib/utils";
+import { formatInTimeZone } from "date-fns-tz";
+import { getTimezoneLabel } from "@/lib/timezones";
 
 interface BookSessionDialogProps {
   open: boolean;
@@ -46,6 +47,7 @@ export function BookSessionDialog({
   const [booking, setBooking] = useState(false);
 
   const timezone = playerTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timezoneLabel = `${getTimezoneLabel(timezone)} (${timezone})`;
 
   // Reset state when dialog opens/closes
   useEffect(() => {
@@ -111,7 +113,11 @@ export function BookSessionDialog({
       blockedDates,
       duration,
       0,
-      30
+      30,
+      {
+        coachTimezone: selectedCoach?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        displayTimezone: timezone,
+      }
     );
   };
 
@@ -148,24 +154,6 @@ export function BookSessionDialog({
 
     setBooking(true);
     try {
-      // Check for existing session at the same time to prevent double-booking
-      const sessionStart = selectedSlot.start.toISOString();
-      const sessionEnd = new Date(selectedSlot.start.getTime() + duration * 60000).toISOString();
-      
-      const { data: existingSession } = await supabase
-        .from("sessions")
-        .select("id")
-        .eq("coach_id", selectedCoach.id)
-        .neq("status", "canceled")
-        .gte("session_date_time_utc", new Date().toISOString())
-        .limit(100);
-      
-      // Check for overlapping sessions
-      const hasConflict = existingSession?.some(session => {
-        // We need to fetch the full session to check overlap
-        return false; // Will check with better query
-      });
-
       // More precise conflict check
       const { data: conflictCheck } = await supabase
         .from("sessions")
@@ -256,31 +244,33 @@ export function BookSessionDialog({
   // Get dates with availability (considering specific_date field)
   const datesWithAvailability = useMemo(() => {
     const dates: Date[] = [];
-    const today = new Date();
+    const today = startOfDay(new Date());
     
     for (let i = 0; i < 14; i++) {
       const date = new Date(today);
       date.setDate(date.getDate() + i);
-      
-      const dateStr = date.toISOString().split("T")[0];
-      const dayOfWeek = date.getUTCDay();
-      
-      // Check for specific date availability first
-      const hasSpecificDateAvail = availability.some(av => av.specific_date === dateStr);
-      
-      // Fall back to day-of-week availability
-      const hasDayOfWeekAvail = availability.some(av => !av.specific_date && av.day_of_week === dayOfWeek);
-      
-      const hasAvail = hasSpecificDateAvail || hasDayOfWeekAvail;
-      const isBlocked = blockedDates.some(bd => bd.blocked_date === dateStr);
-      
-      if (hasAvail && !isBlocked) {
+
+      const generatedSlots = generateTimeSlots(
+        date,
+        availability,
+        existingSessions,
+        blockedDates,
+        duration,
+        0,
+        30,
+        {
+          coachTimezone: selectedCoach?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+          displayTimezone: timezone,
+        },
+      );
+
+      if (generatedSlots.some((slot) => slot.available)) {
         dates.push(date);
       }
     }
     
     return dates;
-  }, [availability, blockedDates]);
+  }, [availability, blockedDates, existingSessions, duration, selectedCoach, timezone]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -412,7 +402,7 @@ export function BookSessionDialog({
                   {/* Timezone indicator */}
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Globe className="w-4 h-4" />
-                    Times shown in {timezone.split("/").pop()?.replace("_", " ")}
+                    Times shown in {timezoneLabel}
                   </div>
 
                   {/* Calendar */}
@@ -426,9 +416,10 @@ export function BookSessionDialog({
                         setSelectedSlot(null);
                       }}
                       disabled={(date) => {
-                        if (date < new Date()) return true;
-                        const dateStr = date.toISOString().split("T")[0];
-                        return blockedDates.some((bd) => bd.blocked_date === dateStr);
+                        if (date < startOfDay(new Date())) return true;
+                        return !datesWithAvailability.some(
+                          (availableDate) => format(availableDate, "yyyy-MM-dd") === format(date, "yyyy-MM-dd"),
+                        );
                       }}
                       className="rounded-md border pointer-events-auto"
                       modifiers={{

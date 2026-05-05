@@ -1,0 +1,39 @@
+Restore Game-Changrs from the latest live bundle on this machine.
+
+Use these source paths first:
+
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/START_HERE_2026_05_04.html
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/RESTORE_POINT_2026_05_04.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/ARCHITECTURE_2026_05_04.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/CONFIG_REFERENCE_2026_05_04.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/CONFIG_VALUES_LOCAL_ONLY_2026_05_04.md
+- /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/LOCAL_OPS_START_2026_05_04.md
+
+Restore objectives:
+
+1. Recreate the repo at /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy from GitHub main or the portable git bundle.
+2. Restore .env from root.env.restore-copy into the repo root.
+3. Restore bay-area-u15/.env from bay-area-u15.env.restore-copy.
+4. Confirm supabase/config.toml points to tpiegapsjeetvwsybjiu.
+5. Install root dependencies and bay-area-u15 dependencies.
+6. Start the frontend locally.
+7. Start local-ops locally on port 4012.
+8. Report any missing cloud dependency that still needs manual access: Supabase dashboard, Render, Lovable, IONOS, Resend, GitHub.
+
+Do not mix the analytics database and the main app database.
+
+Main app:
+
+- project ref: tpiegapsjeetvwsybjiu
+
+Analytics database:
+
+- project ref: azgebbtasywunltdhdby
+
+At the end, tell me:
+
+- whether the repo is restored
+- whether env files are in place
+- whether frontend starts
+- whether local-ops starts
+- what external systems still require manual sign-in

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Local Ops Start</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      background: #f5f7fb;
+      color: #172033;
+      line-height: 1.55;
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 48px 24px 72px;
+    }
+    h1, h2, h3 { line-height: 1.2; }
+    h1 { font-size: 2rem; }
+    h2 { margin-top: 2rem; }
+    h3 { margin-top: 1.4rem; }
+    p, li { font-size: 1rem; }
+    ul { padding-left: 1.4rem; }
+    pre {
+      background: #0f172a;
+      color: #e5eefc;
+      padding: 16px;
+      border-radius: 12px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.4rem;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      border: 1px solid #dbe4f0;
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #eaf0f8;
+    }
+    .toplink {
+      display: inline-block;
+      margin-bottom: 1rem;
+      color: #0f5bd8;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="toplink" href="START_HERE_2026_05_04.html">Back to Start Here</a>
+    <h1>Local Ops Start Guide - 2026-05-04</h1>
+<h2>Workspace path</h2>
+<ul>
+<li>`/Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15`</li>
+</ul>
+<h2>Prerequisites</h2>
+<p>1. `bay-area-u15/.env` must exist.</p>
+<p>2. `npm install` must have been run in `bay-area-u15`.</p>
+<p>3. The analytics database must be reachable.</p>
+<p>4. App-auth values must still point to the main app Supabase project.</p>
+<h2>First health check</h2>
+<pre><code>
+cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15
+npm run ops:doctor
+</code></pre>
+<p>You want these to pass:</p>
+<ul>
+<li>`.env` present</li>
+<li>database reachable</li>
+<li>league config files present</li>
+<li>Playwright runtime available</li>
+</ul>
+<h2>Start the local API only</h2>
+<pre><code>
+cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15
+PORT=4012 npm run api:start
+</code></pre>
+<h2>Start the local-ops UI</h2>
+<pre><code>
+cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15
+PORT=4012 npm run ops:ui:start
+</code></pre>
+<p>Open:</p>
+<ul>
+<li>`http://127.0.0.1:4012/local-ops`</li>
+</ul>
+<h2>Restart procedure</h2>
+<p>If local-ops looks stuck:</p>
+<p>1. Stop the running process.</p>
+<p>2. Start it again with the same command:</p>
+<pre><code>
+cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15
+PORT=4012 npm run ops:ui:start
+</code></pre>
+<h2>Useful commands</h2>
+<h3>Probe a source URL</h3>
+<pre><code>
+npm run ops:probe -- --source cricclubs --url &quot;https://cricclubs.com/...&quot;
+</code></pre>
+<h3>Register a new series</h3>
+<pre><code>
+npm run ops:register -- --source cricclubs --url &quot;https://cricclubs.com/...&quot; --label &quot;Series Name&quot; --seasonYear 2026 --targetAgeGroup Open
+</code></pre>
+<h3>Stage discovery plus inventory</h3>
+<pre><code>
+npm run ops:stage -- --series &lt;series-key&gt;
+</code></pre>
+<h3>Run current ingest</h3>
+<pre><code>
+npm run worker:run:series -- --series &lt;series-key&gt;
+</code></pre>
+<h3>Compute season outputs</h3>
+<pre><code>
+npm run worker:compute:series -- --series &lt;series-key&gt;
+npm run worker:score:series -- --series &lt;series-key&gt;
+npm run worker:intelligence:series -- --series &lt;series-key&gt;
+</code></pre>
+<h3>Process queued work</h3>
+<pre><code>
+npm run worker:process-queue
+npm run worker:process-manual-refresh-queue
+</code></pre>
+<h2>Local auth behavior</h2>
+<p>The local analytics API checks bearer tokens against the main app Supabase project via:</p>
+<ul>
+<li>`bay-area-u15/apps/api/src/lib/auth.js`</li>
+</ul>
+<p>That means this pair must be correct in `bay-area-u15/.env`:</p>
+<ul>
+<li>`SUPABASE_URL`</li>
+<li>`SUPABASE_ANON_KEY`</li>
+</ul>
+<h2>Common failure points</h2>
+<h3>401 on analytics/admin pages</h3>
+<p>Check:</p>
+<ul>
+<li>`SUPABASE_URL`</li>
+<li>`SUPABASE_ANON_KEY`</li>
+<li>the signed-in app user is from the live app project</li>
+</ul>
+<h3>Database connection failure</h3>
+<p>Check:</p>
+<ul>
+<li>`DATABASE_URL`</li>
+<li>`DATABASE_SSL_MODE=require`</li>
+</ul>
+<h3>Local-ops page not loading</h3>
+<p>Check:</p>
+<ul>
+<li>`LOCAL_OPS_ENABLE_UI` is set by `npm run ops:ui:start`</li>
+<li>`PORT=4012` is not already occupied</li>
+</ul>
+<h2>Current safe default</h2>
+<p>Use:</p>
+<pre><code>
+cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15
+PORT=4012 npm run ops:ui:start
+</code></pre>
+<p>That is the best default command to hand to Codex or run manually on this machine.</p>
+  </main>
+</body>
+</html>

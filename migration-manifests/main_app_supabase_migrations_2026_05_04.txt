@@ -32,3 +32,5 @@ supabase/migrations/20251212072152_997e509a-d9f0-458d-949f-68a3c06096df.sql
 supabase/migrations/20251214041710_7ca07e31-e892-4053-8af2-b75451d64a7e.sql
 supabase/migrations/20260504222500_fix_players_rls_recursion.sql
 supabase/migrations/20260505084500_public_site_metric_snapshot.sql
+supabase/migrations/20260505101500_add_profile_career_summaries.sql
+supabase/migrations/20260505104812_fix_public_marketplace_view_security_invoker.sql

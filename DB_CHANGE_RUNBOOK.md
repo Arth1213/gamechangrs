@@ -119,5 +119,9 @@ ANALYTICS_DATABASE_URL='postgres://...' bash ./scripts/db-apply-analytics.sh
 - The wrappers stop on first SQL error.
 - The tracking table is intentionally tiny and future-facing.
 - This does **not** try to rewrite or reconcile older Supabase migration history.
+- Treat Supabase's built-in migration ledger as historically messy and
+  intentionally unreconciled for this project state.
+- The curated manifests plus `public.codex_schema_migrations` are the intended
+  source of truth for future database changes.
 - If a future migration is blocked by earlier live history, handle that as a
   deliberate repair step, not inside a broad repo-wide push.

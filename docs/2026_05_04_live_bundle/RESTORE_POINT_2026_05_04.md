@@ -190,3 +190,5 @@ Use these input files:
 - The marketplace ownership issue for `helloarth09@gmail.com` was repaired by moving the live row to the current auth UUID.
 - Only one live marketplace row was present at this checkpoint. There is no second live marketplace listing recoverable from the current app database snapshot.
 - The analytics stack remains on its own database. Do not merge it into the main app project during restore.
+- Supabase's built-in migration ledger is intentionally left unreconciled at this restore point. Do not use root `supabase db push` as the source of truth for deploy history.
+- For future database work, use the curated manifests and wrapper flow in [DB_CHANGE_RUNBOOK.md](/Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/DB_CHANGE_RUNBOOK.md).

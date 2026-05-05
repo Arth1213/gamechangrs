@@ -146,9 +146,9 @@ function MarketplaceHeroCard({
         : "border-border bg-background/70";
 
   return (
-    <div className={`rounded-2xl border p-5 ${toneClass}`}>
-      <p className="font-display text-3xl font-bold text-foreground">{value}</p>
-      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+    <div className={`flex min-h-[144px] flex-col justify-between rounded-[26px] border px-5 py-4 ${toneClass}`}>
+      <p className="font-display text-4xl font-bold leading-none text-foreground">{value}</p>
+      <p className="max-w-[10ch] text-xs uppercase leading-[1.45] tracking-[0.18em] text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -310,8 +310,8 @@ function MarketplaceGuestLanding({
               </div>
             </div>
 
-            <div className="rounded-[32px] border border-border/80 bg-card/85 p-6 shadow-xl">
-              <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-[32px] border border-border/80 bg-card/85 p-5 shadow-xl">
+              <div className="grid gap-3 md:grid-cols-3">
                 <MarketplaceHeroCard label="Community listings" value={publicListingCount} tone="accent" />
                 <MarketplaceHeroCard label="Donation listings" value={donationCount} tone="warm" />
                 <MarketplaceHeroCard label="Gear categories" value={categoryCount} />
@@ -407,8 +407,8 @@ function MarketplaceWorkspaceHero({
               </div>
             </div>
 
-            <div className="rounded-[32px] border border-border/80 bg-card/85 p-6 shadow-xl">
-              <div className="grid gap-4 md:grid-cols-3">
+            <div className="ml-auto w-full max-w-[460px] rounded-[32px] border border-border/80 bg-card/85 p-5 shadow-xl">
+              <div className="grid gap-3 md:grid-cols-3">
                 <MarketplaceHeroCard label="Your active listings" value={ownerListingCount} tone="accent" />
                 <MarketplaceHeroCard label="Community feed" value={publicListingCount} />
                 <MarketplaceHeroCard label="Donation opportunities" value={donationCount} tone="warm" />

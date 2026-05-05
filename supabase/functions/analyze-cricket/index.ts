@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { errorStatus, requestStructuredObject } from "../_shared/openai.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 
 interface PoseData {
   joints: {
@@ -219,9 +215,12 @@ function summarizePoseData(poseData: PoseData[]) {
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+  const corsResponse = handleCors(req);
+  if (corsResponse) {
+    return corsResponse;
   }
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const { mode, poseData, frameCount } = await req.json() as AnalysisRequest;

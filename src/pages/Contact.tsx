@@ -9,13 +9,17 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+const createInitialFormData = () => ({
+  name: "",
+  email: "",
+  subject: "",
+  message: "",
+  website: "",
+  startedAt: new Date().toISOString(),
+});
+
 const Contact = () => {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    subject: "",
-    message: "",
-  });
+  const [formData, setFormData] = useState(createInitialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -45,7 +49,7 @@ const Contact = () => {
         title: "Message Sent!",
         description: result.message || "We'll get back to you within 24 hours.",
       });
-      setFormData({ name: "", email: "", subject: "", message: "" });
+      setFormData(createInitialFormData());
     } catch (error) {
       console.error('Contact form error:', error);
       toast({
@@ -98,6 +102,16 @@ const Contact = () => {
                   Send Us a Message
                 </h2>
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  <input
+                    type="text"
+                    name="website"
+                    value={formData.website}
+                    onChange={handleChange}
+                    tabIndex={-1}
+                    autoComplete="off"
+                    className="hidden"
+                    aria-hidden="true"
+                  />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">

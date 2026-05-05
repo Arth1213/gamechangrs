@@ -1,9 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 
 interface ConnectionEmailRequest {
   connectionId: string;
@@ -16,10 +12,12 @@ interface ConnectionEmailRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+  const corsResponse = handleCors(req);
+  if (corsResponse) {
+    return corsResponse;
   }
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const { 
@@ -40,7 +38,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Use the project URL for verification links - get from environment or use production URL
-    const baseUrl = Deno.env.get("SITE_URL") || "https://wpczgwxsriezaubncuom.lovableproject.com";
+    const baseUrl = Deno.env.get("SITE_URL") || "https://game-changrs.com";
     const verifyUrl = `${baseUrl}/coaching-marketplace/verify-connection?code=${verificationCode}&connectionId=${connectionId}`;
 
     // Generate a unique Jitsi Meet room for this connection

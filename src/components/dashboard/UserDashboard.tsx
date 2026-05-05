@@ -52,6 +52,22 @@ interface RecentActivityItem {
   href: string;
 }
 
+interface DashboardNavigationCard {
+  key: string;
+  href: string;
+  title: string;
+  eyebrow: string;
+  eyebrowClassName: string;
+  ctaLabel: string;
+  ctaClassName: string;
+  icon: LucideIcon;
+  iconWrapClassName: string;
+  iconClassName: string;
+  statValue: string;
+  statLabel: string;
+  statDetail: string;
+}
+
 const activityMeta: Record<
   DashboardService,
   {
@@ -122,6 +138,55 @@ function getProfileActivityTitle(
   updatedAt: string
 ) {
   return createdAt === updatedAt ? `${roleLabel} profile created` : `${roleLabel} profile updated`;
+}
+
+function DashboardServiceCard({
+  href,
+  title,
+  eyebrow,
+  eyebrowClassName,
+  ctaLabel,
+  ctaClassName,
+  icon: Icon,
+  iconWrapClassName,
+  iconClassName,
+  statValue,
+  statLabel,
+  statDetail,
+}: DashboardNavigationCard) {
+  return (
+    <Link to={href} className="group block h-full">
+      <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-elevated">
+        <div className="mb-6 flex h-14 items-start gap-3">
+          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${iconWrapClassName}`}>
+            <Icon className={`h-7 w-7 ${iconClassName}`} />
+          </div>
+        </div>
+
+        <div className="flex flex-1 flex-col gap-4">
+          <div className="min-h-[7.5rem]">
+            <p className={`min-h-[3.25rem] text-xs uppercase tracking-[0.18em] ${eyebrowClassName}`}>
+              {eyebrow}
+            </p>
+            <h2 className="mt-2 min-h-[4.25rem] font-display text-2xl font-bold text-foreground">
+              {title}
+            </h2>
+          </div>
+
+          <div className="flex min-h-[14.5rem] flex-col rounded-2xl border border-border/70 bg-background/60 p-4">
+            <p className="font-display text-3xl font-bold text-foreground">{statValue}</p>
+            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">{statLabel}</p>
+            <p className="mt-2 min-h-[5.75rem] text-sm text-muted-foreground">{statDetail}</p>
+          </div>
+
+          <div className={`mt-auto flex items-center justify-between text-sm font-medium ${ctaClassName}`}>
+            <span>{ctaLabel}</span>
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
 }
 
 export const UserDashboard = () => {
@@ -336,6 +401,109 @@ export const UserDashboard = () => {
       : null,
   ].filter(Boolean);
   const coachingDetail = coachingSignals.join(" • ") || "Set up coach or player access.";
+  const dashboardCards = useMemo<DashboardNavigationCard[]>(() => {
+    const cards: DashboardNavigationCard[] = [];
+
+    if (isPlatformAdmin) {
+      cards.push({
+        key: "platform-console",
+        href: "/platform-admin",
+        title: "Platform Console",
+        eyebrow: "Private operator surface",
+        eyebrowClassName: "text-cyan-200/80",
+        ctaLabel: "Open Platform Console",
+        ctaClassName: "text-cyan-200",
+        icon: ShieldCheck,
+        iconWrapClassName: "bg-cyan-400/15",
+        iconClassName: "text-cyan-200",
+        statValue: "Admin",
+        statLabel: "Global scope",
+        statDetail: "Governance, analytics admin surfaces, local-ops launch, and safe DB workflow guidance.",
+      });
+    }
+
+    cards.push(
+      {
+        key: "technique-ai",
+        href: "/techniqueai",
+        title: "Technique AI",
+        eyebrow: "Video analysis",
+        eyebrowClassName: "text-primary/80",
+        ctaLabel: hasTechniqueActivity ? "Open Technique AI" : "Try Technique AI",
+        ctaClassName: "text-primary",
+        icon: Zap,
+        iconWrapClassName: "bg-primary/15",
+        iconClassName: "text-primary",
+        statValue: String(analyses.length),
+        statLabel: "Saved analyses",
+        statDetail: latestAnalysis
+          ? `Latest score ${latestAnalysis.overall_score}% from ${formatActivityDate(latestAnalysis.created_at)}`
+          : "No video analysis yet.",
+      },
+      {
+        key: "analytics",
+        href: "/analytics",
+        title: "Analytics",
+        eyebrow: "Selector intelligence",
+        eyebrowClassName: "text-emerald-300/80",
+        ctaLabel: "Open Analytics",
+        ctaClassName: "text-emerald-300",
+        icon: BarChart3,
+        iconWrapClassName: "bg-emerald-400/15",
+        iconClassName: "text-emerald-300",
+        statValue: String(analyticsSeriesCount),
+        statLabel: "Series analyzed",
+        statDetail: analyticsSeriesCount > 0
+          ? `${analyticsSeriesCount} live analytics workspace${analyticsSeriesCount === 1 ? "" : "s"} available.`
+          : "No analytics series available yet.",
+      },
+      {
+        key: "coaching-marketplace",
+        href: "/coaching-marketplace",
+        title: "Coaching Marketplace",
+        eyebrow: "Coach and player network",
+        eyebrowClassName: "text-accent/80",
+        ctaLabel: hasCoachingActivity ? "Open Coaching Marketplace" : "Try Coaching Marketplace",
+        ctaClassName: "text-accent",
+        icon: Brain,
+        iconWrapClassName: "bg-accent/15",
+        iconClassName: "text-accent",
+        statValue: String(coachingProfilesCount),
+        statLabel: "Active profiles",
+        statDetail: loading ? "Loading..." : coachingDetail,
+      },
+      {
+        key: "gear-marketplace",
+        href: "/marketplace",
+        title: "Gear Marketplace",
+        eyebrow: "Buy, sell, donate",
+        eyebrowClassName: "text-amber-300/80",
+        ctaLabel: hasGearActivity ? "Open Gear Marketplace" : "Try Gear Marketplace",
+        ctaClassName: "text-amber-300",
+        icon: ShoppingBag,
+        iconWrapClassName: "bg-amber-400/15",
+        iconClassName: "text-amber-300",
+        statValue: String(activeListingsCount),
+        statLabel: "Active listings",
+        statDetail: latestListing ? latestListing.title : "No listings yet.",
+      }
+    );
+
+    return cards;
+  }, [
+    activeListingsCount,
+    analyses.length,
+    analyticsSeriesCount,
+    coachingDetail,
+    coachingProfilesCount,
+    hasCoachingActivity,
+    hasGearActivity,
+    hasTechniqueActivity,
+    isPlatformAdmin,
+    latestAnalysis,
+    latestListing,
+    loading,
+  ]);
 
   const recentActivity = useMemo<RecentActivityItem[]>(() => {
     const items: RecentActivityItem[] = [
@@ -429,137 +597,9 @@ export const UserDashboard = () => {
         </div>
 
         <div className={`mb-10 grid grid-cols-1 gap-6 md:grid-cols-2 ${isPlatformAdmin ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
-          {isPlatformAdmin ? (
-            <Link to="/platform-admin" className="group block h-full">
-              <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-cyan-400/25 hover:shadow-elevated">
-                <div className="mb-6 flex items-start gap-3">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-400/15">
-                    <ShieldCheck className="h-7 w-7 text-cyan-200" />
-                  </div>
-                </div>
-                <div className="flex flex-1 flex-col gap-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-cyan-200/80">Private operator surface</p>
-                    <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Platform Console</h2>
-                  </div>
-                  <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
-                    <p className="font-display text-3xl font-bold text-foreground">Admin</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Global scope</p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Governance, analytics admin surfaces, local-ops launch, and safe DB workflow guidance.
-                    </p>
-                  </div>
-                  <div className="mt-auto flex items-center justify-between text-sm font-medium text-cyan-200">
-                    <span>Open Platform Console</span>
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </div>
-                </div>
-              </div>
-            </Link>
-          ) : null}
-
-          <Link to="/techniqueai" className="group block h-full">
-            <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-elevated">
-              <div className="mb-6 flex items-start gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15">
-                  <Zap className="h-7 w-7 text-primary" />
-                </div>
-              </div>
-              <div className="flex flex-1 flex-col gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Video analysis</p>
-                  <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Technique AI</h2>
-                </div>
-                <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
-                  <p className="font-display text-3xl font-bold text-foreground">{analyses.length}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Saved analyses</p>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {latestAnalysis
-                      ? `Latest score ${latestAnalysis.overall_score}% from ${formatActivityDate(latestAnalysis.created_at)}`
-                      : "No video analysis yet."}
-                  </p>
-                </div>
-                <div className="mt-auto flex items-center justify-between text-sm font-medium text-primary">
-                  <span>{hasTechniqueActivity ? "Open Technique AI" : "Try Technique AI"}</span>
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </div>
-              </div>
-            </div>
-          </Link>
-
-          <Link to="/analytics" className="group block h-full">
-            <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-elevated">
-              <div className="mb-6 flex items-start gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-400/15">
-                  <BarChart3 className="h-7 w-7 text-emerald-300" />
-                </div>
-              </div>
-              <div className="flex flex-1 flex-col gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-emerald-300/80">Selector intelligence</p>
-                  <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Analytics</h2>
-                </div>
-                <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
-                  <p className="font-display text-3xl font-bold text-foreground">{analyticsSeriesCount}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Series analyzed</p>
-                </div>
-                <div className="mt-auto flex items-center justify-between text-sm font-medium text-emerald-300">
-                  <span>Open Analytics</span>
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </div>
-              </div>
-            </div>
-          </Link>
-
-          <Link to="/coaching-marketplace" className="group block h-full">
-            <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-accent/25 hover:shadow-elevated">
-              <div className="mb-6 flex items-start gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/15">
-                  <Brain className="h-7 w-7 text-accent" />
-                </div>
-              </div>
-              <div className="flex flex-1 flex-col gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-accent/80">Coach and player network</p>
-                  <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Coaching Marketplace</h2>
-                </div>
-                <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
-                  <p className="font-display text-3xl font-bold text-foreground">{coachingProfilesCount}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Active profiles</p>
-                  <p className="mt-2 text-sm text-muted-foreground">{loading ? "Loading..." : coachingDetail}</p>
-                </div>
-                <div className="mt-auto flex items-center justify-between text-sm font-medium text-accent">
-                  <span>{hasCoachingActivity ? "Open Coaching Marketplace" : "Try Coaching Marketplace"}</span>
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </div>
-              </div>
-            </div>
-          </Link>
-
-          <Link to="/marketplace" className="group block h-full">
-            <div className="flex h-full flex-col rounded-[28px] border border-border/80 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-accent/25 hover:shadow-elevated">
-              <div className="mb-6 flex items-start gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-400/15">
-                  <ShoppingBag className="h-7 w-7 text-amber-300" />
-                </div>
-              </div>
-              <div className="flex flex-1 flex-col gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-amber-300/80">Buy, sell, donate</p>
-                  <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Gear Marketplace</h2>
-                </div>
-                <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
-                  <p className="font-display text-3xl font-bold text-foreground">{activeListingsCount}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Active listings</p>
-                  <p className="mt-2 text-sm text-muted-foreground">{latestListing ? latestListing.title : "No listings yet."}</p>
-                </div>
-                <div className="mt-auto flex items-center justify-between text-sm font-medium text-amber-300">
-                  <span>{hasGearActivity ? "Open Gear Marketplace" : "Try Gear Marketplace"}</span>
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </div>
-              </div>
-            </div>
-          </Link>
+          {dashboardCards.map((card) => (
+            <DashboardServiceCard key={card.key} {...card} />
+          ))}
         </div>
 
         <div className="rounded-[30px] border border-border bg-gradient-card p-6 lg:p-8">

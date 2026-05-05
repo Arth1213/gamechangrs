@@ -33,10 +33,11 @@ You need all of the following to do a complete restore:
 2. A portable Git bundle.
 3. Root frontend `.env`.
 4. `bay-area-u15/.env`.
-5. The main app Supabase project identifiers and API keys.
-6. The analytics Postgres connection details.
-7. Render/Lovable/IONOS/Resend reference values.
-8. Database dumps for every recoverable Supabase/Postgres database.
+5. `supabase/config.toml`.
+6. The main app Supabase project identifiers and API keys.
+7. The analytics Postgres connection details.
+8. Render/Lovable/IONOS/Resend reference values.
+9. Database dumps for every recoverable Supabase/Postgres database.
 
 ## Restore files to expect
 
@@ -64,6 +65,7 @@ You need all of the following to do a complete restore:
 - `CONFIG_VALUES_LOCAL_ONLY_2026_05_04.md`
 - `root.env.restore-copy`
 - `bay-area-u15.env.restore-copy`
+- `supabase.config.toml.restore-copy`
 
 ### Database backups
 
@@ -102,6 +104,12 @@ cp /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20
 
 ```bash
 cp /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/bay-area-u15.env.restore-copy /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15/.env
+```
+
+### Restore the Supabase CLI config
+
+```bash
+cp /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/supabase.config.toml.restore-copy /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/supabase/config.toml
 ```
 
 ### Install the frontend app
@@ -172,9 +180,10 @@ Use these input files:
 1. Recreate the repo from GitHub or the bundle.
 2. Put `root.env.restore-copy` at repo root as `.env`.
 3. Put `bay-area-u15.env.restore-copy` at `bay-area-u15/.env`.
-4. Install root dependencies and `bay-area-u15` dependencies.
-5. Start frontend and local-ops.
-6. Report any missing external credentials or cloud access gaps.
+4. Put `supabase.config.toml.restore-copy` at `supabase/config.toml`.
+5. Install root dependencies and `bay-area-u15` dependencies.
+6. Start frontend and local-ops.
+7. Report any missing external credentials or cloud access gaps.
 
 ## Known reality checks
 

@@ -88,10 +88,11 @@
 <p>2. A portable Git bundle.</p>
 <p>3. Root frontend `.env`.</p>
 <p>4. `bay-area-u15/.env`.</p>
-<p>5. The main app Supabase project identifiers and API keys.</p>
-<p>6. The analytics Postgres connection details.</p>
-<p>7. Render/Lovable/IONOS/Resend reference values.</p>
-<p>8. Database dumps for every recoverable Supabase/Postgres database.</p>
+<p>5. `supabase/config.toml`.</p>
+<p>6. The main app Supabase project identifiers and API keys.</p>
+<p>7. The analytics Postgres connection details.</p>
+<p>8. Render/Lovable/IONOS/Resend reference values.</p>
+<p>9. Database dumps for every recoverable Supabase/Postgres database.</p>
 <h2>Restore files to expect</h2>
 <h3>Code and repo artifacts</h3>
 <ul>
@@ -117,6 +118,7 @@
 <li>`CONFIG_VALUES_LOCAL_ONLY_2026_05_04.md`</li>
 <li>`root.env.restore-copy`</li>
 <li>`bay-area-u15.env.restore-copy`</li>
+<li>`supabase.config.toml.restore-copy`</li>
 </ul>
 <h3>Database backups</h3>
 <ul>
@@ -147,6 +149,10 @@ cp /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20
 <h3>Restore the analytics/local-ops env</h3>
 <pre><code>
 cp /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/bay-area-u15.env.restore-copy /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15/.env
+</code></pre>
+<h3>Restore the Supabase CLI config</h3>
+<pre><code>
+cp /Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260504/2026_05-04-Game-Changrs-Live-Bundle/supabase.config.toml.restore-copy /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/supabase/config.toml
 </code></pre>
 <h3>Install the frontend app</h3>
 <pre><code>
@@ -204,9 +210,10 @@ PORT=4012 npm run ops:ui:start
 <p>1. Recreate the repo from GitHub or the bundle.</p>
 <p>2. Put `root.env.restore-copy` at repo root as `.env`.</p>
 <p>3. Put `bay-area-u15.env.restore-copy` at `bay-area-u15/.env`.</p>
-<p>4. Install root dependencies and `bay-area-u15` dependencies.</p>
-<p>5. Start frontend and local-ops.</p>
-<p>6. Report any missing external credentials or cloud access gaps.</p>
+<p>4. Put `supabase.config.toml.restore-copy` at `supabase/config.toml`.</p>
+<p>5. Install root dependencies and `bay-area-u15` dependencies.</p>
+<p>6. Start frontend and local-ops.</p>
+<p>7. Report any missing external credentials or cloud access gaps.</p>
 <h2>Known reality checks</h2>
 <ul>
 <li>The marketplace ownership issue for `helloarth09@gmail.com` was repaired by moving the live row to the current auth UUID.</li>

@@ -65,24 +65,59 @@
 <p>1. Main app/auth/coaching/marketplace on dedicated Supabase project `tpiegapsjeetvwsybjiu`</p>
 <p>2. Cricket analytics/local-ops compute on dedicated analytics project/database `azgebbtasywunltdhdby`</p>
 <h2>Component table</h2>
+<h3>Frontend and user-facing app</h3>
 <table>
 <thead><tr><th>Component</th><th>Location</th><th>Runtime</th><th>Purpose</th><th>Primary data source</th><th>Backup posture</th></tr></thead>
 <tbody>
-<tr><td>Frontend app</td><td>repo root</td><td>Vite + React</td><td>Public site, auth flows, marketplace, coaching, Technique AI UI</td><td>Main app Supabase + Render API</td><td>repo bundle + tar + env copy</td></tr>
+<tr><td>Frontend app shell</td><td>repo root</td><td>Vite + React</td><td>Public site, auth flows, navigation, shared UI</td><td>Main app Supabase + Render API</td><td>repo bundle + tar + env copy</td></tr>
+<tr><td>Home/About/public pages</td><td>repo root</td><td>Vite + React</td><td>marketing pages, public messaging, entry points</td><td>frontend repo content</td><td>repo bundle + tar</td></tr>
+<tr><td>Coaching marketplace</td><td>frontend + app DB</td><td>React + Supabase</td><td>coach/player profiles, connections, booking</td><td>main app tables</td><td>repo + app DB backup</td></tr>
+<tr><td>Gear marketplace</td><td>frontend + app DB</td><td>React + Supabase</td><td>listing creation, public feed, seller contact handoff</td><td>`marketplace_listings` + `public_marketplace_listings`</td><td>repo + app DB backup</td></tr>
+<tr><td>Technique AI</td><td>frontend + app DB</td><td>React + Supabase</td><td>local analysis workflow + saved reports</td><td>`analysis_results` table</td><td>repo + app DB backup</td></tr>
+</tbody></table>
+<h3>Main app auth, data, and functions</h3>
+<table>
+<thead><tr><th>Component</th><th>Location</th><th>Runtime</th><th>Purpose</th><th>Primary data source</th><th>Backup posture</th></tr></thead>
+<tbody>
 <tr><td>Main app Supabase</td><td>`tpiegapsjeetvwsybjiu`</td><td>Supabase</td><td>Auth, app tables, app storage, app edge functions</td><td>Supabase app project</td><td>API key references + schema/dump backup</td></tr>
 <tr><td>App edge functions</td><td>`supabase/functions`</td><td>Deno on Supabase</td><td>contact form, seller email, session email, AI helpers</td><td>Main app Supabase secrets/env</td><td>repo + function env reference</td></tr>
-<tr><td>Coaching marketplace</td><td>frontend + app DB</td><td>React + Supabase</td><td>coach/player profiles, connections, booking</td><td>main app tables</td><td>in app DB backup</td></tr>
-<tr><td>Gear marketplace</td><td>frontend + app DB</td><td>React + Supabase</td><td>listing creation, public feed, seller contact handoff</td><td>`marketplace_listings` + `public_marketplace_listings`</td><td>in app DB backup</td></tr>
-<tr><td>Technique AI</td><td>frontend + app DB</td><td>React + Supabase</td><td>local analysis + saved reports</td><td>`analysis_results` table</td><td>repo + app DB backup</td></tr>
+<tr><td>App storage buckets</td><td>main app Supabase storage</td><td>Supabase Storage</td><td>profile pictures, analysis videos, app uploads</td><td>main app project storage</td><td>app DB/project backup context</td></tr>
+</tbody></table>
+<h3>Analytics and local-ops</h3>
+<table>
+<thead><tr><th>Component</th><th>Location</th><th>Runtime</th><th>Purpose</th><th>Primary data source</th><th>Backup posture</th></tr></thead>
+<tbody>
 <tr><td>Hosted cricket API</td><td>`bay-area-u15/apps/api`</td><td>Node/Express on Render</td><td>analytics pages, auth-aware series access, local-ops UI</td><td>analytics DB + app auth validation</td><td>repo + Render config doc</td></tr>
 <tr><td>Local-ops console</td><td>`bay-area-u15/apps/api`</td><td>Node/Express local</td><td>series onboarding, workflow controls, operator console</td><td>analytics DB</td><td>repo + `bay-area-u15/.env` backup</td></tr>
 <tr><td>Worker pipeline</td><td>`bay-area-u15/apps/worker`</td><td>Node local</td><td>discovery, inventory, ingest, compute, publish</td><td>analytics DB</td><td>repo + `bay-area-u15/.env` backup</td></tr>
 <tr><td>Analytics database</td><td>`azgebbtasywunltdhdby`</td><td>Supabase Postgres</td><td>series data, matches, player intelligence, access model</td><td>analytics DB</td><td>logical dump + schema backup</td></tr>
+</tbody></table>
+<h3>Delivery and external platforms</h3>
+<table>
+<thead><tr><th>Component</th><th>Location</th><th>Runtime</th><th>Purpose</th><th>Primary data source</th><th>Backup posture</th></tr></thead>
+<tbody>
 <tr><td>Render service</td><td>`gamechangrs-cricket-api`</td><td>Render</td><td>hosted analytics/backend API</td><td>analytics DB + app auth config</td><td>external service + backup doc</td></tr>
 <tr><td>Lovable project</td><td>project `e14399ba-fbf2-42cf-bf82-4c38048ee762`</td><td>Lovable</td><td>frontend publish and custom-domain delivery</td><td>GitHub main sync</td><td>external service + backup doc</td></tr>
 <tr><td>GitHub repo</td><td>`Arth1213/gamechangrs`</td><td>GitHub</td><td>source of truth for code history</td><td>git</td><td>pushed commits + git bundle</td></tr>
 <tr><td>Domain + DNS</td><td>IONOS</td><td>DNS</td><td>`game-changrs.com` custom domain routing</td><td>IONOS DNS records</td><td>external account + DNS reference doc</td></tr>
 <tr><td>Email provider</td><td>Resend</td><td>API</td><td>transactional email for app flows</td><td>Supabase function env</td><td>external account + secret/value doc</td></tr>
+</tbody></table>
+<h2>Build and platform map</h2>
+<p>This section answers which tool or platform was used to build, maintain, host, or operate each major part of Game-Changrs.</p>
+<table>
+<thead><tr><th>Area</th><th>Built or maintained with</th><th>Hosted or operated by</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Frontend React app</td><td>Lovable for the original app scaffold and frontend workflow, then Codex for ongoing code changes, fixes, production cleanup, docs, and verification</td><td>Browser client + Lovable publish + GitHub `main`</td><td>Source code lives in the repo root</td></tr>
+<tr><td>Home page, About page, marketplace, coaching UI, Technique AI UI</td><td>Mostly repo code maintained through Codex in the local worktree; some earlier frontend structure originated from the Lovable workflow</td><td>Delivered through the frontend publish at `game-changrs.com`</td><td>Recent fixes such as saved Technique AI reports and timezone-safe booking were done through Codex</td></tr>
+<tr><td>Main app auth, app tables, storage, and edge functions</td><td>Supabase project setup plus repo migrations/functions maintained through Codex</td><td>Main app Supabase project `tpiegapsjeetvwsybjiu`</td><td>This is the live source for auth, marketplace, coaching, Technique AI report storage, and email-triggering functions</td></tr>
+<tr><td>Analytics/local-ops backend and worker pipeline</td><td>Built and maintained in the repo through Codex</td><td>Local Node runtime and Render</td><td>Code lives under `bay-area-u15`</td></tr>
+<tr><td>Hosted analytics/admin API</td><td>Repo code maintained through Codex</td><td>Render service `gamechangrs-cricket-api`</td><td>Render uses analytics DB access and main-app Supabase token validation</td></tr>
+<tr><td>Analytics database and series compute data model</td><td>Schema and data model maintained from repo/local-ops work, with data stored in Supabase Postgres</td><td>Analytics Supabase/Postgres project `azgebbtasywunltdhdby`</td><td>Separate from the main app project on purpose</td></tr>
+<tr><td>Frontend publishing</td><td>GitHub-backed Lovable project</td><td>Lovable + custom domain routing</td><td>Lovable pulls from GitHub and serves the frontend publish target</td></tr>
+<tr><td>Backend hosting</td><td>Repo deployment target</td><td>Render</td><td>Render is only for the analytics/backend API, not the main frontend</td></tr>
+<tr><td>Source control and recovery history</td><td>Git + GitHub + Codex-created backup artifacts</td><td>GitHub</td><td>GitHub `main` is the code source of truth; the backup bundle adds portable recovery artifacts</td></tr>
+<tr><td>Email delivery</td><td>Supabase edge functions call Resend</td><td>Resend</td><td>Resend is the mail transport, not the business-logic host</td></tr>
+<tr><td>Domain routing and DNS</td><td>Manual operator setup</td><td>IONOS</td><td>IONOS owns DNS and custom-domain records</td></tr>
 </tbody></table>
 <h2>Main app Supabase ownership</h2>
 <p>The app project owns:</p>
@@ -129,6 +164,56 @@
 <li>Main app Supabase: `https://tpiegapsjeetvwsybjiu.supabase.co`</li>
 <li>Analytics project ref: `azgebbtasywunltdhdby`</li>
 </ul>
+<h2>Logical architecture diagram</h2>
+<pre><code>
+                                   GAME-CHANGRS LOGICAL ARCHITECTURE
+  Users / Browsers
+         |
+         v
+  game-changrs.com
+  (Lovable-published frontend from GitHub main)
+         |
+         +--------------------------+
+         |                          |
+         v                          v
+  Main App Supabase           Render Hosted API
+  tpiegapsjeetvwsybjiu        gamechangrs-cricket-api
+  - Auth                      - analytics/admin endpoints
+  - app tables                - auth-aware series access
+  - storage                   - local-ops UI when hosted
+  - edge functions            - player analytics/chat services
+         |                          |
+         |                          v
+         |                   Analytics DB
+         |                   azgebbtasywunltdhdby
+         |                   - series registry
+         |                   - match/player intelligence
+         |                   - workflow and access state
+         |
+         +--&gt; marketplace
+         +--&gt; coaching marketplace
+         +--&gt; Technique AI saved reports
+         +--&gt; contact/session email triggers
+  Local operator machine
+  /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy
+         |
+         +--&gt; frontend local dev
+         |
+         +--&gt; bay-area-u15 local-ops
+               - local API
+               - worker pipeline
+               - staging / ingest / compute / publish
+               - connects to analytics DB
+               - validates bearer tokens against main app Supabase
+  Supporting external platforms
+  - GitHub: source control and production branch
+  - Lovable: frontend publish layer
+  - Render: hosted analytics/backend API
+  - Supabase main app: auth/app data/functions/storage
+  - Supabase analytics: analytics/local-ops database
+  - Resend: transactional email delivery
+  - IONOS: DNS and custom domain routing
+</code></pre>
 <h2>High-risk areas</h2>
 <h3>Risk 1: auth drift</h3>
 <p>If Render auth settings drift away from the app project, analytics/admin pages break even when the database is healthy.</p>

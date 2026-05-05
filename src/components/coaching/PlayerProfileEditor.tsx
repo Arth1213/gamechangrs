@@ -10,6 +10,7 @@ import { Player, CoachingCategory, ExperienceLevel, PreferredMode } from "@/type
 import { TIMEZONES, getBrowserTimezone } from "@/lib/timezones";
 import { ProfilePictureUpload } from "./ProfilePictureUpload";
 import { LocationAutocomplete } from "./LocationAutocomplete";
+import { generatePlayerCareerSummary, isMissingCareerSummaryColumnError } from "@/lib/profileSummary";
 
 interface PlayerProfileEditorProps {
   player: Player;
@@ -62,29 +63,58 @@ export const PlayerProfileEditor = ({ player, onSave }: PlayerProfileEditorProps
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from("players")
-        .update({
+      const careerSummary = await generatePlayerCareerSummary(
+        {
           name: formData.name,
-          phone: formData.phone || null,
-          location: formData.location || null,
-          timezone: formData.timezone || null,
-          age_group: formData.age_group || null,
-          playing_role: formData.playing_role || null,
-          training_categories_needed: formData.training_categories_needed,
+          location: formData.location,
+          age_group: formData.age_group,
+          playing_role: formData.playing_role,
           experience_level: formData.experience_level,
           matches_played: formData.matches_played,
-          batting_strike_rate: formData.batting_strike_rate,
           batting_average: formData.batting_average,
+          batting_strike_rate: formData.batting_strike_rate,
           bowling_economy: formData.bowling_economy,
-          best_figures: formData.best_figures || null,
-          external_links: formData.external_links.filter(Boolean),
-          preferred_mode: formData.preferred_mode,
-          preferred_days: formData.preferred_days.filter(Boolean),
-          preferred_time_range: formData.preferred_time_range || null,
-          profile_picture_url: formData.profile_picture_url,
-        })
+          best_figures: formData.best_figures,
+          training_categories_needed: formData.training_categories_needed,
+        },
+        categories,
+      );
+
+      const updatePayload = {
+        name: formData.name,
+        phone: formData.phone || null,
+        location: formData.location || null,
+        timezone: formData.timezone || null,
+        age_group: formData.age_group || null,
+        playing_role: formData.playing_role || null,
+        training_categories_needed: formData.training_categories_needed,
+        experience_level: formData.experience_level,
+        matches_played: formData.matches_played,
+        batting_strike_rate: formData.batting_strike_rate,
+        batting_average: formData.batting_average,
+        bowling_economy: formData.bowling_economy,
+        best_figures: formData.best_figures || null,
+        external_links: formData.external_links.filter(Boolean),
+        preferred_mode: formData.preferred_mode,
+        preferred_days: formData.preferred_days.filter(Boolean),
+        preferred_time_range: formData.preferred_time_range || null,
+        profile_picture_url: formData.profile_picture_url,
+        career_summary: careerSummary,
+      };
+
+      let { error } = await supabase
+        .from("players")
+        .update(updatePayload)
         .eq("id", player.id);
+
+      if (error && isMissingCareerSummaryColumnError(error)) {
+        const { career_summary: _ignoredCareerSummary, ...legacyPayload } = updatePayload;
+        const retry = await supabase
+          .from("players")
+          .update(legacyPayload)
+          .eq("id", player.id);
+        error = retry.error;
+      }
 
       if (error) throw error;
 

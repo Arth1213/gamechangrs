@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GameChangrs Share Messages</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+
+    :root {
+      --bg: #0b0f13;
+      --surface: #121820;
+      --surface-soft: #171f28;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #eef2f4;
+      --muted: #a4b0b7;
+      --primary: #72ae8a;
+      --shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --max: 1040px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(114, 174, 138, 0.12), transparent 24%),
+        linear-gradient(180deg, #090c10 0%, #0d1116 100%);
+      color: var(--text);
+      font-family: "Manrope", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .page {
+      padding: 28px 20px 40px;
+    }
+
+    .wrap {
+      width: min(var(--max), 100%);
+      margin: 0 auto;
+    }
+
+    .hero,
+    .card {
+      border: 1px solid var(--border);
+      background: rgba(18, 24, 32, 0.94);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 28px;
+    }
+
+    .eyebrow {
+      color: var(--primary);
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2 {
+      margin: 0;
+      line-height: 0.98;
+      letter-spacing: -0.05em;
+    }
+
+    h1 {
+      margin-top: 10px;
+      font-size: clamp(2.2rem, 4vw, 3.5rem);
+    }
+
+    .hero p {
+      margin: 14px 0 0;
+      max-width: 52ch;
+      color: var(--muted);
+      font-size: 0.98rem;
+      line-height: 1.6;
+    }
+
+    .asset-row {
+      margin-top: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .asset {
+      padding: 12px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(114, 174, 138, 0.22);
+      background: rgba(114, 174, 138, 0.1);
+      color: #dceddf;
+      font-size: 0.88rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .card {
+      padding: 22px;
+    }
+
+    .card h2 {
+      font-size: 1.45rem;
+    }
+
+    .label {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .copy {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      background: var(--surface-soft);
+      white-space: pre-wrap;
+      color: #edf1f3;
+      font-size: 0.94rem;
+      line-height: 1.64;
+    }
+
+    .notes {
+      margin-top: 28px;
+      padding: 22px;
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border);
+      background: rgba(18, 24, 32, 0.9);
+    }
+
+    .notes h2 {
+      font-size: 1.35rem;
+    }
+
+    .notes ul {
+      margin: 14px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    @media (max-width: 920px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="wrap">
+      <section class="hero">
+        <div class="eyebrow">Share Pack</div>
+        <h1>GameChangrs outreach copy for social and direct sharing.</h1>
+        <p>
+          Use these versions as-is or lightly personalize them. Attach or reference the one-pager when you want more context.
+        </p>
+        <div class="asset-row">
+          <a class="asset" href="./GAMECHANGRS_ONE_PAGER_2026_05_05.html">Open one-pager HTML</a>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>WhatsApp</h2>
+          <div class="label">Direct share</div>
+          <div class="copy">Hey, we’ve been building something called GameChangrs for cricket players, coaches, academies, and clubs.
+
+It combines AI-powered cricket feedback, deeper performance and game insights, coach-matched development, and community gear access in one platform.
+
+What makes it different is that the analytics go beyond scorecards and use match commentary and context, while Technique AI helps turn video into usable coaching feedback.
+
+Website:
+https://game-changrs.com
+
+Sharing the one-pager here if you want a quick look:
+GAMECHANGRS_ONE_PAGER_2026_05_05.html</div>
+        </article>
+
+        <article class="card">
+          <h2>LinkedIn</h2>
+          <div class="label">Professional post</div>
+          <div class="copy">Cricket development still feels fragmented for most players.
+
+Feedback lives in one place, analytics in another, coaching access somewhere else, and quality gear is often out of reach.
+
+GameChangrs is built to change that.
+
+The platform brings together AI-powered cricket feedback, deeper performance and game insights, coach-matched development pathways, and community gear access.
+
+Two areas I’m especially excited about:
+- Technique AI that turns cricket video into structured, usable feedback
+- Analytics that go beyond scorecards by using commentary and match context to surface what actually matters
+
+If you work with players, coaches, academies, clubs, or cricket communities, I’d love for you to take a look.
+
+Website:
+https://game-changrs.com
+
+One-pager attached:
+GAMECHANGRS_ONE_PAGER_2026_05_05.html
+
+#Cricket #SportsTech #AI #Analytics #Coaching #PlayerDevelopment #GameChangrs</div>
+        </article>
+
+        <article class="card">
+          <h2>Instagram</h2>
+          <div class="label">Caption</div>
+          <div class="copy">Cricket development should not stop at scorecards.
+
+GameChangrs brings together:
+AI-powered cricket feedback
+deeper performance and game insights
+coach-matched development
+community gear access
+
+Technique AI helps turn video into feedback.
+Analytics help reveal what really mattered in the game.
+Coaching and gear help turn insight into action.
+
+If you’re a player, coach, academy, club, or cricket parent, take a look.
+
+Website:
+https://game-changrs.com
+
+One-pager:
+GAMECHANGRS_ONE_PAGER_2026_05_05.html
+
+#Cricket #CricketTraining #CricketAnalytics #SportsAI #PlayerDevelopment #Coaching #GameChangrs</div>
+        </article>
+      </section>
+
+      <section class="notes">
+        <h2>Use notes</h2>
+        <ul>
+          <li>For WhatsApp, keep the message personal and send the one-pager alongside it.</li>
+          <li>For LinkedIn, attach screenshots from the one-pager or convert it to PDF for cleaner sharing.</li>
+          <li>For Instagram, use carousel screenshots from the one-pager or a condensed visual version of the same message.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

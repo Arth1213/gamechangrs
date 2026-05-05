@@ -11,6 +11,7 @@ import { Coach, CoachingCategory, CoachingLevel } from "@/types/coaching";
 import { TIMEZONES, getBrowserTimezone } from "@/lib/timezones";
 import { ProfilePictureUpload } from "./ProfilePictureUpload";
 import { LocationAutocomplete } from "./LocationAutocomplete";
+import { generateCoachCareerSummary, isMissingCareerSummaryColumnError } from "@/lib/profileSummary";
 
 interface CoachProfileEditorProps {
   coach: Coach;
@@ -58,23 +59,51 @@ export const CoachProfileEditor = ({ coach, onSave }: CoachProfileEditorProps) =
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from("coaches")
-        .update({
+      const careerSummary = await generateCoachCareerSummary(
+        {
           name: formData.name,
-          phone: formData.phone || null,
-          location: formData.location || null,
-          timezone: formData.timezone || null,
-          bio: formData.bio || null,
-          specialties: formData.specialties,
-          coaching_level: formData.coaching_level,
+          bio: formData.bio,
+          location: formData.location,
           years_experience: formData.years_experience,
-          teams_coached: formData.teams_coached.filter(Boolean),
-          notable_players_coached: formData.notable_players_coached.filter(Boolean),
-          external_links: formData.external_links.filter(Boolean),
-          profile_picture_url: formData.profile_picture_url,
-        })
+          coaching_level: formData.coaching_level,
+          specialties: formData.specialties,
+          teams_coached: formData.teams_coached,
+          notable_players_coached: formData.notable_players_coached,
+          average_rating: coach.average_rating,
+          number_of_ratings: coach.number_of_ratings,
+        },
+        categories,
+      );
+
+      const updatePayload = {
+        name: formData.name,
+        phone: formData.phone || null,
+        location: formData.location || null,
+        timezone: formData.timezone || null,
+        bio: formData.bio || null,
+        specialties: formData.specialties,
+        coaching_level: formData.coaching_level,
+        years_experience: formData.years_experience,
+        teams_coached: formData.teams_coached.filter(Boolean),
+        notable_players_coached: formData.notable_players_coached.filter(Boolean),
+        external_links: formData.external_links.filter(Boolean),
+        profile_picture_url: formData.profile_picture_url,
+        career_summary: careerSummary,
+      };
+
+      let { error } = await supabase
+        .from("coaches")
+        .update(updatePayload)
         .eq("id", coach.id);
+
+      if (error && isMissingCareerSummaryColumnError(error)) {
+        const { career_summary: _ignoredCareerSummary, ...legacyPayload } = updatePayload;
+        const retry = await supabase
+          .from("coaches")
+          .update(legacyPayload)
+          .eq("id", coach.id);
+        error = retry.error;
+      }
 
       if (error) throw error;
 

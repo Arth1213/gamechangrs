@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 import { CoachingCategory, PlayerProfileForm, ExperienceLevel, PreferredMode } from "@/types/coaching";
+import { generatePlayerCareerSummary, isMissingCareerSummaryColumnError } from "@/lib/profileSummary";
 
 const PlayerSignup = () => {
   const { user, loading: authLoading } = useAuth();
@@ -154,10 +155,28 @@ const PlayerSignup = () => {
 
     setLoading(true);
     try {
+      const careerSummary = await generatePlayerCareerSummary(
+        {
+          name: formData.name,
+          location: formData.location,
+          age_group: formData.age_group,
+          playing_role: formData.playing_role,
+          experience_level: formData.experience_level,
+          matches_played: formData.matches_played,
+          batting_average: formData.batting_average,
+          batting_strike_rate: formData.batting_strike_rate,
+          bowling_economy: formData.bowling_economy,
+          best_figures: formData.best_figures,
+          training_categories_needed: formData.training_categories_needed,
+        },
+        categories,
+      );
+
       const profileData = {
         ...formData,
         external_links: formData.external_links.filter(Boolean),
         preferred_days: formData.preferred_days.filter(Boolean),
+        career_summary: careerSummary,
       };
 
       // Double-check for existing profile to handle race conditions
@@ -172,10 +191,19 @@ const PlayerSignup = () => {
       if (existingPlayer || (isEditMode && existingProfileId)) {
         // Update existing profile
         const profileIdToUpdate = existingPlayer?.id || existingProfileId;
-        const { error } = await supabase
+        let { error } = await supabase
           .from("players")
           .update(profileData)
           .eq("id", profileIdToUpdate);
+
+        if (error && isMissingCareerSummaryColumnError(error)) {
+          const { career_summary: _ignoredCareerSummary, ...legacyProfileData } = profileData;
+          const retry = await supabase
+            .from("players")
+            .update(legacyProfileData)
+            .eq("id", profileIdToUpdate);
+          error = retry.error;
+        }
 
         if (error) throw error;
 
@@ -185,12 +213,23 @@ const PlayerSignup = () => {
         });
       } else {
         // Create new profile
-        const { error } = await supabase.from("players").insert([
+        let { error } = await supabase.from("players").insert([
           {
             user_id: user.id,
             ...profileData,
           },
         ]);
+
+        if (error && isMissingCareerSummaryColumnError(error)) {
+          const { career_summary: _ignoredCareerSummary, ...legacyProfileData } = profileData;
+          const retry = await supabase.from("players").insert([
+            {
+              user_id: user.id,
+              ...legacyProfileData,
+            },
+          ]);
+          error = retry.error;
+        }
 
         if (error) throw error;
 
@@ -569,4 +608,3 @@ const PlayerSignup = () => {
 };
 
 export default PlayerSignup;
-

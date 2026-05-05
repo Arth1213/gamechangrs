@@ -79,7 +79,7 @@ const FAQ = () => {
         },
         {
           q: "Is it free to list items?",
-          a: "Yes! Listing items is completely free. We believe in making sports equipment accessible to everyone.",
+          a: "Yes. Listing items is free. The marketplace is designed to make cricket gear easier to move through the community.",
         },
         {
           q: "How do I contact a seller?",
@@ -87,11 +87,11 @@ const FAQ = () => {
         },
         {
           q: "Can I donate gear instead of selling?",
-          a: "Absolutely! When creating a listing, choose 'Donation' as the listing type. Your gear will be marked as free and help support underprivileged young athletes.",
+          a: "Absolutely. When creating a listing, choose 'Donation' as the listing type. Your gear will be marked as free so another player can pick it up through the community.",
         },
         {
           q: "What happens to proceeds from sales?",
-          a: "All transactions are between buyers and sellers. However, many sellers choose to donate a portion of their proceeds to support our mission of providing gear to underprivileged athletes.",
+          a: "All transactions are handled directly between buyers and sellers. GameChangrs facilitates discovery and connection, but does not process marketplace payments.",
         },
       ],
     },

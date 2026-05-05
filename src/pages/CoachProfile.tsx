@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, MapPin, Clock, Star, ExternalLink, Award, Users, Calendar, Sparkles, Loader2 } from "lucide-react";
 import { ProfileAvatar } from "@/components/coaching/ProfileAvatar";
+import { buildFallbackCoachSummary } from "@/lib/profileSummary";
 
 interface Coach {
   id: string;
@@ -28,6 +29,7 @@ interface Coach {
   is_verified: boolean | null;
   profile_picture_url: string | null;
   user_id: string;
+  career_summary: string | null;
 }
 
 interface CoachingCategory {
@@ -43,51 +45,11 @@ const CoachProfile = () => {
   const [categories, setCategories] = useState<CoachingCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
-  const [careerSummary, setCareerSummary] = useState<string | null>(null);
-  const [summaryLoading, setSummaryLoading] = useState(false);
 
   useEffect(() => {
     fetchCoach();
     fetchCategories();
   }, [coachId]);
-
-  useEffect(() => {
-    if (coach) {
-      generateCareerSummary();
-    }
-  }, [coach]);
-
-  const generateCareerSummary = async () => {
-    if (!coach) return;
-    
-    setSummaryLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-career-summary', {
-        body: {
-          type: 'coach',
-          name: coach.name,
-          bio: coach.bio,
-          location: coach.location,
-          years_experience: coach.years_experience,
-          coaching_level: coach.coaching_level,
-          specialties: coach.specialties,
-          teams_coached: coach.teams_coached,
-          notable_players_coached: coach.notable_players_coached,
-          average_rating: coach.average_rating,
-          number_of_ratings: coach.number_of_ratings,
-        }
-      });
-
-      if (error) throw error;
-      if (data?.summary) {
-        setCareerSummary(data.summary);
-      }
-    } catch (error) {
-      console.error('Error generating career summary:', error);
-    } finally {
-      setSummaryLoading(false);
-    }
-  };
 
   const fetchCoach = async () => {
     if (!coachId) return;
@@ -120,6 +82,10 @@ const CoachProfile = () => {
   const getCategoryName = (id: string) => {
     return categories.find(c => c.id === id)?.name || id;
   };
+
+  const displayedCareerSummary = coach
+    ? coach.career_summary?.trim() || buildFallbackCoachSummary(coach, categories)
+    : null;
 
   const formatCoachingLevel = (level: string | null) => {
     if (!level) return "Not specified";
@@ -256,15 +222,10 @@ const CoachProfile = () => {
               <Sparkles className="w-5 h-5 text-primary" />
               Career Summary
             </h2>
-            {summaryLoading ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Generating summary...
-              </div>
-            ) : careerSummary ? (
-              <p className="text-muted-foreground leading-relaxed">{careerSummary}</p>
+            {displayedCareerSummary ? (
+              <p className="text-muted-foreground leading-relaxed">{displayedCareerSummary}</p>
             ) : (
-              <p className="text-muted-foreground italic">Unable to generate summary</p>
+              <p className="text-muted-foreground italic">Summary unavailable</p>
             )}
           </div>
 

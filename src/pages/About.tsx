@@ -19,7 +19,7 @@ const About = () => {
     {
       name: "Arth Arun",
       role: "Founder & CEO",
-      bio: "Visionary leader with a passion for democratizing sports excellence through technology.",
+      bio: "Building a more connected cricket development platform across feedback, analytics, coaching, and access.",
       initials: "AA",
       linkedin: "https://www.linkedin.com/in/helloarth/",
       cricclubs: "https://cricclubs.com/ASCE/viewPlayer.do?playerId=2262444&clubId=22142",
@@ -34,26 +34,26 @@ const About = () => {
     {
       name: "TBD",
       role: "Technical Advisor",
-      bio: "Advisor on Cricket related matter",
+      bio: "Advisor on cricket systems, product direction, and platform depth.",
       initials: "TB",
     },
     // Second row - Open positions
     {
       name: "To Be Hired",
       role: "COO",
-      bio: "We're seeking an operations leader to scale our platform and community initiatives.",
+      bio: "Leading operations, execution discipline, and platform scale across the cricket ecosystem.",
       initials: "CO",
     },
     {
       name: "To Be Hired",
       role: "CIO/Head of AI",
-      bio: "We're looking for an ML engineer specializing in computer vision and sports analytics.",
+      bio: "Driving AI systems across technique feedback, analytics workflows, and product intelligence.",
       initials: "AI",
     },
     {
       name: "To Be Hired",
       role: "Community Lead",
-      bio: "We're seeking someone passionate about making sports accessible to underserved communities.",
+      bio: "Growing trusted relationships with players, coaches, clubs, academies, and cricket communities.",
       initials: "CL",
     },
   ];
@@ -62,22 +62,22 @@ const About = () => {
     {
       icon: Target,
       title: "Excellence",
-      description: "We pursue the highest standards in everything we do, from AI accuracy to customer service.",
+      description: "We aim for analysis and product decisions that are clear, credible, and genuinely useful.",
     },
     {
       icon: Heart,
       title: "Accessibility",
-      description: "Sports should be available to everyone regardless of economic background.",
+      description: "High-quality cricket feedback and insight should be easier to access across the grassroots game.",
     },
     {
       icon: Users,
       title: "Community",
-      description: "We believe in the power of sports to build connections and transform lives.",
+      description: "Players, coaches, clubs, and academies improve faster when the right connections are easier to make.",
     },
     {
       icon: Zap,
       title: "Innovation",
-      description: "We leverage cutting-edge technology to solve real problems for athletes and coaches.",
+      description: "We use AI and analytics where they improve cricket decisions, not just where they sound impressive.",
     },
   ];
 
@@ -100,7 +100,7 @@ const About = () => {
               About <span className="text-gradient-primary">GameChangrs</span>
             </h1>
             <p className="text-lg text-muted-foreground">
-              We're on a mission to democratize sports excellence through AI-powered coaching and community-driven initiatives.
+              Democratize cricket excellence through AI-powered feedback, deeper performance and game insights, coach-matched development pathways, and access enabled by a community gear marketplace.
             </p>
           </div>
         </div>
@@ -115,13 +115,13 @@ const About = () => {
                 Our Mission
               </h2>
               <p className="text-muted-foreground text-lg leading-relaxed mb-6">
-                GameChangrs was founded with a simple belief: every athlete deserves access to world-class coaching and analytics, regardless of their background or resources.
+                GameChangrs exists to democratize cricket excellence through AI-powered feedback, deeper performance and game insights, coach-matched development pathways, and access enabled by a community gear marketplace.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-6">
-                We combine advanced AI technology with deep sports expertise to provide insights that were once only available to professional teams. Our platform analyzes technique, tracks performance, and delivers personalized recommendations that help athletes at every level improve their game.
+                We bring technique analysis, context-rich analytics, coaching discovery, and gear exchange into one connected platform so players, coaches, and academies can make better cricket decisions with less guesswork.
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                But technology is only part of the equation. Through our gear marketplace and community programs, we're working to remove the financial barriers that prevent talented young athletes from reaching their potential.
+                The goal is straightforward: give the wider cricket ecosystem better feedback loops, better game understanding, and a clearer path from insight to action.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-6">
@@ -183,7 +183,7 @@ const About = () => {
               Meet Our Team
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              A passionate group of athletes, technologists, and community builders working to transform sports.
+              Builders, operators, and advisors focused on modern cricket development.
             </p>
           </div>
 
@@ -231,31 +231,6 @@ const About = () => {
                 )}
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Story */}
-      <section className="py-20 bg-gradient-card border-t border-border">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-8 text-center">
-              Our Story
-            </h2>
-            <div className="space-y-6 text-muted-foreground leading-relaxed">
-              <p>
-                GameChangrs started with a simple observation by our founder Arth Arun: talented kids from underprivileged backgrounds were being left behind – not because of lack of skill, but because they couldn't afford quality equipment or access to advanced coaching.
-              </p>
-              <p>
-                Arth saw how professional teams were using data and video analysis to gain competitive advantages. He wondered: what if we could bring those same tools to youth sports, making them affordable and accessible to everyone?
-              </p>
-              <p>
-                That question led to the creation of GameChangrs in 2024. Today, we're proud to serve thousands of young athletes across the country, providing AI-powered coaching analysis, real-time performance analytics, and a marketplace that helps quality sports gear find new homes with kids who need it most.
-              </p>
-              <p>
-                But we're just getting started. Our vision is a world where every young athlete, regardless of their zip code or family income, has the tools and support they need to reach their full potential.
-              </p>
-            </div>
           </div>
         </div>
       </section>

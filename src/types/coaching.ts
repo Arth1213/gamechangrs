@@ -33,6 +33,7 @@ export interface Coach {
   notable_players_coached: string[];
   external_links: string[];
   bio: string | null;
+  career_summary: string | null;
   
   // Ratings
   number_of_ratings: number;
@@ -70,6 +71,7 @@ export interface Player {
   bowling_economy: number | null;
   best_figures: string | null;
   external_links: string[];
+  career_summary: string | null;
   
   // Preferences
   preferred_mode: PreferredMode;
@@ -257,4 +259,3 @@ export interface WeeklyAvailability {
   start_time: string;
   end_time: string;
 }
-

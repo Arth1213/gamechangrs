@@ -131,6 +131,7 @@ export type Database = {
           adjusted_rating: number | null
           average_rating: number | null
           bio: string | null
+          career_summary: string | null
           coaching_level: string | null
           created_at: string
           email: string
@@ -155,6 +156,7 @@ export type Database = {
           adjusted_rating?: number | null
           average_rating?: number | null
           bio?: string | null
+          career_summary?: string | null
           coaching_level?: string | null
           created_at?: string
           email: string
@@ -179,6 +181,7 @@ export type Database = {
           adjusted_rating?: number | null
           average_rating?: number | null
           bio?: string | null
+          career_summary?: string | null
           coaching_level?: string | null
           created_at?: string
           email?: string
@@ -340,6 +343,7 @@ export type Database = {
           batting_strike_rate: number | null
           best_figures: string | null
           bowling_economy: number | null
+          career_summary: string | null
           created_at: string
           email: string
           experience_level: string | null
@@ -366,6 +370,7 @@ export type Database = {
           batting_strike_rate?: number | null
           best_figures?: string | null
           bowling_economy?: number | null
+          career_summary?: string | null
           created_at?: string
           email: string
           experience_level?: string | null
@@ -392,6 +397,7 @@ export type Database = {
           batting_strike_rate?: number | null
           best_figures?: string | null
           bowling_economy?: number | null
+          career_summary?: string | null
           created_at?: string
           email?: string
           experience_level?: string | null

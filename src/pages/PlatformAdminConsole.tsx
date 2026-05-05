@@ -14,6 +14,7 @@ import {
 
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
+import { SeriesOnboardingRequestPanel } from "@/components/analytics/SeriesOnboardingRequestPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,6 +79,11 @@ const PlatformAdminConsole = () => {
     () => (catalog?.series ?? []).filter((item) => (item.warningMatches ?? 0) > 0).length,
     [catalog?.series]
   );
+  const userDisplayName =
+    user?.user_metadata?.full_name?.trim()
+    || user?.user_metadata?.name?.trim()
+    || user?.email?.split("@")[0]
+    || "Platform Admin";
 
   const surfaces = [
     {
@@ -332,6 +338,47 @@ const PlatformAdminConsole = () => {
                         {
                           title: "Series user",
                           body: "Gets approved report access only. No admin console and no operator controls.",
+                        },
+                      ].map((item) => (
+                        <div key={item.title} className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                          <p className="font-semibold text-foreground">{item.title}</p>
+                          <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.body}</p>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+                  <SeriesOnboardingRequestPanel
+                    requesterName={userDisplayName}
+                    requesterEmail={user?.email || ""}
+                    requesterUserId={user?.id}
+                    title="Create new series intake"
+                    description="Use the same live intake path from the platform console when you need to kick off a new analytics series request yourself or while assisting an inbound user."
+                    submitLabel="Create series intake"
+                  />
+
+                  <Card className="border-border/80 bg-card/85 shadow-xl">
+                    <CardHeader>
+                      <CardTitle className="font-display text-2xl text-foreground">What this action does</CardTitle>
+                      <CardDescription>
+                        The console action uses the same controlled path as analytics-access onboarding.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {[
+                        {
+                          title: "Email notification",
+                          body: "The platform-admin inbox receives the new-series intake with requester identity, phone number, source system, and source URL.",
+                        },
+                        {
+                          title: "Structured queue copy",
+                          body: "A copy is written into contact_submissions so the request is still visible even if email handling needs follow-up.",
+                        },
+                        {
+                          title: "No hidden bypass",
+                          body: "This action does not auto-create a live series. It creates a tracked intake so onboarding stays explicit and reviewable.",
                         },
                       ].map((item) => (
                         <div key={item.title} className="rounded-2xl border border-border/80 bg-background/55 p-4">

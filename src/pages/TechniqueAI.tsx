@@ -34,6 +34,13 @@ interface AnalysisResult {
   video_url: string | null;
 }
 
+function mergeSavedAnalysis(current: AnalysisResult[], savedReport: AnalysisResult) {
+  const next = [savedReport, ...current.filter((analysis) => analysis.id !== savedReport.id)];
+  return next
+    .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())
+    .slice(0, 6);
+}
+
 const TECHNIQUE_PHASES = [
   {
     title: "Setup",
@@ -380,13 +387,15 @@ function TechniqueAIWorkspace({
   latestAnalysis,
   authLoading,
   historyLoading,
+  historyError,
   onReportSaved,
 }: {
   analyses: AnalysisResult[];
   latestAnalysis: AnalysisResult | null;
   authLoading: boolean;
   historyLoading: boolean;
-  onReportSaved: () => Promise<void> | void;
+  historyError: string | null;
+  onReportSaved: (report?: AnalysisResult) => Promise<void> | void;
 }) {
   const getScoreTone = (score: number) => {
     if (score >= 80) return "text-emerald-300 bg-emerald-500/15 border-emerald-500/20";
@@ -409,157 +418,162 @@ function TechniqueAIWorkspace({
 
       <section className="border-b border-border bg-card/60 py-8">
         <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-[1500px]">
-            <div className="grid gap-8 min-[1450px]:grid-cols-[380px,minmax(0,1fr)] min-[1450px]:items-start">
-              <aside className="space-y-6 min-[1450px]:sticky min-[1450px]:top-28">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between min-[1450px]:flex-col min-[1450px]:items-start">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Your Technique AI library</p>
-                    <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">Saved Reports</h2>
-                  </div>
-                  <Button variant="outline" asChild>
-                    <Link to="/analysis-history">
-                      View Full History
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
+          <div className="mx-auto max-w-6xl space-y-10">
+            <div className="space-y-6">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Your Technique AI library</p>
+                  <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">Saved Reports</h2>
                 </div>
+                <Button variant="outline" asChild>
+                  <Link to="/analysis-history">
+                    View Full History
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
 
-                {authLoading || historyLoading ? (
-                  <div className="rounded-3xl border border-border bg-background/70 p-8 text-sm text-muted-foreground">
-                    Loading reports...
+              {historyError ? (
+                <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
+                  <p className="font-medium">Saved report library could not be refreshed.</p>
+                  <p className="mt-1 opacity-90">{historyError}</p>
+                </div>
+              ) : null}
+
+              {authLoading || historyLoading ? (
+                <div className="rounded-3xl border border-border bg-background/70 p-8 text-sm text-muted-foreground">
+                  Loading reports...
+                </div>
+              ) : analyses.length === 0 ? (
+                <div className="rounded-3xl border border-border bg-background/70 p-8">
+                  <div className="inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-primary">
+                    Start here
                   </div>
-                ) : analyses.length === 0 ? (
-                  <div className="rounded-3xl border border-border bg-background/70 p-8">
-                    <div className="inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-primary">
-                      Start here
+                  <h3 className="mt-4 font-display text-2xl font-bold text-foreground">No saved reports yet.</h3>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    Analyze a clip, then use <span className="font-medium text-foreground">Save report</span>. The saved
+                    video and analysis report will appear here with the report date and time.
+                  </p>
+                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-border bg-gradient-card p-5">
+                      <p className="font-display text-3xl font-bold text-foreground">0</p>
+                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Saved analyses</p>
                     </div>
-                    <h3 className="mt-4 font-display text-2xl font-bold text-foreground">No saved reports yet.</h3>
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      Analyze a clip, then use <span className="font-medium text-foreground">Save report</span>. The saved
-                      video and analysis report will appear here with the report date and time.
-                    </p>
-                    <div className="mt-6 grid gap-3 sm:grid-cols-3 min-[1450px]:grid-cols-1">
-                      <div className="rounded-2xl border border-border bg-gradient-card p-5">
-                        <p className="font-display text-3xl font-bold text-foreground">0</p>
-                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Saved analyses</p>
-                      </div>
-                      <div className="rounded-2xl border border-border bg-gradient-card p-5">
-                        <p className="font-display text-lg font-bold text-foreground">Video + report</p>
-                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Stored together</p>
-                      </div>
-                      <div className="rounded-2xl border border-border bg-gradient-card p-5">
-                        <p className="font-display text-lg font-bold text-foreground">Date + time</p>
-                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Saved on each report</p>
-                      </div>
+                    <div className="rounded-2xl border border-border bg-gradient-card p-5">
+                      <p className="font-display text-lg font-bold text-foreground">Video + report</p>
+                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Stored together</p>
                     </div>
-                    <div className="mt-6">
-                      <Button variant="hero" asChild>
-                        <a href="#technique-uploader">
-                          Go to Analysis
-                          <ArrowRight className="h-4 w-4" />
-                        </a>
-                      </Button>
+                    <div className="rounded-2xl border border-border bg-gradient-card p-5">
+                      <p className="font-display text-lg font-bold text-foreground">Date + time</p>
+                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Saved on each report</p>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-5">
-                    <div className="grid gap-4 sm:grid-cols-3 min-[1450px]:grid-cols-1">
-                      <div className="rounded-2xl border border-primary/20 bg-primary/10 p-5">
-                        <p className="font-display text-3xl font-bold text-foreground">{analyses.length}</p>
-                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Reports shown</p>
-                      </div>
-                      <div className="rounded-2xl border border-border bg-gradient-card p-5">
-                        <p className="font-display text-3xl font-bold text-foreground">{latestAnalysis?.overall_score ?? "--"}</p>
-                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Latest score</p>
-                      </div>
-                      <div className="rounded-2xl border border-border bg-gradient-card p-5">
-                        <p className="font-display text-lg font-bold text-foreground">
-                          {latestAnalysis ? format(new Date(latestAnalysis.created_at), "MMM d, yyyy") : "--"}
-                        </p>
-                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Latest upload</p>
-                      </div>
+                  <div className="mt-6">
+                    <Button variant="hero" asChild>
+                      <a href="#technique-uploader">
+                        Go to Analysis
+                        <ArrowRight className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="rounded-2xl border border-primary/20 bg-primary/10 p-5">
+                      <p className="font-display text-3xl font-bold text-foreground">{analyses.length}</p>
+                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Reports shown</p>
                     </div>
+                    <div className="rounded-2xl border border-border bg-gradient-card p-5">
+                      <p className="font-display text-3xl font-bold text-foreground">{latestAnalysis?.overall_score ?? "--"}</p>
+                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Latest score</p>
+                    </div>
+                    <div className="rounded-2xl border border-border bg-gradient-card p-5">
+                      <p className="font-display text-lg font-bold text-foreground">
+                        {latestAnalysis ? format(new Date(latestAnalysis.created_at), "MMM d, yyyy") : "--"}
+                      </p>
+                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Latest upload</p>
+                    </div>
+                  </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2 min-[1450px]:grid-cols-1">
-                      {analyses.map((analysis) => (
-                        <div
-                          key={analysis.id}
-                          className="rounded-3xl border border-border bg-gradient-card p-6 transition-colors hover:border-primary/30"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-xs uppercase tracking-[0.16em] text-primary/80">Saved report</p>
-                              <h3 className="mt-2 font-display text-xl font-bold text-foreground capitalize">
-                                {analysis.mode} Analysis
-                              </h3>
-                            </div>
-                            <div
-                              className={`rounded-2xl border px-4 py-2 font-display text-2xl font-bold ${getScoreTone(analysis.overall_score)}`}
-                            >
-                              {analysis.overall_score}
-                            </div>
+                  <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                    {analyses.map((analysis) => (
+                      <div
+                        key={analysis.id}
+                        className="rounded-3xl border border-border bg-gradient-card p-6 transition-colors hover:border-primary/30"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.16em] text-primary/80">Saved report</p>
+                            <h3 className="mt-2 font-display text-xl font-bold text-foreground capitalize">
+                              {analysis.mode} Analysis
+                            </h3>
                           </div>
-
-                          <div className="mt-5 flex flex-wrap gap-2">
-                            {analysis.video_url ? (
-                              <Badge variant="secondary" className="gap-1">
-                                <Video className="h-3 w-3" />
-                                Video saved
-                              </Badge>
-                            ) : null}
-                            {analysis.video_duration ? (
-                              <Badge variant="outline" className="gap-1">
-                                <Clock className="h-3 w-3" />
-                                {analysis.video_duration}
-                              </Badge>
-                            ) : null}
-                          </div>
-
-                          <div className="mt-5 space-y-2 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-primary" />
-                              {format(new Date(analysis.created_at), "MMMM d, yyyy")}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-primary" />
-                              {format(new Date(analysis.created_at), "h:mm a")}
-                            </div>
-                          </div>
-
-                          <div className="mt-6 flex gap-3">
-                            <Button className="flex-1" asChild>
-                              <Link to={`/analysis/${analysis.id}`}>
-                                View Report
-                                <ArrowRight className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            {analysis.video_url ? (
-                              <Button variant="outline" asChild>
-                                <a href={analysis.video_url} target="_blank" rel="noreferrer">
-                                  Open Video
-                                </a>
-                              </Button>
-                            ) : null}
+                          <div
+                            className={`rounded-2xl border px-4 py-2 font-display text-2xl font-bold ${getScoreTone(analysis.overall_score)}`}
+                          >
+                            {analysis.overall_score}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </aside>
 
-              <div id="technique-uploader" className="space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
-                    <BarChart3 className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="font-display text-2xl font-bold text-foreground">New Analysis</h2>
+                        <div className="mt-5 flex flex-wrap gap-2">
+                          {analysis.video_url ? (
+                            <Badge variant="secondary" className="gap-1">
+                              <Video className="h-3 w-3" />
+                              Video saved
+                            </Badge>
+                          ) : null}
+                          {analysis.video_duration ? (
+                            <Badge variant="outline" className="gap-1">
+                              <Clock className="h-3 w-3" />
+                              {analysis.video_duration}
+                            </Badge>
+                          ) : null}
+                        </div>
+
+                        <div className="mt-5 space-y-2 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-primary" />
+                            {format(new Date(analysis.created_at), "MMMM d, yyyy")}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-primary" />
+                            {format(new Date(analysis.created_at), "h:mm a")}
+                          </div>
+                        </div>
+
+                        <div className="mt-6 flex gap-3">
+                          <Button className="flex-1" asChild>
+                            <Link to={`/analysis/${analysis.id}`}>
+                              View Report
+                              <ArrowRight className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          {analysis.video_url ? (
+                            <Button variant="outline" asChild>
+                              <a href={analysis.video_url} target="_blank" rel="noreferrer">
+                                Open Video
+                              </a>
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <TechniqueAIComponent onReportSaved={onReportSaved} />
+              )}
+            </div>
+
+            <div id="technique-uploader" className="space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="font-display text-2xl font-bold text-foreground">New Analysis</h2>
+                </div>
               </div>
+              <TechniqueAIComponent onReportSaved={onReportSaved} />
             </div>
           </div>
         </div>
@@ -572,23 +586,36 @@ const TechniqueAI = () => {
   const { user, loading: authLoading } = useAuth();
   const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
-  const fetchAnalyses = async () => {
+  const fetchAnalyses = async (savedReport?: AnalysisResult) => {
     if (!user) {
       setAnalyses([]);
+      setHistoryError(null);
       setHistoryLoading(false);
       return;
     }
 
+    if (savedReport) {
+      setAnalyses((current) => mergeSavedAnalysis(current, savedReport));
+    }
+
     setHistoryLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("analysis_results")
       .select("id, mode, overall_score, created_at, video_duration, video_url")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(6);
 
-    setAnalyses(data || []);
+    if (error) {
+      setHistoryError(error.message);
+      setHistoryLoading(false);
+      return;
+    }
+
+    setHistoryError(null);
+    setAnalyses(savedReport ? mergeSavedAnalysis(data || [], savedReport) : data || []);
     setHistoryLoading(false);
   };
 
@@ -625,6 +652,7 @@ const TechniqueAI = () => {
           latestAnalysis={latestAnalysis}
           authLoading={authLoading}
           historyLoading={historyLoading}
+          historyError={historyError}
           onReportSaved={fetchAnalyses}
         />
       ) : (

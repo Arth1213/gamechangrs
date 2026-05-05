@@ -22,6 +22,7 @@ export default function AnalysisHistory() {
   const { user, loading: authLoading } = useAuth();
   const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAnalyses = async () => {
@@ -33,8 +34,11 @@ export default function AnalysisHistory() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (!error && data) {
-        setAnalyses(data);
+      if (error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage(null);
+        setAnalyses(data || []);
       }
       setLoading(false);
     };
@@ -79,6 +83,13 @@ export default function AnalysisHistory() {
               View all your saved technique analysis results
             </p>
           </div>
+
+          {errorMessage ? (
+            <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
+              <p className="font-medium">Saved report history could not be loaded.</p>
+              <p className="mt-1 opacity-90">{errorMessage}</p>
+            </div>
+          ) : null}
 
           {analyses.length === 0 ? (
             <div className="text-center py-16 rounded-2xl bg-gradient-card border border-border">

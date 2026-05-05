@@ -1194,7 +1194,14 @@ function getErrorMessage(error: unknown) {
 }
 
 interface TechniqueAIProps {
-  onReportSaved?: () => Promise<void> | void;
+  onReportSaved?: (report?: {
+    id: string;
+    mode: string;
+    overall_score: number;
+    created_at: string;
+    video_duration: string | null;
+    video_url: string | null;
+  }) => Promise<void> | void;
 }
 
 export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
@@ -1437,7 +1444,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
           video_duration: durationLabel,
           video_url: publicVideoUrl,
         })
-        .select("id")
+        .select("id, mode, overall_score, created_at, video_duration, video_url")
         .single();
 
       if (saveError) {
@@ -1445,7 +1452,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
       }
 
       setSavedReportId(data.id);
-      await onReportSaved?.();
+      await onReportSaved?.(data);
       toast.success("Technique AI report saved. Open it now or find it in Saved Reports.");
     } catch (saveError) {
       console.error(saveError);
@@ -1503,7 +1510,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
 
   return (
     <div className="space-y-8">
-      <div className="grid gap-6 min-[1700px]:grid-cols-[1.05fr,1fr]">
+      <div className="grid gap-6">
         <section className="rounded-3xl border border-border bg-gradient-card p-6 md:p-8">
           <div className="mb-6 flex items-start justify-between gap-4">
             <div>

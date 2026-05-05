@@ -668,6 +668,13 @@ export type Database = {
       }
     }
     Functions: {
+      get_public_site_metric_snapshot: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          gear_donation_count: number
+          video_analysis_count: number
+        }[]
+      }
       get_user_coach_id: { Args: { _user_id: string }; Returns: string }
       get_user_player_id: { Args: { _user_id: string }; Returns: string }
       has_role: {

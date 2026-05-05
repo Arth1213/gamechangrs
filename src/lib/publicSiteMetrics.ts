@@ -44,14 +44,7 @@ async function countSavedTechniqueVideos(signal?: AbortSignal) {
   return totalVideos;
 }
 
-export async function fetchPublicSiteMetricSnapshot(signal?: AbortSignal): Promise<PublicSiteMetricSnapshot> {
-  if (signal?.aborted) {
-    return {
-      gearDonationCount: 0,
-      videoAnalysisCount: 0,
-    };
-  }
-
+async function fetchLegacyPublicSiteMetricSnapshot(signal?: AbortSignal): Promise<PublicSiteMetricSnapshot> {
   const [{ count: gearDonationCount, error: gearError }, videoAnalysisCount] = await Promise.all([
     supabase
       .from("public_marketplace_listings")
@@ -68,5 +61,31 @@ export async function fetchPublicSiteMetricSnapshot(signal?: AbortSignal): Promi
   return {
     gearDonationCount: Number(gearDonationCount ?? 0),
     videoAnalysisCount,
+  };
+}
+
+export async function fetchPublicSiteMetricSnapshot(signal?: AbortSignal): Promise<PublicSiteMetricSnapshot> {
+  if (signal?.aborted) {
+    return {
+      gearDonationCount: 0,
+      videoAnalysisCount: 0,
+    };
+  }
+
+  try {
+    const { data, error } = await supabase.rpc("get_public_site_metric_snapshot");
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const snapshot = Array.isArray(data) ? data[0] : data;
+
+    return {
+      gearDonationCount: Number(snapshot?.gear_donation_count ?? 0),
+      videoAnalysisCount: Number(snapshot?.video_analysis_count ?? 0),
+    };
+  } catch (_) {
+    return fetchLegacyPublicSiteMetricSnapshot(signal);
   };
 }

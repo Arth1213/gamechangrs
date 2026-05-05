@@ -1,9 +1,32 @@
 import { useState } from "react";
 
+const HOME_HERO_VIDEOS = [
+  "/home-hero-bat-swing.mp4",
+  "/home-hero-bat-swing-alt.mp4",
+  "/home-hero-bat-swing-alt-2.mp4",
+  "/home-hero-bat-swing-alt-3.mp4",
+];
+
+const HOME_HERO_VIDEO_INDEX_KEY = "gamechangrs-home-hero-video-index";
+
 export const HomeHeroOrbit = () => {
-  const [videoSrc] = useState(() =>
-    Math.random() < 0.5 ? "/home-hero-bat-swing.mp4" : "/home-hero-bat-swing-alt.mp4",
-  );
+  const [videoSrc] = useState(() => {
+    if (typeof window === "undefined") {
+      return HOME_HERO_VIDEOS[0];
+    }
+
+    const storedIndex = Number.parseInt(
+      window.localStorage.getItem(HOME_HERO_VIDEO_INDEX_KEY) ?? "",
+      10,
+    );
+    const nextIndex =
+      Number.isInteger(storedIndex) && storedIndex >= 0
+        ? (storedIndex + 1) % HOME_HERO_VIDEOS.length
+        : 0;
+
+    window.localStorage.setItem(HOME_HERO_VIDEO_INDEX_KEY, String(nextIndex));
+    return HOME_HERO_VIDEOS[nextIndex];
+  });
 
   return (
     <div className="relative mx-auto flex w-full max-w-[700px] items-center justify-center">

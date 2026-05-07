@@ -5079,22 +5079,6 @@ function renderPlayerIntelligenceReportPage(report) {
       gap: 18px;
     }
 
-    .report-kicker {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      width: fit-content;
-      padding: 10px 14px;
-      border-radius: 999px;
-      border: 1px solid rgba(103, 183, 255, 0.22);
-      background: rgba(103, 183, 255, 0.1);
-      color: #d9f1ff;
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
-
     .hero-grid,
     .section-grid,
     .card-grid,
@@ -5348,6 +5332,19 @@ function renderPlayerIntelligenceReportPage(report) {
       border-radius: var(--radius-md);
       border: 1px dashed rgba(145, 192, 215, 0.22);
       color: var(--muted);
+    }
+
+    .footnote {
+      margin-top: 10px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(145, 192, 215, 0.14);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 2px;
     }
 
     @media (max-width: 1120px) {
@@ -5897,7 +5894,7 @@ function renderPlayerIntelligenceReportPage(report) {
         <div class="page-shell intelligence-shell">
           <section class="sheet">
             <div class="report-title">
-              <div class="report-kicker">Player Intelligence Report</div>
+              <div class="eyebrow">Game-Changrs Player Intelligence</div>
               <div class="hero-grid">
                 <div class="hero-panel">
                   <div>
@@ -6028,6 +6025,11 @@ function renderPlayerIntelligenceReportPage(report) {
             </div>
             <div style="margin-top: 16px;">
               ${renderEvidenceTable("Dismissal Evidence", commentaryEvidence?.dismissals)}
+            </div>
+            <div class="footnote">
+              <div>Copyright &copy; 2026 game-changrs.com and Arth Arun.</div>
+              <div>Concept, design direction, analytics framework, and associated code/materials are proprietary.</div>
+              <div>All rights reserved.</div>
             </div>
           </section>
         </div>

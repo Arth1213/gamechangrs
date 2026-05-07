@@ -1,4 +1,4 @@
-import { RefObject, useState } from "react";
+import { useState } from "react";
 import { Download, Loader2, Mail, Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,26 +13,88 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { downloadBlob, renderReportFramePdf } from "@/lib/reportPdf";
+import { emailCricketProtectedPdf, fetchCricketProtectedPdf } from "@/lib/cricketApi";
+import { downloadBlob } from "@/lib/reportPdf";
 import { cn } from "@/lib/utils";
 
 type StandaloneReportActionsProps = {
   reportLabel: string;
   fileNameBase: string;
-  frameRef: RefObject<HTMLIFrameElement | null>;
   accessToken: string;
-  onPrint?: (() => void) | null;
+  reportHtml?: string | null;
+  pdfUrl?: string | null;
+  emailUrl?: string | null;
   disabled?: boolean;
   className?: string;
 };
 
+function injectBaseHref(html: string) {
+  if (!html.trim() || /<base\b/i.test(html)) {
+    return html;
+  }
+
+  const baseHref = `${window.location.origin}/`;
+  if (/<head\b[^>]*>/i.test(html)) {
+    return html.replace(/<head\b([^>]*)>/i, `<head$1><base href="${baseHref}">`);
+  }
+
+  return `<!DOCTYPE html><html><head><base href="${baseHref}"></head><body>${html}</body></html>`;
+}
+
+function waitForImage(image: HTMLImageElement) {
+  if (image.complete) {
+    return Promise.resolve();
+  }
+
+  return new Promise<void>((resolve) => {
+    const finalize = () => {
+      image.removeEventListener("load", finalize);
+      image.removeEventListener("error", finalize);
+      resolve();
+    };
+
+    image.addEventListener("load", finalize);
+    image.addEventListener("error", finalize);
+  });
+}
+
+async function printStandaloneReport(reportHtml: string) {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    throw new Error("Allow pop-ups for this site before printing the standalone report.");
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(injectBaseHref(reportHtml));
+  printWindow.document.close();
+
+  await new Promise<void>((resolve) => {
+    if (printWindow.document.readyState === "complete") {
+      resolve();
+      return;
+    }
+
+    printWindow.addEventListener("load", () => resolve(), { once: true });
+  });
+
+  if (printWindow.document.fonts?.ready) {
+    await printWindow.document.fonts.ready.catch(() => undefined);
+  }
+
+  await Promise.all(Array.from(printWindow.document.images).map((image) => waitForImage(image)));
+  await new Promise((resolve) => window.setTimeout(resolve, 180));
+
+  printWindow.focus();
+  printWindow.print();
+}
+
 export default function StandaloneReportActions({
   reportLabel,
   fileNameBase,
-  frameRef,
   accessToken,
-  onPrint,
+  reportHtml,
+  pdfUrl,
+  emailUrl,
   disabled = false,
   className,
 }: StandaloneReportActionsProps) {
@@ -44,15 +106,32 @@ export default function StandaloneReportActions({
 
   const isActionDisabled = disabled || !accessToken;
 
+  const handlePrint = async () => {
+    if (isActionDisabled || !reportHtml) {
+      return;
+    }
+
+    try {
+      await printStandaloneReport(reportHtml);
+    } catch (error) {
+      toast({
+        title: "Print failed",
+        description: error instanceof Error ? error.message : "The standalone report could not be opened for printing.",
+      });
+    }
+  };
+
   const handleDownload = async () => {
-    if (isActionDisabled || !frameRef.current) {
+    if (isActionDisabled || !pdfUrl) {
       return;
     }
 
     setDownloadStatus("loading");
     try {
-      const pdf = await renderReportFramePdf(frameRef.current, fileNameBase);
-      downloadBlob(pdf.blob, pdf.filename);
+      const pdfBlob = await fetchCricketProtectedPdf(pdfUrl, {
+        accessToken,
+      });
+      downloadBlob(pdfBlob, `${fileNameBase}.pdf`);
     } catch (error) {
       toast({
         title: "PDF download failed",
@@ -64,33 +143,20 @@ export default function StandaloneReportActions({
   };
 
   const handleEmail = async () => {
-    if (isActionDisabled || !frameRef.current || !emailAddress.trim()) {
+    if (isActionDisabled || !emailUrl || !emailAddress.trim()) {
       return;
     }
 
     setEmailStatus("loading");
     try {
-      const pdf = await renderReportFramePdf(frameRef.current, fileNameBase);
-      const { data, error } = await supabase.functions.invoke("send-report-pdf", {
-        body: {
-          email: emailAddress.trim(),
-          reportLabel,
-          filename: pdf.filename,
-          pdfBase64: pdf.base64,
-        },
-        headers: accessToken
-          ? {
-              Authorization: `Bearer ${accessToken}`,
-            }
-          : undefined,
+      const response = await emailCricketProtectedPdf(emailUrl, {
+        accessToken,
+        email: emailAddress.trim(),
       });
-      if (error) {
-        throw error;
-      }
 
       toast({
         title: "PDF sent",
-        description: data?.message || `${reportLabel} PDF emailed successfully.`,
+        description: response.message || `${reportLabel} PDF emailed successfully.`,
       });
       setEmailDialogOpen(false);
       setEmailAddress("");
@@ -107,15 +173,15 @@ export default function StandaloneReportActions({
   return (
     <>
       <div className={cn("flex flex-wrap gap-3", className)}>
-        <Button type="button" variant="outline" onClick={() => onPrint?.()} disabled={disabled || !onPrint}>
+        <Button type="button" variant="outline" onClick={() => void handlePrint()} disabled={isActionDisabled || !reportHtml}>
           <Printer className="mr-2 h-4 w-4" />
           Print / Save
         </Button>
-        <Button type="button" variant="outline" onClick={() => void handleDownload()} disabled={isActionDisabled || !frameRef.current || downloadStatus === "loading"}>
+        <Button type="button" variant="outline" onClick={() => void handleDownload()} disabled={isActionDisabled || !pdfUrl || downloadStatus === "loading"}>
           {downloadStatus === "loading" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
           Download PDF
         </Button>
-        <Button type="button" onClick={() => setEmailDialogOpen(true)} disabled={isActionDisabled || !frameRef.current}>
+        <Button type="button" onClick={() => setEmailDialogOpen(true)} disabled={isActionDisabled || !emailUrl}>
           <Mail className="mr-2 h-4 w-4" />
           Email PDF
         </Button>

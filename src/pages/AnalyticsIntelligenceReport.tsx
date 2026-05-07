@@ -33,6 +33,8 @@ import {
   fetchCricketPlayerIntelligence,
   fetchCricketViewerSeries,
   getAnalyticsWorkspaceRoute,
+  getCricketPlayerReportEmailUrl,
+  getCricketPlayerReportPdfUrl,
   getCricketPlayerIntelligenceDocumentUrl,
 } from "@/lib/cricketApi";
 
@@ -1028,6 +1030,34 @@ const AnalyticsIntelligenceReport = () => {
       { seriesConfigKey: effectiveSeriesKey || undefined }
     );
   }, [divisionId, effectiveSeriesKey, numericPlayerId]);
+  const reportPdfUrl = useMemo(() => {
+    if (!Number.isFinite(numericPlayerId)) {
+      return null;
+    }
+
+    return getCricketPlayerReportPdfUrl(
+      {
+        playerId: numericPlayerId,
+        divisionId,
+      },
+      "intelligence",
+      { seriesConfigKey: effectiveSeriesKey || undefined }
+    );
+  }, [divisionId, effectiveSeriesKey, numericPlayerId]);
+  const reportEmailUrl = useMemo(() => {
+    if (!Number.isFinite(numericPlayerId)) {
+      return null;
+    }
+
+    return getCricketPlayerReportEmailUrl(
+      {
+        playerId: numericPlayerId,
+        divisionId,
+      },
+      "intelligence",
+      { seriesConfigKey: effectiveSeriesKey || undefined }
+    );
+  }, [divisionId, effectiveSeriesKey, numericPlayerId]);
   useEffect(() => {
     if (!accessToken) {
       setViewerSeries([]);
@@ -1195,10 +1225,6 @@ const AnalyticsIntelligenceReport = () => {
       setAccessRequestStatus("error");
       setAccessRequestMessage(message);
     }
-  };
-
-  const handlePrintStandaloneReport = () => {
-    reportFrameRef.current?.contentWindow?.print();
   };
 
   const title =
@@ -1466,9 +1492,10 @@ const AnalyticsIntelligenceReport = () => {
                   <StandaloneReportActions
                     reportLabel="Player Intelligence Report"
                     fileNameBase={`${title} player intelligence report`}
-                    frameRef={reportFrameRef}
                     accessToken={accessToken}
-                    onPrint={reportDocumentStatus === "success" ? handlePrintStandaloneReport : null}
+                    reportHtml={reportDocumentHtml}
+                    pdfUrl={reportPdfUrl}
+                    emailUrl={reportEmailUrl}
                     disabled={reportDocumentStatus === "loading"}
                   />
                 </div>

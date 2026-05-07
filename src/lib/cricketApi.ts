@@ -267,6 +267,15 @@ export type CricketAdminViewerGrantMutationResponse = {
   request?: CricketAdminSeriesAccessRequest | null;
 };
 
+export type CricketProtectedPdfEmailResponse = {
+  message?: string;
+  delivery?: {
+    id?: string | null;
+    email?: string;
+    filename?: string;
+  };
+};
+
 export type CricketAdminViewerGrantsResponse = {
   actor?: {
     userId?: string;
@@ -1585,12 +1594,10 @@ export async function emailCricketProtectedPdf(
   });
 
   if (!response.ok) {
-    throw new Error(await readApiErrorMessage(response, `Report email request failed with status ${response.status}.`));
+    throw new Error(await readApiErrorMessage(response, `Protected PDF email failed with status ${response.status}.`));
   }
 
-  return (await response.json()) as {
-    message?: string;
-  };
+  return (await response.json()) as CricketProtectedPdfEmailResponse;
 }
 
 export async function fetchCricketAdminSeries(accessToken: string, signal?: AbortSignal) {

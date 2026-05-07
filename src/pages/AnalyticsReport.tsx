@@ -21,7 +21,9 @@ import {
   fetchCricketViewerSeries,
   getAnalyticsPlatformAdminRoute,
   getAnalyticsWorkspaceRoute,
+  getCricketPlayerReportEmailUrl,
   getCricketPlayerReportDocumentUrl,
+  getCricketPlayerReportPdfUrl,
 } from "@/lib/cricketApi";
 
 function getDivisionId(value: string | null) {
@@ -131,6 +133,34 @@ const AnalyticsReport = () => {
         playerId: numericPlayerId,
         divisionId,
       },
+      { seriesConfigKey: effectiveSeriesKey || undefined }
+    );
+  }, [divisionId, effectiveSeriesKey, numericPlayerId]);
+  const reportPdfUrl = useMemo(() => {
+    if (!Number.isFinite(numericPlayerId)) {
+      return null;
+    }
+
+    return getCricketPlayerReportPdfUrl(
+      {
+        playerId: numericPlayerId,
+        divisionId,
+      },
+      "assessment",
+      { seriesConfigKey: effectiveSeriesKey || undefined }
+    );
+  }, [divisionId, effectiveSeriesKey, numericPlayerId]);
+  const reportEmailUrl = useMemo(() => {
+    if (!Number.isFinite(numericPlayerId)) {
+      return null;
+    }
+
+    return getCricketPlayerReportEmailUrl(
+      {
+        playerId: numericPlayerId,
+        divisionId,
+      },
+      "assessment",
       { seriesConfigKey: effectiveSeriesKey || undefined }
     );
   }, [divisionId, effectiveSeriesKey, numericPlayerId]);
@@ -452,10 +482,6 @@ const AnalyticsReport = () => {
     }
   };
 
-  const handlePrintStandaloneReport = () => {
-    reportFrameRef.current?.contentWindow?.print();
-  };
-
   if (viewerStatus === "loading") {
     return (
       <div className="min-h-screen bg-background">
@@ -668,9 +694,10 @@ const AnalyticsReport = () => {
                   <StandaloneReportActions
                     reportLabel="Player Assessment"
                     fileNameBase={`${title} player assessment`}
-                    frameRef={reportFrameRef}
                     accessToken={accessToken}
-                    onPrint={reportDocumentStatus === "success" ? handlePrintStandaloneReport : null}
+                    reportHtml={reportDocumentHtml}
+                    pdfUrl={reportPdfUrl}
+                    emailUrl={reportEmailUrl}
                     disabled={reportDocumentStatus === "loading"}
                   />
                 </div>

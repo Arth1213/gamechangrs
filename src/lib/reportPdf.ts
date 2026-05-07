@@ -177,111 +177,21 @@ function collectExportBlocks(kind: ExportShellKind, shell: HTMLElement) {
   return [{ element: shell }];
 }
 
-function createExportRoot(document: Document, widthPx: number) {
-  const exportRoot = document.createElement("div");
-  exportRoot.setAttribute("data-pdf-export-root", "true");
-  exportRoot.style.position = "absolute";
-  exportRoot.style.left = "-20000px";
-  exportRoot.style.top = "0";
-  exportRoot.style.width = `${Math.ceil(widthPx)}px`;
-  exportRoot.style.pointerEvents = "none";
-  exportRoot.style.zIndex = "-1";
-  exportRoot.style.display = "grid";
-  exportRoot.style.gap = "18px";
-  document.body.appendChild(exportRoot);
-  return exportRoot;
-}
-
-function createPageWrapper(document: Document, kind: ExportShellKind, widthPx: number) {
-  const page =
-    kind === "assessment"
-      ? document.createElement("section")
-      : document.createElement("div");
-
-  if (kind === "assessment") {
-    page.className = "sheet report-sheet";
-  } else if (kind === "intelligence") {
-    page.className = "page-shell intelligence-shell";
-    page.style.display = "grid";
-    page.style.gap = "18px";
-  } else {
-    page.className = "page-shell";
-  }
-
-  page.setAttribute("data-pdf-export-page", "true");
-  page.style.width = `${Math.ceil(widthPx)}px`;
-  page.style.minHeight = "1px";
-  page.style.margin = "0";
-  page.style.boxSizing = "border-box";
-  page.style.overflow = "hidden";
-  return page;
-}
-
-function appendBlockClone(page: HTMLElement, block: ExportBlock) {
-  const clone = block.element.cloneNode(true) as HTMLElement;
-  if (block.extraTopSpacingPx !== undefined) {
-    clone.style.marginTop = page.childElementCount === 0 ? "0" : `${block.extraTopSpacingPx}px`;
-  }
-  page.appendChild(clone);
-}
-
-function buildPageWrappers(
-  document: Document,
-  kind: ExportShellKind,
-  blocks: ExportBlock[],
-  shellWidthPx: number,
-  maxPageHeightPx: number,
-) {
-  const exportRoot = createExportRoot(document, shellWidthPx);
-  const pages: HTMLElement[] = [];
-  const baseHeightPx = kind === "assessment" ? 40 : 0;
-
-  let currentPage = createPageWrapper(document, kind, shellWidthPx);
-  let usedHeightPx = baseHeightPx;
-  pages.push(currentPage);
-  exportRoot.appendChild(currentPage);
-
-  for (const block of blocks) {
-    const blockHeightPx = measureOuterHeight(block.element) + (block.extraTopSpacingPx || 0);
-    const fitsCurrentPage = usedHeightPx + blockHeightPx <= maxPageHeightPx - PAGE_HEIGHT_BUFFER_PX;
-    const blockCanStartNewPage = currentPage.childElementCount > 0;
-
-    if (!fitsCurrentPage && blockCanStartNewPage) {
-      currentPage = createPageWrapper(document, kind, shellWidthPx);
-      usedHeightPx = baseHeightPx;
-      pages.push(currentPage);
-      exportRoot.appendChild(currentPage);
-    }
-
-    appendBlockClone(currentPage, block);
-    usedHeightPx += blockHeightPx;
-    currentPage.setAttribute("data-pdf-export-height", `${Math.max(1, Math.ceil(usedHeightPx))}`);
-    currentPage.style.minHeight = `${Math.max(1, Math.ceil(usedHeightPx))}px`;
-  }
-
-  return {
-    exportRoot,
-    pages,
-  };
-}
-
-async function resolvePageDimensions(page: HTMLElement, captureWidth: number) {
+async function resolveElementDimensions(element: HTMLElement, captureWidth: number) {
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    const bounds = page.getBoundingClientRect();
-    const plannedHeight = Number.parseInt(page.getAttribute("data-pdf-export-height") || "0", 10);
+    const bounds = element.getBoundingClientRect();
     const width = Math.max(
       Math.ceil(bounds.width),
-      Math.ceil(page.scrollWidth),
-      Math.ceil(page.offsetWidth),
-      Math.ceil(page.clientWidth),
+      Math.ceil(element.scrollWidth),
+      Math.ceil(element.offsetWidth),
+      Math.ceil(element.clientWidth),
       Math.ceil(captureWidth),
     );
     const height = Math.max(
       Math.ceil(bounds.height),
-      Math.ceil(page.scrollHeight),
-      Math.ceil(page.offsetHeight),
-      Math.ceil(page.clientHeight),
-      Number.isFinite(plannedHeight) ? plannedHeight : 0,
+      Math.ceil(element.scrollHeight),
+      Math.ceil(element.offsetHeight),
+      Math.ceil(element.clientHeight),
     );
 
     if (width > 0 && height > 0) {
@@ -294,10 +204,10 @@ async function resolvePageDimensions(page: HTMLElement, captureWidth: number) {
   throw new Error("The standalone report page dimensions are not ready yet.");
 }
 
-async function renderPageCanvas(page: HTMLElement, captureWidth: number) {
-  const { width, height } = await resolvePageDimensions(page, captureWidth);
+async function renderElementCanvas(element: HTMLElement, captureWidth: number) {
+  const { width, height } = await resolveElementDimensions(element, captureWidth);
 
-  return html2canvas(page, {
+  return html2canvas(element, {
     backgroundColor: null,
     logging: false,
     useCORS: true,
@@ -427,35 +337,23 @@ export async function renderReportFramePdf(frame: HTMLIFrameElement, fileNameBas
   const pageHeight = pdf.internal.pageSize.getHeight();
   const innerWidth = pageWidth - (PDF_MARGIN_PT * 2);
   const innerHeight = pageHeight - (PDF_MARGIN_PT * 2);
-  const maxPageHeightPx = Math.max(1, Math.floor((innerHeight / innerWidth) * captureWidth));
   const blocks = collectExportBlocks(kind, shell);
-  const { exportRoot, pages } = buildPageWrappers(
-    reportDocument,
-    kind,
-    blocks,
-    captureWidth,
-    maxPageHeightPx,
-  );
 
   let hasWrittenPdfPage = false;
 
-  try {
-    await new Promise((resolve) => window.setTimeout(resolve, 80));
+  await new Promise((resolve) => window.setTimeout(resolve, 80));
 
-    for (const page of pages) {
-      const pageCanvas = await renderPageCanvas(page, captureWidth);
-      hasWrittenPdfPage = addCanvasToPdf(
-        pdf,
-        pageCanvas,
-        pageWidth,
-        pageHeight,
-        innerWidth,
-        innerHeight,
-        hasWrittenPdfPage,
-      );
-    }
-  } finally {
-    exportRoot.remove();
+  for (const block of blocks) {
+    const blockCanvas = await renderElementCanvas(block.element, captureWidth);
+    hasWrittenPdfPage = addCanvasToPdf(
+      pdf,
+      blockCanvas,
+      pageWidth,
+      pageHeight,
+      innerWidth,
+      innerHeight,
+      hasWrittenPdfPage,
+    );
   }
 
   const blob = pdf.output("blob");

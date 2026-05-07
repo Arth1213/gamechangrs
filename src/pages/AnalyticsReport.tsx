@@ -691,7 +691,7 @@ const AnalyticsReport = () => {
                   frameRef={reportFrameRef}
                   reportHtml={reportDocumentHtml}
                   emailUrl={reportEmailUrl}
-                  disabled={reportDocumentStatus === "loading"}
+                  disabled={reportDocumentStatus !== "success" || isFrameLoading}
                 />
               </div>
 

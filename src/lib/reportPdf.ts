@@ -210,6 +210,7 @@ function createPageWrapper(document: Document, kind: ExportShellKind, widthPx: n
 
   page.setAttribute("data-pdf-export-page", "true");
   page.style.width = `${Math.ceil(widthPx)}px`;
+  page.style.minHeight = "1px";
   page.style.margin = "0";
   page.style.boxSizing = "border-box";
   page.style.overflow = "hidden";
@@ -254,6 +255,8 @@ function buildPageWrappers(
 
     appendBlockClone(currentPage, block);
     usedHeightPx += blockHeightPx;
+    currentPage.setAttribute("data-pdf-export-height", `${Math.max(1, Math.ceil(usedHeightPx))}`);
+    currentPage.style.minHeight = `${Math.max(1, Math.ceil(usedHeightPx))}px`;
   }
 
   return {
@@ -262,14 +265,37 @@ function buildPageWrappers(
   };
 }
 
-async function renderPageCanvas(page: HTMLElement, captureWidth: number) {
-  const bounds = page.getBoundingClientRect();
-  const width = Math.max(Math.ceil(bounds.width), Math.ceil(page.scrollWidth), Math.ceil(captureWidth));
-  const height = Math.max(Math.ceil(bounds.height), Math.ceil(page.scrollHeight));
+async function resolvePageDimensions(page: HTMLElement, captureWidth: number) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const bounds = page.getBoundingClientRect();
+    const plannedHeight = Number.parseInt(page.getAttribute("data-pdf-export-height") || "0", 10);
+    const width = Math.max(
+      Math.ceil(bounds.width),
+      Math.ceil(page.scrollWidth),
+      Math.ceil(page.offsetWidth),
+      Math.ceil(page.clientWidth),
+      Math.ceil(captureWidth),
+    );
+    const height = Math.max(
+      Math.ceil(bounds.height),
+      Math.ceil(page.scrollHeight),
+      Math.ceil(page.offsetHeight),
+      Math.ceil(page.clientHeight),
+      Number.isFinite(plannedHeight) ? plannedHeight : 0,
+    );
 
-  if (width <= 0 || height <= 0) {
-    throw new Error("The standalone report page dimensions are not ready yet.");
+    if (width > 0 && height > 0) {
+      return { width, height };
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 80));
   }
+
+  throw new Error("The standalone report page dimensions are not ready yet.");
+}
+
+async function renderPageCanvas(page: HTMLElement, captureWidth: number) {
+  const { width, height } = await resolvePageDimensions(page, captureWidth);
 
   return html2canvas(page, {
     backgroundColor: null,

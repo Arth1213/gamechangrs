@@ -984,6 +984,7 @@ const AnalyticsIntelligenceReport = () => {
   const accessToken = session?.access_token || "";
   const numericPlayerId = Number.parseInt(playerId ?? "", 10);
   const divisionId = getDivisionId(searchParams.get("divisionId"));
+  const isStandalone = searchParams.get("standalone") === "1";
   const currentSeriesKey = searchParams.get("series")?.trim() || routeState.seriesConfigKey?.trim() || "";
   const defaultSeriesKey = viewerSeries[0]?.configKey?.trim() || "";
   const effectiveSeriesKey = currentSeriesKey || defaultSeriesKey;
@@ -1008,7 +1009,18 @@ const AnalyticsIntelligenceReport = () => {
       }
     );
   }, [backToSearchUrl, currentSearchQuery, divisionId, effectiveSeriesKey, numericPlayerId]);
+  const standaloneReportUrl = useMemo(() => {
+    if (!Number.isFinite(numericPlayerId)) {
+      return null;
+    }
+
+    const params = new URLSearchParams(location.search);
+    params.set("standalone", "1");
+    const search = params.toString();
+    return search ? `${location.pathname}?${search}` : location.pathname;
+  }, [location.pathname, location.search, numericPlayerId]);
   const hasViewerAccess = viewerSeries.some((series) => series.configKey?.trim() === effectiveSeriesKey);
+  const sectionSpacingClassName = isStandalone ? "pt-10 pb-12" : "pt-32 pb-20";
 
   useEffect(() => {
     if (!accessToken) {
@@ -1215,8 +1227,8 @@ const AnalyticsIntelligenceReport = () => {
   if (viewerStatus === "loading") {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
-        <section className="pt-32 pb-20">
+        {!isStandalone ? <Navbar /> : null}
+        <section className={sectionSpacingClassName}>
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-6xl space-y-6">
               <Skeleton className="h-16 w-48 rounded-2xl" />
@@ -1228,7 +1240,7 @@ const AnalyticsIntelligenceReport = () => {
             </div>
           </div>
         </section>
-        <Footer />
+        {!isStandalone ? <Footer /> : null}
       </div>
     );
   }
@@ -1236,8 +1248,8 @@ const AnalyticsIntelligenceReport = () => {
   if (viewerStatus === "error") {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
-        <section className="pt-32 pb-20">
+        {!isStandalone ? <Navbar /> : null}
+        <section className={sectionSpacingClassName}>
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-3xl">
               <Card className="border-destructive/30 bg-destructive/10 shadow-xl">
@@ -1263,7 +1275,7 @@ const AnalyticsIntelligenceReport = () => {
             </div>
           </div>
         </section>
-        <Footer />
+        {!isStandalone ? <Footer /> : null}
       </div>
     );
   }
@@ -1271,8 +1283,8 @@ const AnalyticsIntelligenceReport = () => {
   if (!hasViewerAccess) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
-        <section className="pt-32 pb-20">
+        {!isStandalone ? <Navbar /> : null}
+        <section className={sectionSpacingClassName}>
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-4xl">
               <Card className="border-border/80 bg-card/85 shadow-xl">
@@ -1348,7 +1360,7 @@ const AnalyticsIntelligenceReport = () => {
             </div>
           </div>
         </section>
-        <Footer />
+        {!isStandalone ? <Footer /> : null}
       </div>
     );
   }
@@ -1356,8 +1368,8 @@ const AnalyticsIntelligenceReport = () => {
   if (!Number.isFinite(numericPlayerId)) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
-        <section className="pt-32 pb-20">
+        {!isStandalone ? <Navbar /> : null}
+        <section className={sectionSpacingClassName}>
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-3xl">
               <Card className="border-border/80 bg-card/85 shadow-xl">
@@ -1379,16 +1391,16 @@ const AnalyticsIntelligenceReport = () => {
             </div>
           </div>
         </section>
-        <Footer />
+        {!isStandalone ? <Footer /> : null}
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      {!isStandalone ? <Navbar /> : null}
 
-      <section className="bg-gradient-hero pt-32 pb-20">
+      <section className={`bg-gradient-hero ${sectionSpacingClassName}`}>
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-7xl space-y-8">
             <div className="space-y-5">
@@ -1406,6 +1418,14 @@ const AnalyticsIntelligenceReport = () => {
                     intelligenceHref={intelligenceRoute}
                     linkState={routeState}
                   />
+                  {!isStandalone && standaloneReportUrl ? (
+                    <Button asChild>
+                      <a href={standaloneReportUrl} target="_blank" rel="noreferrer">
+                        Open Standalone Report
+                        <ExternalLink className="ml-2 h-4 w-4" />
+                      </a>
+                    </Button>
+                  ) : null}
                 </div>
                 <div className="space-y-3">
                   <div className="flex flex-wrap gap-2">
@@ -1688,18 +1708,20 @@ const AnalyticsIntelligenceReport = () => {
         </div>
       </section>
 
-      <PlayerReportChat
-        report={null}
-        mode="intelligence"
-        playerName={title}
-        playerId={numericPlayerId}
-        seriesConfigKey={effectiveSeriesKey}
-        seriesName={intelligenceReport?.meta?.series?.name || routeState.seriesName || null}
-        divisionId={divisionId}
-        divisionLabel={intelligenceReport?.meta?.scope?.scopeLabel || routeState.divisionLabel || null}
-      />
+      {!isStandalone ? (
+        <PlayerReportChat
+          report={null}
+          mode="intelligence"
+          playerName={title}
+          playerId={numericPlayerId}
+          seriesConfigKey={effectiveSeriesKey}
+          seriesName={intelligenceReport?.meta?.series?.name || routeState.seriesName || null}
+          divisionId={divisionId}
+          divisionLabel={intelligenceReport?.meta?.scope?.scopeLabel || routeState.divisionLabel || null}
+        />
+      ) : null}
 
-      <Footer />
+      {!isStandalone ? <Footer /> : null}
     </div>
   );
 };

@@ -58,6 +58,30 @@ function stripZeroSizeCanvases(document: Document) {
   });
 }
 
+function makeAssessmentDonutsPdfSafe(document: Document) {
+  const pdfSafeStyle = document.createElement("style");
+  pdfSafeStyle.textContent = `
+    .pdf-safe-donut-ring {
+      background: linear-gradient(180deg, rgba(49, 199, 191, 0.18), rgba(103, 183, 255, 0.18)) !important;
+      border: 12px solid rgba(103, 183, 255, 0.5) !important;
+      box-shadow: inset 0 0 0 1px rgba(145, 192, 215, 0.14) !important;
+    }
+
+    .pdf-safe-donut-ring::after {
+      width: 68px !important;
+      height: 68px !important;
+      background: #0d2230 !important;
+      box-shadow: inset 0 0 0 1px rgba(145, 192, 215, 0.12) !important;
+    }
+  `;
+  document.head.appendChild(pdfSafeStyle);
+
+  document.querySelectorAll<HTMLElement>(".donut-ring").forEach((ring) => {
+    ring.classList.add("pdf-safe-donut-ring");
+    ring.style.background = "linear-gradient(180deg, rgba(49, 199, 191, 0.18), rgba(103, 183, 255, 0.18))";
+  });
+}
+
 function blobToBase64(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -106,6 +130,7 @@ export async function renderReportFramePdf(frame: HTMLIFrameElement, fileNameBas
     scrollY: 0,
     onclone: (clonedDocument) => {
       stripZeroSizeCanvases(clonedDocument);
+      makeAssessmentDonutsPdfSafe(clonedDocument);
 
       const clonedHtml = clonedDocument.documentElement;
       const clonedBody = clonedDocument.body;

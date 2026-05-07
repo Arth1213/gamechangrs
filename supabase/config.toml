@@ -32,3 +32,6 @@ verify_jwt = true
 
 [functions.request-series-onboarding]
 verify_jwt = true
+
+[functions.send-report-pdf]
+verify_jwt = true

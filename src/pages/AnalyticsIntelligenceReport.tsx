@@ -34,8 +34,6 @@ import {
   fetchCricketViewerSeries,
   getAnalyticsWorkspaceRoute,
   getCricketPlayerIntelligenceDocumentUrl,
-  getCricketPlayerReportEmailUrl,
-  getCricketPlayerReportPdfUrl,
 } from "@/lib/cricketApi";
 
 function getDivisionId(value: string | null) {
@@ -1030,35 +1028,6 @@ const AnalyticsIntelligenceReport = () => {
       { seriesConfigKey: effectiveSeriesKey || undefined }
     );
   }, [divisionId, effectiveSeriesKey, numericPlayerId]);
-  const reportPdfUrl = useMemo(() => {
-    if (!Number.isFinite(numericPlayerId)) {
-      return null;
-    }
-
-    return getCricketPlayerReportPdfUrl(
-      {
-        playerId: numericPlayerId,
-        divisionId,
-      },
-      "intelligence",
-      { seriesConfigKey: effectiveSeriesKey || undefined }
-    );
-  }, [divisionId, effectiveSeriesKey, numericPlayerId]);
-  const reportEmailUrl = useMemo(() => {
-    if (!Number.isFinite(numericPlayerId)) {
-      return null;
-    }
-
-    return getCricketPlayerReportEmailUrl(
-      {
-        playerId: numericPlayerId,
-        divisionId,
-      },
-      "intelligence",
-      { seriesConfigKey: effectiveSeriesKey || undefined }
-    );
-  }, [divisionId, effectiveSeriesKey, numericPlayerId]);
-
   useEffect(() => {
     if (!accessToken) {
       setViewerSeries([]);
@@ -1497,8 +1466,7 @@ const AnalyticsIntelligenceReport = () => {
                   <StandaloneReportActions
                     reportLabel="Player Intelligence Report"
                     fileNameBase={`${title} player intelligence report`}
-                    pdfUrl={reportPdfUrl}
-                    emailUrl={reportEmailUrl}
+                    frameRef={reportFrameRef}
                     accessToken={accessToken}
                     onPrint={reportDocumentStatus === "success" ? handlePrintStandaloneReport : null}
                     disabled={reportDocumentStatus === "loading"}
@@ -1518,13 +1486,7 @@ const AnalyticsIntelligenceReport = () => {
               </div>
 
               <Card className="border-border/80 bg-card/85 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="font-display text-2xl text-foreground">Standalone report</CardTitle>
-                  <CardDescription>
-                    Protected source route: <span className="font-mono text-foreground">{reportDocumentUrl}</span>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 p-6">
                   {(reportDocumentStatus === "loading" || (reportDocumentStatus === "success" && isFrameLoading)) ? (
                     <div className="space-y-4">
                       <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-background/60 px-4 py-3 text-sm text-muted-foreground">

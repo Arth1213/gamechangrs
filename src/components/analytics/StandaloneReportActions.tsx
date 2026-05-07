@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { RefObject, useState } from "react";
 import { Download, Loader2, Mail, Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,33 +13,24 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { downloadBlob, renderReportFramePdf } from "@/lib/reportPdf";
 import { cn } from "@/lib/utils";
-import { emailCricketProtectedPdf, fetchCricketProtectedPdf } from "@/lib/cricketApi";
 
 type StandaloneReportActionsProps = {
   reportLabel: string;
   fileNameBase: string;
-  pdfUrl: string | null;
-  emailUrl: string | null;
+  frameRef: RefObject<HTMLIFrameElement | null>;
   accessToken: string;
   onPrint?: (() => void) | null;
   disabled?: boolean;
   className?: string;
 };
 
-function sanitizeDownloadFilename(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "report";
-}
-
 export default function StandaloneReportActions({
   reportLabel,
   fileNameBase,
-  pdfUrl,
-  emailUrl,
+  frameRef,
   accessToken,
   onPrint,
   disabled = false,
@@ -54,21 +45,14 @@ export default function StandaloneReportActions({
   const isActionDisabled = disabled || !accessToken;
 
   const handleDownload = async () => {
-    if (isActionDisabled || !pdfUrl) {
+    if (isActionDisabled || !frameRef.current) {
       return;
     }
 
     setDownloadStatus("loading");
     try {
-      const blob = await fetchCricketProtectedPdf(pdfUrl, {
-        accessToken,
-      });
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = `${sanitizeDownloadFilename(fileNameBase)}.pdf`;
-      link.click();
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      const pdf = await renderReportFramePdf(frameRef.current, fileNameBase);
+      downloadBlob(pdf.blob, pdf.filename);
     } catch (error) {
       toast({
         title: "PDF download failed",
@@ -80,19 +64,33 @@ export default function StandaloneReportActions({
   };
 
   const handleEmail = async () => {
-    if (isActionDisabled || !emailUrl || !emailAddress.trim()) {
+    if (isActionDisabled || !frameRef.current || !emailAddress.trim()) {
       return;
     }
 
     setEmailStatus("loading");
     try {
-      const payload = await emailCricketProtectedPdf(emailUrl, {
-        accessToken,
-        email: emailAddress.trim(),
+      const pdf = await renderReportFramePdf(frameRef.current, fileNameBase);
+      const { data, error } = await supabase.functions.invoke("send-report-pdf", {
+        body: {
+          email: emailAddress.trim(),
+          reportLabel,
+          filename: pdf.filename,
+          pdfBase64: pdf.base64,
+        },
+        headers: accessToken
+          ? {
+              Authorization: `Bearer ${accessToken}`,
+            }
+          : undefined,
       });
+      if (error) {
+        throw error;
+      }
+
       toast({
         title: "PDF sent",
-        description: payload.message || `${reportLabel} PDF emailed successfully.`,
+        description: data?.message || `${reportLabel} PDF emailed successfully.`,
       });
       setEmailDialogOpen(false);
       setEmailAddress("");
@@ -113,11 +111,11 @@ export default function StandaloneReportActions({
           <Printer className="mr-2 h-4 w-4" />
           Print / Save
         </Button>
-        <Button type="button" variant="outline" onClick={() => void handleDownload()} disabled={isActionDisabled || !pdfUrl || downloadStatus === "loading"}>
+        <Button type="button" variant="outline" onClick={() => void handleDownload()} disabled={isActionDisabled || !frameRef.current || downloadStatus === "loading"}>
           {downloadStatus === "loading" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
           Download PDF
         </Button>
-        <Button type="button" onClick={() => setEmailDialogOpen(true)} disabled={isActionDisabled || !emailUrl}>
+        <Button type="button" onClick={() => setEmailDialogOpen(true)} disabled={isActionDisabled || !frameRef.current}>
           <Mail className="mr-2 h-4 w-4" />
           Email PDF
         </Button>

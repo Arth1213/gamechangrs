@@ -1,17 +1,26 @@
 import { Activity, ArrowLeft } from "lucide-react";
+import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
-import AnalyticsSamplePreview from "@/components/analytics/AnalyticsSamplePreview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ANALYTICS_FEATURE_SAMPLES, getAnalyticsFeatureSample } from "@/lib/analyticsFeatureSamples";
+import { getAnalyticsFeatureSample } from "@/lib/analyticsFeatureSamples";
+import { measureEmbeddedReportHeight } from "@/lib/iframeReport";
 
 export default function AnalyticsFeatureSample() {
   const { sampleId } = useParams<{ sampleId: string }>();
   const sample = getAnalyticsFeatureSample(sampleId);
+  const sampleFrameRef = useRef<HTMLIFrameElement | null>(null);
+  const [sampleFrameHeight, setSampleFrameHeight] = useState(sample?.pageMinHeightPx || 2200);
+
+  const handleSampleFrameLoad = () => {
+    void measureEmbeddedReportHeight(sampleFrameRef.current, sample?.pageMinHeightPx || 2200)
+      .then((height) => setSampleFrameHeight(height))
+      .catch(() => undefined);
+  };
 
   if (!sample) {
     return (
@@ -77,43 +86,47 @@ export default function AnalyticsFeatureSample() {
             </div>
 
             <Card className="border-border/80 bg-card/85 shadow-xl">
-              <CardContent className="space-y-6 p-6 lg:p-8">
+              <CardContent className="space-y-5 p-6 lg:p-8">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Standalone sample</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Generated standalone report</p>
                     <h2 className="mt-2 font-display text-3xl text-foreground">{sample.title}</h2>
                   </div>
-                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{sample.audience}</p>
+                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                    This is the actual generated standalone report, with player names blurred for the public sample.
+                  </p>
                 </div>
 
                 <div className={sample.pageContainerClassName}>
-                  <AnalyticsSamplePreview
-                    src={sample.previewImageSrc}
-                    alt={sample.previewImageAlt}
-                    masks={sample.previewMasks}
-                    className={sample.pageFrameClassName}
-                    imageClassName={sample.pageImageClassName}
-                  />
+                  <div className="relative overflow-hidden rounded-[28px] border border-border/80 bg-background/60">
+                    <iframe
+                      ref={sampleFrameRef}
+                      src={sample.sampleHtmlSrc}
+                      title={`${sample.title} standalone sample`}
+                      loading="lazy"
+                      onLoad={handleSampleFrameLoad}
+                      style={{ height: `${sampleFrameHeight}px` }}
+                      className={`block w-full border-0 ${sample.pageContentClassName}`}
+                    />
+                    <div className="pointer-events-none absolute inset-0">
+                      {sample.previewMasks.map((mask, index) => (
+                        <div
+                          key={`${mask.left}-${mask.top}-${index}`}
+                          className={`absolute border border-white/10 bg-slate-950/18 shadow-[0_18px_40px_rgba(2,6,23,0.24)] backdrop-blur-xl ${mask.className ?? "rounded-2xl"}`}
+                          style={{
+                            left: `${mask.left}%`,
+                            top: `${mask.top}%`,
+                            width: `${mask.width}%`,
+                            height: `${mask.height}%`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              {ANALYTICS_FEATURE_SAMPLES.filter((entry) => entry.id !== sample.id).map((entry) => (
-                <Card key={entry.id} className="border-border/80 bg-card/80 shadow-sm">
-                  <CardContent className="flex h-full flex-col justify-between gap-4 p-6">
-                    <div className="space-y-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-primary">Also live</p>
-                      <h3 className="font-display text-2xl text-foreground">{entry.title}</h3>
-                      <p className="text-sm leading-7 text-muted-foreground">{entry.description}</p>
-                    </div>
-                    <Button asChild variant="outline">
-                      <Link to={entry.path}>Open {entry.title} sample</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
           </div>
         </div>
       </section>

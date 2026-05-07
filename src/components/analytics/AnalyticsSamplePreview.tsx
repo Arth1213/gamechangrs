@@ -2,23 +2,34 @@ import { AnalyticsSampleMask } from "@/lib/analyticsFeatureSamples";
 import { cn } from "@/lib/utils";
 
 type AnalyticsSamplePreviewProps = {
+  contentType?: "image" | "html";
   src: string;
   alt: string;
   masks: AnalyticsSampleMask[];
   className?: string;
-  imageClassName?: string;
+  contentClassName?: string;
 };
 
 export default function AnalyticsSamplePreview({
+  contentType = "image",
   src,
   alt,
   masks,
   className,
-  imageClassName,
+  contentClassName,
 }: AnalyticsSamplePreviewProps) {
   return (
     <div className={cn("relative overflow-hidden rounded-[28px] border border-border/80 bg-background/60", className)}>
-      <img src={src} alt={alt} className={cn("h-full w-full", imageClassName)} />
+      {contentType === "html" ? (
+        <iframe
+          src={src}
+          title={alt}
+          loading="lazy"
+          className={cn("h-full w-full border-0 bg-white pointer-events-none", contentClassName)}
+        />
+      ) : (
+        <img src={src} alt={alt} className={cn("h-full w-full", contentClassName)} />
+      )}
       <div className="pointer-events-none absolute inset-0">
         {masks.map((mask, index) => (
           <div

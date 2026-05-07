@@ -1,0 +1,1960 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Player Intelligence Sample Report</title>
+        <meta name="description" content="Blurred player intelligence sample report.">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <style>
+  :root {
+    --bg: #06131c;
+    --bg-2: #0b1f2c;
+    --panel: rgba(12, 31, 44, 0.9);
+    --panel-2: rgba(16, 42, 59, 0.94);
+    --panel-3: rgba(18, 48, 66, 0.74);
+    --ink: #eef6fb;
+    --muted: #9db6c6;
+    --line: rgba(145, 192, 215, 0.18);
+    --teal: #31c7bf;
+    --sky: #67b7ff;
+    --lime: #8ed97c;
+    --amber: #f0bf69;
+    --orange: #f38b63;
+    --teal-soft: rgba(49, 199, 191, 0.12);
+    --sky-soft: rgba(103, 183, 255, 0.12);
+    --lime-soft: rgba(142, 217, 124, 0.14);
+    --amber-soft: rgba(240, 191, 105, 0.14);
+    --orange-soft: rgba(243, 139, 99, 0.14);
+    --shadow: 0 18px 44px rgba(0, 0, 0, 0.26);
+    --radius-xl: 30px;
+    --radius-lg: 24px;
+    --radius-md: 18px;
+    --radius-sm: 14px;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at top left, rgba(49, 199, 191, 0.18), transparent 22%),
+      radial-gradient(circle at top right, rgba(103, 183, 255, 0.16), transparent 22%),
+      linear-gradient(180deg, #081722 0%, #06131c 100%);
+    font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+  }
+
+  a {
+    color: var(--sky);
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  h1, h2, h3, h4 {
+    margin: 0;
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    line-height: 0.98;
+    letter-spacing: 0.01em;
+  }
+
+  h1 {
+    font-size: clamp(42px, 5vw, 74px);
+  }
+
+  h2 {
+    font-size: clamp(30px, 3.1vw, 42px);
+  }
+
+  h3 {
+    font-size: clamp(22px, 2.3vw, 28px);
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .sample-name-mask {
+    display: inline-block;
+    filter: blur(10px);
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .page-shell {
+    width: min(1400px, calc(100% - 28px));
+    margin: 18px auto 26px;
+  }
+
+  .chrome {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px 20px;
+    margin-bottom: 18px;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(145, 192, 215, 0.14);
+    background:
+      linear-gradient(155deg, rgba(10, 28, 39, 0.96), rgba(7, 20, 29, 0.98)),
+      linear-gradient(90deg, rgba(49, 199, 191, 0.08), transparent 30%);
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .chrome::before,
+  .chrome::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .chrome::before {
+    width: 280px;
+    height: 280px;
+    top: -150px;
+    right: -90px;
+    background: radial-gradient(circle, rgba(49, 199, 191, 0.20), transparent 68%);
+  }
+
+  .chrome::after {
+    width: 230px;
+    height: 230px;
+    bottom: -140px;
+    left: -70px;
+    background: radial-gradient(circle, rgba(103, 183, 255, 0.16), transparent 68%);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .brand-mark {
+    min-width: 44px;
+    height: 44px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--teal), var(--sky));
+    display: grid;
+    place-items: center;
+    color: #06202c;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    box-shadow: 0 10px 24px rgba(49, 199, 191, 0.24);
+  }
+
+  .brand-copy {
+    display: grid;
+    gap: 2px;
+  }
+
+  .brand-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--teal);
+    font-weight: 800;
+  }
+
+  .brand-subtitle {
+    font-size: 15px;
+    color: #dbeaf1;
+    font-weight: 700;
+  }
+
+  .nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .nav-link {
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(145, 192, 215, 0.12);
+    background: rgba(255, 255, 255, 0.035);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .nav-link:hover {
+    text-decoration: none;
+    color: var(--ink);
+    border-color: rgba(145, 192, 215, 0.24);
+  }
+
+  .nav-link.active {
+    color: #06202c;
+    background: linear-gradient(135deg, var(--teal), #84d9ff);
+    border-color: transparent;
+  }
+
+  .pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .pill {
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(145, 192, 215, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .pill strong {
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .pill-good {
+    background: var(--lime-soft);
+    color: var(--lime);
+  }
+
+  .pill-watch {
+    background: var(--amber-soft);
+    color: var(--amber);
+  }
+
+  .pill-risk {
+    background: var(--orange-soft);
+    color: var(--orange);
+  }
+
+  .sheet {
+    margin-bottom: 18px;
+    padding: 18px;
+    border-radius: 34px;
+    background:
+      linear-gradient(160deg, rgba(10, 28, 39, 0.96), rgba(7, 20, 29, 0.98)),
+      linear-gradient(90deg, rgba(49, 199, 191, 0.08), transparent 30%);
+    border: 1px solid rgba(145, 192, 215, 0.14);
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sheet::before,
+  .sheet::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .sheet::before {
+    width: 320px;
+    height: 320px;
+    top: -170px;
+    right: -110px;
+    background: radial-gradient(circle, rgba(49, 199, 191, 0.18), transparent 68%);
+  }
+
+  .sheet::after {
+    width: 260px;
+    height: 260px;
+    bottom: -150px;
+    left: -90px;
+    background: radial-gradient(circle, rgba(103, 183, 255, 0.14), transparent 68%);
+  }
+
+  .hero-grid,
+  .split-2,
+  .split-3,
+  .card-grid,
+  .metric-grid,
+  .micro-grid,
+  .peer-grid,
+  .trend-grid,
+  .form-grid,
+  .checkbox-grid,
+  .link-set,
+  .phase-grid {
+    display: grid;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-grid {
+    grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+  }
+
+  .split-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .split-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .micro-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .peer-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .trend-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .form-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .checkbox-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .link-set {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .phase-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-panel,
+  .side-panel,
+  .card,
+  .metric,
+  .micro,
+  .peer-card,
+  .trend-card,
+  .status-box,
+  .details-card,
+  .field,
+  .empty-state {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+  }
+
+  .hero-panel,
+  .side-panel,
+  .card,
+  .metric,
+  .micro,
+  .peer-card,
+  .trend-card,
+  .status-box,
+  .empty-state {
+    padding: 22px;
+  }
+
+  .hero-panel {
+    background:
+      linear-gradient(140deg, rgba(14, 38, 53, 0.98), rgba(7, 22, 31, 0.98)),
+      linear-gradient(90deg, rgba(49, 199, 191, 0.1), transparent);
+  }
+
+  .side-panel {
+    background:
+      linear-gradient(160deg, rgba(10, 29, 40, 0.98), rgba(7, 20, 29, 0.98)),
+      linear-gradient(180deg, rgba(103, 183, 255, 0.08), transparent);
+  }
+
+  .eyebrow,
+  .section-eyebrow,
+  .card-topline,
+  .metric-label,
+  .micro-label,
+  .meta-label,
+  .details-kicker {
+    display: inline-block;
+    color: var(--teal);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .section-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: end;
+    gap: 14px;
+    margin-bottom: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .section-copy,
+  .hero-copy,
+  .card-copy,
+  .metric-copy,
+  .micro-copy,
+  .subtle,
+  .field-note,
+  .status-copy,
+  .empty-copy {
+    color: #dceaf2;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  .subtle,
+  .field-note,
+  .status-copy,
+  .empty-copy {
+    color: var(--muted);
+  }
+
+  .hero-copy {
+    max-width: 760px;
+    margin-top: 12px;
+  }
+
+  .callout {
+    margin-top: 16px;
+    padding: 16px 18px;
+    border-radius: 20px;
+    border-left: 4px solid var(--teal);
+    background: rgba(255, 255, 255, 0.035);
+    color: #bfe7ef;
+    font-size: 16px;
+    line-height: 1.7;
+  }
+
+  .meta-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .meta-pill {
+    padding: 10px 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(145, 192, 215, 0.12);
+    background: rgba(255, 255, 255, 0.035);
+    min-width: 136px;
+  }
+
+  .meta-value {
+    display: block;
+    margin-top: 6px;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.45;
+  }
+
+  .score-panel {
+    display: grid;
+    gap: 16px;
+  }
+
+  .score-orb {
+    display: grid;
+    place-items: center;
+    min-height: 180px;
+    border-radius: 28px;
+    background:
+      radial-gradient(circle at 32% 22%, rgba(49, 199, 191, 0.22), transparent 40%),
+      linear-gradient(165deg, rgba(22, 56, 74, 0.96), rgba(8, 25, 35, 0.98));
+    border: 1px solid rgba(145, 192, 215, 0.18);
+  }
+
+  .score-value {
+    font-size: clamp(58px, 7vw, 88px);
+    line-height: 0.9;
+    color: var(--teal);
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 800;
+  }
+
+  .score-caption {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    text-align: center;
+  }
+
+  .metric-value,
+  .micro-value {
+    color: var(--ink);
+    font-size: 32px;
+    line-height: 1;
+    font-weight: 800;
+    margin-top: 10px;
+  }
+
+  .metric-value {
+    color: var(--teal);
+  }
+
+  .micro-value {
+    font-size: 28px;
+  }
+
+  .meter {
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    margin-top: 14px;
+  }
+
+  .meter-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--teal), #84d9ff);
+  }
+
+  .meter-fill.good {
+    background: linear-gradient(90deg, var(--lime), #b9ff9e);
+  }
+
+  .meter-fill.watch {
+    background: linear-gradient(90deg, var(--amber), #ffd48d);
+  }
+
+  .meter-fill.risk {
+    background: linear-gradient(90deg, var(--orange), #ffb293);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  .badge-good {
+    background: var(--lime-soft);
+    border-color: rgba(142, 217, 124, 0.18);
+    color: var(--lime);
+  }
+
+  .badge-watch {
+    background: var(--amber-soft);
+    border-color: rgba(240, 191, 105, 0.18);
+    color: var(--amber);
+  }
+
+  .badge-risk {
+    background: var(--orange-soft);
+    border-color: rgba(243, 139, 99, 0.18);
+    color: var(--orange);
+  }
+
+  .badge-neutral {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(145, 192, 215, 0.12);
+    color: var(--muted);
+  }
+
+  .card-span-3 { grid-column: span 3; }
+  .card-span-4 { grid-column: span 4; }
+  .card-span-5 { grid-column: span 5; }
+  .card-span-6 { grid-column: span 6; }
+  .card-span-7 { grid-column: span 7; }
+  .card-span-8 { grid-column: span 8; }
+  .card-span-9 { grid-column: span 9; }
+  .card-span-12 { grid-column: span 12; }
+
+  .stack {
+    display: grid;
+    gap: 14px;
+  }
+
+  .compact-stack {
+    display: grid;
+    gap: 10px;
+  }
+
+  .keyline {
+    height: 1px;
+    background: rgba(145, 192, 215, 0.12);
+    margin: 2px 0;
+  }
+
+  .player-row,
+  .match-row,
+  .peer-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .player-name,
+  .peer-name {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .player-meta,
+  .peer-meta {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .table-wrap {
+    position: relative;
+    z-index: 1;
+    overflow-x: auto;
+    border-radius: 20px;
+    border: 1px solid rgba(145, 192, 215, 0.12);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 720px;
+  }
+
+  th, td {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(145, 192, 215, 0.10);
+    text-align: left;
+    vertical-align: top;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  th {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 800;
+    background: rgba(255, 255, 255, 0.04);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  .empty-cell {
+    color: var(--muted);
+    text-align: center;
+    padding: 28px 16px;
+  }
+
+  .inline-score {
+    font-weight: 800;
+    color: var(--teal);
+  }
+
+  .search-shell {
+    margin-top: 20px;
+    display: grid;
+    gap: 12px;
+  }
+
+  .search-input-row,
+  .action-row,
+  .inline-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .search-results {
+    display: grid;
+    gap: 12px;
+  }
+
+  .result-card {
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(145, 192, 215, 0.12);
+  }
+
+  .result-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    color: var(--ink);
+    font-size: 16px;
+  }
+
+  .result-link:hover {
+    color: var(--sky);
+    text-decoration: none;
+  }
+
+  .result-meta {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .trend-bars {
+    display: flex;
+    align-items: end;
+    gap: 8px;
+    min-height: 104px;
+    margin-top: 18px;
+  }
+
+  .trend-column {
+    flex: 1;
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+  }
+
+  .trend-bar {
+    width: 100%;
+    min-height: 14px;
+    border-radius: 999px 999px 10px 10px;
+    background: linear-gradient(180deg, rgba(132, 217, 255, 0.94), rgba(49, 199, 191, 0.52));
+  }
+
+  .trend-label {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.4;
+    text-align: center;
+  }
+
+  .trend-point {
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .trend-note {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .peer-card.subject {
+    background:
+      linear-gradient(160deg, rgba(20, 52, 70, 0.98), rgba(10, 27, 38, 0.98)),
+      linear-gradient(90deg, rgba(49, 199, 191, 0.1), transparent);
+    border-color: rgba(49, 199, 191, 0.22);
+  }
+
+  .recommendation {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: var(--lime-soft);
+    border: 1px solid rgba(142, 217, 124, 0.20);
+    color: var(--lime);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+  }
+
+  .details-card {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .details-card > summary {
+    list-style: none;
+    padding: 18px 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .details-card > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .details-title {
+    display: grid;
+    gap: 6px;
+  }
+
+  .details-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .details-body {
+    padding: 18px;
+    display: grid;
+    gap: 16px;
+  }
+
+  .field {
+    padding: 16px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .field label,
+  .field .field-label {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 800;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+  }
+
+  input,
+  textarea,
+  select {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(145, 192, 215, 0.16);
+    background: rgba(4, 16, 24, 0.82);
+    color: var(--ink);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: rgba(157, 182, 198, 0.72);
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: 2px solid rgba(49, 199, 191, 0.28);
+    border-color: rgba(49, 199, 191, 0.32);
+  }
+
+  textarea {
+    min-height: 110px;
+    resize: vertical;
+  }
+
+  .checkbox-field {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .checkbox-field input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+  }
+
+  .button,
+  button {
+    border: 0;
+    border-radius: 999px;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 12px;
+    color: #06202c;
+    background: linear-gradient(135deg, var(--teal), #84d9ff);
+    box-shadow: 0 10px 24px rgba(49, 199, 191, 0.18);
+  }
+
+  .button.secondary,
+  button.secondary {
+    background: linear-gradient(135deg, var(--amber), #ffd28b);
+    box-shadow: 0 10px 24px rgba(240, 191, 105, 0.18);
+  }
+
+  .button.ghost,
+  button.ghost {
+    color: var(--ink);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(145, 192, 215, 0.16);
+    box-shadow: none;
+  }
+
+  button:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+
+  .status-box pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #d8f1fb;
+    font-size: 13px;
+    line-height: 1.7;
+    font-family: "SFMono-Regular", "Consolas", monospace;
+  }
+
+  .mono {
+    font-family: "SFMono-Regular", "Consolas", monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .inline-note {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  .right {
+    text-align: right;
+  }
+
+  @media (max-width: 1120px) {
+    .hero-grid,
+    .trend-grid,
+    .peer-grid,
+    .metric-grid,
+    .micro-grid,
+    .phase-grid,
+    .split-2,
+    .split-3,
+    .link-set,
+    .checkbox-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .card-span-3,
+    .card-span-4,
+    .card-span-5,
+    .card-span-6,
+    .card-span-7,
+    .card-span-8,
+    .card-span-9 {
+      grid-column: span 12;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .page-shell {
+      width: min(100%, calc(100% - 18px));
+      margin: 10px auto 20px;
+    }
+
+    .sheet,
+    .chrome {
+      padding: 14px;
+      border-radius: 24px;
+    }
+
+    .hero-grid,
+    .split-2,
+    .split-3,
+    .metric-grid,
+    .micro-grid,
+    .peer-grid,
+    .trend-grid,
+    .phase-grid,
+    .checkbox-grid,
+    .link-set {
+      grid-template-columns: 1fr;
+    }
+
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+
+    table {
+      min-width: 620px;
+    }
+
+    .nav,
+    .pill-row,
+    .action-row,
+    .inline-actions,
+    .search-input-row {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+
+    .intelligence-shell {
+      display: grid;
+      gap: 18px;
+    }
+
+    .report-title {
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero-grid,
+    .section-grid,
+    .card-grid,
+    .detail-grid,
+    .plan-grid,
+    .stat-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .hero-grid {
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      align-items: start;
+    }
+
+    .section-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .detail-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .plan-grid,
+    .stat-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .hero-panel,
+    .surface-panel,
+    .summary-panel,
+    .detail-panel,
+    .table-panel {
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(145, 192, 215, 0.14);
+      background: linear-gradient(180deg, rgba(14, 34, 48, 0.9), rgba(8, 22, 31, 0.95));
+      box-shadow: var(--shadow);
+    }
+
+    .hero-panel {
+      padding: 28px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .surface-panel,
+    .summary-panel,
+    .detail-panel,
+    .table-panel {
+      padding: 22px;
+    }
+
+    .summary-copy {
+      font-size: 17px;
+      line-height: 1.75;
+      color: #d7e7ef;
+    }
+
+    .meta-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .meta-chip {
+      padding: 9px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(145, 192, 215, 0.14);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .meta-chip strong {
+      color: var(--muted);
+    }
+
+    .metric-card {
+      padding: 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(145, 192, 215, 0.14);
+      background: rgba(255, 255, 255, 0.03);
+      display: grid;
+      gap: 10px;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .metric-value {
+      font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+      font-size: clamp(32px, 4vw, 42px);
+      line-height: 0.95;
+      color: var(--ink);
+    }
+
+    .metric-value.good {
+      color: var(--lime);
+    }
+
+    .metric-value.watch {
+      color: var(--amber);
+    }
+
+    .metric-value.risk {
+      color: var(--orange);
+    }
+
+    .metric-note {
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--muted);
+    }
+
+    .summary-panel h3,
+    .detail-panel h3,
+    .table-panel h3 {
+      margin-bottom: 10px;
+    }
+
+    .summary-panel p,
+    .detail-panel p,
+    .table-panel p {
+      color: var(--muted);
+      line-height: 1.75;
+    }
+
+    .callout-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .callout {
+      padding: 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(145, 192, 215, 0.14);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .callout.good {
+      border-color: rgba(142, 217, 124, 0.22);
+      background: rgba(142, 217, 124, 0.08);
+    }
+
+    .callout.watch {
+      border-color: rgba(240, 191, 105, 0.22);
+      background: rgba(240, 191, 105, 0.08);
+    }
+
+    .callout.risk {
+      border-color: rgba(243, 139, 99, 0.22);
+      background: rgba(243, 139, 99, 0.08);
+    }
+
+    .callout-label {
+      margin-bottom: 8px;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .bullet-list {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 10px;
+      color: #d7e7ef;
+      line-height: 1.7;
+    }
+
+    .insight-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .insight-item {
+      padding-top: 12px;
+      border-top: 1px solid rgba(145, 192, 215, 0.12);
+    }
+
+    .insight-item:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .insight-title {
+      margin-bottom: 6px;
+      color: var(--ink);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-weight: 800;
+    }
+
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      overflow: hidden;
+      border-radius: 18px;
+      border: 1px solid rgba(145, 192, 215, 0.14);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .report-table th,
+    .report-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(145, 192, 215, 0.12);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .report-table th {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--muted);
+      font-weight: 800;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .report-table td {
+      color: #d7e7ef;
+      line-height: 1.6;
+    }
+
+    .report-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .align-right {
+      text-align: right !important;
+    }
+
+    .empty-state {
+      padding: 16px;
+      margin-top: 16px;
+      border-radius: var(--radius-md);
+      border: 1px dashed rgba(145, 192, 215, 0.22);
+      color: var(--muted);
+    }
+
+    .footnote {
+      margin-top: 10px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(145, 192, 215, 0.14);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 2px;
+    }
+
+    @media (max-width: 1120px) {
+      .hero-grid,
+      .section-grid,
+      .detail-grid,
+      .plan-grid,
+      .stat-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page-shell {
+        width: min(100%, calc(100% - 16px));
+      }
+
+      .sheet,
+      .hero-panel,
+      .surface-panel,
+      .summary-panel,
+      .detail-panel,
+      .table-panel {
+        padding: 18px;
+      }
+
+      .card-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .report-table {
+        display: block;
+        overflow-x: auto;
+      }
+    }
+
+    @media print {
+      html, body {
+        background: #06131c !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .page-shell {
+        width: 100%;
+        margin: 0;
+      }
+
+      .sheet,
+      .hero-panel,
+      .surface-panel,
+      .summary-panel,
+      .detail-panel,
+      .table-panel {
+        box-shadow: none;
+      }
+    }
+  </style>
+      </head>
+      <body>
+        <div class="page-shell intelligence-shell">
+          <section class="sheet">
+            <div class="report-title">
+              <div class="eyebrow">Game-Changrs Player Intelligence</div>
+              <div class="hero-grid">
+                <div class="hero-panel">
+                  <div>
+                    <h1><span class="sample-name-mask">Unmukt Chand</span></h1>
+                    <p class="summary-copy" style="margin-top: 12px;">The player is mainly a batting threat against Left-Arm Spin. The player is most vulnerable against Right-Arm Pace. Shows how often the player still finds a boundary after dot-ball pressure builds.</p>
+                  </div>
+                  <div class="meta-strip">
+                    <div class="meta-chip"><strong>Team</strong> Kings XI Dallas</div>
+                    <div class="meta-chip"><strong>Role</strong> Batter</div>
+                    <div class="meta-chip"><strong>Series</strong> MilC 2025 • Open</div>
+                    <div class="meta-chip"><strong>Scope</strong> All Divisions</div>
+                    <div class="meta-chip"><strong>Recommendation</strong> Development Watch</div>
+                  </div>
+                  
+                </div>
+                <div class="surface-panel">
+                  <div class="callout-stack">
+                    <div class="callout good">
+                      <div class="callout-label">Main Threat</div>
+                      <p>The player is mainly a batting threat against Left-Arm Spin.</p>
+                    </div>
+                    <div class="callout risk">
+                      <div class="callout-label">Main Weakness</div>
+                      <p>The player is most vulnerable against Right-Arm Pace.</p>
+                    </div>
+                    <div class="callout watch">
+                      <div class="callout-label">Pressure Note</div>
+                      <p>Shows how often the player still finds a boundary after dot-ball pressure builds.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="card-grid">
+              
+      <div class="metric-card">
+        <div class="metric-label">Confidence</div>
+        <div class="metric-value watch">High · 100</div>
+        <div class="metric-note">How strong the live evidence is for this intelligence read.</div>
+      </div>
+    
+      <div class="metric-card">
+        <div class="metric-label">Percentile</div>
+        <div class="metric-value watch">64th</div>
+        <div class="metric-note">Manageable, but still a live planning concern.</div>
+      </div>
+    
+      <div class="metric-card">
+        <div class="metric-label">Composite Selector Score</div>
+        <div class="metric-value good">58.4</div>
+        <div class="metric-note">Current selector score feeding the report.</div>
+      </div>
+    
+      <div class="metric-card">
+        <div class="metric-label">Threat Level</div>
+        <div class="metric-value watch">Amber</div>
+        <div class="metric-note">Manageable, but still a live planning concern.</div>
+      </div>
+    
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="plan-grid">
+              <div class="summary-panel">
+                <h3>Batting Plan</h3>
+                <p>How the report says to approach this player with the bat.</p>
+                
+      <ul class="bullet-list">
+        <li>Most vulnerable batting setup is against Right-Arm Pace in the current live sample.</li><li>Right-Arm Pace has produced the most dismissals so far, especially by caught.</li><li>Dot-ball pressure matters here. Dismissals have often come after about 1 dots in a row.</li>
+      </ul>
+    
+              </div>
+              <div class="summary-panel">
+                <h3>Bowling Plan</h3>
+                <p>How the report says to manage this player with the ball.</p>
+                <div class="empty-state">No bowling plan lines are available yet.</div>
+              </div>
+              <div class="summary-panel">
+                <h3>Player Summary</h3>
+                <p>Compact context for what the current intelligence report is saying.</p>
+                <div class="insight-list">
+                  <div class="insight-item">
+                    <div class="insight-title">Batting Profile</div>
+                    <p>Right Right Handed Batter</p>
+                  </div>
+                  <div class="insight-item">
+                    <div class="insight-title">Bowling Profile</div>
+                    <p>Right Arm Medium</p>
+                  </div>
+                  <div class="insight-item">
+                    <div class="insight-title">Scope</div>
+                    <p>All Divisions</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="stat-grid">
+              
+      <div class="table-panel">
+        <h3>Batting Stats</h3>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th class="align-right">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+                <tr>
+                  <td>Matches</td>
+                  <td class="align-right">10</td>
+                </tr>
+              
+                <tr>
+                  <td>Runs</td>
+                  <td class="align-right">308</td>
+                </tr>
+              
+                <tr>
+                  <td>Balls</td>
+                  <td class="align-right">243</td>
+                </tr>
+              
+                <tr>
+                  <td>Strike Rate</td>
+                  <td class="align-right">126.8</td>
+                </tr>
+              
+                <tr>
+                  <td>Average</td>
+                  <td class="align-right">38.5</td>
+                </tr>
+              
+                <tr>
+                  <td>50s</td>
+                  <td class="align-right">3</td>
+                </tr>
+              
+          </tbody>
+        </table>
+      </div>
+    
+              
+      <div class="table-panel">
+        <h3>Bowling Stats</h3>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th class="align-right">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+                <tr>
+                  <td>Matches</td>
+                  <td class="align-right">0</td>
+                </tr>
+              
+                <tr>
+                  <td>Overs</td>
+                  <td class="align-right">0.0</td>
+                </tr>
+              
+                <tr>
+                  <td>Wickets</td>
+                  <td class="align-right">0</td>
+                </tr>
+              
+                <tr>
+                  <td>Economy</td>
+                  <td class="align-right">—</td>
+                </tr>
+              
+                <tr>
+                  <td>4 Wicket Hauls</td>
+                  <td class="align-right">0</td>
+                </tr>
+              
+                <tr>
+                  <td>5 Wicket Hauls</td>
+                  <td class="align-right">0</td>
+                </tr>
+              
+          </tbody>
+        </table>
+      </div>
+    
+              
+      <div class="table-panel">
+        <h3>Fielding / Wicketkeeping Stats</h3>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th class="align-right">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+                <tr>
+                  <td>Matches</td>
+                  <td class="align-right">7</td>
+                </tr>
+              
+                <tr>
+                  <td>Catches</td>
+                  <td class="align-right">7</td>
+                </tr>
+              
+                <tr>
+                  <td>Run Outs</td>
+                  <td class="align-right">1</td>
+                </tr>
+              
+                <tr>
+                  <td>Stumpings</td>
+                  <td class="align-right">0</td>
+                </tr>
+              
+          </tbody>
+        </table>
+      </div>
+    
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="detail-grid">
+              <div class="detail-panel">
+                <h3>Threat Signals</h3>
+                <p>The clearest live indicators behind the current threat read.</p>
+                
+      <div class="insight-list">
+        
+            <div class="insight-item">
+              <div class="insight-title">Batting vs Left-Arm Spin</div>
+              <p>Scored 44 runs from 22 balls against this bowling type across 2 matches.</p>
+            </div>
+          
+      </div>
+    
+              </div>
+              <div class="detail-panel">
+                <h3>Watchouts</h3>
+                <p>The live indicators showing where the opposition can target this player.</p>
+                
+      <div class="insight-list">
+        
+            <div class="insight-item">
+              <div class="insight-title">Dismissal pattern vs Right-Arm Pace</div>
+              <p>Most wickets here have come through caught, usually around 28.83 runs at dismissal.</p>
+            </div>
+          
+      </div>
+    
+              </div>
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="detail-grid">
+              <div class="detail-panel">
+                <h3>Matchup & Usage Insights</h3>
+                <p>How the player is being used and which matchups are shaping the read.</p>
+                
+      <div class="insight-list">
+        
+            <div class="insight-item">
+              <div class="insight-title">Named head-to-heads</div>
+              <p>Most repeated batting duel is against Anwar Ali Khan: 16 runs from 19 balls across 2 matches.</p>
+            </div>
+          
+            <div class="insight-item">
+              <div class="insight-title">Phase and matchup lens</div>
+              <p>Batting impact is strongest against Left-Arm Spin in the Middle overs: 42 runs from 19 balls at 221.05 strike rate.</p>
+            </div>
+          
+            <div class="insight-item">
+              <div class="insight-title">Entry-state context</div>
+              <p>Batting entries usually start around 3 runs with 1 wickets down, most often in the Powerplay.</p>
+            </div>
+          
+            <div class="insight-item">
+              <div class="insight-title">Role usage patterns</div>
+              <p>Used mostly as a top-order batter across 10 innings.</p>
+            </div>
+          
+      </div>
+    
+              </div>
+              <div class="detail-panel">
+                <h3>Pressure & Evidence Insights</h3>
+                <p>Pressure markers and commentary-backed interpretation from the live sample.</p>
+                
+      <div class="insight-list">
+        
+            <div class="insight-item">
+              <div class="insight-title">Rhythm signals</div>
+              <p>Boundary release usually comes after about 1.8 dots. Dismissal pressure appears after about 1 dots. After three dots, boundary response is 40% and wicket risk is 0%. High-pressure batting strike rate is 125.71.</p>
+            </div>
+          
+            <div class="insight-item">
+              <div class="insight-title">Dismissal clustering</div>
+              <p>Wickets are clustering most against Right-Arm Pace, mainly through caught. The current pattern shows dismissals around 28.83 runs and 24.33 balls into the innings.</p>
+            </div>
+          
+            <div class="insight-item">
+              <div class="insight-title">Evidence-ranked matches</div>
+              <p>The first matches to review are Oct 2, 2025 Kings XI Dallas v Chicago Kingsmen, Oct 1, 2025 Silicon Valley Strikers v Kings XI Dallas, Sep 6, 2025 Kings XI Dallas v MetroPlex Tracers. These currently carry the strongest commentary-backed evidence for this player.</p>
+            </div>
+          
+      </div>
+    
+              </div>
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="section-grid">
+              
+      <div class="table-panel">
+        <h3>Batting Vs Bowler Type</h3>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Setup</th>
+              <th class="align-right">Matches</th>
+              <th class="align-right">Balls</th>
+              
+                  <th class="align-right">Runs</th>
+                  <th class="align-right">Strike Rate</th>
+                  <th class="align-right">Average</th>
+                  <th class="align-right">Dismissals</th>
+                
+            </tr>
+          </thead>
+          <tbody>
+            
+                <tr>
+                  <td>Left-Arm Spin</td>
+                  <td class="align-right">2</td>
+                  <td class="align-right">22</td>
+                  
+                      <td class="align-right">44</td>
+                      <td class="align-right">200</td>
+                      <td class="align-right">6.3</td>
+                      <td class="align-right">7</td>
+                    
+                </tr>
+              
+                <tr>
+                  <td>Leg-Spin</td>
+                  <td class="align-right">1</td>
+                  <td class="align-right">3</td>
+                  
+                      <td class="align-right">6</td>
+                      <td class="align-right">200</td>
+                      <td class="align-right">—</td>
+                      <td class="align-right">0</td>
+                    
+                </tr>
+              
+                <tr>
+                  <td>Off-Spin</td>
+                  <td class="align-right">2</td>
+                  <td class="align-right">10</td>
+                  
+                      <td class="align-right">13</td>
+                      <td class="align-right">130</td>
+                      <td class="align-right">13</td>
+                      <td class="align-right">1</td>
+                    
+                </tr>
+              
+                <tr>
+                  <td>Right-Arm Pace</td>
+                  <td class="align-right">9</td>
+                  <td class="align-right">191</td>
+                  
+                      <td class="align-right">225</td>
+                      <td class="align-right">117.8</td>
+                      <td class="align-right">20.4</td>
+                      <td class="align-right">11</td>
+                    
+                </tr>
+              
+                <tr>
+                  <td>Left-Arm Pace</td>
+                  <td class="align-right">2</td>
+                  <td class="align-right">17</td>
+                  
+                      <td class="align-right">20</td>
+                      <td class="align-right">117.7</td>
+                      <td class="align-right">—</td>
+                      <td class="align-right">0</td>
+                    
+                </tr>
+              
+          </tbody>
+        </table>
+      </div>
+    
+              
+        <div class="table-panel">
+          <h3>Bowling Vs Batter Type</h3>
+          <div class="empty-state">No matchup sample is available yet in this lens.</div>
+        </div>
+      
+            </div>
+          </section>
+
+          <section class="sheet">
+            
+      <div class="table-panel">
+        <h3>Dismissal Pattern</h3>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Bowler Type</th>
+              <th>Dismissal</th>
+              <th class="align-right">Wickets</th>
+              <th class="align-right">Matches</th>
+              <th class="align-right">Avg Runs At Wicket</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+                <tr>
+                  <td>Right-Arm Pace</td>
+                  <td>caught</td>
+                  <td class="align-right">6</td>
+                  <td class="align-right">6</td>
+                  <td class="align-right">28.8</td>
+                </tr>
+              
+                <tr>
+                  <td>Right-Arm Pace</td>
+                  <td>stumped</td>
+                  <td class="align-right">1</td>
+                  <td class="align-right">1</td>
+                  <td class="align-right">32</td>
+                </tr>
+              
+                <tr>
+                  <td>Off-Spin</td>
+                  <td>c&amp;b N Kumar</td>
+                  <td class="align-right">1</td>
+                  <td class="align-right">1</td>
+                  <td class="align-right">37</td>
+                </tr>
+              
+          </tbody>
+        </table>
+      </div>
+    
+          </section>
+
+          <section class="sheet">
+            <div class="section-grid">
+              
+      <div class="table-panel">
+        <h3>Batting Evidence</h3>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Match</th>
+              <th>Moment</th>
+              <th>Commentary</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+                <tr>
+                  <td>Oct 2, 2025 • Kings XI Dallas v Chicago Kingsmen • death</td>
+                  <td>6 runs at 16.6 • 16.6</td>
+                  <td>Z Haq to U Chand, 6 runs SIX</td>
+                </tr>
+              
+                <tr>
+                  <td>Oct 2, 2025 • Kings XI Dallas v Chicago Kingsmen • death</td>
+                  <td>4 runs at 15.5 • 15.5</td>
+                  <td>G Mudassar to U Chand, 4 runs FOUR</td>
+                </tr>
+              
+                <tr>
+                  <td>Oct 2, 2025 • Kings XI Dallas v Chicago Kingsmen • middle</td>
+                  <td>6 runs at 14.4 • 14.4</td>
+                  <td>H Khan to U Chand, 6 runs SIX</td>
+                </tr>
+              
+                <tr>
+                  <td>Oct 2, 2025 • Kings XI Dallas v Chicago Kingsmen • middle</td>
+                  <td>4 runs at 13.3 • 13.3</td>
+                  <td>A Khan to U Chand, 4 runs FOUR</td>
+                </tr>
+              
+          </tbody>
+        </table>
+      </div>
+    
+              
+        <div class="table-panel">
+          <h3>Bowling Evidence</h3>
+          <div class="empty-state">No commentary-backed evidence is available yet in this bucket.</div>
+        </div>
+      
+            </div>
+            <div style="margin-top: 16px;">
+              
+      <div class="table-panel">
+        <h3>Dismissal Evidence</h3>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Match</th>
+              <th>Moment</th>
+              <th>Commentary</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+                <tr>
+                  <td>Oct 2, 2025 • Kings XI Dallas v Chicago Kingsmen • death</td>
+                  <td>Dismissal at 18.1 • 18.1</td>
+                  <td>Z Haq to U Chand OUT! CAUGHT <span class="sample-name-mask">Unmukt Chand</span> c †R Raja b Z Haq 77 (52 balls, 7 Fours, 3 Sixers) SR 148.08</td>
+                </tr>
+              
+                <tr>
+                  <td>Sep 30, 2025 • East Bay Blazers v Kings XI Dallas • powerplay</td>
+                  <td>Dismissal at 2.4 • 2.4</td>
+                  <td>C Le Roux to U Chand, 1 run</td>
+                </tr>
+              
+                <tr>
+                  <td>Sep 30, 2025 • East Bay Blazers v Kings XI Dallas • powerplay</td>
+                  <td>Dismissal at 4.1 • 4.1</td>
+                  <td>F Khan Ahmadzai to U Chand OUT! CAUGHT <span class="sample-name-mask">Unmukt Chand</span> c †S Ganesh b F Khan Ahmadzai 2 (8 balls, 0 Fours, 0 Sixers) SR 25.00</td>
+                </tr>
+              
+                <tr>
+                  <td>Sep 30, 2025 • East Bay Blazers v Kings XI Dallas • powerplay</td>
+                  <td>Dismissal at 2.3 • 2.3</td>
+                  <td>C Le Roux to U Chand, 0 run</td>
+                </tr>
+              
+          </tbody>
+        </table>
+      </div>
+    
+            </div>
+            <div class="footnote">
+              <div>Copyright &copy; 2026 game-changrs.com and Arth Arun.</div>
+              <div>Concept, design direction, analytics framework, and associated code/materials are proprietary.</div>
+              <div>All rights reserved.</div>
+            </div>
+          </section>
+        </div>
+      </body>
+    </html>
+  

@@ -34,9 +34,9 @@ import {
   fetchCricketViewerSeries,
   getAnalyticsWorkspaceRoute,
   getCricketPlayerReportEmailUrl,
-  getCricketPlayerReportPdfUrl,
   getCricketPlayerIntelligenceDocumentUrl,
 } from "@/lib/cricketApi";
+import { measureEmbeddedReportHeight } from "@/lib/iframeReport";
 
 function getDivisionId(value: string | null) {
   if (!value) {
@@ -992,6 +992,7 @@ const AnalyticsIntelligenceReport = () => {
   const [accessRequestStatus, setAccessRequestStatus] = useState<AccessRequestStatus>("idle");
   const [accessRequestMessage, setAccessRequestMessage] = useState<string | null>(null);
   const reportFrameRef = useRef<HTMLIFrameElement | null>(null);
+  const [standaloneFrameHeight, setStandaloneFrameHeight] = useState(2200);
 
   const accessToken = session?.access_token || "";
   const numericPlayerId = Number.parseInt(playerId ?? "", 10);
@@ -1027,20 +1028,6 @@ const AnalyticsIntelligenceReport = () => {
         playerId: numericPlayerId,
         divisionId,
       },
-      { seriesConfigKey: effectiveSeriesKey || undefined }
-    );
-  }, [divisionId, effectiveSeriesKey, numericPlayerId]);
-  const reportPdfUrl = useMemo(() => {
-    if (!Number.isFinite(numericPlayerId)) {
-      return null;
-    }
-
-    return getCricketPlayerReportPdfUrl(
-      {
-        playerId: numericPlayerId,
-        divisionId,
-      },
-      "intelligence",
       { seriesConfigKey: effectiveSeriesKey || undefined }
     );
   }, [divisionId, effectiveSeriesKey, numericPlayerId]);
@@ -1201,6 +1188,12 @@ const AnalyticsIntelligenceReport = () => {
 
   const handleRetryViewerAccess = () => setViewerReloadKey((value) => value + 1);
   const handleRetryIntelligence = () => setIntelligenceReloadKey((value) => value + 1);
+  const handleStandaloneFrameLoad = () => {
+    setIsFrameLoading(false);
+    void measureEmbeddedReportHeight(reportFrameRef.current, 2200)
+      .then((height) => setStandaloneFrameHeight(height))
+      .catch(() => undefined);
+  };
 
   const handleRequestReportAccess = async () => {
     if (!accessToken || !effectiveSeriesKey) {
@@ -1481,77 +1474,63 @@ const AnalyticsIntelligenceReport = () => {
         <section className={`bg-gradient-hero ${sectionSpacingClassName}`}>
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-7xl space-y-6">
-              <div className="space-y-4">
-                <div className="flex flex-wrap gap-3">
-                  <Button variant="outline" asChild>
-                    <Link to={backToSearchUrl}>
-                      <ArrowLeft className="mr-2 h-4 w-4" />
-                      Back to Search
-                    </Link>
-                  </Button>
-                  <StandaloneReportActions
-                    reportLabel="Player Intelligence Report"
-                    fileNameBase={`${title} player intelligence report`}
-                    accessToken={accessToken}
-                    reportHtml={reportDocumentHtml}
-                    pdfUrl={reportPdfUrl}
-                    emailUrl={reportEmailUrl}
-                    disabled={reportDocumentStatus === "loading"}
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Badge className="gap-2 border border-cyan-400/20 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/10">
-                    <BrainCircuit className="h-3.5 w-3.5" />
-                    Player Intelligence Report
-                  </Badge>
-                  <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl">{title}</h1>
-                  <p className="max-w-4xl text-lg text-muted-foreground">
-                    {[threatNarrative, weaknessNarrative, pressureNarrative].filter(Boolean).join(" ")}
-                  </p>
-                </div>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" asChild>
+                  <Link to={backToSearchUrl}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Search
+                  </Link>
+                </Button>
+                <StandaloneReportActions
+                  reportLabel="Player Intelligence Report"
+                  fileNameBase={`${title} player intelligence report`}
+                  accessToken={accessToken}
+                  frameRef={reportFrameRef}
+                  reportHtml={reportDocumentHtml}
+                  emailUrl={reportEmailUrl}
+                  disabled={reportDocumentStatus === "loading"}
+                />
               </div>
 
-              <Card className="border-border/80 bg-card/85 shadow-xl">
-                <CardContent className="space-y-4 p-6">
-                  {(reportDocumentStatus === "loading" || (reportDocumentStatus === "success" && isFrameLoading)) ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-background/60 px-4 py-3 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading the protected report inside the Game-Changrs shell.
-                      </div>
-                      <Skeleton className="h-[82vh] w-full rounded-2xl" />
-                    </div>
-                  ) : null}
+              {(reportDocumentStatus === "loading" || (reportDocumentStatus === "success" && isFrameLoading)) ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-background/60 px-4 py-3 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading the protected report inside the Game-Changrs shell.
+                  </div>
+                  <Skeleton className="h-[82vh] w-full rounded-3xl" />
+                </div>
+              ) : null}
 
-                  {reportDocumentStatus === "error" && reportDocumentError ? (
-                    <div className="flex flex-col gap-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-sm text-destructive sm:flex-row sm:items-start sm:justify-between">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                        <div className="space-y-1">
-                          <p>The protected report could not be loaded.</p>
-                          <p className="text-destructive/80">{reportDocumentError}</p>
-                        </div>
-                      </div>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setReportDocumentReloadKey((current) => current + 1)}>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Retry Report
-                      </Button>
+              {reportDocumentStatus === "error" && reportDocumentError ? (
+                <div className="flex flex-col gap-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-sm text-destructive sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div className="space-y-1">
+                      <p>The protected report could not be loaded.</p>
+                      <p className="text-destructive/80">{reportDocumentError}</p>
                     </div>
-                  ) : null}
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setReportDocumentReloadKey((current) => current + 1)}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Retry Report
+                  </Button>
+                </div>
+              ) : null}
 
-                  {reportDocumentStatus === "success" && reportDocumentHtml ? (
-                    <iframe
-                      key={reportDocumentUrl}
-                      ref={reportFrameRef}
-                      title={`${title} intelligence report`}
-                      srcDoc={reportDocumentHtml}
-                      onLoad={() => setIsFrameLoading(false)}
-                      className={`w-full rounded-2xl border border-border/80 bg-white ${isFrameLoading ? "hidden" : "block"} h-[86vh]`}
-                    />
-                  ) : null}
-                </CardContent>
-              </Card>
+              {reportDocumentStatus === "success" && reportDocumentHtml ? (
+                <div className="overflow-hidden rounded-[32px] border border-white/10 bg-transparent shadow-[0_26px_80px_rgba(2,6,23,0.42)]">
+                  <iframe
+                    key={reportDocumentUrl}
+                    ref={reportFrameRef}
+                    title={`${title} intelligence report`}
+                    srcDoc={reportDocumentHtml}
+                    onLoad={handleStandaloneFrameLoad}
+                    style={{ height: `${standaloneFrameHeight}px` }}
+                    className="block w-full border-0 bg-transparent"
+                  />
+                </div>
+              ) : null}
             </div>
           </div>
         </section>

@@ -1586,11 +1586,12 @@ function AnalyticsLandingSections() {
 
                   <div className="space-y-3">
                     <AnalyticsSamplePreview
-                      src={sample.previewImageSrc}
-                      alt={sample.previewImageAlt}
+                      contentType={sample.previewContentType}
+                      src={sample.previewSrc}
+                      alt={sample.previewAlt}
                       masks={sample.previewMasks}
                       className={sample.cardFrameClassName}
-                      imageClassName={sample.cardImageClassName}
+                      contentClassName={sample.cardContentClassName}
                     />
                     <p className="text-xs leading-6 text-muted-foreground">{sample.previewNote}</p>
                   </div>

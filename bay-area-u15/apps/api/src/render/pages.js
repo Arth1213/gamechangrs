@@ -2007,8 +2007,8 @@ function renderDashboardPage(payload) {
               and current match-quality checks across the Bay Area U15 competition slice.
             </p>
             ${renderMetaStrip([
-              { label: "Report Profile", value: normalizeText(reportProfile.name) || "Executive Selector Default" },
-              { label: "Theme", value: normalizeText(reportProfile.theme_name) || "Game-Changrs Executive" },
+              { label: "Report Profile", value: normalizeText(reportProfile.name) || "Player Assessment Default" },
+              { label: "Theme", value: normalizeText(reportProfile.theme_name) || "Game-Changrs Player Assessment" },
               { label: "Peer Count", value: displayInteger(reportProfile.peer_count, "3") },
             ])}
             <div class="search-shell">
@@ -3724,8 +3724,8 @@ function renderPlayerReportPage(report) {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${escapeHtml(playerName)} Executive Report</title>
-        <meta name="description" content="${escapeHtml(`Executive selector report for ${playerName}.`)}">
+        <title>${escapeHtml(playerName)} Player Assessment Report</title>
+        <meta name="description" content="${escapeHtml(`Player assessment report for ${playerName}.`)}">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -3735,13 +3735,13 @@ function renderPlayerReportPage(report) {
         <section class="sheet report-sheet">
           <div class="page-separator">
             <div class="page-separator-line"></div>
-            <div class="page-separator-badge">Executive Player Report</div>
+            <div class="page-separator-badge">Player Assessment Report</div>
             <div class="page-separator-line"></div>
           </div>
 
           <div class="page-title">
             <div class="page-title-main">
-              <div class="eyebrow">Game-Changrs Selector Report</div>
+              <div class="eyebrow">Game-Changrs Player Assessment Report</div>
               <div class="page-title-row">
                 <h2>${escapeHtml(playerName)}</h2>
                 <div class="recommendation-badge ${noteBadgeClass(recommendationTone)}">${escapeHtml(recommendationLabel)}</div>

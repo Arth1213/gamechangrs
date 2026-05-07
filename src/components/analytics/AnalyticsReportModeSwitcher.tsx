@@ -35,12 +35,12 @@ export default function AnalyticsReportModeSwitcher({
         asChild
         variant="outline"
         className={cn(
-          "min-w-[11rem] justify-between rounded-xl",
+          "min-w-[14rem] justify-between rounded-xl",
           activeMode === "executive" ? activeButtonClassName : inactiveButtonClassName
         )}
       >
         <Link to={executiveHref} state={linkState} aria-current={activeMode === "executive" ? "page" : undefined}>
-          Executive Report
+          Player Assessment Report
           <FileSearch className="h-4 w-4" />
         </Link>
       </Button>

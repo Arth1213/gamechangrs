@@ -5,10 +5,10 @@ const { normalizeText, toInteger } = require("../lib/utils");
 
 const DEFAULT_REPORT_PROFILE = {
   profile_key: "executive-selector-default",
-  name: "Executive Selector Default",
+  name: "Player Assessment Default",
   description:
-    "Selector-focused executive report with current-series and overall stats, peer strip, and trend graphics.",
-  theme_name: "game-changrs-executive-dark",
+    "Selector-focused player assessment report with current-series and overall stats, peer strip, and trend graphics.",
+  theme_name: "game-changrs-player-assessment-dark",
   include_current_series_stats: true,
   include_overall_stats: true,
   include_peer_strip: true,

@@ -178,9 +178,9 @@ async function probeCricClubsSeries({ url, label, outDir, seriesConfig }) {
     const executiveReportCapability =
       scorecardsCapability.status === "confirmed" || scorecardsCapability.status === "possible"
         ? makeCapability("likely", [
-            "Executive report onboarding is likely possible if scorecards and basic player/team mappings continue to resolve.",
+            "Player assessment report onboarding is likely possible if scorecards and basic player/team mappings continue to resolve.",
           ])
-        : makeCapability("blocked", ["Executive report onboarding is blocked until scorecard access is confirmed."]);
+        : makeCapability("blocked", ["Player assessment report onboarding is blocked until scorecard access is confirmed."]);
 
     const intelligenceReportCapability =
       ballByBallCapability.status === "confirmed"

@@ -687,7 +687,7 @@ const AnalyticsReport = () => {
                 <div className="flex flex-wrap gap-2">
                   <Badge className="gap-2 border border-cyan-400/20 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/10">
                     <FileSearch className="h-3.5 w-3.5" />
-                    Selector Report Shell
+                    Player Assessment Report
                   </Badge>
                   {viewerIsPlatformAdmin ? (
                     <Badge variant="outline" className="border-cyan-400/20 bg-cyan-400/10 text-cyan-200">

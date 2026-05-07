@@ -32,7 +32,7 @@ async function registerSeries(input) {
 
   if (probe.capabilities.executiveReport.status === "blocked") {
     throw new Error(
-      `Registration is blocked because the probe could not establish minimum executive report viability for ${label}.`
+      `Registration is blocked because the probe could not establish minimum player assessment report viability for ${label}.`
     );
   }
 

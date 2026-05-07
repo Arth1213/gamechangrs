@@ -5284,7 +5284,7 @@ const AnalyticsAdmin = () => {
                                   <p className="text-xs leading-6 text-muted-foreground">
                                     {setup.reportProfile.options.find(
                                       (option) => option.profileKey === formState.reportProfileKey,
-                                    )?.description || "Report layout used for the player-facing executive report."}
+                                    )?.description || "Report layout used for the player-facing player assessment report."}
                                   </p>
                                 ) : null}
                               </div>

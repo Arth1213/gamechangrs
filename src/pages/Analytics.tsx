@@ -1572,19 +1572,9 @@ function AnalyticsLandingSections() {
                     </Badge>
                     <h3 className="font-display text-3xl text-foreground">{sample.title}</h3>
                     <p className="text-sm leading-7 text-muted-foreground">{sample.description}</p>
-                    <div className="rounded-2xl border border-border/80 bg-card/70 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Executive Description</p>
-                      <p className="mt-2 text-sm leading-7 text-foreground">{sample.audience}</p>
-                    </div>
-                    <Button asChild className="w-full sm:w-auto">
-                      <Link to={sample.path}>
-                        View Sample Report
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <AnalyticsSamplePreview
                       contentType={sample.previewContentType}
                       src={sample.previewSrc}
@@ -1593,7 +1583,12 @@ function AnalyticsLandingSections() {
                       className={sample.cardFrameClassName}
                       contentClassName={sample.cardContentClassName}
                     />
-                    <p className="text-xs leading-6 text-muted-foreground">{sample.previewNote}</p>
+                    <Button asChild className="w-full">
+                      <Link to={sample.path}>
+                        View Sample Report
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
                   </div>
                 </div>
               </div>

@@ -93,7 +93,7 @@ export default function AnalyticsFeatureSample() {
                     <h2 className="mt-2 font-display text-3xl text-foreground">{sample.title}</h2>
                   </div>
                   <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                    This is the actual generated standalone report, with player names blurred for the public sample.
+                    This is the actual generated standalone report, with player labels anonymized for the public sample.
                   </p>
                 </div>
 

@@ -45,6 +45,19 @@ async function waitForFrameContent(frame: HTMLIFrameElement) {
   return { reportDocument, reportWindow };
 }
 
+function stripZeroSizeCanvases(document: Document) {
+  document.querySelectorAll("canvas").forEach((canvas) => {
+    const measuredWidth = canvas.width || canvas.clientWidth || canvas.getBoundingClientRect().width || 0;
+    const measuredHeight = canvas.height || canvas.clientHeight || canvas.getBoundingClientRect().height || 0;
+
+    if (measuredWidth > 0 && measuredHeight > 0) {
+      return;
+    }
+
+    canvas.remove();
+  });
+}
+
 function blobToBase64(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -75,6 +88,9 @@ export async function renderReportFramePdf(frame: HTMLIFrameElement, fileNameBas
     reportDocument.documentElement.scrollHeight,
     reportWindow.innerHeight,
   );
+  if (captureWidth <= 0 || captureHeight <= 0) {
+    throw new Error("The standalone report dimensions are not ready yet.");
+  }
 
   const canvas = await html2canvas(captureRoot, {
     backgroundColor: "#ffffff",
@@ -88,6 +104,22 @@ export async function renderReportFramePdf(frame: HTMLIFrameElement, fileNameBas
     windowHeight: captureHeight,
     scrollX: 0,
     scrollY: 0,
+    onclone: (clonedDocument) => {
+      stripZeroSizeCanvases(clonedDocument);
+
+      const clonedHtml = clonedDocument.documentElement;
+      const clonedBody = clonedDocument.body;
+      if (clonedHtml) {
+        clonedHtml.style.height = "auto";
+        clonedHtml.style.minHeight = "0";
+        clonedHtml.style.overflow = "visible";
+      }
+      if (clonedBody) {
+        clonedBody.style.height = "auto";
+        clonedBody.style.minHeight = "0";
+        clonedBody.style.overflow = "visible";
+      }
+    },
   });
 
   const pdf = new jsPDF({
@@ -105,6 +137,13 @@ export async function renderReportFramePdf(frame: HTMLIFrameElement, fileNameBas
 
   while (currentOffset < canvas.height) {
     const sliceHeight = Math.min(pagePixelHeight, canvas.height - currentOffset);
+    const renderedHeight = (sliceHeight * pageWidth) / canvas.width;
+    const isLastPage = currentOffset + sliceHeight >= canvas.height;
+
+    if (pageIndex > 0) {
+      pdf.addPage();
+    }
+
     const sliceCanvas = reportDocument.createElement("canvas");
     sliceCanvas.width = canvas.width;
     sliceCanvas.height = sliceHeight;
@@ -129,11 +168,11 @@ export async function renderReportFramePdf(frame: HTMLIFrameElement, fileNameBas
     );
 
     const imageData = sliceCanvas.toDataURL("image/jpeg", 0.98);
-    const renderedHeight = (sliceHeight * pageWidth) / canvas.width;
-
-    if (pageIndex > 0) {
-      pdf.addPage();
-    }
+    pdf.internal.pageSize.setWidth(pageWidth);
+    pdf.internal.pageSize.setHeight(isLastPage && renderedHeight < pageHeight ? renderedHeight : pageHeight);
+    const currentPageHeight = pdf.internal.pageSize.getHeight();
+    pdf.setFillColor(6, 19, 28);
+    pdf.rect(0, 0, pageWidth, currentPageHeight, "F");
 
     pdf.addImage(imageData, "JPEG", 0, 0, pageWidth, renderedHeight, undefined, "FAST");
 

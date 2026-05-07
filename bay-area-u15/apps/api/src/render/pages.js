@@ -3724,8 +3724,8 @@ function renderPlayerReportPage(report) {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${escapeHtml(playerName)} Player Assessment Report</title>
-        <meta name="description" content="${escapeHtml(`Player assessment report for ${playerName}.`)}">
+        <title>${escapeHtml(playerName)} Player Assessment</title>
+        <meta name="description" content="${escapeHtml(`Player assessment for ${playerName}.`)}">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -3735,13 +3735,13 @@ function renderPlayerReportPage(report) {
         <section class="sheet report-sheet">
           <div class="page-separator">
             <div class="page-separator-line"></div>
-            <div class="page-separator-badge">Player Assessment Report</div>
+            <div class="page-separator-badge">Player Assessment</div>
             <div class="page-separator-line"></div>
           </div>
 
           <div class="page-title">
             <div class="page-title-main">
-              <div class="eyebrow">Game-Changrs Player Assessment Report</div>
+              <div class="eyebrow">Game-Changrs Player Assessment</div>
               <div class="page-title-row">
                 <h2>${escapeHtml(playerName)}</h2>
                 <div class="recommendation-badge ${noteBadgeClass(recommendationTone)}">${escapeHtml(recommendationLabel)}</div>
@@ -5041,12 +5041,1008 @@ function renderMatchOpsScript(seriesConfigKey) {
   `;
 }
 
+function renderPlayerIntelligenceReportPage(report) {
+  const header = report?.header || {};
+  const meta = report?.meta || {};
+  const scope = meta.scope || {};
+  const series = meta.series || {};
+  const focusedLens = report?.focusedLens || {};
+  const tacticalSummary = report?.tacticalSummary || {};
+  const tacticalPlan = report?.tacticalPlan || {};
+  const summaryStats = report?.summaryStats || {};
+  const commentaryEvidence = report?.commentaryEvidence || {};
+  const additionalInsights = report?.additionalInsights || {};
+
+  const playerName = normalizeText(header.playerName) || "Player";
+  const roleLabel = normalizeText(header.roleLabel) || humanizeRole(header.roleType) || "Player";
+  const teamName = normalizeText(header.teamName) || "Team unavailable";
+  const seriesName = normalizeText(series.name) || "Series unavailable";
+  const ageGroup = normalizeText(series.targetAgeGroup);
+  const scopeLabel = normalizeText(scope.scopeLabel) || "Series intelligence";
+  const fallbackReason = normalizeText(scope.fallbackReason);
+  const recommendation = normalizeText(header.recommendationLabel) || "Live intelligence";
+  const battingStyle = normalizeText(header.battingStyle) || "Unknown";
+  const bowlingStyle = normalizeText(header.bowlingStyle) || "Unknown";
+
+  const leadingStrength = tacticalSummary?.strengths?.[0] || null;
+  const leadingWatchout = tacticalSummary?.watchouts?.[0] || null;
+  const leadingPressure = tacticalSummary?.pressureSignals?.[0] || null;
+
+  const INTELLIGENCE_REPORT_CSS = `
+    .intelligence-shell {
+      display: grid;
+      gap: 18px;
+    }
+
+    .report-title {
+      display: grid;
+      gap: 18px;
+    }
+
+    .report-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(103, 183, 255, 0.22);
+      background: rgba(103, 183, 255, 0.1);
+      color: #d9f1ff;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .hero-grid,
+    .section-grid,
+    .card-grid,
+    .detail-grid,
+    .plan-grid,
+    .stat-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .hero-grid {
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      align-items: start;
+    }
+
+    .section-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .detail-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .plan-grid,
+    .stat-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .hero-panel,
+    .surface-panel,
+    .summary-panel,
+    .detail-panel,
+    .table-panel {
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(145, 192, 215, 0.14);
+      background: linear-gradient(180deg, rgba(14, 34, 48, 0.9), rgba(8, 22, 31, 0.95));
+      box-shadow: var(--shadow);
+    }
+
+    .hero-panel {
+      padding: 28px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .surface-panel,
+    .summary-panel,
+    .detail-panel,
+    .table-panel {
+      padding: 22px;
+    }
+
+    .summary-copy {
+      font-size: 17px;
+      line-height: 1.75;
+      color: #d7e7ef;
+    }
+
+    .meta-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .meta-chip {
+      padding: 9px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(145, 192, 215, 0.14);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .meta-chip strong {
+      color: var(--muted);
+    }
+
+    .metric-card {
+      padding: 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(145, 192, 215, 0.14);
+      background: rgba(255, 255, 255, 0.03);
+      display: grid;
+      gap: 10px;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .metric-value {
+      font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+      font-size: clamp(32px, 4vw, 42px);
+      line-height: 0.95;
+      color: var(--ink);
+    }
+
+    .metric-value.good {
+      color: var(--lime);
+    }
+
+    .metric-value.watch {
+      color: var(--amber);
+    }
+
+    .metric-value.risk {
+      color: var(--orange);
+    }
+
+    .metric-note {
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--muted);
+    }
+
+    .summary-panel h3,
+    .detail-panel h3,
+    .table-panel h3 {
+      margin-bottom: 10px;
+    }
+
+    .summary-panel p,
+    .detail-panel p,
+    .table-panel p {
+      color: var(--muted);
+      line-height: 1.75;
+    }
+
+    .callout-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .callout {
+      padding: 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(145, 192, 215, 0.14);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .callout.good {
+      border-color: rgba(142, 217, 124, 0.22);
+      background: rgba(142, 217, 124, 0.08);
+    }
+
+    .callout.watch {
+      border-color: rgba(240, 191, 105, 0.22);
+      background: rgba(240, 191, 105, 0.08);
+    }
+
+    .callout.risk {
+      border-color: rgba(243, 139, 99, 0.22);
+      background: rgba(243, 139, 99, 0.08);
+    }
+
+    .callout-label {
+      margin-bottom: 8px;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .bullet-list {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 10px;
+      color: #d7e7ef;
+      line-height: 1.7;
+    }
+
+    .insight-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .insight-item {
+      padding-top: 12px;
+      border-top: 1px solid rgba(145, 192, 215, 0.12);
+    }
+
+    .insight-item:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .insight-title {
+      margin-bottom: 6px;
+      color: var(--ink);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-weight: 800;
+    }
+
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      overflow: hidden;
+      border-radius: 18px;
+      border: 1px solid rgba(145, 192, 215, 0.14);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .report-table th,
+    .report-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(145, 192, 215, 0.12);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .report-table th {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--muted);
+      font-weight: 800;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .report-table td {
+      color: #d7e7ef;
+      line-height: 1.6;
+    }
+
+    .report-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .align-right {
+      text-align: right !important;
+    }
+
+    .empty-state {
+      padding: 16px;
+      margin-top: 16px;
+      border-radius: var(--radius-md);
+      border: 1px dashed rgba(145, 192, 215, 0.22);
+      color: var(--muted);
+    }
+
+    @media (max-width: 1120px) {
+      .hero-grid,
+      .section-grid,
+      .detail-grid,
+      .plan-grid,
+      .stat-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page-shell {
+        width: min(100%, calc(100% - 16px));
+      }
+
+      .sheet,
+      .hero-panel,
+      .surface-panel,
+      .summary-panel,
+      .detail-panel,
+      .table-panel {
+        padding: 18px;
+      }
+
+      .card-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .report-table {
+        display: block;
+        overflow-x: auto;
+      }
+    }
+
+    @media print {
+      html, body {
+        background: #06131c !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .page-shell {
+        width: 100%;
+        margin: 0;
+      }
+
+      .sheet,
+      .hero-panel,
+      .surface-panel,
+      .summary-panel,
+      .detail-panel,
+      .table-panel {
+        box-shadow: none;
+      }
+    }
+  `;
+
+  function displayNumber(value, digits = 1, fallback = "—") {
+    const numeric = toNumber(value, null);
+    if (numeric === null) {
+      return fallback;
+    }
+
+    if (Math.abs(numeric % 1) < 0.0001) {
+      return numeric.toLocaleString();
+    }
+
+    return numeric.toFixed(digits);
+  }
+
+  function formatOrdinal(value) {
+    const numeric = toInteger(value);
+    if (!numeric) {
+      return "—";
+    }
+
+    const mod100 = numeric % 100;
+    if (mod100 >= 11 && mod100 <= 13) {
+      return `${numeric}th`;
+    }
+
+    switch (numeric % 10) {
+      case 1:
+        return `${numeric}st`;
+      case 2:
+        return `${numeric}nd`;
+      case 3:
+        return `${numeric}rd`;
+      default:
+        return `${numeric}th`;
+    }
+  }
+
+  function formatOversFromBalls(value) {
+    const legalBalls = toInteger(value);
+    if (legalBalls === null) {
+      return "—";
+    }
+
+    const overs = Math.floor(legalBalls / 6);
+    const balls = legalBalls % 6;
+    return `${overs}.${balls}`;
+  }
+
+  function normalizeStyleLabel(value) {
+    const text = normalizeText(value);
+    if (!text) {
+      return "Unknown";
+    }
+
+    return text
+      .replace(/_/g, " ")
+      .replace(/\s+/g, " ")
+      .split(" ")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }
+
+  function sanitizeCopy(value, fallback) {
+    const text = normalizeText(value);
+    if (!text) {
+      return fallback || "No live note is available yet.";
+    }
+
+    return text
+      .replace(/current intelligence sample/gi, "current sample")
+      .replace(/lowest-stability batting split/gi, "most vulnerable batting setup")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function getThreatTone(percentileRank) {
+    const numeric = toNumber(percentileRank, null);
+    if (numeric === null) {
+      return {
+        label: "Unknown",
+        tone: "watch",
+        note: "Threat level is not available in the current sample.",
+      };
+    }
+
+    if (numeric >= 85) {
+      return {
+        label: "Red",
+        tone: "risk",
+        note: "High opposition threat in the current live sample.",
+      };
+    }
+
+    if (numeric >= 60) {
+      return {
+        label: "Amber",
+        tone: "watch",
+        note: "Manageable, but still a live planning concern.",
+      };
+    }
+
+    return {
+      label: "Green",
+      tone: "good",
+      note: "Lower threat in the current planning sample.",
+    };
+  }
+
+  function parseSignalLabel(label) {
+    const normalized = normalizeText(label);
+    if (!normalized) {
+      return { context: "unknown", target: "" };
+    }
+
+    if (normalized.startsWith("Batting vs ")) {
+      return { context: "batting", target: normalized.replace("Batting vs ", "") };
+    }
+
+    if (normalized.startsWith("Bowling vs ")) {
+      return { context: "bowling", target: normalized.replace("Bowling vs ", "") };
+    }
+
+    if (normalized.startsWith("Dismissal pattern vs ")) {
+      return { context: "dismissal", target: normalized.replace("Dismissal pattern vs ", "") };
+    }
+
+    if (normalized.startsWith("Batting pressure vs ")) {
+      return { context: "batting-risk", target: normalized.replace("Batting pressure vs ", "") };
+    }
+
+    return { context: "unknown", target: normalized };
+  }
+
+  function buildThreatNarrative(signal) {
+    const parsed = parseSignalLabel(signal?.label);
+    if (parsed.context === "batting" && parsed.target) {
+      return `The player is mainly a batting threat against ${parsed.target}.`;
+    }
+    if (parsed.context === "bowling" && parsed.target) {
+      return `The player is mainly a bowling threat against ${parsed.target}.`;
+    }
+    if (parsed.target) {
+      return `The player is mainly a threat in this area: ${parsed.target}.`;
+    }
+    return "No clear threat area is available yet in the live sample.";
+  }
+
+  function buildWeaknessNarrative(signal, fallbackPlan) {
+    const parsed = parseSignalLabel(signal?.label);
+    if ((parsed.context === "batting-risk" || parsed.context === "dismissal") && parsed.target) {
+      return `The player is most vulnerable against ${parsed.target}.`;
+    }
+    if (fallbackPlan) {
+      return sanitizeCopy(fallbackPlan);
+    }
+    if (parsed.target) {
+      return `The player is most vulnerable in this area: ${parsed.target}.`;
+    }
+    return "No clear vulnerability is available yet in the live sample.";
+  }
+
+  function buildPressureNarrative(signal) {
+    if (!signal) {
+      return "No pressure pattern is available yet in the live sample.";
+    }
+
+    return sanitizeCopy(
+      signal.note,
+      "No pressure pattern is available yet in the live sample."
+    );
+  }
+
+  function toneClassName(tone) {
+    return tone === "good" ? "good" : tone === "risk" ? "risk" : "watch";
+  }
+
+  function metricCard(label, value, note, tone) {
+    return `
+      <div class="metric-card">
+        <div class="metric-label">${escapeHtml(label)}</div>
+        <div class="metric-value ${toneClassName(tone)}">${escapeHtml(value)}</div>
+        <div class="metric-note">${escapeHtml(note)}</div>
+      </div>
+    `;
+  }
+
+  function bulletList(items, emptyState) {
+    const values = Array.isArray(items)
+      ? items.map((item) => sanitizeCopy(item)).filter(Boolean)
+      : [];
+
+    if (!values.length) {
+      return `<div class="empty-state">${escapeHtml(emptyState)}</div>`;
+    }
+
+    return `
+      <ul class="bullet-list">
+        ${values.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ul>
+    `;
+  }
+
+  function insightList(items, emptyState) {
+    const values = Array.isArray(items)
+      ? items.filter((item) =>
+          normalizeText(item?.title)
+          || normalizeText(item?.detail)
+          || normalizeText(item?.label)
+          || normalizeText(item?.note)
+        )
+      : [];
+
+    if (!values.length) {
+      return `<div class="empty-state">${escapeHtml(emptyState)}</div>`;
+    }
+
+    return `
+      <div class="insight-list">
+        ${values
+          .map((item) => `
+            <div class="insight-item">
+              <div class="insight-title">${escapeHtml(normalizeText(item.title) || normalizeText(item.label) || "Additional insight")}</div>
+              <p>${escapeHtml(sanitizeCopy(item.detail || item.note))}</p>
+            </div>
+          `)
+          .join("")}
+      </div>
+    `;
+  }
+
+  function renderStatsTable(title, rows) {
+    const values = Array.isArray(rows) ? rows.filter((row) => normalizeText(row.label)) : [];
+    return `
+      <div class="table-panel">
+        <h3>${escapeHtml(title)}</h3>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th class="align-right">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${values
+              .map((row) => `
+                <tr>
+                  <td>${escapeHtml(row.label)}</td>
+                  <td class="align-right">${escapeHtml(row.value)}</td>
+                </tr>
+              `)
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderMatchupTable(title, rows, mode) {
+    const values = Array.isArray(rows) ? rows.slice(0, 8) : [];
+    if (!values.length) {
+      return `
+        <div class="table-panel">
+          <h3>${escapeHtml(title)}</h3>
+          <div class="empty-state">No matchup sample is available yet in this lens.</div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="table-panel">
+        <h3>${escapeHtml(title)}</h3>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Setup</th>
+              <th class="align-right">Matches</th>
+              <th class="align-right">Balls</th>
+              ${mode === "batting"
+                ? `
+                  <th class="align-right">Runs</th>
+                  <th class="align-right">Strike Rate</th>
+                  <th class="align-right">Average</th>
+                  <th class="align-right">Dismissals</th>
+                `
+                : `
+                  <th class="align-right">Wickets</th>
+                  <th class="align-right">Economy</th>
+                  <th class="align-right">Dot %</th>
+                  <th class="align-right">Control Error %</th>
+                `}
+            </tr>
+          </thead>
+          <tbody>
+            ${values
+              .map((row) => `
+                <tr>
+                  <td>${escapeHtml(normalizeText(row.splitLabel) || "Unknown setup")}</td>
+                  <td class="align-right">${escapeHtml(displayNumber(row.matchCount, 0))}</td>
+                  <td class="align-right">${escapeHtml(displayNumber(row.legalBalls, 0))}</td>
+                  ${mode === "batting"
+                    ? `
+                      <td class="align-right">${escapeHtml(displayNumber(row.runsScored, 0))}</td>
+                      <td class="align-right">${escapeHtml(displayNumber(row.strikeRate, 1))}</td>
+                      <td class="align-right">${escapeHtml(displayNumber(row.battingAverage, 1))}</td>
+                      <td class="align-right">${escapeHtml(displayNumber(row.dismissals, 0))}</td>
+                    `
+                    : `
+                      <td class="align-right">${escapeHtml(displayNumber(row.wickets, 0))}</td>
+                      <td class="align-right">${escapeHtml(displayNumber(row.economy, 1))}</td>
+                      <td class="align-right">${escapeHtml(displayNumber(row.dotBallPct, 1))}</td>
+                      <td class="align-right">${escapeHtml(displayNumber(row.controlErrorPct, 1))}</td>
+                    `}
+                </tr>
+              `)
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderDismissalTable(rows) {
+    const values = Array.isArray(rows) ? rows.slice(0, 8) : [];
+    if (!values.length) {
+      return `
+        <div class="table-panel">
+          <h3>Dismissal Pattern</h3>
+          <div class="empty-state">No dismissal concentration has been captured yet.</div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="table-panel">
+        <h3>Dismissal Pattern</h3>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Bowler Type</th>
+              <th>Dismissal</th>
+              <th class="align-right">Wickets</th>
+              <th class="align-right">Matches</th>
+              <th class="align-right">Avg Runs At Wicket</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${values
+              .map((row) => `
+                <tr>
+                  <td>${escapeHtml(normalizeText(row.bowlerStyleLabel) || "Unknown style")}</td>
+                  <td>${escapeHtml(normalizeText(row.dismissalType) || "Dismissal")}</td>
+                  <td class="align-right">${escapeHtml(displayNumber(row.dismissalCount, 0))}</td>
+                  <td class="align-right">${escapeHtml(displayNumber(row.matchCount, 0))}</td>
+                  <td class="align-right">${escapeHtml(displayNumber(row.averageRunsAtDismissal, 1))}</td>
+                </tr>
+              `)
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderEvidenceTable(title, items) {
+    const values = Array.isArray(items) ? items.slice(0, 6) : [];
+    if (!values.length) {
+      return `
+        <div class="table-panel">
+          <h3>${escapeHtml(title)}</h3>
+          <div class="empty-state">No commentary-backed evidence is available yet in this bucket.</div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="table-panel">
+        <h3>${escapeHtml(title)}</h3>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Match</th>
+              <th>Moment</th>
+              <th>Commentary</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${values
+              .map((item) => `
+                <tr>
+                  <td>${escapeHtml(
+                    [item.matchDateLabel, item.matchTitle, item.phase]
+                      .map((value) => normalizeText(value))
+                      .filter(Boolean)
+                      .join(" • ") || "Match unavailable"
+                  )}</td>
+                  <td>${escapeHtml(
+                    [normalizeText(item.headline), normalizeText(item.ballLabel)]
+                      .filter(Boolean)
+                      .join(" • ") || "Live evidence"
+                  )}</td>
+                  <td>${escapeHtml(normalizeText(item.commentaryText) || "No commentary text available.")}</td>
+                </tr>
+              `)
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  const threatProfile = getThreatTone(header.percentileRank);
+  const threatNarrative = buildThreatNarrative(leadingStrength);
+  const weaknessNarrative = buildWeaknessNarrative(leadingWatchout, tacticalPlan?.battingPlan?.[0]);
+  const pressureNarrative = buildPressureNarrative(leadingPressure);
+  const summaryNarrative = [threatNarrative, weaknessNarrative, pressureNarrative].filter(Boolean).join(" ");
+
+  const summaryCards = [
+    metricCard(
+      "Confidence",
+      header?.confidenceScore !== undefined && header?.confidenceScore !== null
+        ? `${normalizeText(header.confidenceLabel) || "Live"} · ${displayNumber(header.confidenceScore, 1)}`
+        : normalizeText(header.confidenceLabel) || "—",
+      "How strong the live evidence is for this intelligence read.",
+      "watch"
+    ),
+    metricCard(
+      "Percentile",
+      formatOrdinal(header.percentileRank),
+      threatProfile.note,
+      threatProfile.tone
+    ),
+    metricCard(
+      "Composite Selector Score",
+      displayNumber(header.compositeScore, 1),
+      "Current selector score feeding the report.",
+      "good"
+    ),
+    metricCard(
+      "Threat Level",
+      threatProfile.label,
+      threatProfile.note,
+      threatProfile.tone
+    ),
+  ].join("");
+
+  const battingStatRows = [
+    { label: "Matches", value: displayNumber(summaryStats?.batting?.matches, 0) },
+    { label: "Runs", value: displayNumber(summaryStats?.batting?.runs, 0) },
+    { label: "Balls", value: displayNumber(summaryStats?.batting?.ballsFaced, 0) },
+    { label: "Strike Rate", value: displayNumber(summaryStats?.batting?.strikeRate, 1) },
+    { label: "Average", value: displayNumber(summaryStats?.batting?.average, 1) },
+    { label: "50s", value: displayNumber(summaryStats?.batting?.fifties, 0) },
+  ];
+
+  const bowlingStatRows = [
+    { label: "Matches", value: displayNumber(summaryStats?.bowling?.matches, 0) },
+    { label: "Overs", value: formatOversFromBalls(summaryStats?.bowling?.legalBalls) },
+    { label: "Wickets", value: displayNumber(summaryStats?.bowling?.wickets, 0) },
+    { label: "Economy", value: displayNumber(summaryStats?.bowling?.economy, 1) },
+    { label: "4 Wicket Hauls", value: displayNumber(summaryStats?.bowling?.fourWicketHauls, 0) },
+    { label: "5 Wicket Hauls", value: displayNumber(summaryStats?.bowling?.fiveWicketHauls, 0) },
+  ];
+
+  const fieldingStatRows = [
+    { label: "Matches", value: displayNumber(summaryStats?.fielding?.matches, 0) },
+    { label: "Catches", value: displayNumber(summaryStats?.fielding?.catches, 0) },
+    { label: "Run Outs", value: displayNumber(summaryStats?.fielding?.runOuts, 0) },
+    { label: "Stumpings", value: displayNumber(summaryStats?.fielding?.stumpings, 0) },
+  ];
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${escapeHtml(playerName)} Player Intelligence Report</title>
+        <meta name="description" content="${escapeHtml(`Player intelligence report for ${playerName}.`)}">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <style>${BASE_CSS}${INTELLIGENCE_REPORT_CSS}</style>
+      </head>
+      <body>
+        <div class="page-shell intelligence-shell">
+          <section class="sheet">
+            <div class="report-title">
+              <div class="report-kicker">Player Intelligence Report</div>
+              <div class="hero-grid">
+                <div class="hero-panel">
+                  <div>
+                    <h1>${escapeHtml(playerName)}</h1>
+                    <p class="summary-copy" style="margin-top: 12px;">${escapeHtml(summaryNarrative)}</p>
+                  </div>
+                  <div class="meta-strip">
+                    <div class="meta-chip"><strong>Team</strong> ${escapeHtml(teamName)}</div>
+                    <div class="meta-chip"><strong>Role</strong> ${escapeHtml(roleLabel)}</div>
+                    <div class="meta-chip"><strong>Series</strong> ${escapeHtml(ageGroup ? `${seriesName} • ${ageGroup}` : seriesName)}</div>
+                    <div class="meta-chip"><strong>Scope</strong> ${escapeHtml(scopeLabel)}</div>
+                    <div class="meta-chip"><strong>Recommendation</strong> ${escapeHtml(recommendation)}</div>
+                  </div>
+                  ${fallbackReason ? `<div class="empty-state">${escapeHtml(fallbackReason)}</div>` : ""}
+                </div>
+                <div class="surface-panel">
+                  <div class="callout-stack">
+                    <div class="callout good">
+                      <div class="callout-label">Main Threat</div>
+                      <p>${escapeHtml(threatNarrative)}</p>
+                    </div>
+                    <div class="callout risk">
+                      <div class="callout-label">Main Weakness</div>
+                      <p>${escapeHtml(weaknessNarrative)}</p>
+                    </div>
+                    <div class="callout watch">
+                      <div class="callout-label">Pressure Note</div>
+                      <p>${escapeHtml(pressureNarrative)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="card-grid">
+              ${summaryCards}
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="plan-grid">
+              <div class="summary-panel">
+                <h3>Batting Plan</h3>
+                <p>How the report says to approach this player with the bat.</p>
+                ${bulletList(tacticalPlan?.battingPlan, "No batting plan lines are available yet.")}
+              </div>
+              <div class="summary-panel">
+                <h3>Bowling Plan</h3>
+                <p>How the report says to manage this player with the ball.</p>
+                ${bulletList(tacticalPlan?.bowlingPlan, "No bowling plan lines are available yet.")}
+              </div>
+              <div class="summary-panel">
+                <h3>Player Summary</h3>
+                <p>Compact context for what the current intelligence report is saying.</p>
+                <div class="insight-list">
+                  <div class="insight-item">
+                    <div class="insight-title">Batting Profile</div>
+                    <p>${escapeHtml(normalizeStyleLabel(battingStyle))}</p>
+                  </div>
+                  <div class="insight-item">
+                    <div class="insight-title">Bowling Profile</div>
+                    <p>${escapeHtml(normalizeStyleLabel(bowlingStyle))}</p>
+                  </div>
+                  <div class="insight-item">
+                    <div class="insight-title">Scope</div>
+                    <p>${escapeHtml(scopeLabel)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="stat-grid">
+              ${renderStatsTable("Batting Stats", battingStatRows)}
+              ${renderStatsTable("Bowling Stats", bowlingStatRows)}
+              ${renderStatsTable("Fielding / Wicketkeeping Stats", fieldingStatRows)}
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="detail-grid">
+              <div class="detail-panel">
+                <h3>Threat Signals</h3>
+                <p>The clearest live indicators behind the current threat read.</p>
+                ${insightList(tacticalSummary?.strengths, "No clear threat signal is available yet in the live sample.")}
+              </div>
+              <div class="detail-panel">
+                <h3>Watchouts</h3>
+                <p>The live indicators showing where the opposition can target this player.</p>
+                ${insightList(tacticalSummary?.watchouts, "No clear weakness is available yet in the live sample.")}
+              </div>
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="detail-grid">
+              <div class="detail-panel">
+                <h3>Matchup & Usage Insights</h3>
+                <p>How the player is being used and which matchups are shaping the read.</p>
+                ${insightList(additionalInsights?.matchupAndUsage, "No additional matchup or usage insights are available yet.")}
+              </div>
+              <div class="detail-panel">
+                <h3>Pressure & Evidence Insights</h3>
+                <p>Pressure markers and commentary-backed interpretation from the live sample.</p>
+                ${insightList(additionalInsights?.pressureAndEvidence, "No additional pressure or evidence insights are available yet.")}
+              </div>
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="section-grid">
+              ${renderMatchupTable("Batting Vs Bowler Type", focusedLens?.batting?.byBowlerType, "batting")}
+              ${renderMatchupTable("Bowling Vs Batter Type", focusedLens?.bowling?.byBatterHand, "bowling")}
+            </div>
+          </section>
+
+          <section class="sheet">
+            ${renderDismissalTable(focusedLens?.dismissals)}
+          </section>
+
+          <section class="sheet">
+            <div class="section-grid">
+              ${renderEvidenceTable("Batting Evidence", commentaryEvidence?.batting)}
+              ${renderEvidenceTable("Bowling Evidence", commentaryEvidence?.bowling)}
+            </div>
+            <div style="margin-top: 16px;">
+              ${renderEvidenceTable("Dismissal Evidence", commentaryEvidence?.dismissals)}
+            </div>
+          </section>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
 module.exports = {
   renderAdminMatchesPage,
   renderAdminSetupPage,
   renderAdminTuningPage,
   renderDashboardPage,
   renderErrorPage,
+  renderPlayerIntelligenceReportPage,
   renderPlayerReportPage,
   renderSeriesIndexPage,
 };

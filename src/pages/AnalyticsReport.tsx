@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, ArrowLeft, ExternalLink, FileSearch, Loader2, Radar, RefreshCw, ShieldCheck, TrendingUp } from "lucide-react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
-import AnalyticsReportModeSwitcher from "@/components/analytics/AnalyticsReportModeSwitcher";
 import PlayerReportChat from "@/components/analytics/PlayerReportChat";
+import StandaloneReportActions from "@/components/analytics/StandaloneReportActions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,12 +16,14 @@ import {
   CricketPlayerReportResponse,
   CricketPlayerReportRouteState,
   createCricketSeriesAccessRequest,
-  fetchCricketViewerSeries,
   fetchCricketPlayerReport,
+  fetchCricketProtectedDocument,
+  fetchCricketViewerSeries,
   getAnalyticsPlatformAdminRoute,
-  getRootCricketPlayerIntelligenceRoute,
   getAnalyticsWorkspaceRoute,
+  getCricketPlayerReportEmailUrl,
   getCricketPlayerReportDocumentUrl,
+  getCricketPlayerReportPdfUrl,
 } from "@/lib/cricketApi";
 
 function getDivisionId(value: string | null) {
@@ -86,7 +88,6 @@ const AnalyticsReport = () => {
   const [reportDocumentError, setReportDocumentError] = useState<string | null>(null);
   const [reportDocumentHtml, setReportDocumentHtml] = useState<string | null>(null);
   const [reportDocumentReloadKey, setReportDocumentReloadKey] = useState(0);
-  const [standaloneReportBlobUrl, setStandaloneReportBlobUrl] = useState<string | null>(null);
   const [viewerStatus, setViewerStatus] = useState<ViewerStatus>("loading");
   const [viewerError, setViewerError] = useState<string | null>(null);
   const [viewerSeries, setViewerSeries] = useState<Array<{ configKey?: string; seriesName?: string }>>([]);
@@ -95,37 +96,33 @@ const AnalyticsReport = () => {
   const [viewerReloadKey, setViewerReloadKey] = useState(0);
   const [accessRequestStatus, setAccessRequestStatus] = useState<AccessRequestStatus>("idle");
   const [accessRequestMessage, setAccessRequestMessage] = useState<string | null>(null);
+  const reportFrameRef = useRef<HTMLIFrameElement | null>(null);
 
   const numericPlayerId = Number.parseInt(playerId ?? "", 10);
   const divisionId = getDivisionId(searchParams.get("divisionId"));
+  const isStandalone = searchParams.get("standalone") === "1";
   const accessToken = session?.access_token || "";
   const currentSeriesKey = searchParams.get("series")?.trim() || routeState.seriesConfigKey?.trim() || "";
   const defaultSeriesKey = viewerSeries[0]?.configKey?.trim() || "";
   const effectiveSeriesKey = currentSeriesKey || defaultSeriesKey;
   const currentSearchQuery = searchParams.get("q")?.trim() || routeState.searchQuery?.trim() || "";
-  const executiveRoute = `${location.pathname}${location.search}`;
   const backToSearchUrl = useMemo(
     () => getAnalyticsWorkspaceRoute(currentSearchQuery, effectiveSeriesKey || undefined),
     [currentSearchQuery, effectiveSeriesKey]
   );
   const platformAdminRoute = getAnalyticsPlatformAdminRoute();
   const hasViewerAccess = viewerSeries.some((series) => series.configKey?.trim() === effectiveSeriesKey);
-  const intelligenceRoute = useMemo(() => {
+  const sectionSpacingClassName = isStandalone ? "pt-10 pb-12" : "pt-32 pb-20";
+  const standaloneReportRoute = useMemo(() => {
     if (!Number.isFinite(numericPlayerId)) {
-      return backToSearchUrl;
+      return null;
     }
 
-    return getRootCricketPlayerIntelligenceRoute(
-      {
-        playerId: numericPlayerId,
-        divisionId,
-      },
-      {
-        searchQuery: currentSearchQuery,
-        seriesConfigKey: effectiveSeriesKey || undefined,
-      }
-    );
-  }, [backToSearchUrl, currentSearchQuery, divisionId, effectiveSeriesKey, numericPlayerId]);
+    const params = new URLSearchParams(location.search);
+    params.set("standalone", "1");
+    const search = params.toString();
+    return search ? `${location.pathname}?${search}` : location.pathname;
+  }, [location.pathname, location.search, numericPlayerId]);
   const reportUrl = useMemo(() => {
     if (!Number.isFinite(numericPlayerId)) {
       return null;
@@ -136,6 +133,34 @@ const AnalyticsReport = () => {
         playerId: numericPlayerId,
         divisionId,
       },
+      { seriesConfigKey: effectiveSeriesKey || undefined }
+    );
+  }, [divisionId, effectiveSeriesKey, numericPlayerId]);
+  const reportPdfUrl = useMemo(() => {
+    if (!Number.isFinite(numericPlayerId)) {
+      return null;
+    }
+
+    return getCricketPlayerReportPdfUrl(
+      {
+        playerId: numericPlayerId,
+        divisionId,
+      },
+      "assessment",
+      { seriesConfigKey: effectiveSeriesKey || undefined }
+    );
+  }, [divisionId, effectiveSeriesKey, numericPlayerId]);
+  const reportEmailUrl = useMemo(() => {
+    if (!Number.isFinite(numericPlayerId)) {
+      return null;
+    }
+
+    return getCricketPlayerReportEmailUrl(
+      {
+        playerId: numericPlayerId,
+        divisionId,
+      },
+      "assessment",
       { seriesConfigKey: effectiveSeriesKey || undefined }
     );
   }, [divisionId, effectiveSeriesKey, numericPlayerId]);
@@ -263,19 +288,11 @@ const AnalyticsReport = () => {
     setReportDocumentError(null);
     setReportDocumentHtml(null);
 
-    fetch(reportUrl, {
-      method: "GET",
+    fetchCricketProtectedDocument(reportUrl, {
+      accessToken,
       signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
     })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`Protected report request failed with status ${response.status}.`);
-        }
-
-        const html = await response.text();
+      .then((html) => {
         if (controller.signal.aborted) {
           return;
         }
@@ -298,20 +315,6 @@ const AnalyticsReport = () => {
       controller.abort();
     };
   }, [accessToken, hasViewerAccess, reportDocumentReloadKey, reportUrl, viewerStatus]);
-
-  useEffect(() => {
-    if (!reportDocumentHtml) {
-      setStandaloneReportBlobUrl(null);
-      return;
-    }
-
-    const blobUrl = URL.createObjectURL(new Blob([reportDocumentHtml], { type: "text/html" }));
-    setStandaloneReportBlobUrl(blobUrl);
-
-    return () => {
-      URL.revokeObjectURL(blobUrl);
-    };
-  }, [reportDocumentHtml]);
 
   const title =
     reportSummary?.header?.playerName ||
@@ -480,11 +483,15 @@ const AnalyticsReport = () => {
     }
   };
 
+  const handlePrintStandaloneReport = () => {
+    reportFrameRef.current?.contentWindow?.print();
+  };
+
   if (viewerStatus === "loading") {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
-        <section className="pt-32 pb-20">
+        {!isStandalone ? <Navbar /> : null}
+        <section className={sectionSpacingClassName}>
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-3xl">
               <Card className="border-border/80 bg-card/85 shadow-xl">
@@ -501,7 +508,7 @@ const AnalyticsReport = () => {
             </div>
           </div>
         </section>
-        <Footer />
+        {!isStandalone ? <Footer /> : null}
       </div>
     );
   }
@@ -509,8 +516,8 @@ const AnalyticsReport = () => {
   if (viewerStatus === "error") {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
-        <section className="pt-32 pb-20">
+        {!isStandalone ? <Navbar /> : null}
+        <section className={sectionSpacingClassName}>
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-3xl">
               <Card className="border-destructive/30 bg-destructive/10 shadow-xl">
@@ -536,7 +543,7 @@ const AnalyticsReport = () => {
             </div>
           </div>
         </section>
-        <Footer />
+        {!isStandalone ? <Footer /> : null}
       </div>
     );
   }
@@ -544,8 +551,8 @@ const AnalyticsReport = () => {
   if (!hasViewerAccess) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
-        <section className="pt-32 pb-20">
+        {!isStandalone ? <Navbar /> : null}
+        <section className={sectionSpacingClassName}>
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-4xl">
               <Card className="border-border/80 bg-card/85 shadow-xl">
@@ -639,7 +646,7 @@ const AnalyticsReport = () => {
             </div>
           </div>
         </section>
-        <Footer />
+        {!isStandalone ? <Footer /> : null}
       </div>
     );
   }
@@ -647,8 +654,8 @@ const AnalyticsReport = () => {
   if (!reportUrl) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
-        <section className="pt-32 pb-20">
+        {!isStandalone ? <Navbar /> : null}
+        <section className={sectionSpacingClassName}>
           <div className="container mx-auto px-4">
             <div className="mx-auto max-w-3xl">
               <Card className="border-border/80 bg-card/85 shadow-xl">
@@ -670,40 +677,60 @@ const AnalyticsReport = () => {
             </div>
           </div>
         </section>
-        <Footer />
+        {!isStandalone ? <Footer /> : null}
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      {!isStandalone ? <Navbar /> : null}
 
-      <section className="bg-gradient-hero pt-32 pb-20">
+      <section className={`bg-gradient-hero ${sectionSpacingClassName}`}>
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-7xl space-y-8">
             <div className="grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
               <div className="space-y-4">
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="outline" asChild>
+                    <Link to={backToSearchUrl}>
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Back to Search
+                    </Link>
+                  </Button>
+                  {isStandalone ? (
+                    <StandaloneReportActions
+                      reportLabel="Player Assessment"
+                      fileNameBase={`${title} player assessment`}
+                      pdfUrl={reportPdfUrl}
+                      emailUrl={reportEmailUrl}
+                      accessToken={accessToken}
+                      onPrint={reportDocumentStatus === "success" ? handlePrintStandaloneReport : null}
+                      disabled={reportDocumentStatus === "loading"}
+                    />
+                  ) : standaloneReportRoute ? (
+                    <Button asChild>
+                      <Link to={standaloneReportRoute} target="_blank" rel="noreferrer">
+                        Open Standalone Report
+                        <ExternalLink className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button type="button" disabled>
+                      Standalone Report Unavailable
+                    </Button>
+                  )}
+                </div>
+
                 <div className="flex flex-wrap gap-2">
                   <Badge className="gap-2 border border-cyan-400/20 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/10">
                     <FileSearch className="h-3.5 w-3.5" />
-                    Player Assessment Report
+                    Player Assessment
                   </Badge>
-                  {viewerIsPlatformAdmin ? (
-                    <Badge variant="outline" className="border-cyan-400/20 bg-cyan-400/10 text-cyan-200">
-                      Platform Admin Access
-                    </Badge>
-                  ) : null}
                 </div>
                 <div className="space-y-3">
                   <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl">{title}</h1>
                   <p className="max-w-4xl text-lg text-muted-foreground">{quickRead}</p>
-                  {viewerIsPlatformAdmin ? (
-                    <p className="max-w-4xl text-sm leading-7 text-cyan-100/85">
-                      Platform-admin scope is global. This report is available without a series-user grant and does not
-                      count against viewer allocation.
-                    </p>
-                  ) : null}
                   {subtitleParts.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {subtitleParts.map((part) => (
@@ -713,40 +740,6 @@ const AnalyticsReport = () => {
                       ))}
                     </div>
                   ) : null}
-                  <div className="flex flex-wrap gap-3">
-                    {viewerIsPlatformAdmin ? (
-                      <Button variant="outline" asChild>
-                        <Link to={platformAdminRoute}>
-                          Platform Console
-                          <ShieldCheck className="ml-2 h-4 w-4" />
-                        </Link>
-                      </Button>
-                    ) : null}
-                    <Button variant="outline" asChild>
-                      <Link to={backToSearchUrl}>
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Search
-                      </Link>
-                    </Button>
-                    <AnalyticsReportModeSwitcher
-                      activeMode="executive"
-                      executiveHref={executiveRoute}
-                      intelligenceHref={intelligenceRoute}
-                      linkState={routeState}
-                    />
-                    {standaloneReportBlobUrl ? (
-                      <Button asChild>
-                        <a href={standaloneReportBlobUrl} target="_blank" rel="noreferrer">
-                          Open Standalone Report
-                          <ExternalLink className="ml-2 h-4 w-4" />
-                        </a>
-                      </Button>
-                    ) : (
-                      <Button type="button" disabled>
-                        {reportDocumentStatus === "loading" ? "Loading Report..." : "Standalone Report Unavailable"}
-                      </Button>
-                    )}
-                  </div>
                 </div>
               </div>
 
@@ -793,29 +786,6 @@ const AnalyticsReport = () => {
                         {reportSummary?.header?.comparisonPool || "Current cohort context unavailable"}
                       </p>
                     </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {viewerIsPlatformAdmin ? (
-                      <Badge variant="outline" className="border-cyan-400/25 bg-cyan-400/10 text-cyan-200">
-                        Global superuser access
-                      </Badge>
-                    ) : null}
-                    {currentSeriesKey ? (
-                      <Badge variant="outline" className="border-sky-400/25 bg-sky-400/10 text-sky-200">
-                        Series-scoped route
-                      </Badge>
-                    ) : null}
-                    {currentSearchQuery ? (
-                      <Badge variant="outline" className="border-border/80 bg-background/60 text-muted-foreground">
-                        Search context · {currentSearchQuery}
-                      </Badge>
-                    ) : null}
-                    {reportSummary?.header?.comparisonPool ? (
-                      <Badge variant="outline" className="border-border/80 bg-background/60 text-muted-foreground">
-                        {reportSummary.header.comparisonPool}
-                      </Badge>
-                    ) : null}
                   </div>
                 </CardContent>
               </Card>
@@ -941,7 +911,9 @@ const AnalyticsReport = () => {
 
             <Card className="border-border/80 bg-card/85 shadow-xl">
               <CardHeader>
-                <CardTitle className="font-display text-2xl text-foreground">Embedded report</CardTitle>
+                <CardTitle className="font-display text-2xl text-foreground">
+                  {isStandalone ? "Standalone report" : "Embedded report"}
+                </CardTitle>
                 <CardDescription>
                   Protected source route: <span className="font-mono text-foreground">{reportUrl}</span>
                 </CardDescription>
@@ -976,10 +948,11 @@ const AnalyticsReport = () => {
                 {reportDocumentStatus === "success" && reportDocumentHtml ? (
                   <iframe
                     key={reportUrl}
+                    ref={reportFrameRef}
                     title={`${title} report`}
                     srcDoc={reportDocumentHtml}
                     onLoad={() => setIsFrameLoading(false)}
-                    className={`w-full rounded-2xl border border-border/80 bg-white ${isFrameLoading ? "hidden" : "block"} h-[80vh]`}
+                    className={`w-full rounded-2xl border border-border/80 bg-white ${isFrameLoading ? "hidden" : "block"} ${isStandalone ? "h-[86vh]" : "h-[80vh]"}`}
                   />
                 ) : null}
               </CardContent>
@@ -988,17 +961,19 @@ const AnalyticsReport = () => {
         </div>
       </section>
 
-      <PlayerReportChat
-        report={reportSummary}
-        playerName={title}
-        playerId={numericPlayerId}
-        seriesConfigKey={effectiveSeriesKey}
-        seriesName={seriesName}
-        divisionId={divisionId}
-        divisionLabel={divisionCoverageLabel}
-      />
+      {!isStandalone ? (
+        <PlayerReportChat
+          report={reportSummary}
+          playerName={title}
+          playerId={numericPlayerId}
+          seriesConfigKey={effectiveSeriesKey}
+          seriesName={seriesName}
+          divisionId={divisionId}
+          divisionLabel={divisionCoverageLabel}
+        />
+      ) : null}
 
-      <Footer />
+      {!isStandalone ? <Footer /> : null}
     </div>
   );
 };

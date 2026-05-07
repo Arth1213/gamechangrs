@@ -40,7 +40,7 @@ export default function AnalyticsReportModeSwitcher({
         )}
       >
         <Link to={executiveHref} state={linkState} aria-current={activeMode === "executive" ? "page" : undefined}>
-          Player Assessment Report
+          Player Assessment
           <FileSearch className="h-4 w-4" />
         </Link>
       </Button>

@@ -14,6 +14,7 @@ const {
   renderAdminTuningPage,
   renderDashboardPage,
   renderErrorPage,
+  renderPlayerIntelligenceReportPage,
   renderPlayerReportPage,
   renderSeriesIndexPage,
 } = require("./render/pages");
@@ -66,6 +67,11 @@ const {
   getLocalOpsRunDetail,
   runLocalOpsAction,
 } = require("./services/localOpsService");
+const {
+  buildPdfBufferFromHtml,
+  sanitizeFilename,
+  sendPdfEmail,
+} = require("./services/reportExportService");
 
 const app = express();
 const LOCAL_OPS_UI_ENABLED = toBoolean(process.env.LOCAL_OPS_ENABLE_UI);
@@ -156,6 +162,65 @@ function isApiRequest(req) {
 
 function sendHtml(res, html, statusCode = 200) {
   res.status(statusCode).type("html").send(html);
+}
+
+function sendPdfBuffer(res, pdfBuffer, filenameBase) {
+  res
+    .status(200)
+    .setHeader("Content-Type", "application/pdf")
+    .setHeader("Content-Disposition", `attachment; filename="${filenameBase}.pdf"`)
+    .send(pdfBuffer);
+}
+
+function buildReportFilenameBase(playerName, reportSlug) {
+  const safePlayerName = sanitizeFilename(playerName, "player");
+  const safeReportSlug = sanitizeFilename(reportSlug, "report");
+  return `${safePlayerName}-${safeReportSlug}`;
+}
+
+function buildReportEmailMessage(playerName, reportLabel) {
+  const normalizedPlayerName = normalizeText(playerName) || "player";
+  const normalizedLabel = normalizeText(reportLabel) || "report";
+  return {
+    subject: `${normalizedPlayerName} ${normalizedLabel} PDF`,
+    messageHtml: `
+      <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 20px;">
+        <h1 style="margin: 0 0 16px; color: #0f172a;">${normalizedLabel}</h1>
+        <p style="margin: 0 0 12px; color: #334155; line-height: 1.7;">
+          Attached is the latest ${normalizedLabel.toLowerCase()} PDF for ${normalizedPlayerName}.
+        </p>
+        <p style="margin: 0; color: #64748b; line-height: 1.7;">
+          The attachment was generated from the current standalone report layout so the fonts, colors, and report styling stay intact.
+        </p>
+      </div>
+    `,
+    messageText: `Attached is the latest ${normalizedLabel} PDF for ${normalizedPlayerName}.`,
+  };
+}
+
+async function sendStandaloneReportPdf(res, options) {
+  const pdfBuffer = await buildPdfBufferFromHtml({
+    html: options.reportHtml,
+  });
+  sendPdfBuffer(res, pdfBuffer, options.filenameBase);
+}
+
+async function emailStandaloneReportPdf(res, options) {
+  const email = normalizeText(options.email);
+  const message = buildReportEmailMessage(options.playerName, options.reportLabel);
+  const delivery = await sendPdfEmail({
+    to: email,
+    subject: message.subject,
+    filename: options.filenameBase,
+    reportHtml: options.reportHtml,
+    messageHtml: message.messageHtml,
+    messageText: message.messageText,
+  });
+
+  res.json({
+    message: `${options.reportLabel} PDF emailed to ${delivery.email}.`,
+    delivery,
+  });
 }
 
 function isLoopbackAddress(value) {
@@ -560,6 +625,69 @@ app.get("/api/players/:playerId/report/html", requireSeriesViewerOrDefault, asyn
   sendHtml(res, renderPlayerReportPage(payload));
 }));
 
+app.get("/api/players/:playerId/intelligence/html", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await getPlayerIntelligenceReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  sendHtml(res, renderPlayerIntelligenceReportPage(payload));
+}));
+
+app.get("/api/players/:playerId/report/pdf", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  await sendStandaloneReportPdf(res, {
+    reportHtml: renderPlayerReportPage(payload),
+    filenameBase: buildReportFilenameBase(payload?.header?.playerName, "player-assessment"),
+  });
+}));
+
+app.post("/api/players/:playerId/report/email", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  await emailStandaloneReportPdf(res, {
+    email: req.body?.email,
+    playerName: payload?.header?.playerName,
+    reportLabel: "Player Assessment",
+    reportHtml: renderPlayerReportPage(payload),
+    filenameBase: buildReportFilenameBase(payload?.header?.playerName, "player-assessment"),
+  });
+}));
+
+app.get("/api/players/:playerId/intelligence/pdf", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await getPlayerIntelligenceReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  await sendStandaloneReportPdf(res, {
+    reportHtml: renderPlayerIntelligenceReportPage(payload),
+    filenameBase: buildReportFilenameBase(payload?.header?.playerName, "player-intelligence-report"),
+  });
+}));
+
+app.post("/api/players/:playerId/intelligence/email", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {
+  const payload = await getPlayerIntelligenceReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  await emailStandaloneReportPdf(res, {
+    email: req.body?.email,
+    playerName: payload?.header?.playerName,
+    reportLabel: "Player Intelligence Report",
+    reportHtml: renderPlayerIntelligenceReportPage(payload),
+    filenameBase: buildReportFilenameBase(payload?.header?.playerName, "player-intelligence-report"),
+  });
+}));
+
 app.get("/", asyncHandler(async (req, res) => {
   const seriesCards = await loadSeriesCards();
   const activeSeries = seriesCards.find((card) => card.isActive) || seriesCards[0] || null;
@@ -659,6 +787,69 @@ app.get("/api/series/:seriesConfigKey/players/:playerId/report/html", requireSer
     divisionId: req.query.divisionId,
   });
   sendHtml(res, renderPlayerReportPage(payload));
+}));
+
+app.get("/api/series/:seriesConfigKey/players/:playerId/intelligence/html", requireSeriesViewer, asyncHandler(async (req, res) => {
+  const payload = await getPlayerIntelligenceReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  sendHtml(res, renderPlayerIntelligenceReportPage(payload));
+}));
+
+app.get("/api/series/:seriesConfigKey/players/:playerId/report/pdf", requireSeriesViewer, asyncHandler(async (req, res) => {
+  const payload = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  await sendStandaloneReportPdf(res, {
+    reportHtml: renderPlayerReportPage(payload),
+    filenameBase: buildReportFilenameBase(payload?.header?.playerName, "player-assessment"),
+  });
+}));
+
+app.post("/api/series/:seriesConfigKey/players/:playerId/report/email", requireSeriesViewer, asyncHandler(async (req, res) => {
+  const payload = await getPlayerReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  await emailStandaloneReportPdf(res, {
+    email: req.body?.email,
+    playerName: payload?.header?.playerName,
+    reportLabel: "Player Assessment",
+    reportHtml: renderPlayerReportPage(payload),
+    filenameBase: buildReportFilenameBase(payload?.header?.playerName, "player-assessment"),
+  });
+}));
+
+app.get("/api/series/:seriesConfigKey/players/:playerId/intelligence/pdf", requireSeriesViewer, asyncHandler(async (req, res) => {
+  const payload = await getPlayerIntelligenceReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  await sendStandaloneReportPdf(res, {
+    reportHtml: renderPlayerIntelligenceReportPage(payload),
+    filenameBase: buildReportFilenameBase(payload?.header?.playerName, "player-intelligence-report"),
+  });
+}));
+
+app.post("/api/series/:seriesConfigKey/players/:playerId/intelligence/email", requireSeriesViewer, asyncHandler(async (req, res) => {
+  const payload = await getPlayerIntelligenceReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  await emailStandaloneReportPdf(res, {
+    email: req.body?.email,
+    playerName: payload?.header?.playerName,
+    reportLabel: "Player Intelligence Report",
+    reportHtml: renderPlayerIntelligenceReportPage(payload),
+    filenameBase: buildReportFilenameBase(payload?.header?.playerName, "player-intelligence-report"),
+  });
 }));
 
 app.post("/api/series/:seriesConfigKey/players/:playerId/chat-context", requireSeriesViewer, asyncHandler(async (req, res) => {

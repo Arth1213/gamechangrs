@@ -1237,6 +1237,40 @@ function getPlayerReportDocumentApiPath(result: CricketPlayerTarget, seriesConfi
   return `/api/players/${result.playerId}/report/html`;
 }
 
+function getPlayerIntelligenceDocumentApiPath(result: CricketPlayerTarget, seriesConfigKey?: string | null) {
+  if (seriesConfigKey?.trim()) {
+    return `/api/series/${encodeURIComponent(seriesConfigKey.trim())}/players/${result.playerId}/intelligence/html`;
+  }
+
+  return `/api/players/${result.playerId}/intelligence/html`;
+}
+
+function getPlayerReportPdfApiPath(
+  result: CricketPlayerTarget,
+  kind: "assessment" | "intelligence",
+  seriesConfigKey?: string | null
+) {
+  const suffix = kind === "intelligence" ? "intelligence/pdf" : "report/pdf";
+  if (seriesConfigKey?.trim()) {
+    return `/api/series/${encodeURIComponent(seriesConfigKey.trim())}/players/${result.playerId}/${suffix}`;
+  }
+
+  return `/api/players/${result.playerId}/${suffix}`;
+}
+
+function getPlayerReportEmailApiPath(
+  result: CricketPlayerTarget,
+  kind: "assessment" | "intelligence",
+  seriesConfigKey?: string | null
+) {
+  const suffix = kind === "intelligence" ? "intelligence/email" : "report/email";
+  if (seriesConfigKey?.trim()) {
+    return `/api/series/${encodeURIComponent(seriesConfigKey.trim())}/players/${result.playerId}/${suffix}`;
+  }
+
+  return `/api/players/${result.playerId}/${suffix}`;
+}
+
 function getPlayerSearchApiPath(seriesConfigKey?: string | null) {
   if (seriesConfigKey?.trim()) {
     return `/api/series/${encodeURIComponent(seriesConfigKey.trim())}/players/search`;
@@ -1271,6 +1305,38 @@ export function getCricketPlayerReportDocumentUrl(
 ) {
   const query = appendPlayerQueryParams(result);
   const basePath = getCricketApiUrl(getPlayerReportDocumentApiPath(result, options?.seriesConfigKey));
+  const search = query.toString();
+  return search ? `${basePath}?${search}` : basePath;
+}
+
+export function getCricketPlayerIntelligenceDocumentUrl(
+  result: CricketPlayerTarget,
+  options?: Pick<CricketPlayerRouteOptions, "seriesConfigKey">
+) {
+  const query = appendPlayerQueryParams(result);
+  const basePath = getCricketApiUrl(getPlayerIntelligenceDocumentApiPath(result, options?.seriesConfigKey));
+  const search = query.toString();
+  return search ? `${basePath}?${search}` : basePath;
+}
+
+export function getCricketPlayerReportPdfUrl(
+  result: CricketPlayerTarget,
+  kind: "assessment" | "intelligence",
+  options?: Pick<CricketPlayerRouteOptions, "seriesConfigKey">
+) {
+  const query = appendPlayerQueryParams(result);
+  const basePath = getCricketApiUrl(getPlayerReportPdfApiPath(result, kind, options?.seriesConfigKey));
+  const search = query.toString();
+  return search ? `${basePath}?${search}` : basePath;
+}
+
+export function getCricketPlayerReportEmailUrl(
+  result: CricketPlayerTarget,
+  kind: "assessment" | "intelligence",
+  options?: Pick<CricketPlayerRouteOptions, "seriesConfigKey">
+) {
+  const query = appendPlayerQueryParams(result);
+  const basePath = getCricketApiUrl(getPlayerReportEmailApiPath(result, kind, options?.seriesConfigKey));
   const search = query.toString();
   return search ? `${basePath}?${search}` : basePath;
 }
@@ -1452,6 +1518,79 @@ export async function fetchCricketPlayerIntelligence(
   }
 
   return (await response.json()) as CricketPlayerIntelligenceResponse;
+}
+
+export async function fetchCricketProtectedDocument(
+  documentUrl: string,
+  options: {
+    accessToken: string;
+    signal?: AbortSignal;
+  }
+) {
+  const response = await fetch(documentUrl, {
+    method: "GET",
+    signal: options.signal,
+    headers: {
+      Authorization: `Bearer ${options.accessToken || ""}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Protected report request failed with status ${response.status}.`));
+  }
+
+  return await response.text();
+}
+
+export async function fetchCricketProtectedPdf(
+  pdfUrl: string,
+  options: {
+    accessToken: string;
+    signal?: AbortSignal;
+  }
+) {
+  const response = await fetch(pdfUrl, {
+    method: "GET",
+    signal: options.signal,
+    headers: {
+      Authorization: `Bearer ${options.accessToken || ""}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Protected PDF request failed with status ${response.status}.`));
+  }
+
+  return await response.blob();
+}
+
+export async function emailCricketProtectedPdf(
+  emailUrl: string,
+  options: {
+    accessToken: string;
+    email: string;
+    signal?: AbortSignal;
+  }
+) {
+  const response = await fetch(emailUrl, {
+    method: "POST",
+    signal: options.signal,
+    headers: {
+      Authorization: `Bearer ${options.accessToken || ""}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email: options.email,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `Report email request failed with status ${response.status}.`));
+  }
+
+  return (await response.json()) as {
+    message?: string;
+  };
 }
 
 export async function fetchCricketAdminSeries(accessToken: string, signal?: AbortSignal) {

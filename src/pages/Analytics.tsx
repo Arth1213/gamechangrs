@@ -667,7 +667,7 @@ function SearchResultCard({
               </Button>
               <Button asChild variant="outline" className="w-full md:w-auto">
                 <Link to={inAppReportUrl} state={routeState}>
-                  Player Assessment Report
+                  Player Assessment
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
@@ -676,7 +676,7 @@ function SearchResultCard({
             <>
               <Button asChild className="w-full md:w-auto">
                 <Link to={inAppReportUrl} state={routeState}>
-                  Player Assessment Report
+                  Player Assessment
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>

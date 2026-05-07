@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertCircle,
   ArrowLeft,
   BrainCircuit,
   Crosshair,
   ExternalLink,
+  Loader2,
   RefreshCw,
   ShieldCheck,
 } from "lucide-react";
@@ -11,8 +13,8 @@ import { Link, useLocation, useParams, useSearchParams } from "react-router-dom"
 
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
-import AnalyticsReportModeSwitcher from "@/components/analytics/AnalyticsReportModeSwitcher";
 import PlayerReportChat from "@/components/analytics/PlayerReportChat";
+import StandaloneReportActions from "@/components/analytics/StandaloneReportActions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,10 +29,13 @@ import {
   CricketPlayerIntelligenceSummaryStats,
   CricketPlayerReportRouteState,
   createCricketSeriesAccessRequest,
+  fetchCricketProtectedDocument,
   fetchCricketPlayerIntelligence,
   fetchCricketViewerSeries,
   getAnalyticsWorkspaceRoute,
-  getRootCricketPlayerReportRoute,
+  getCricketPlayerIntelligenceDocumentUrl,
+  getCricketPlayerReportEmailUrl,
+  getCricketPlayerReportPdfUrl,
 } from "@/lib/cricketApi";
 
 function getDivisionId(value: string | null) {
@@ -959,6 +964,7 @@ function EvidenceTable({
 }
 
 type IntelligenceStatus = "idle" | "loading" | "success" | "error";
+type ReportDocumentStatus = "idle" | "loading" | "success" | "error";
 type ViewerStatus = "loading" | "success" | "error";
 type AccessRequestStatus = "idle" | "saving" | "success" | "error";
 
@@ -978,8 +984,14 @@ const AnalyticsIntelligenceReport = () => {
   const [intelligenceError, setIntelligenceError] = useState<string | null>(null);
   const [intelligenceReport, setIntelligenceReport] = useState<CricketPlayerIntelligenceResponse | null>(null);
   const [intelligenceReloadKey, setIntelligenceReloadKey] = useState(0);
+  const [reportDocumentStatus, setReportDocumentStatus] = useState<ReportDocumentStatus>("idle");
+  const [reportDocumentError, setReportDocumentError] = useState<string | null>(null);
+  const [reportDocumentHtml, setReportDocumentHtml] = useState<string | null>(null);
+  const [reportDocumentReloadKey, setReportDocumentReloadKey] = useState(0);
+  const [isFrameLoading, setIsFrameLoading] = useState(true);
   const [accessRequestStatus, setAccessRequestStatus] = useState<AccessRequestStatus>("idle");
   const [accessRequestMessage, setAccessRequestMessage] = useState<string | null>(null);
+  const reportFrameRef = useRef<HTMLIFrameElement | null>(null);
 
   const accessToken = session?.access_token || "";
   const numericPlayerId = Number.parseInt(playerId ?? "", 10);
@@ -989,26 +1001,10 @@ const AnalyticsIntelligenceReport = () => {
   const defaultSeriesKey = viewerSeries[0]?.configKey?.trim() || "";
   const effectiveSeriesKey = currentSeriesKey || defaultSeriesKey;
   const currentSearchQuery = searchParams.get("q")?.trim() || routeState.searchQuery?.trim() || "";
-  const intelligenceRoute = `${location.pathname}${location.search}`;
   const backToSearchUrl = useMemo(
     () => getAnalyticsWorkspaceRoute(currentSearchQuery, effectiveSeriesKey || undefined),
     [currentSearchQuery, effectiveSeriesKey]
   );
-  const executiveReportUrl = useMemo(() => {
-    if (!Number.isFinite(numericPlayerId)) {
-      return backToSearchUrl;
-    }
-    return getRootCricketPlayerReportRoute(
-      {
-        playerId: numericPlayerId,
-        divisionId,
-      },
-      {
-        searchQuery: currentSearchQuery,
-        seriesConfigKey: effectiveSeriesKey || undefined,
-      }
-    );
-  }, [backToSearchUrl, currentSearchQuery, divisionId, effectiveSeriesKey, numericPlayerId]);
   const standaloneReportUrl = useMemo(() => {
     if (!Number.isFinite(numericPlayerId)) {
       return null;
@@ -1021,6 +1017,47 @@ const AnalyticsIntelligenceReport = () => {
   }, [location.pathname, location.search, numericPlayerId]);
   const hasViewerAccess = viewerSeries.some((series) => series.configKey?.trim() === effectiveSeriesKey);
   const sectionSpacingClassName = isStandalone ? "pt-10 pb-12" : "pt-32 pb-20";
+  const reportDocumentUrl = useMemo(() => {
+    if (!Number.isFinite(numericPlayerId)) {
+      return null;
+    }
+
+    return getCricketPlayerIntelligenceDocumentUrl(
+      {
+        playerId: numericPlayerId,
+        divisionId,
+      },
+      { seriesConfigKey: effectiveSeriesKey || undefined }
+    );
+  }, [divisionId, effectiveSeriesKey, numericPlayerId]);
+  const reportPdfUrl = useMemo(() => {
+    if (!Number.isFinite(numericPlayerId)) {
+      return null;
+    }
+
+    return getCricketPlayerReportPdfUrl(
+      {
+        playerId: numericPlayerId,
+        divisionId,
+      },
+      "intelligence",
+      { seriesConfigKey: effectiveSeriesKey || undefined }
+    );
+  }, [divisionId, effectiveSeriesKey, numericPlayerId]);
+  const reportEmailUrl = useMemo(() => {
+    if (!Number.isFinite(numericPlayerId)) {
+      return null;
+    }
+
+    return getCricketPlayerReportEmailUrl(
+      {
+        playerId: numericPlayerId,
+        divisionId,
+      },
+      "intelligence",
+      { seriesConfigKey: effectiveSeriesKey || undefined }
+    );
+  }, [divisionId, effectiveSeriesKey, numericPlayerId]);
 
   useEffect(() => {
     if (!accessToken) {
@@ -1120,6 +1157,49 @@ const AnalyticsIntelligenceReport = () => {
     return () => controller.abort();
   }, [accessToken, divisionId, effectiveSeriesKey, hasViewerAccess, intelligenceReloadKey, numericPlayerId, viewerStatus]);
 
+  useEffect(() => {
+    setIsFrameLoading(true);
+  }, [reportDocumentHtml]);
+
+  useEffect(() => {
+    if (!isStandalone || viewerStatus !== "success" || !hasViewerAccess || !reportDocumentUrl || !accessToken) {
+      setReportDocumentStatus("idle");
+      setReportDocumentError(null);
+      setReportDocumentHtml(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setReportDocumentStatus("loading");
+    setReportDocumentError(null);
+    setReportDocumentHtml(null);
+
+    fetchCricketProtectedDocument(reportDocumentUrl, {
+      accessToken,
+      signal: controller.signal,
+    })
+      .then((html) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setReportDocumentHtml(html);
+        setReportDocumentStatus("success");
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : "The protected report could not be loaded right now.";
+        setReportDocumentError(message);
+        setReportDocumentHtml(null);
+        setReportDocumentStatus("error");
+      });
+
+    return () => controller.abort();
+  }, [accessToken, hasViewerAccess, isStandalone, reportDocumentReloadKey, reportDocumentUrl, viewerStatus]);
+
   const handleRetryViewerAccess = () => setViewerReloadKey((value) => value + 1);
   const handleRetryIntelligence = () => setIntelligenceReloadKey((value) => value + 1);
 
@@ -1146,6 +1226,10 @@ const AnalyticsIntelligenceReport = () => {
       setAccessRequestStatus("error");
       setAccessRequestMessage(message);
     }
+  };
+
+  const handlePrintStandaloneReport = () => {
+    reportFrameRef.current?.contentWindow?.print();
   };
 
   const title =
@@ -1396,6 +1480,96 @@ const AnalyticsIntelligenceReport = () => {
     );
   }
 
+  if (isStandalone) {
+    return (
+      <div className="min-h-screen bg-background">
+        <section className={`bg-gradient-hero ${sectionSpacingClassName}`}>
+          <div className="container mx-auto px-4">
+            <div className="mx-auto max-w-7xl space-y-6">
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="outline" asChild>
+                    <Link to={backToSearchUrl}>
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Back to Search
+                    </Link>
+                  </Button>
+                  <StandaloneReportActions
+                    reportLabel="Player Intelligence Report"
+                    fileNameBase={`${title} player intelligence report`}
+                    pdfUrl={reportPdfUrl}
+                    emailUrl={reportEmailUrl}
+                    accessToken={accessToken}
+                    onPrint={reportDocumentStatus === "success" ? handlePrintStandaloneReport : null}
+                    disabled={reportDocumentStatus === "loading"}
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Badge className="gap-2 border border-cyan-400/20 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/10">
+                    <BrainCircuit className="h-3.5 w-3.5" />
+                    Player Intelligence Report
+                  </Badge>
+                  <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl">{title}</h1>
+                  <p className="max-w-4xl text-lg text-muted-foreground">
+                    {[threatNarrative, weaknessNarrative, pressureNarrative].filter(Boolean).join(" ")}
+                  </p>
+                </div>
+              </div>
+
+              <Card className="border-border/80 bg-card/85 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="font-display text-2xl text-foreground">Standalone report</CardTitle>
+                  <CardDescription>
+                    Protected source route: <span className="font-mono text-foreground">{reportDocumentUrl}</span>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {(reportDocumentStatus === "loading" || (reportDocumentStatus === "success" && isFrameLoading)) ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-background/60 px-4 py-3 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading the protected report inside the Game-Changrs shell.
+                      </div>
+                      <Skeleton className="h-[82vh] w-full rounded-2xl" />
+                    </div>
+                  ) : null}
+
+                  {reportDocumentStatus === "error" && reportDocumentError ? (
+                    <div className="flex flex-col gap-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-sm text-destructive sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <div className="space-y-1">
+                          <p>The protected report could not be loaded.</p>
+                          <p className="text-destructive/80">{reportDocumentError}</p>
+                        </div>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setReportDocumentReloadKey((current) => current + 1)}>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Retry Report
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  {reportDocumentStatus === "success" && reportDocumentHtml ? (
+                    <iframe
+                      key={reportDocumentUrl}
+                      ref={reportFrameRef}
+                      title={`${title} intelligence report`}
+                      srcDoc={reportDocumentHtml}
+                      onLoad={() => setIsFrameLoading(false)}
+                      className={`w-full rounded-2xl border border-border/80 bg-white ${isFrameLoading ? "hidden" : "block"} h-[86vh]`}
+                    />
+                  ) : null}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {!isStandalone ? <Navbar /> : null}
@@ -1412,33 +1586,28 @@ const AnalyticsIntelligenceReport = () => {
                       Back to Search
                     </Link>
                   </Button>
-                  <AnalyticsReportModeSwitcher
-                    activeMode="intelligence"
-                    executiveHref={executiveReportUrl}
-                    intelligenceHref={intelligenceRoute}
-                    linkState={routeState}
-                  />
-                  {!isStandalone && standaloneReportUrl ? (
+                  {standaloneReportUrl ? (
                     <Button asChild>
-                      <a href={standaloneReportUrl} target="_blank" rel="noreferrer">
+                      <Link to={standaloneReportUrl} target="_blank" rel="noreferrer">
                         Open Standalone Report
                         <ExternalLink className="ml-2 h-4 w-4" />
-                      </a>
+                      </Link>
                     </Button>
-                  ) : null}
+                  ) : (
+                    <Button type="button" disabled>
+                      Standalone Report Unavailable
+                    </Button>
+                  )}
                 </div>
                 <div className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    {recommendationLabel ? (
-                      <Badge className={`border px-4 py-1.5 text-sm ${getToneClasses(recommendationTone)}`}>
-                        {recommendationLabel}
-                      </Badge>
-                    ) : null}
-                    <Badge className={`border px-4 py-1.5 text-sm ${getToneClasses(threatProfile.tone)}`}>
-                      Threat Level · {threatProfile.label}
-                    </Badge>
-                  </div>
+                  <Badge className="gap-2 border border-cyan-400/20 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/10">
+                    <BrainCircuit className="h-3.5 w-3.5" />
+                    Player Intelligence Report
+                  </Badge>
                   <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl">{title}</h1>
+                  <p className="max-w-4xl text-lg text-muted-foreground">
+                    {[threatNarrative, weaknessNarrative, pressureNarrative].filter(Boolean).join(" ")}
+                  </p>
                   {scopeFallbackReason ? (
                     <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
                       {scopeFallbackReason}
@@ -1450,7 +1619,14 @@ const AnalyticsIntelligenceReport = () => {
               <Card className="border-border/80 bg-card shadow-card">
                 <CardContent className="p-6">
                   <div className="space-y-4">
-                    <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Player Summary</p>
+                    <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Report Summary</p>
+                    <div className="rounded-2xl border border-border/80 bg-background/40 p-5">
+                      <p className="text-sm leading-7 text-foreground">
+                        {recommendationLabel
+                          ? `${recommendationLabel}. ${threatNarrative} ${weaknessNarrative} ${pressureNarrative}`
+                          : `${threatNarrative} ${weaknessNarrative} ${pressureNarrative}`}
+                      </p>
+                    </div>
                     <dl className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                       <SummaryField label="Team" value={teamName || "-"} />
                       <SummaryField label="Primary Role" value={roleLabel || "-"} />
@@ -1485,12 +1661,6 @@ const AnalyticsIntelligenceReport = () => {
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Retry Intelligence
                   </Button>
-                  <AnalyticsReportModeSwitcher
-                    activeMode="intelligence"
-                    executiveHref={executiveReportUrl}
-                    intelligenceHref={intelligenceRoute}
-                    linkState={routeState}
-                  />
                 </CardContent>
               </Card>
             ) : null}

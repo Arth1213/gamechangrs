@@ -5184,25 +5184,53 @@ function renderPlayerIntelligenceReportPage(report) {
       color: #d7e7ef;
     }
 
-    .meta-strip {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+    .hero-kicker {
+      color: var(--teal);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 11px;
+      font-weight: 800;
+      margin-bottom: 10px;
     }
 
-    .meta-chip {
-      padding: 7px 10px;
-      border-radius: 999px;
+    .hero-facts-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 2px;
+    }
+
+    .hero-fact-card {
+      grid-column: span 2;
+      min-width: 0;
+      padding: 12px 14px;
+      border-radius: 20px;
       border: 1px solid rgba(145, 192, 215, 0.14);
       background: rgba(255, 255, 255, 0.04);
-      color: var(--ink);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
+      display: grid;
+      gap: 6px;
+      align-content: start;
+      min-height: 86px;
     }
 
-    .meta-chip strong {
+    .hero-fact-card.wide {
+      grid-column: span 3;
+    }
+
+    .hero-fact-label {
       color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .hero-fact-value {
+      color: #eef8fc;
+      font-size: 15px;
+      line-height: 1.35;
+      font-weight: 700;
+      overflow-wrap: anywhere;
     }
 
     .metric-card {
@@ -5443,6 +5471,16 @@ function renderPlayerIntelligenceReportPage(report) {
       .card-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+
+      .hero-facts-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .hero-fact-card,
+      .hero-fact-card.wide {
+        grid-column: span 1;
+        min-height: 0;
+      }
     }
 
     @media (max-width: 720px) {
@@ -5460,6 +5498,10 @@ function renderPlayerIntelligenceReportPage(report) {
       }
 
       .card-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-facts-grid {
         grid-template-columns: 1fr;
       }
 
@@ -6006,6 +6048,7 @@ function renderPlayerIntelligenceReportPage(report) {
   const weaknessNarrative = buildWeaknessNarrative(leadingWatchout, tacticalPlan?.battingPlan?.[0]);
   const pressureNarrative = buildPressureNarrative(leadingPressure);
   const summaryNarrative = [threatNarrative, weaknessNarrative, pressureNarrative].filter(Boolean).join(" ");
+  const scopeHeroLabel = scopeLabel === "All Divisions" ? "All tracked phases and divisions" : scopeLabel;
 
   const summaryCards = [
     metricCard(
@@ -6124,15 +6167,31 @@ function renderPlayerIntelligenceReportPage(report) {
               <div class="hero-grid">
                 <div class="hero-panel">
                   <div>
+                    <div class="hero-kicker">Game-Changrs Player Intelligence</div>
                     <h1>${escapeHtml(playerName)}</h1>
                     <p class="summary-copy" style="margin-top: 12px;">${escapeHtml(summaryNarrative)}</p>
                   </div>
-                  <div class="meta-strip">
-                    <div class="meta-chip"><strong>Team</strong> ${escapeHtml(teamName)}</div>
-                    <div class="meta-chip"><strong>Role</strong> ${escapeHtml(roleLabel)}</div>
-                    <div class="meta-chip"><strong>Series</strong> ${escapeHtml(ageGroup ? `${seriesName} • ${ageGroup}` : seriesName)}</div>
-                    <div class="meta-chip"><strong>Scope</strong> ${escapeHtml(scopeLabel)}</div>
-                    <div class="meta-chip"><strong>Recommendation</strong> ${escapeHtml(recommendation)}</div>
+                  <div class="hero-facts-grid">
+                    <div class="hero-fact-card">
+                      <div class="hero-fact-label">Team</div>
+                      <div class="hero-fact-value">${escapeHtml(teamName)}</div>
+                    </div>
+                    <div class="hero-fact-card">
+                      <div class="hero-fact-label">Role</div>
+                      <div class="hero-fact-value">${escapeHtml(roleLabel)}</div>
+                    </div>
+                    <div class="hero-fact-card">
+                      <div class="hero-fact-label">Series</div>
+                      <div class="hero-fact-value">${escapeHtml(ageGroup ? `${seriesName} • ${ageGroup}` : seriesName)}</div>
+                    </div>
+                    <div class="hero-fact-card wide">
+                      <div class="hero-fact-label">Scope</div>
+                      <div class="hero-fact-value">${escapeHtml(scopeHeroLabel)}</div>
+                    </div>
+                    <div class="hero-fact-card wide">
+                      <div class="hero-fact-label">Threat Level</div>
+                      <div class="hero-fact-value">${escapeHtml(threatProfile.label)}</div>
+                    </div>
                   </div>
                   ${fallbackReason ? `<div class="empty-state">${escapeHtml(fallbackReason)}</div>` : ""}
                 </div>

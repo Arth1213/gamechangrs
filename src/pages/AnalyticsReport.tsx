@@ -738,11 +738,11 @@ const AnalyticsReport = () => {
 
       <section className={`bg-gradient-hero ${sectionSpacingClassName}`}>
         <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-7xl space-y-6">
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-3">
-                <Button variant="outline" asChild>
-                  <Link to={backToSearchUrl}>
+            <div className="mx-auto max-w-7xl space-y-6">
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="outline" asChild>
+                    <Link to={backToSearchUrl}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back to Search
                   </Link>
@@ -755,17 +755,10 @@ const AnalyticsReport = () => {
                   reportHtml={reportDocumentHtml}
                   emailUrl={reportEmailUrl}
                   disabled={reportDocumentStatus !== "success" || isFrameLoading}
-                  showDownload={false}
-                  showEmail={false}
-                />
-              </div>
-              <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,23,33,0.92),rgba(6,18,27,0.98))] p-6 shadow-[0_24px_80px_rgba(2,6,23,0.38)]">
-                <div className="flex justify-center">
-                  <div className="rounded-full border border-sky-400/15 bg-sky-400/[0.08] px-8 py-3 font-display text-xl uppercase tracking-[0.18em] text-sky-100 md:px-12">
-                    Player Assessment
-                  </div>
+                    showDownload={false}
+                    showEmail={false}
+                  />
                 </div>
-              </div>
             </div>
             <Card className="border-border/80 bg-card/85 shadow-xl">
               <CardContent className="space-y-4 p-6">
@@ -801,8 +794,9 @@ const AnalyticsReport = () => {
                     ref={reportFrameRef}
                     title={`${title} report`}
                     srcDoc={reportDocumentHtml}
-                    onLoad={() => setIsFrameLoading(false)}
-                    className={`block w-full rounded-2xl border border-border/80 bg-white ${isStandalone ? "h-[86vh]" : "h-[80vh]"}`}
+                    onLoad={handleStandaloneFrameLoad}
+                    style={{ height: `${standaloneFrameHeight}px` }}
+                    className="block w-full rounded-2xl border border-border/80 bg-white"
                   />
                 ) : null}
               </CardContent>

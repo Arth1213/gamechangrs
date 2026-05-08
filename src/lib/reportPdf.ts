@@ -7,6 +7,7 @@ const PDF_FILL_RGB = {
   green: 19,
   blue: 28,
 };
+const PDF_FILL_HEX = "#06131c";
 const PAGE_HEIGHT_BUFFER_PX = 28;
 
 type ExportShellKind = "assessment" | "intelligence" | "generic";
@@ -208,7 +209,7 @@ async function renderElementCanvas(element: HTMLElement, captureWidth: number) {
   const { width, height } = await resolveElementDimensions(element, captureWidth);
 
   return html2canvas(element, {
-    backgroundColor: null,
+    backgroundColor: PDF_FILL_HEX,
     logging: false,
     useCORS: true,
     allowTaint: false,
@@ -284,8 +285,8 @@ function addCanvasToPdf(
       sliceCanvas.height,
     );
 
-    const imageData = sliceCanvas.toDataURL("image/png");
-    pdf.addImage(imageData, "PNG", PDF_MARGIN_PT, PDF_MARGIN_PT, innerWidth, renderedHeight, undefined, "FAST");
+    const imageData = sliceCanvas.toDataURL("image/jpeg", 0.98);
+    pdf.addImage(imageData, "JPEG", PDF_MARGIN_PT, PDF_MARGIN_PT, innerWidth, renderedHeight, undefined, "FAST");
 
     offsetY += currentSliceHeight;
     hasWrittenPage = true;

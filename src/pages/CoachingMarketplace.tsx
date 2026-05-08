@@ -1140,79 +1140,142 @@ const CoachingMarketplace = () => {
         </>
       ) : (
         <>
-          <section className="border-b border-border bg-card/40 pb-12 pt-32">
+          <section className="border-b border-border bg-card/40 pb-10 pt-28">
             <div className="container mx-auto px-4">
-              <div className="mx-auto max-w-5xl">
-                <div className="space-y-6 text-center">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
-                    <Sparkles className="h-4 w-4" />
-                    Coaching Marketplace
-                  </div>
-                  <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl lg:text-6xl">
-                    Find the right coach and keep the full training relationship in one place
-                  </h1>
-                  <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
-                    Browse public coach profiles, compare fit, and move into coach or player onboarding when you are ready.
-                  </p>
-                  <div className="flex flex-wrap justify-center gap-4">
-                    <Button variant="hero" asChild>
-                      <Link to="/coaching-marketplace/player-signup">Join as Player</Link>
-                    </Button>
-                    <Button variant="outline" asChild>
-                      <Link to="/coaching-marketplace/coach-signup">Become a Coach</Link>
-                    </Button>
-                  </div>
-                </div>
+              <div className="mx-auto max-w-6xl">
+                <div className="rounded-[34px] border border-border/80 bg-card/80 p-5 shadow-xl lg:p-7">
+                  <div className="grid gap-5 xl:grid-cols-[0.94fr_1.06fr] xl:items-center">
+                    <div className="flex flex-col gap-5 text-center xl:pr-4 xl:text-left">
+                      <div className="space-y-4">
+                        <div className="inline-flex items-center gap-2 self-center rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary xl:self-start">
+                          <Sparkles className="h-4 w-4" />
+                          Coaching Marketplace
+                        </div>
+                        <h1 className="font-display text-4xl font-bold leading-[0.94] text-foreground md:text-5xl xl:text-[4.25rem]">
+                          Find the right coach and keep the full training relationship in one place
+                        </h1>
+                        <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:text-lg xl:mx-0">
+                          Browse public coach profiles, compare fit, and move into coach or player onboarding when you are ready.
+                        </p>
+                      </div>
 
-                <div className="mt-10 grid gap-4 md:grid-cols-3">
-                  <div className="rounded-2xl border border-primary/20 bg-primary/10 p-5">
-                    <p className="font-display text-3xl font-bold text-foreground">{loading ? "-" : coaches.length}</p>
-                    <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Active coaches</p>
-                  </div>
-                  <div className="rounded-2xl border border-border bg-background/70 p-5">
-                    <p className="font-display text-3xl font-bold text-foreground">{loading ? "-" : verifiedCoachCount}</p>
-                    <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Verified coaches</p>
-                  </div>
-                  <div className="rounded-2xl border border-border bg-background/70 p-5">
-                    <p className="font-display text-3xl font-bold text-foreground">{loading ? "-" : categories.length}</p>
-                    <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Training categories</p>
+                      <div className="flex flex-wrap justify-center gap-3 xl:justify-start">
+                        <Button variant="hero" asChild>
+                          <Link to="/coaching-marketplace/player-signup">Join as Player</Link>
+                        </Button>
+                        <Button variant="outline" asChild>
+                          <Link to="/coaching-marketplace/coach-signup">Become a Coach</Link>
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4">
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="flex min-h-[138px] h-full flex-col justify-between rounded-[24px] border border-primary/20 bg-primary/10 p-5">
+                          <p className="font-display text-4xl font-bold leading-none text-foreground">{loading ? "-" : coaches.length}</p>
+                          <p className="mt-5 text-xs uppercase tracking-[0.16em] text-muted-foreground">Active coaches</p>
+                        </div>
+                        <div className="flex min-h-[138px] h-full flex-col justify-between rounded-[24px] border border-border/80 bg-background/70 p-5">
+                          <p className="font-display text-4xl font-bold leading-none text-foreground">{loading ? "-" : verifiedCoachCount}</p>
+                          <p className="mt-5 text-xs uppercase tracking-[0.16em] text-muted-foreground">Verified coaches</p>
+                        </div>
+                        <div className="flex min-h-[138px] h-full flex-col justify-between rounded-[24px] border border-border/80 bg-background/70 p-5">
+                          <p className="font-display text-4xl font-bold leading-none text-foreground">{loading ? "-" : categories.length}</p>
+                          <p className="mt-5 text-xs uppercase tracking-[0.16em] text-muted-foreground">Training categories</p>
+                        </div>
+                        <div className="flex min-h-[138px] h-full flex-col justify-between rounded-[24px] border border-border/80 bg-background/70 p-5">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
+                            <Clock className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-[0.16em] text-primary/80">Open preview</p>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                              Browse first, then step into the right player or coach workflow when you are ready.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-[26px] border border-border/80 bg-background/45 p-5">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Marketplace fit</p>
+                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                              The same surface supports discovery, trust, and scheduling for both sides of the relationship.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-[22px] border border-border/70 bg-card/60 p-4">
+                            <p className="font-display text-xl font-bold text-foreground">For players</p>
+                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                              Compare specialties, level, reviews, and location before you commit to coaching.
+                            </p>
+                          </div>
+                          <div className="rounded-[22px] border border-border/70 bg-card/60 p-4">
+                            <p className="font-display text-xl font-bold text-foreground">For coaches</p>
+                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                              Show credibility, accept the right requests, and keep the working relationship in one place.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          <section className="border-b border-border py-10">
+          <section className="border-b border-border py-8">
             <div className="container mx-auto px-4">
               <div className="mx-auto max-w-6xl">
-                <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-                  <div className="rounded-3xl border border-border bg-card/70 p-6">
+                <div className="grid gap-5 lg:grid-cols-[1.18fr_0.82fr] lg:items-stretch">
+                  <div className="rounded-[30px] border border-border bg-card/70 p-5 lg:p-6">
                     <p className="text-xs uppercase tracking-[0.18em] text-primary/80">How it works</p>
+                    <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+                      Move from discovery to an active coaching relationship without losing scheduling context.
+                    </p>
                     <div className="mt-5 grid gap-4 md:grid-cols-3">
-                      <div className="rounded-2xl border border-border bg-background/70 p-5">
-                        <Search className="h-5 w-5 text-primary" />
-                        <h3 className="mt-4 font-display text-xl font-bold text-foreground">Browse</h3>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">Review public coach profiles, specialties, level, and location.</p>
+                      <div className="flex h-full flex-col rounded-[22px] border border-border bg-background/70 p-5">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                          <Search className="h-5 w-5 text-primary" />
+                        </div>
+                        <h3 className="mt-4 font-display text-2xl font-bold text-foreground">Browse</h3>
+                        <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">
+                          Review public coach profiles, specialties, level, and location.
+                        </p>
                       </div>
-                      <div className="rounded-2xl border border-border bg-background/70 p-5">
-                        <Users className="h-5 w-5 text-primary" />
-                        <h3 className="mt-4 font-display text-xl font-bold text-foreground">Connect</h3>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">Create the right persona, send requests, and move into a verified coaching relationship.</p>
+                      <div className="flex h-full flex-col rounded-[22px] border border-border bg-background/70 p-5">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                          <Users className="h-5 w-5 text-primary" />
+                        </div>
+                        <h3 className="mt-4 font-display text-2xl font-bold text-foreground">Connect</h3>
+                        <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">
+                          Create the right persona, send requests, and move into a verified coaching relationship.
+                        </p>
                       </div>
-                      <div className="rounded-2xl border border-border bg-background/70 p-5">
-                        <Calendar className="h-5 w-5 text-primary" />
-                        <h3 className="mt-4 font-display text-xl font-bold text-foreground">Schedule</h3>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">Keep upcoming sessions and calendar context visible once the relationship is active.</p>
+                      <div className="flex h-full flex-col rounded-[22px] border border-border bg-background/70 p-5">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                          <Calendar className="h-5 w-5 text-primary" />
+                        </div>
+                        <h3 className="mt-4 font-display text-2xl font-bold text-foreground">Schedule</h3>
+                        <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">
+                          Keep upcoming sessions and calendar context visible once the relationship is active.
+                        </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded-3xl border border-border bg-card/70 p-6">
+                  <div className="rounded-[30px] border border-border bg-card/70 p-5 lg:p-6">
                     <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Coverage</p>
                     <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Training areas already in the marketplace</h2>
-                    <div className="mt-5 flex flex-wrap gap-2">
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                      The current public marketplace already spans core batting, bowling, fielding, and wicketkeeping skill areas.
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2.5">
                       {publicCategoryPreview.map((category) => (
-                        <Badge key={category.id} variant="outline">
+                        <Badge key={category.id} variant="outline" className="px-3 py-1.5 text-sm">
                           {category.name}
                         </Badge>
                       ))}

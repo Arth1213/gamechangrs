@@ -31,6 +31,11 @@ export const HomeHeroOrbit = () => {
   return (
     <div className="relative mx-auto flex w-full max-w-[700px] items-center justify-center">
       <div className="relative w-full overflow-hidden rounded-[32px] border border-white/10 bg-[#040a10] shadow-[0_26px_80px_rgba(0,0,0,0.42)]">
+        <div className="pointer-events-none absolute right-4 top-4 z-10 rounded-full border border-white/10 bg-slate-950/65 px-3 py-2 backdrop-blur-md">
+          <span className="font-display text-[1.05rem] font-bold leading-none text-white">Game</span>
+          <span className="font-display text-[1.05rem] font-bold leading-none text-[#55a17d]">Changrs</span>
+        </div>
+
         <div className="aspect-[784/470] w-full bg-[#040a10]">
           <video
             src={videoSrc}

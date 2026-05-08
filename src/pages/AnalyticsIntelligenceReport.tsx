@@ -1505,13 +1505,6 @@ const AnalyticsIntelligenceReport = () => {
                   showEmail={false}
                 />
               </div>
-              <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,23,33,0.92),rgba(6,18,27,0.98))] p-6 shadow-[0_24px_80px_rgba(2,6,23,0.38)]">
-                <div className="flex justify-center">
-                  <div className="rounded-full border border-sky-400/15 bg-sky-400/[0.08] px-8 py-3 font-display text-xl uppercase tracking-[0.18em] text-sky-100 md:px-12">
-                    Player Intelligence
-                  </div>
-                </div>
-              </div>
             </div>
 
             {intelligenceStatus === "loading" ? (
@@ -1541,73 +1534,8 @@ const AnalyticsIntelligenceReport = () => {
             ) : null}
 
             {intelligenceStatus === "success" && intelligenceReport ? (
-              <div className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.08] p-5">
-                    <SectionMetric
-                      label="Confidence"
-                      value={confidenceValue}
-                      tone={recommendationTone}
-                      valueClassName="text-[2rem] leading-none"
-                      note="How strong the live evidence is for this intelligence read."
-                    />
-                  </div>
-                  <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.08] p-5">
-                    <SectionMetric
-                      label="Percentile"
-                      value={formatOrdinal(intelligenceReport?.header?.percentileRank)}
-                      tone="good"
-                      valueClassName="text-[2rem] leading-none"
-                      note={threatProfile.note}
-                    />
-                  </div>
-                  <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] p-5">
-                    <SectionMetric
-                      label="Composite Selector Score"
-                      value={formatNumber(intelligenceReport?.header?.compositeScore)}
-                      tone="good"
-                      valueClassName="text-[2rem] leading-none"
-                      note={recommendationLabel || "Current selector score feeding the report."}
-                    />
-                  </div>
-                  <div className={`rounded-2xl border p-5 ${getToneSurfaceClasses(threatProfile.tone)}`}>
-                    <SectionMetric
-                      label="Threat Level"
-                      value={threatProfile.label}
-                      tone={threatProfile.tone}
-                      valueClassName="text-[2rem] leading-none"
-                      note={threatProfile.note}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 lg:grid-cols-3">
-                  <SummaryStatsCard
-                    title="Batting Snapshot"
-                    rows={[
-                      battingStatRows[0],
-                      battingStatRows[1],
-                      battingStatRows[3],
-                      battingStatRows[4],
-                    ]}
-                  />
-                  <SummaryStatsCard
-                    title="Bowling Snapshot"
-                    rows={[
-                      bowlingStatRows[0],
-                      bowlingStatRows[2],
-                      bowlingStatRows[1],
-                      bowlingStatRows[3],
-                    ]}
-                  />
-                  <SummaryStatsCard
-                    title="Fielding / Wicketkeeping"
-                    rows={fieldingStatRows}
-                  />
-                </div>
-
-                <Card className="border-border/80 bg-card/85 shadow-xl">
-                  <CardContent className="space-y-4 p-6">
+              <Card className="border-border/80 bg-card/85 shadow-xl">
+                <CardContent className="space-y-4 p-6">
                   {(reportDocumentStatus === "loading" || (reportDocumentStatus === "success" && isFrameLoading)) ? (
                     <div className="space-y-4">
                       <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-background/60 px-4 py-3 text-sm text-muted-foreground">
@@ -1645,9 +1573,8 @@ const AnalyticsIntelligenceReport = () => {
                       className="block w-full rounded-2xl border border-border/80 bg-white"
                     />
                   ) : null}
-                  </CardContent>
-                </Card>
-              </div>
+                </CardContent>
+              </Card>
             ) : null}
           </div>
         </div>

@@ -1048,6 +1048,25 @@
       gap: 18px;
     }
 
+    .report-pill-wrap {
+      display: flex;
+      justify-content: center;
+    }
+
+    .report-pill {
+      padding: 12px 40px;
+      border-radius: 999px;
+      border: 1px solid rgba(145, 192, 215, 0.18);
+      background: rgba(107, 198, 237, 0.08);
+      color: #dff5ff;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
     .hero-grid,
     .section-grid,
     .card-grid,
@@ -1149,6 +1168,7 @@
       background: rgba(255, 255, 255, 0.03);
       display: grid;
       gap: 10px;
+      height: 100%;
     }
 
     .metric-label {
@@ -1342,6 +1362,10 @@
       gap: 2px;
     }
 
+    .tactical-grid {
+      margin-top: 18px;
+    }
+
     @media (max-width: 1120px) {
       .hero-grid,
       .section-grid,
@@ -1406,7 +1430,9 @@
         <div class="page-shell intelligence-shell">
           <section class="sheet">
             <div class="report-title">
-              <div class="eyebrow">Game-Changrs Player Intelligence</div>
+              <div class="report-pill-wrap">
+                <div class="report-pill">Player Intelligence</div>
+              </div>
               <div class="hero-grid">
                 <div class="hero-panel">
                   <div>
@@ -1436,6 +1462,43 @@
                       <div class="callout-label">Pressure Note</div>
                       <p>Shows how often the player still finds a boundary after dot-ball pressure builds.</p>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="plan-grid">
+              <div class="summary-panel">
+                <h3>Batting Plan</h3>
+                <p>How the report says to approach this player with the bat.</p>
+                
+      <ul class="bullet-list">
+        <li>Most vulnerable batting setup is against Right-Arm Pace in the current live sample.</li><li>Right-Arm Pace has produced the most dismissals so far, especially by caught.</li><li>Dot-ball pressure matters here. Dismissals have often come after about 1 dots in a row.</li>
+      </ul>
+    
+              </div>
+              <div class="summary-panel">
+                <h3>Bowling Plan</h3>
+                <p>How the report says to manage this player with the ball.</p>
+                <div class="empty-state">No bowling plan lines are available yet.</div>
+              </div>
+              <div class="summary-panel">
+                <h3>Player Summary</h3>
+                <p>Compact context for what the current intelligence report is saying.</p>
+                <div class="insight-list">
+                  <div class="insight-item">
+                    <div class="insight-title">Batting Profile</div>
+                    <p>Right Right Handed Batter</p>
+                  </div>
+                  <div class="insight-item">
+                    <div class="insight-title">Bowling Profile</div>
+                    <p>Right Arm Medium</p>
+                  </div>
+                  <div class="insight-item">
+                    <div class="insight-title">Scope</div>
+                    <p>All Divisions</p>
                   </div>
                 </div>
               </div>
@@ -1473,38 +1536,35 @@
           </section>
 
           <section class="sheet">
-            <div class="plan-grid">
-              <div class="summary-panel">
-                <h3>Batting Plan</h3>
-                <p>How the report says to approach this player with the bat.</p>
+            <div class="detail-panel">
+              <h3>Phase &amp; Pressure Read</h3>
+              <p>Where this player’s impact shows up in an innings and what opposition planners should target first.</p>
+              <div class="card-grid tactical-grid">
                 
-      <ul class="bullet-list">
-        <li>Most vulnerable batting setup is against Right-Arm Pace in the current live sample.</li><li>Right-Arm Pace has produced the most dismissals so far, especially by caught.</li><li>Dot-ball pressure matters here. Dismissals have often come after about 1 dots in a row.</li>
-      </ul>
+      <div class="metric-card">
+        <div class="metric-label">Batting Threat Window</div>
+        <div class="metric-value good">Middle</div>
+        <div class="metric-note">42 runs from 19 balls at 221.1 strike rate in the strongest batting phase.</div>
+      </div>
     
-              </div>
-              <div class="summary-panel">
-                <h3>Bowling Plan</h3>
-                <p>How the report says to manage this player with the ball.</p>
-                <div class="empty-state">No bowling plan lines are available yet.</div>
-              </div>
-              <div class="summary-panel">
-                <h3>Player Summary</h3>
-                <p>Compact context for what the current intelligence report is saying.</p>
-                <div class="insight-list">
-                  <div class="insight-item">
-                    <div class="insight-title">Batting Profile</div>
-                    <p>Right Right Handed Batter</p>
-                  </div>
-                  <div class="insight-item">
-                    <div class="insight-title">Bowling Profile</div>
-                    <p>Right Arm Medium</p>
-                  </div>
-                  <div class="insight-item">
-                    <div class="insight-title">Scope</div>
-                    <p>All Divisions</p>
-                  </div>
-                </div>
+      <div class="metric-card">
+        <div class="metric-label">Bowling Threat Window</div>
+        <div class="metric-value good">Unknown</div>
+        <div class="metric-note">No bowling phase split is available yet in the live sample.</div>
+      </div>
+    
+      <div class="metric-card">
+        <div class="metric-label">Dismissal Cluster</div>
+        <div class="metric-value risk">Right-Arm Pace</div>
+        <div class="metric-note">Caught dismissals cluster around 24.3 balls and 28.8 runs into the innings.</div>
+      </div>
+    
+      <div class="metric-card">
+        <div class="metric-label">Pressure Trigger</div>
+        <div class="metric-value watch">1 Dot</div>
+        <div class="metric-note">Dismissal pressure appears after about 1 consecutive dot ball. Boundary response after three dots is 40%.</div>
+      </div>
+    
               </div>
             </div>
           </section>

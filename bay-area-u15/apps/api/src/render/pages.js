@@ -2224,18 +2224,18 @@ function renderPlayerReportPage(report) {
 
     .report-header-meta-pill {
       min-width: 0;
-      padding: 12px 14px;
+      padding: 10px 12px;
       border-radius: 18px;
       border: 1px solid rgba(145, 192, 215, 0.12);
       background: rgba(255, 255, 255, 0.04);
       display: grid;
-      gap: 8px;
+      gap: 6px;
       align-content: start;
     }
 
     .report-header-meta-label {
       color: var(--muted);
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 800;
       letter-spacing: 0.14em;
       text-transform: uppercase;
@@ -2243,8 +2243,8 @@ function renderPlayerReportPage(report) {
 
     .report-header-meta-value {
       color: #eef8fc;
-      font-size: 15px;
-      line-height: 1.5;
+      font-size: 14px;
+      line-height: 1.4;
       font-weight: 700;
       overflow-wrap: anywhere;
     }
@@ -5079,6 +5079,25 @@ function renderPlayerIntelligenceReportPage(report) {
       gap: 18px;
     }
 
+    .report-pill-wrap {
+      display: flex;
+      justify-content: center;
+    }
+
+    .report-pill {
+      padding: 12px 40px;
+      border-radius: 999px;
+      border: 1px solid rgba(145, 192, 215, 0.18);
+      background: rgba(107, 198, 237, 0.08);
+      color: #dff5ff;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
     .hero-grid,
     .section-grid,
     .card-grid,
@@ -5180,6 +5199,7 @@ function renderPlayerIntelligenceReportPage(report) {
       background: rgba(255, 255, 255, 0.03);
       display: grid;
       gap: 10px;
+      height: 100%;
     }
 
     .metric-label {
@@ -5371,6 +5391,10 @@ function renderPlayerIntelligenceReportPage(report) {
       z-index: 1;
       display: grid;
       gap: 2px;
+    }
+
+    .tactical-grid {
+      margin-top: 18px;
     }
 
     @media (max-width: 1120px) {
@@ -5850,6 +5874,99 @@ function renderPlayerIntelligenceReportPage(report) {
     `;
   }
 
+  function formatPhaseLabel(phaseKey) {
+    switch (phaseKey) {
+      case "powerplay":
+        return "Powerplay";
+      case "middle":
+        return "Middle";
+      case "death":
+        return "Death";
+      default:
+        return "Unknown";
+    }
+  }
+
+  function pickBestPhase(phases, mode) {
+    const candidates = [
+      ["powerplay", phases?.powerplay || null],
+      ["middle", phases?.middle || null],
+      ["death", phases?.death || null],
+    ].filter(([, row]) => row);
+
+    if (!candidates.length) {
+      return null;
+    }
+
+    const sorted = [...candidates].sort((left, right) => {
+      const leftRow = left[1] || {};
+      const rightRow = right[1] || {};
+
+      if (mode === "batting") {
+        const strikeRateDiff = toNumber(rightRow.strikeRate, -1) - toNumber(leftRow.strikeRate, -1);
+        if (strikeRateDiff !== 0) {
+          return strikeRateDiff;
+        }
+
+        const runDiff = toNumber(rightRow.runsScored, -1) - toNumber(leftRow.runsScored, -1);
+        if (runDiff !== 0) {
+          return runDiff;
+        }
+      } else {
+        const wicketDiff = toNumber(rightRow.wickets, -1) - toNumber(leftRow.wickets, -1);
+        if (wicketDiff !== 0) {
+          return wicketDiff;
+        }
+
+        const economyDiff = toNumber(leftRow.economy, Number.POSITIVE_INFINITY) - toNumber(rightRow.economy, Number.POSITIVE_INFINITY);
+        if (economyDiff !== 0) {
+          return economyDiff;
+        }
+      }
+
+      return toNumber(rightRow.legalBalls, -1) - toNumber(leftRow.legalBalls, -1);
+    });
+
+    return sorted[0]
+      ? { phaseKey: sorted[0][0], row: sorted[0][1] || null }
+      : null;
+  }
+
+  function buildPressureCard(profile) {
+    if (profile?.dismissalDotThreshold !== null && profile?.dismissalDotThreshold !== undefined) {
+      return {
+        value: `${displayNumber(profile.dismissalDotThreshold, 0, "0")} Dots`,
+        note: `Dismissal pressure rises after about ${displayNumber(profile.dismissalDotThreshold, 0, "0")} consecutive dot balls.`,
+      };
+    }
+
+    if (profile?.battingHighLeverageStrikeRate !== null && profile?.battingHighLeverageStrikeRate !== undefined) {
+      return {
+        value: `SR ${displayNumber(profile.battingHighLeverageStrikeRate, 1, "0")}`,
+        note: "High-pressure batting strike rate in leverage overs.",
+      };
+    }
+
+    if (profile?.bowlingHighLeverageEconomy !== null && profile?.bowlingHighLeverageEconomy !== undefined) {
+      return {
+        value: `Eco ${displayNumber(profile.bowlingHighLeverageEconomy, 1, "0")}`,
+        note: "High-pressure bowling economy in leverage overs.",
+      };
+    }
+
+    if (profile?.bowlingPressureControlErrorPct !== null && profile?.bowlingPressureControlErrorPct !== undefined) {
+      return {
+        value: `${displayNumber(profile.bowlingPressureControlErrorPct, 1, "0")}%`,
+        note: "Pressure control errors through wides and no-balls.",
+      };
+    }
+
+    return {
+      value: "Building",
+      note: "Pressure rhythm markers are still building from the live sample.",
+    };
+  }
+
   const threatProfile = getThreatTone(header.percentileRank);
   const threatNarrative = buildThreatNarrative(leadingStrength);
   const weaknessNarrative = buildWeaknessNarrative(leadingWatchout, tacticalPlan?.battingPlan?.[0]);
@@ -5882,6 +5999,44 @@ function renderPlayerIntelligenceReportPage(report) {
       threatProfile.label,
       threatProfile.note,
       threatProfile.tone
+    ),
+  ].join("");
+
+  const battingPhaseWindow = pickBestPhase(focusedLens?.batting?.byPhase, "batting");
+  const bowlingPhaseWindow = pickBestPhase(focusedLens?.bowling?.byPhase, "bowling");
+  const leadingDismissalCluster = focusedLens?.dismissals?.[0] || null;
+  const pressureCard = buildPressureCard(leadingPressure);
+
+  const tacticalCards = [
+    metricCard(
+      "Batting Threat Window",
+      battingPhaseWindow ? formatPhaseLabel(battingPhaseWindow.phaseKey) : "Unknown",
+      battingPhaseWindow?.row
+        ? `${displayNumber(battingPhaseWindow.row.runsScored, 0, "0")} runs from ${displayNumber(battingPhaseWindow.row.legalBalls, 0, "0")} balls at ${displayNumber(battingPhaseWindow.row.strikeRate, 1, "0")} strike rate.`
+        : "No batting phase split is available yet in the live sample.",
+      "good"
+    ),
+    metricCard(
+      "Bowling Threat Window",
+      bowlingPhaseWindow ? formatPhaseLabel(bowlingPhaseWindow.phaseKey) : "Unknown",
+      bowlingPhaseWindow?.row
+        ? `${displayNumber(bowlingPhaseWindow.row.wickets, 0, "0")} wickets from ${displayNumber(bowlingPhaseWindow.row.legalBalls, 0, "0")} balls at ${displayNumber(bowlingPhaseWindow.row.economy, 1, "0")} economy.`
+        : "No bowling phase split is available yet in the live sample.",
+      "good"
+    ),
+    metricCard(
+      "Dismissal Cluster",
+      normalizeText(leadingDismissalCluster?.bowlerStyleLabel) || "Unknown",
+      leadingDismissalCluster
+        ? `${normalizeText(leadingDismissalCluster.dismissalType) || "Dismissal events"} most often arrive around ${displayNumber(leadingDismissalCluster.averageBallsFacedAtDismissal, 1, "0")} balls and ${displayNumber(leadingDismissalCluster.averageRunsAtDismissal, 1, "0")} runs into the innings.`
+        : "No dismissal cluster is available yet in the live sample.",
+      "risk"
+    ),
+    metricCard(
+      "Pressure Trigger",
+      pressureCard.value,
+      pressureCard.note,
+      "watch"
     ),
   ].join("");
 
@@ -5927,7 +6082,9 @@ function renderPlayerIntelligenceReportPage(report) {
         <div class="page-shell intelligence-shell">
           <section class="sheet">
             <div class="report-title">
-              <div class="eyebrow">Game-Changrs Player Intelligence</div>
+              <div class="report-pill-wrap">
+                <div class="report-pill">Player Intelligence</div>
+              </div>
               <div class="hero-grid">
                 <div class="hero-panel">
                   <div>
@@ -5964,12 +6121,6 @@ function renderPlayerIntelligenceReportPage(report) {
           </section>
 
           <section class="sheet">
-            <div class="card-grid">
-              ${summaryCards}
-            </div>
-          </section>
-
-          <section class="sheet">
             <div class="plan-grid">
               <div class="summary-panel">
                 <h3>Batting Plan</h3>
@@ -5998,6 +6149,22 @@ function renderPlayerIntelligenceReportPage(report) {
                     <p>${escapeHtml(scopeLabel)}</p>
                   </div>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="card-grid">
+              ${summaryCards}
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="detail-panel">
+              <h3>Phase & Pressure Read</h3>
+              <p>Where this player’s impact shows up in an innings and what opposition planners should target first.</p>
+              <div class="card-grid tactical-grid">
+                ${tacticalCards}
               </div>
             </div>
           </section>

@@ -15,7 +15,6 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
-import AnalyticsSamplePreview from "@/components/analytics/AnalyticsSamplePreview";
 import { SeriesOnboardingRequestPanel } from "@/components/analytics/SeriesOnboardingRequestPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1543,80 +1542,73 @@ function AnalyticsLandingSections() {
         <CardContent className="space-y-8 p-8 lg:p-10">
           <div className="space-y-3">
             <p className="text-xs uppercase tracking-[0.18em] text-primary">Features</p>
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div className="space-y-2">
-                <h2 className="font-display text-3xl text-foreground md:text-4xl">Live Features</h2>
-                <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-                  The current analytics workflow already ships in two report-ready surfaces.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm leading-6 text-cyan-100">
-                Click either sample to preview the current standalone report experience.
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-5 xl:grid-cols-2">
-            {ANALYTICS_FEATURE_SAMPLES.map((sample) => (
-              <div
-                key={sample.id}
-                className="rounded-[28px] border border-border/80 bg-background/40 p-5 shadow-sm backdrop-blur"
-              >
-                <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr] xl:items-start">
-                  <div className="space-y-4">
-                    <Badge
-                      variant="outline"
-                      className="border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-cyan-100"
-                    >
-                      {sample.title}
-                    </Badge>
-                    <h3 className="font-display text-3xl text-foreground">{sample.title}</h3>
-                    <p className="text-sm leading-7 text-muted-foreground">{sample.description}</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <AnalyticsSamplePreview
-                      contentType={sample.previewContentType}
-                      src={sample.previewSrc}
-                      alt={sample.previewAlt}
-                      masks={sample.previewMasks}
-                      className={sample.cardFrameClassName}
-                      contentClassName={sample.cardContentClassName}
-                    />
-                    <Button asChild className="w-full">
-                      <Link to={sample.path}>
-                        View Sample Report
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/80 bg-card/85 shadow-xl">
-        <CardContent className="space-y-6 p-8 lg:p-10">
-          <div className="space-y-3">
-            <p className="text-xs uppercase tracking-[0.18em] text-primary">Roadmap</p>
-            <h2 className="font-display text-3xl text-foreground md:text-4xl">Upcoming Features</h2>
+            <h2 className="font-display text-3xl text-foreground md:text-4xl">Feature Surfaces</h2>
             <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-              The analytics shell is being extended beyond individual-player workflows.
+              The analytics shell already has two live report flows, with the next intelligence surfaces queued underneath.
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            {ANALYTICS_UPCOMING_FEATURES.map((item, index) => (
-              <div
-                key={item}
-                className="rounded-2xl border border-border/80 bg-background/40 p-5 shadow-sm backdrop-blur"
-              >
-                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Coming next {index + 1}</p>
-                <p className="mt-4 font-display text-2xl text-foreground">{item}</p>
+          <div className="space-y-5">
+            <div className="rounded-[30px] border border-border/80 bg-background/35 p-6 backdrop-blur">
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Live Features</p>
+                <h3 className="font-display text-3xl text-foreground">Report-ready today</h3>
+                <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
+                  Open either sample report directly from here.
+                </p>
               </div>
-            ))}
+
+              <div className="mt-6 grid gap-5 xl:grid-cols-2">
+                {ANALYTICS_FEATURE_SAMPLES.map((sample) => (
+                  <div
+                    key={sample.id}
+                    className="rounded-[28px] border border-border/80 bg-card/60 p-6 shadow-sm"
+                  >
+                    <div className="flex h-full flex-col justify-between gap-6">
+                      <div className="space-y-4">
+                        <Badge
+                          variant="outline"
+                          className="border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-cyan-100"
+                        >
+                          {sample.title}
+                        </Badge>
+                        <h4 className="font-display text-3xl text-foreground">{sample.title}</h4>
+                        <p className="max-w-xl text-sm leading-7 text-muted-foreground">{sample.description}</p>
+                      </div>
+
+                      <Button asChild className="w-full sm:w-fit">
+                        <Link to={sample.path}>
+                          View Sample Report
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[30px] border border-border/80 bg-background/35 p-6 backdrop-blur">
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Upcoming</p>
+                <h3 className="font-display text-3xl text-foreground">What comes next</h3>
+                <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
+                  The analytics shell is being extended beyond individual-player workflows.
+                </p>
+              </div>
+
+              <div className="mt-6 grid gap-4 md:grid-cols-3">
+                {ANALYTICS_UPCOMING_FEATURES.map((item, index) => (
+                  <div
+                    key={item}
+                    className="rounded-2xl border border-border/80 bg-card/55 p-5 shadow-sm"
+                  >
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Coming next {index + 1}</p>
+                    <p className="mt-4 font-display text-2xl text-foreground">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

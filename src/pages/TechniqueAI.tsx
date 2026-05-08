@@ -164,9 +164,6 @@ function TechniqueAIGuestLanding() {
                       <ArrowRight className="h-5 w-5" />
                     </Link>
                   </Button>
-                  <Button variant="outline" size="lg" asChild>
-                    <a href="#technique-ai-report-preview">See Sample Report</a>
-                  </Button>
                 </div>
 
                 <div className="flex flex-wrap gap-2">

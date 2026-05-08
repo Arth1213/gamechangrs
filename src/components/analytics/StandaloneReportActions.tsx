@@ -62,7 +62,7 @@ function waitForImage(image: HTMLImageElement) {
 async function printStandaloneReport(reportHtml: string) {
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
-    throw new Error("Allow pop-ups for this site before printing the standalone report.");
+    throw new Error("Allow pop-ups for this site before printing the report.");
   }
 
   printWindow.document.open();
@@ -117,7 +117,7 @@ export default function StandaloneReportActions({
     } catch (error) {
       toast({
         title: "Print failed",
-        description: error instanceof Error ? error.message : "The standalone report could not be opened for printing.",
+        description: error instanceof Error ? error.message : "The report could not be opened for printing.",
       });
     }
   };
@@ -213,7 +213,7 @@ export default function StandaloneReportActions({
           <DialogHeader>
             <DialogTitle>Email {reportLabel} PDF</DialogTitle>
             <DialogDescription>
-              Send the current standalone report as a preserved PDF attachment.
+              Send the current report as a preserved PDF attachment.
             </DialogDescription>
           </DialogHeader>
 

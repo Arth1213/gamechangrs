@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   BrainCircuit,
   Crosshair,
-  ExternalLink,
   Loader2,
   RefreshCw,
   ShieldCheck,
@@ -1006,16 +1005,6 @@ const AnalyticsIntelligenceReport = () => {
     () => getAnalyticsWorkspaceRoute(currentSearchQuery, effectiveSeriesKey || undefined),
     [currentSearchQuery, effectiveSeriesKey]
   );
-  const standaloneReportUrl = useMemo(() => {
-    if (!Number.isFinite(numericPlayerId)) {
-      return null;
-    }
-
-    const params = new URLSearchParams(location.search);
-    params.set("standalone", "1");
-    const search = params.toString();
-    return search ? `${location.pathname}?${search}` : location.pathname;
-  }, [location.pathname, location.search, numericPlayerId]);
   const hasViewerAccess = viewerSeries.some((series) => series.configKey?.trim() === effectiveSeriesKey);
   const sectionSpacingClassName = isStandalone ? "pt-10 pb-12" : "pt-32 pb-20";
   const reportDocumentUrl = useMemo(() => {
@@ -1148,7 +1137,7 @@ const AnalyticsIntelligenceReport = () => {
   }, [reportDocumentHtml]);
 
   useEffect(() => {
-    if (!isStandalone || viewerStatus !== "success" || !hasViewerAccess || !reportDocumentUrl || !accessToken) {
+    if (viewerStatus !== "success" || !hasViewerAccess || !reportDocumentUrl || !accessToken) {
       setReportDocumentStatus("idle");
       setReportDocumentError(null);
       setReportDocumentHtml(null);
@@ -1184,7 +1173,7 @@ const AnalyticsIntelligenceReport = () => {
       });
 
     return () => controller.abort();
-  }, [accessToken, hasViewerAccess, isStandalone, reportDocumentReloadKey, reportDocumentUrl, viewerStatus]);
+  }, [accessToken, hasViewerAccess, reportDocumentReloadKey, reportDocumentUrl, viewerStatus]);
 
   const handleRetryViewerAccess = () => setViewerReloadKey((value) => value + 1);
   const handleRetryIntelligence = () => setIntelligenceReloadKey((value) => value + 1);
@@ -1554,18 +1543,15 @@ const AnalyticsIntelligenceReport = () => {
                       Back to Search
                     </Link>
                   </Button>
-                  {standaloneReportUrl ? (
-                    <Button asChild>
-                      <Link to={standaloneReportUrl} target="_blank" rel="noreferrer">
-                        Open Standalone Report
-                        <ExternalLink className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                  ) : (
-                    <Button type="button" disabled>
-                      Standalone Report Unavailable
-                    </Button>
-                  )}
+                  <StandaloneReportActions
+                    reportLabel="Player Intelligence Report"
+                    fileNameBase={`${title} player intelligence report`}
+                    accessToken={accessToken}
+                    frameRef={reportFrameRef}
+                    reportHtml={reportDocumentHtml}
+                    emailUrl={reportEmailUrl}
+                    disabled={reportDocumentStatus !== "success" || isFrameLoading}
+                  />
                 </div>
                 <div className="space-y-3">
                   <Badge className="gap-2 border border-cyan-400/20 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/10">
@@ -1857,6 +1843,24 @@ const AnalyticsIntelligenceReport = () => {
           divisionId={divisionId}
           divisionLabel={intelligenceReport?.meta?.scope?.scopeLabel || routeState.divisionLabel || null}
         />
+      ) : null}
+
+      {!isStandalone && reportDocumentStatus === "success" && reportDocumentHtml ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed left-[-20000px] top-0 overflow-hidden opacity-0"
+          style={{ width: "1400px", height: `${Math.max(standaloneFrameHeight, 2200)}px` }}
+        >
+          <iframe
+            key={`${reportDocumentUrl}-export`}
+            ref={reportFrameRef}
+            title={`${title} intelligence report export`}
+            srcDoc={reportDocumentHtml}
+            onLoad={handleStandaloneFrameLoad}
+            style={{ width: "1400px", height: `${Math.max(standaloneFrameHeight, 2200)}px` }}
+            className="block border-0 bg-transparent"
+          />
+        </div>
       ) : null}
 
       {!isStandalone ? <Footer /> : null}

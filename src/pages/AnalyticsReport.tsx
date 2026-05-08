@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ArrowLeft, ExternalLink, FileSearch, Loader2, Radar, RefreshCw, ShieldCheck, TrendingUp } from "lucide-react";
+import { AlertCircle, ArrowLeft, FileSearch, Loader2, Radar, RefreshCw, ShieldCheck, TrendingUp } from "lucide-react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 
 import { Footer } from "@/components/Footer";
@@ -114,16 +114,6 @@ const AnalyticsReport = () => {
   const platformAdminRoute = getAnalyticsPlatformAdminRoute();
   const hasViewerAccess = viewerSeries.some((series) => series.configKey?.trim() === effectiveSeriesKey);
   const sectionSpacingClassName = isStandalone ? "pt-10 pb-12" : "pt-32 pb-20";
-  const standaloneReportRoute = useMemo(() => {
-    if (!Number.isFinite(numericPlayerId)) {
-      return null;
-    }
-
-    const params = new URLSearchParams(location.search);
-    params.set("standalone", "1");
-    const search = params.toString();
-    return search ? `${location.pathname}?${search}` : location.pathname;
-  }, [location.pathname, location.search, numericPlayerId]);
   const reportUrl = useMemo(() => {
     if (!Number.isFinite(numericPlayerId)) {
       return null;
@@ -757,18 +747,15 @@ const AnalyticsReport = () => {
                       Back to Search
                     </Link>
                   </Button>
-                  {standaloneReportRoute ? (
-                    <Button asChild>
-                      <Link to={standaloneReportRoute} target="_blank" rel="noreferrer">
-                        Open Standalone Report
-                        <ExternalLink className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                  ) : (
-                    <Button type="button" disabled>
-                      Standalone Report Unavailable
-                    </Button>
-                  )}
+                  <StandaloneReportActions
+                    reportLabel="Player Assessment"
+                    fileNameBase={`${title} player assessment`}
+                    accessToken={accessToken}
+                    frameRef={reportFrameRef}
+                    reportHtml={reportDocumentHtml}
+                    emailUrl={reportEmailUrl}
+                    disabled={reportDocumentStatus !== "success" || isFrameLoading}
+                  />
                 </div>
 
                 <div className="flex flex-wrap gap-2">

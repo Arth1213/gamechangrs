@@ -48,7 +48,7 @@ async function waitForFrameContent(frame: HTMLIFrameElement) {
   const reportDocument = frame.contentDocument;
   const reportWindow = frame.contentWindow;
   if (!reportDocument || !reportWindow) {
-    throw new Error("The standalone report is not ready yet.");
+    throw new Error("The report is not ready yet.");
   }
 
   if (reportDocument.fonts?.ready) {
@@ -202,7 +202,7 @@ async function resolveElementDimensions(element: HTMLElement, captureWidth: numb
     await new Promise((resolve) => window.setTimeout(resolve, 80));
   }
 
-  throw new Error("The standalone report page dimensions are not ready yet.");
+  throw new Error("The report dimensions are not ready yet.");
 }
 
 async function renderElementCanvas(element: HTMLElement, captureWidth: number) {
@@ -312,7 +312,7 @@ export async function renderReportFramePdf(frame: HTMLIFrameElement, fileNameBas
   const { reportDocument, reportWindow } = await waitForFrameContent(frame);
   const captureRoot = reportDocument.body;
   if (!captureRoot) {
-    throw new Error("The standalone report content is not available yet.");
+    throw new Error("The report content is not available yet.");
   }
 
   const { kind, shell } = resolveExportShell(reportDocument);
@@ -325,7 +325,7 @@ export async function renderReportFramePdf(frame: HTMLIFrameElement, fileNameBas
     Math.ceil(reportWindow.innerWidth),
   );
   if (captureWidth <= 0) {
-    throw new Error("The standalone report dimensions are not ready yet.");
+    throw new Error("The report dimensions are not ready yet.");
   }
 
   const pdf = new jsPDF({

@@ -19,6 +19,7 @@ When asked to **backup everything**, perform all of the following unless the use
 10. Include or refresh restore instructions and backup-status documentation.
 11. Include checksums for the generated backup artifacts when practical.
 12. Confirm that GitHub contains the latest code and that the local OneDrive backup contains the corresponding restore artifacts.
+13. Send a restore-point summary email after the backup completes.
 
 ## Expected backup outputs
 
@@ -33,6 +34,7 @@ A full backup should aim to include these categories:
   - backup status file
   - repo state file
   - checksum file
+- email notification sent with restore-point details and restore instructions
 - Secret and env backup copies when included:
   - root `.env` restore copy
   - `bay-area-u15/.env` restore copy
@@ -63,7 +65,28 @@ After completing a full backup, report:
 - artifact filenames created or updated
 - whether secrets/env files were included
 - whether database dumps were included
+- whether the notification email was sent
 - any missing pieces or external dependencies still not captured
+
+## Backup notification email
+
+After every `backup everything for me` request that includes a restore point, send an email to:
+
+- `mohan.arun@gmail.com`
+- `helloarth09@gmail.com`
+
+Subject format:
+
+- `Game-Changrs : Last complete Backup: YYYY-MM-DD HH:MM TZ`
+
+The email should include:
+
+- latest restore-point folder path
+- current `main` commit hash
+- backup branch and backup tag
+- main restore artifacts
+- restore order / instructions
+- any caveat about database dump freshness or external dependencies
 
 ## Current known backup location pattern
 

@@ -5120,6 +5120,8 @@ function renderPlayerIntelligenceReportPage(report) {
       border: 1px solid rgba(145, 192, 215, 0.14);
       background: linear-gradient(180deg, rgba(14, 34, 48, 0.9), rgba(8, 22, 31, 0.95));
       box-shadow: var(--shadow);
+      min-width: 0;
+      overflow: hidden;
     }
 
     .hero-panel {
@@ -5133,6 +5135,15 @@ function renderPlayerIntelligenceReportPage(report) {
     .detail-panel,
     .table-panel {
       padding: 22px;
+    }
+
+    .hero-grid > *,
+    .section-grid > *,
+    .card-grid > *,
+    .detail-grid > *,
+    .plan-grid > *,
+    .stat-grid > * {
+      min-width: 0;
     }
 
     .summary-copy {
@@ -5289,11 +5300,22 @@ function renderPlayerIntelligenceReportPage(report) {
     .report-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 16px;
       overflow: hidden;
       border-radius: 18px;
       border: 1px solid rgba(145, 192, 215, 0.14);
       background: rgba(255, 255, 255, 0.03);
+      table-layout: fixed;
+    }
+
+    .table-scroll {
+      margin-top: 16px;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      border-radius: 18px;
+      position: relative;
+      z-index: 1;
     }
 
     .report-table th,
@@ -5302,6 +5324,8 @@ function renderPlayerIntelligenceReportPage(report) {
       border-bottom: 1px solid rgba(145, 192, 215, 0.12);
       text-align: left;
       vertical-align: top;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     .report-table th {
@@ -5332,6 +5356,8 @@ function renderPlayerIntelligenceReportPage(report) {
       border-radius: var(--radius-md);
       border: 1px dashed rgba(145, 192, 215, 0.22);
       color: var(--muted);
+      position: relative;
+      z-index: 1;
     }
 
     .footnote {
@@ -5380,8 +5406,7 @@ function renderPlayerIntelligenceReportPage(report) {
       }
 
       .report-table {
-        display: block;
-        overflow-x: auto;
+        min-width: 640px;
       }
     }
 
@@ -5642,24 +5667,26 @@ function renderPlayerIntelligenceReportPage(report) {
     return `
       <div class="table-panel">
         <h3>${escapeHtml(title)}</h3>
-        <table class="report-table">
-          <thead>
-            <tr>
-              <th>Metric</th>
-              <th class="align-right">Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${values
-              .map((row) => `
-                <tr>
-                  <td>${escapeHtml(row.label)}</td>
-                  <td class="align-right">${escapeHtml(row.value)}</td>
-                </tr>
-              `)
-              .join("")}
-          </tbody>
-        </table>
+        <div class="table-scroll">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th class="align-right">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${values
+                .map((row) => `
+                  <tr>
+                    <td>${escapeHtml(row.label)}</td>
+                    <td class="align-right">${escapeHtml(row.value)}</td>
+                  </tr>
+                `)
+                .join("")}
+            </tbody>
+          </table>
+        </div>
       </div>
     `;
   }
@@ -5678,52 +5705,54 @@ function renderPlayerIntelligenceReportPage(report) {
     return `
       <div class="table-panel">
         <h3>${escapeHtml(title)}</h3>
-        <table class="report-table">
-          <thead>
-            <tr>
-              <th>Setup</th>
-              <th class="align-right">Matches</th>
-              <th class="align-right">Balls</th>
-              ${mode === "batting"
-                ? `
-                  <th class="align-right">Runs</th>
-                  <th class="align-right">Strike Rate</th>
-                  <th class="align-right">Average</th>
-                  <th class="align-right">Dismissals</th>
-                `
-                : `
-                  <th class="align-right">Wickets</th>
-                  <th class="align-right">Economy</th>
-                  <th class="align-right">Dot %</th>
-                  <th class="align-right">Control Error %</th>
-                `}
-            </tr>
-          </thead>
-          <tbody>
-            ${values
-              .map((row) => `
-                <tr>
-                  <td>${escapeHtml(normalizeText(row.splitLabel) || "Unknown setup")}</td>
-                  <td class="align-right">${escapeHtml(displayNumber(row.matchCount, 0))}</td>
-                  <td class="align-right">${escapeHtml(displayNumber(row.legalBalls, 0))}</td>
-                  ${mode === "batting"
-                    ? `
-                      <td class="align-right">${escapeHtml(displayNumber(row.runsScored, 0))}</td>
-                      <td class="align-right">${escapeHtml(displayNumber(row.strikeRate, 1))}</td>
-                      <td class="align-right">${escapeHtml(displayNumber(row.battingAverage, 1))}</td>
-                      <td class="align-right">${escapeHtml(displayNumber(row.dismissals, 0))}</td>
-                    `
-                    : `
-                      <td class="align-right">${escapeHtml(displayNumber(row.wickets, 0))}</td>
-                      <td class="align-right">${escapeHtml(displayNumber(row.economy, 1))}</td>
-                      <td class="align-right">${escapeHtml(displayNumber(row.dotBallPct, 1))}</td>
-                      <td class="align-right">${escapeHtml(displayNumber(row.controlErrorPct, 1))}</td>
-                    `}
-                </tr>
-              `)
-              .join("")}
-          </tbody>
-        </table>
+        <div class="table-scroll">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Setup</th>
+                <th class="align-right">Matches</th>
+                <th class="align-right">Balls</th>
+                ${mode === "batting"
+                  ? `
+                    <th class="align-right">Runs</th>
+                    <th class="align-right">Strike Rate</th>
+                    <th class="align-right">Average</th>
+                    <th class="align-right">Dismissals</th>
+                  `
+                  : `
+                    <th class="align-right">Wickets</th>
+                    <th class="align-right">Economy</th>
+                    <th class="align-right">Dot %</th>
+                    <th class="align-right">Control Error %</th>
+                  `}
+              </tr>
+            </thead>
+            <tbody>
+              ${values
+                .map((row) => `
+                  <tr>
+                    <td>${escapeHtml(normalizeText(row.splitLabel) || "Unknown setup")}</td>
+                    <td class="align-right">${escapeHtml(displayNumber(row.matchCount, 0))}</td>
+                    <td class="align-right">${escapeHtml(displayNumber(row.legalBalls, 0))}</td>
+                    ${mode === "batting"
+                      ? `
+                        <td class="align-right">${escapeHtml(displayNumber(row.runsScored, 0))}</td>
+                        <td class="align-right">${escapeHtml(displayNumber(row.strikeRate, 1))}</td>
+                        <td class="align-right">${escapeHtml(displayNumber(row.battingAverage, 1))}</td>
+                        <td class="align-right">${escapeHtml(displayNumber(row.dismissals, 0))}</td>
+                      `
+                      : `
+                        <td class="align-right">${escapeHtml(displayNumber(row.wickets, 0))}</td>
+                        <td class="align-right">${escapeHtml(displayNumber(row.economy, 1))}</td>
+                        <td class="align-right">${escapeHtml(displayNumber(row.dotBallPct, 1))}</td>
+                        <td class="align-right">${escapeHtml(displayNumber(row.controlErrorPct, 1))}</td>
+                      `}
+                  </tr>
+                `)
+                .join("")}
+            </tbody>
+          </table>
+        </div>
       </div>
     `;
   }
@@ -5742,30 +5771,32 @@ function renderPlayerIntelligenceReportPage(report) {
     return `
       <div class="table-panel">
         <h3>Dismissal Pattern</h3>
-        <table class="report-table">
-          <thead>
-            <tr>
-              <th>Bowler Type</th>
-              <th>Dismissal</th>
-              <th class="align-right">Wickets</th>
-              <th class="align-right">Matches</th>
-              <th class="align-right">Avg Runs At Wicket</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${values
-              .map((row) => `
-                <tr>
-                  <td>${escapeHtml(normalizeText(row.bowlerStyleLabel) || "Unknown style")}</td>
-                  <td>${escapeHtml(normalizeText(row.dismissalType) || "Dismissal")}</td>
-                  <td class="align-right">${escapeHtml(displayNumber(row.dismissalCount, 0))}</td>
-                  <td class="align-right">${escapeHtml(displayNumber(row.matchCount, 0))}</td>
-                  <td class="align-right">${escapeHtml(displayNumber(row.averageRunsAtDismissal, 1))}</td>
-                </tr>
-              `)
-              .join("")}
-          </tbody>
-        </table>
+        <div class="table-scroll">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Bowler Type</th>
+                <th>Dismissal</th>
+                <th class="align-right">Wickets</th>
+                <th class="align-right">Matches</th>
+                <th class="align-right">Avg Runs At Wicket</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${values
+                .map((row) => `
+                  <tr>
+                    <td>${escapeHtml(normalizeText(row.bowlerStyleLabel) || "Unknown style")}</td>
+                    <td>${escapeHtml(normalizeText(row.dismissalType) || "Dismissal")}</td>
+                    <td class="align-right">${escapeHtml(displayNumber(row.dismissalCount, 0))}</td>
+                    <td class="align-right">${escapeHtml(displayNumber(row.matchCount, 0))}</td>
+                    <td class="align-right">${escapeHtml(displayNumber(row.averageRunsAtDismissal, 1))}</td>
+                  </tr>
+                `)
+                .join("")}
+            </tbody>
+          </table>
+        </div>
       </div>
     `;
   }
@@ -5784,35 +5815,37 @@ function renderPlayerIntelligenceReportPage(report) {
     return `
       <div class="table-panel">
         <h3>${escapeHtml(title)}</h3>
-        <table class="report-table">
-          <thead>
-            <tr>
-              <th>Match</th>
-              <th>Moment</th>
-              <th>Commentary</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${values
-              .map((item) => `
-                <tr>
-                  <td>${escapeHtml(
-                    [item.matchDateLabel, item.matchTitle, item.phase]
-                      .map((value) => normalizeText(value))
-                      .filter(Boolean)
-                      .join(" • ") || "Match unavailable"
-                  )}</td>
-                  <td>${escapeHtml(
-                    [normalizeText(item.headline), normalizeText(item.ballLabel)]
-                      .filter(Boolean)
-                      .join(" • ") || "Live evidence"
-                  )}</td>
-                  <td>${escapeHtml(normalizeText(item.commentaryText) || "No commentary text available.")}</td>
-                </tr>
-              `)
-              .join("")}
-          </tbody>
-        </table>
+        <div class="table-scroll">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Match</th>
+                <th>Moment</th>
+                <th>Commentary</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${values
+                .map((item) => `
+                  <tr>
+                    <td>${escapeHtml(
+                      [item.matchDateLabel, item.matchTitle, item.phase]
+                        .map((value) => normalizeText(value))
+                        .filter(Boolean)
+                        .join(" • ") || "Match unavailable"
+                    )}</td>
+                    <td>${escapeHtml(
+                      [normalizeText(item.headline), normalizeText(item.ballLabel)]
+                        .filter(Boolean)
+                        .join(" • ") || "Live evidence"
+                    )}</td>
+                    <td>${escapeHtml(normalizeText(item.commentaryText) || "No commentary text available.")}</td>
+                  </tr>
+                `)
+                .join("")}
+            </tbody>
+          </table>
+        </div>
       </div>
     `;
   }
@@ -5910,6 +5943,22 @@ function renderPlayerIntelligenceReportPage(report) {
                   </div>
                   ${fallbackReason ? `<div class="empty-state">${escapeHtml(fallbackReason)}</div>` : ""}
                 </div>
+                <div class="surface-panel">
+                  <div class="callout-stack">
+                    <div class="callout good">
+                      <div class="callout-label">Main Threat</div>
+                      <p>${escapeHtml(threatNarrative)}</p>
+                    </div>
+                    <div class="callout risk">
+                      <div class="callout-label">Main Weakness</div>
+                      <p>${escapeHtml(weaknessNarrative)}</p>
+                    </div>
+                    <div class="callout watch">
+                      <div class="callout-label">Pressure Note</div>
+                      <p>${escapeHtml(pressureNarrative)}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -5917,25 +5966,6 @@ function renderPlayerIntelligenceReportPage(report) {
           <section class="sheet">
             <div class="card-grid">
               ${summaryCards}
-            </div>
-          </section>
-
-          <section class="sheet">
-            <div class="surface-panel">
-              <div class="callout-stack">
-                <div class="callout good">
-                  <div class="callout-label">Main Threat</div>
-                  <p>${escapeHtml(threatNarrative)}</p>
-                </div>
-                <div class="callout risk">
-                  <div class="callout-label">Main Weakness</div>
-                  <p>${escapeHtml(weaknessNarrative)}</p>
-                </div>
-                <div class="callout watch">
-                  <div class="callout-label">Pressure Note</div>
-                  <p>${escapeHtml(pressureNarrative)}</p>
-                </div>
-              </div>
             </div>
           </section>
 

@@ -1089,6 +1089,8 @@
       border: 1px solid rgba(145, 192, 215, 0.14);
       background: linear-gradient(180deg, rgba(14, 34, 48, 0.9), rgba(8, 22, 31, 0.95));
       box-shadow: var(--shadow);
+      min-width: 0;
+      overflow: hidden;
     }
 
     .hero-panel {
@@ -1102,6 +1104,15 @@
     .detail-panel,
     .table-panel {
       padding: 22px;
+    }
+
+    .hero-grid > *,
+    .section-grid > *,
+    .card-grid > *,
+    .detail-grid > *,
+    .plan-grid > *,
+    .stat-grid > * {
+      min-width: 0;
     }
 
     .summary-copy {
@@ -1258,11 +1269,22 @@
     .report-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 16px;
       overflow: hidden;
       border-radius: 18px;
       border: 1px solid rgba(145, 192, 215, 0.14);
       background: rgba(255, 255, 255, 0.03);
+      table-layout: fixed;
+    }
+
+    .table-scroll {
+      margin-top: 16px;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      border-radius: 18px;
+      position: relative;
+      z-index: 1;
     }
 
     .report-table th,
@@ -1271,6 +1293,8 @@
       border-bottom: 1px solid rgba(145, 192, 215, 0.12);
       text-align: left;
       vertical-align: top;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     .report-table th {
@@ -1301,6 +1325,8 @@
       border-radius: var(--radius-md);
       border: 1px dashed rgba(145, 192, 215, 0.22);
       color: var(--muted);
+      position: relative;
+      z-index: 1;
     }
 
     .footnote {
@@ -1349,8 +1375,7 @@
       }
 
       .report-table {
-        display: block;
-        overflow-x: auto;
+        min-width: 640px;
       }
     }
 
@@ -1397,6 +1422,22 @@
                   </div>
                   
                 </div>
+                <div class="surface-panel">
+                  <div class="callout-stack">
+                    <div class="callout good">
+                      <div class="callout-label">Main Threat</div>
+                      <p>The player is mainly a batting threat against Left-Arm Spin.</p>
+                    </div>
+                    <div class="callout risk">
+                      <div class="callout-label">Main Weakness</div>
+                      <p>The player is most vulnerable against Right-Arm Pace.</p>
+                    </div>
+                    <div class="callout watch">
+                      <div class="callout-label">Pressure Note</div>
+                      <p>Shows how often the player still finds a boundary after dot-ball pressure builds.</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -1428,25 +1469,6 @@
         <div class="metric-note">Manageable, but still a live planning concern.</div>
       </div>
     
-            </div>
-          </section>
-
-          <section class="sheet">
-            <div class="surface-panel">
-              <div class="callout-stack">
-                <div class="callout good">
-                  <div class="callout-label">Main Threat</div>
-                  <p>The player is mainly a batting threat against Left-Arm Spin.</p>
-                </div>
-                <div class="callout risk">
-                  <div class="callout-label">Main Weakness</div>
-                  <p>The player is most vulnerable against Right-Arm Pace.</p>
-                </div>
-                <div class="callout watch">
-                  <div class="callout-label">Pressure Note</div>
-                  <p>Shows how often the player still finds a boundary after dot-ball pressure builds.</p>
-                </div>
-              </div>
             </div>
           </section>
 

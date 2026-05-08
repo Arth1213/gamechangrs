@@ -51,10 +51,10 @@ export const HeroSection = () => {
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-7xl mx-auto">
-          <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)] lg:gap-12 xl:gap-16">
-            <div className="animate-slide-up" style={{ animationDelay: "0.05s" }}>
-              <div className="flex h-full flex-col rounded-[32px] border border-border/80 bg-card/80 p-6 text-center shadow-card lg:min-h-[470px] lg:p-8 lg:text-left">
-                <div>
+          <div className="space-y-6">
+            <div className="rounded-[32px] border border-border/80 bg-card/80 p-6 shadow-card lg:p-8">
+              <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)] lg:gap-12 xl:gap-16">
+                <div className="animate-slide-up text-center lg:text-left" style={{ animationDelay: "0.05s" }}>
                   <h1 className="font-display text-3xl font-bold leading-tight text-foreground sm:text-5xl md:text-6xl lg:text-[4.1rem]">
                     Sports Analytics, AI for{" "}
                     <span className="text-gradient-primary">Smarter Cricket</span>
@@ -81,32 +81,37 @@ export const HeroSection = () => {
                   </div>
                 </div>
 
-                <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                  {heroHighlights.map((feature) => (
-                    <Link
-                      key={feature.title}
-                      to={feature.link}
-                      className="group rounded-[22px] border border-border/80 bg-background/40 p-4 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-border hover:shadow-elevated"
-                    >
-                      <div
-                        className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${feature.iconWrapClass} transition-transform duration-300 group-hover:scale-105`}
-                      >
-                        <feature.icon className={`h-5 w-5 ${feature.iconClass}`} />
-                      </div>
-                      <h3 className="font-display text-lg font-semibold text-foreground">
-                        {feature.title}
-                      </h3>
-                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                        {feature.description}
-                      </p>
-                    </Link>
-                  ))}
+                <div className="animate-scale-in lg:pl-2" style={{ animationDelay: "0.25s" }}>
+                  <HomeHeroOrbit />
                 </div>
               </div>
             </div>
 
-            <div className="animate-scale-in lg:pl-2" style={{ animationDelay: "0.25s" }}>
-              <HomeHeroOrbit />
+            <div
+              className="animate-slide-up rounded-[32px] border border-border/80 bg-card/80 p-6 shadow-card lg:p-8"
+              style={{ animationDelay: "0.3s" }}
+            >
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {heroHighlights.map((feature) => (
+                  <Link
+                    key={feature.title}
+                    to={feature.link}
+                    className="group rounded-[22px] border border-border/80 bg-background/40 p-5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-border hover:shadow-elevated"
+                  >
+                    <div
+                      className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${feature.iconWrapClass} transition-transform duration-300 group-hover:scale-105`}
+                    >
+                      <feature.icon className={`h-5 w-5 ${feature.iconClass}`} />
+                    </div>
+                    <h3 className="font-display text-lg font-semibold text-foreground">
+                      {feature.title}
+                    </h3>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      {feature.description}
+                    </p>
+                  </Link>
+                ))}
+              </div>
             </div>
           </div>
         </div>

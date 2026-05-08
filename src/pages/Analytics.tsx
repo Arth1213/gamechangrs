@@ -1540,14 +1540,6 @@ function AnalyticsLandingSections() {
 
       <Card className="border-border/80 bg-card/85 shadow-xl">
         <CardContent className="space-y-8 p-8 lg:p-10">
-          <div className="space-y-3">
-            <p className="text-xs uppercase tracking-[0.18em] text-primary">Features</p>
-            <h2 className="font-display text-3xl text-foreground md:text-4xl">Feature Surfaces</h2>
-            <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-              The analytics shell already has two live report flows, with the next intelligence surfaces queued underneath.
-            </p>
-          </div>
-
           <div className="space-y-5">
             <div className="rounded-[30px] border border-border/80 bg-background/35 p-6 backdrop-blur">
               <div className="space-y-2">

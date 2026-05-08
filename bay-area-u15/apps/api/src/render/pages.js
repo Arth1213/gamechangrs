@@ -5134,9 +5134,13 @@ function renderPlayerIntelligenceReportPage(report) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .plan-grid,
+    .plan-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .stat-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      align-items: start;
     }
 
     .hero-panel,
@@ -5153,9 +5157,9 @@ function renderPlayerIntelligenceReportPage(report) {
     }
 
     .hero-panel {
-      padding: 24px;
+      padding: 20px;
       display: grid;
-      gap: 14px;
+      gap: 10px;
     }
 
     .surface-panel,
@@ -5167,6 +5171,7 @@ function renderPlayerIntelligenceReportPage(report) {
 
     .surface-panel {
       display: flex;
+      padding: 18px;
     }
 
     .hero-grid > *,
@@ -5178,39 +5183,68 @@ function renderPlayerIntelligenceReportPage(report) {
       min-width: 0;
     }
 
-    .summary-copy {
-      font-size: 16px;
-      line-height: 1.6;
-      color: #d7e7ef;
-    }
-
     .hero-kicker {
       color: var(--teal);
       text-transform: uppercase;
       letter-spacing: 0.18em;
       font-size: 11px;
       font-weight: 800;
-      margin-bottom: 10px;
+      margin-bottom: 6px;
     }
 
     .hero-facts-grid {
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 2px;
+      gap: 8px;
+      margin-top: 0;
     }
 
     .hero-fact-card {
       grid-column: span 2;
       min-width: 0;
-      padding: 12px 14px;
-      border-radius: 20px;
+      padding: 10px 12px;
+      border-radius: 18px;
       border: 1px solid rgba(145, 192, 215, 0.14);
       background: rgba(255, 255, 255, 0.04);
       display: grid;
-      gap: 6px;
+      gap: 4px;
       align-content: start;
-      min-height: 86px;
+      min-height: 70px;
+    }
+
+    .hero-fact-card.team {
+      border-color: rgba(84, 174, 214, 0.28);
+      background: linear-gradient(180deg, rgba(84, 174, 214, 0.16), rgba(84, 174, 214, 0.06));
+    }
+
+    .hero-fact-card.role {
+      border-color: rgba(64, 208, 183, 0.28);
+      background: linear-gradient(180deg, rgba(64, 208, 183, 0.16), rgba(64, 208, 183, 0.06));
+    }
+
+    .hero-fact-card.series {
+      border-color: rgba(166, 144, 255, 0.28);
+      background: linear-gradient(180deg, rgba(166, 144, 255, 0.16), rgba(166, 144, 255, 0.06));
+    }
+
+    .hero-fact-card.scope {
+      border-color: rgba(115, 196, 151, 0.28);
+      background: linear-gradient(180deg, rgba(115, 196, 151, 0.16), rgba(115, 196, 151, 0.06));
+    }
+
+    .hero-fact-card.good {
+      border-color: rgba(142, 217, 124, 0.34);
+      background: linear-gradient(180deg, rgba(142, 217, 124, 0.18), rgba(142, 217, 124, 0.07));
+    }
+
+    .hero-fact-card.watch {
+      border-color: rgba(240, 191, 105, 0.34);
+      background: linear-gradient(180deg, rgba(240, 191, 105, 0.18), rgba(240, 191, 105, 0.07));
+    }
+
+    .hero-fact-card.risk {
+      border-color: rgba(243, 139, 99, 0.34);
+      background: linear-gradient(180deg, rgba(243, 139, 99, 0.18), rgba(243, 139, 99, 0.07));
     }
 
     .hero-fact-card.wide {
@@ -5227,10 +5261,22 @@ function renderPlayerIntelligenceReportPage(report) {
 
     .hero-fact-value {
       color: #eef8fc;
-      font-size: 15px;
+      font-size: 14px;
       line-height: 1.35;
       font-weight: 700;
       overflow-wrap: anywhere;
+    }
+
+    .hero-fact-value.good {
+      color: var(--lime);
+    }
+
+    .hero-fact-value.watch {
+      color: var(--amber);
+    }
+
+    .hero-fact-value.risk {
+      color: var(--orange);
     }
 
     .metric-card {
@@ -5291,12 +5337,12 @@ function renderPlayerIntelligenceReportPage(report) {
 
     .callout-stack {
       display: grid;
-      gap: 14px;
+      gap: 10px;
       flex: 1;
     }
 
     .callout {
-      padding: 18px;
+      padding: 14px 16px;
       border-radius: var(--radius-md);
       border: 1px solid rgba(145, 192, 215, 0.14);
       background: rgba(255, 255, 255, 0.03);
@@ -5318,12 +5364,37 @@ function renderPlayerIntelligenceReportPage(report) {
     }
 
     .callout-label {
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       font-size: 11px;
       letter-spacing: 0.16em;
       text-transform: uppercase;
       color: var(--ink);
       font-weight: 800;
+    }
+
+    .callout-value {
+      font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+      font-size: clamp(24px, 3vw, 30px);
+      line-height: 0.95;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .callout p {
+      margin: 0;
+      line-height: 1.55;
+    }
+
+    .callout-value.good {
+      color: var(--lime);
+    }
+
+    .callout-value.watch {
+      color: var(--amber);
+    }
+
+    .callout-value.risk {
+      color: var(--orange);
     }
 
     .bullet-list {
@@ -5357,6 +5428,68 @@ function renderPlayerIntelligenceReportPage(report) {
       text-transform: uppercase;
       letter-spacing: 0.14em;
       font-weight: 800;
+    }
+
+    .insight-panel.good .insight-title,
+    .insight-panel.risk .insight-title {
+      font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+      font-size: clamp(24px, 3vw, 30px);
+      line-height: 1;
+      letter-spacing: 0.01em;
+      text-transform: none;
+      margin-bottom: 10px;
+    }
+
+    .insight-panel.good .insight-title {
+      color: var(--lime);
+    }
+
+    .insight-panel.risk .insight-title {
+      color: var(--orange);
+    }
+
+    .stats-list {
+      margin-top: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(145, 192, 215, 0.14);
+      background: rgba(255, 255, 255, 0.03);
+      overflow: hidden;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 14px 16px;
+      border-top: 1px solid rgba(145, 192, 215, 0.12);
+    }
+
+    .stats-row:first-child {
+      border-top: 0;
+    }
+
+    .stats-row.header {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .stats-key {
+      color: #d7e7ef;
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .stats-value {
+      color: #eef8fc;
+      font-size: 15px;
+      line-height: 1.45;
+      font-weight: 700;
+      text-align: right;
     }
 
     .report-table {
@@ -5402,6 +5535,22 @@ function renderPlayerIntelligenceReportPage(report) {
     .report-table td {
       color: #d7e7ef;
       line-height: 1.6;
+    }
+
+    .evidence-table th:nth-child(1),
+    .evidence-table td:nth-child(1) {
+      width: 28%;
+    }
+
+    .evidence-table th:nth-child(2),
+    .evidence-table td:nth-child(2) {
+      width: 14%;
+      white-space: nowrap;
+    }
+
+    .evidence-table th:nth-child(3),
+    .evidence-table td:nth-child(3) {
+      width: 58%;
     }
 
     .report-table tr:last-child td {
@@ -5729,6 +5878,23 @@ function renderPlayerIntelligenceReportPage(report) {
     `;
   }
 
+  function heroFactCard(label, value, variant, wide = false, valueTone = null) {
+    const classes = ["hero-fact-card"];
+    if (variant) {
+      classes.push(variant);
+    }
+    if (wide) {
+      classes.push("wide");
+    }
+    const valueClass = valueTone ? `hero-fact-value ${toneClassName(valueTone)}` : "hero-fact-value";
+    return `
+      <div class="${classes.join(" ")}">
+        <div class="hero-fact-label">${escapeHtml(label)}</div>
+        <div class="${valueClass}">${escapeHtml(value)}</div>
+      </div>
+    `;
+  }
+
   function bulletList(items, emptyState) {
     const values = Array.isArray(items)
       ? items.map((item) => sanitizeCopy(item)).filter(Boolean)
@@ -5827,25 +5993,19 @@ function renderPlayerIntelligenceReportPage(report) {
     return `
       <div class="table-panel">
         <h3>${escapeHtml(title)}</h3>
-        <div class="table-scroll">
-          <table class="report-table">
-            <thead>
-              <tr>
-                <th>Metric</th>
-                <th class="align-right">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${values
-                .map((row) => `
-                  <tr>
-                    <td>${escapeHtml(row.label)}</td>
-                    <td class="align-right">${escapeHtml(row.value)}</td>
-                  </tr>
-                `)
-                .join("")}
-            </tbody>
-          </table>
+        <div class="stats-list">
+          <div class="stats-row header">
+            <div>Metric</div>
+            <div>Value</div>
+          </div>
+          ${values
+            .map((row) => `
+              <div class="stats-row">
+                <div class="stats-key">${escapeHtml(row.label)}</div>
+                <div class="stats-value">${escapeHtml(row.value)}</div>
+              </div>
+            `)
+            .join("")}
         </div>
       </div>
     `;
@@ -5961,6 +6121,19 @@ function renderPlayerIntelligenceReportPage(report) {
     `;
   }
 
+  function formatEvidenceMoment(item) {
+    const headline = normalizeText(item?.headline);
+    const ballLabel = normalizeText(item?.ballLabel);
+
+    if (headline && ballLabel) {
+      return headline.toLowerCase().includes(ballLabel.toLowerCase())
+        ? headline
+        : `${headline} • ${ballLabel}`;
+    }
+
+    return headline || ballLabel || "Live evidence";
+  }
+
   function renderEvidenceTable(title, items) {
     const values = Array.isArray(items) ? items.slice(0, 6) : [];
     if (!values.length) {
@@ -5976,7 +6149,7 @@ function renderPlayerIntelligenceReportPage(report) {
       <div class="table-panel">
         <h3>${escapeHtml(title)}</h3>
         <div class="table-scroll">
-          <table class="report-table">
+          <table class="report-table evidence-table">
             <thead>
               <tr>
                 <th>Match</th>
@@ -5995,9 +6168,7 @@ function renderPlayerIntelligenceReportPage(report) {
                         .join(" • ") || "Match unavailable"
                     )}</td>
                     <td>${escapeHtml(
-                      [normalizeText(item.headline), normalizeText(item.ballLabel)]
-                        .filter(Boolean)
-                        .join(" • ") || "Live evidence"
+                      formatEvidenceMoment(item)
                     )}</td>
                     <td>${escapeHtml(normalizeText(item.commentaryText) || "No commentary text available.")}</td>
                   </tr>
@@ -6106,8 +6277,7 @@ function renderPlayerIntelligenceReportPage(report) {
   const threatProfile = getThreatTone(header.percentileRank);
   const threatNarrative = buildThreatNarrative(leadingStrength);
   const weaknessNarrative = buildWeaknessNarrative(leadingWatchout, tacticalPlan?.battingPlan?.[0]);
-  const pressureNarrative = buildPressureNarrative(leadingPressure);
-  const summaryNarrative = [threatNarrative, weaknessNarrative, pressureNarrative].filter(Boolean).join(" ");
+  const pressureCard = buildPressureCard(leadingPressure);
   const scopeHeroLabel = scopeLabel === "All Divisions" ? "All tracked phases and divisions" : scopeLabel;
 
   const summaryCards = [
@@ -6142,7 +6312,6 @@ function renderPlayerIntelligenceReportPage(report) {
   const battingPhaseWindow = pickBestPhase(focusedLens?.batting?.byPhase, "batting");
   const bowlingPhaseWindow = pickBestPhase(focusedLens?.bowling?.byPhase, "bowling");
   const leadingDismissalCluster = focusedLens?.dismissals?.[0] || null;
-  const pressureCard = buildPressureCard(leadingPressure);
 
   const tacticalCards = [
     metricCard(
@@ -6229,29 +6398,13 @@ function renderPlayerIntelligenceReportPage(report) {
                   <div>
                     <div class="hero-kicker">Game-Changrs Player Intelligence</div>
                     <h1>${escapeHtml(playerName)}</h1>
-                    <p class="summary-copy" style="margin-top: 12px;">${escapeHtml(summaryNarrative)}</p>
                   </div>
                   <div class="hero-facts-grid">
-                    <div class="hero-fact-card">
-                      <div class="hero-fact-label">Team</div>
-                      <div class="hero-fact-value">${escapeHtml(teamName)}</div>
-                    </div>
-                    <div class="hero-fact-card">
-                      <div class="hero-fact-label">Role</div>
-                      <div class="hero-fact-value">${escapeHtml(roleLabel)}</div>
-                    </div>
-                    <div class="hero-fact-card">
-                      <div class="hero-fact-label">Series</div>
-                      <div class="hero-fact-value">${escapeHtml(ageGroup ? `${seriesName} • ${ageGroup}` : seriesName)}</div>
-                    </div>
-                    <div class="hero-fact-card wide">
-                      <div class="hero-fact-label">Scope</div>
-                      <div class="hero-fact-value">${escapeHtml(scopeHeroLabel)}</div>
-                    </div>
-                    <div class="hero-fact-card wide">
-                      <div class="hero-fact-label">Threat Level</div>
-                      <div class="hero-fact-value">${escapeHtml(threatProfile.label)}</div>
-                    </div>
+                    ${heroFactCard("Team", teamName, "team")}
+                    ${heroFactCard("Role", roleLabel, "role")}
+                    ${heroFactCard("Series", ageGroup ? `${seriesName} • ${ageGroup}` : seriesName, "series")}
+                    ${heroFactCard("Scope", scopeHeroLabel, "scope", true)}
+                    ${heroFactCard("Threat Level", threatProfile.label, toneClassName(threatProfile.tone), true, threatProfile.tone)}
                   </div>
                   ${fallbackReason ? `<div class="empty-state">${escapeHtml(fallbackReason)}</div>` : ""}
                 </div>
@@ -6266,8 +6419,9 @@ function renderPlayerIntelligenceReportPage(report) {
                       <p>${escapeHtml(weaknessNarrative)}</p>
                     </div>
                     <div class="callout watch">
-                      <div class="callout-label">Pressure Note</div>
-                      <p>${escapeHtml(pressureNarrative)}</p>
+                      <div class="callout-label">Pressure Trigger</div>
+                      <div class="callout-value watch">${escapeHtml(pressureCard.value)}</div>
+                      <p>${escapeHtml(pressureCard.note)}</p>
                     </div>
                   </div>
                 </div>
@@ -6295,12 +6449,10 @@ function renderPlayerIntelligenceReportPage(report) {
             <div class="plan-grid">
               <div class="summary-panel">
                 <h3>Batting Plan</h3>
-                <p>How the report says to approach this player with the bat.</p>
                 ${bulletList(tacticalPlan?.battingPlan, "No batting plan lines are available yet.")}
               </div>
               <div class="summary-panel">
                 <h3>Bowling Plan</h3>
-                <p>How the report says to manage this player with the ball.</p>
                 ${bulletList(tacticalPlan?.bowlingPlan, "No bowling plan lines are available yet.")}
               </div>
             </div>
@@ -6316,11 +6468,11 @@ function renderPlayerIntelligenceReportPage(report) {
 
           <section class="sheet">
             <div class="detail-grid">
-              <div class="detail-panel">
+              <div class="detail-panel insight-panel good">
                 <h3>Threat Signals</h3>
                 ${insightList(tacticalSummary?.strengths, "No clear threat signal is available yet in the live sample.")}
               </div>
-              <div class="detail-panel">
+              <div class="detail-panel insight-panel risk">
                 <h3>Watchouts</h3>
                 ${insightList(tacticalSummary?.watchouts, "No clear weakness is available yet in the live sample.")}
               </div>

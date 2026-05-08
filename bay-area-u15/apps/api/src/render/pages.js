@@ -2217,25 +2217,25 @@ function renderPlayerReportPage(report) {
     .report-header-meta-strip {
       display: grid;
       grid-template-columns: 1fr 1fr 1.2fr 1.2fr 0.95fr 0.78fr 0.9fr;
-      gap: 12px;
-      margin-top: 18px;
+      gap: 10px;
+      margin-top: 14px;
       max-width: none;
     }
 
     .report-header-meta-pill {
       min-width: 0;
-      padding: 10px 12px;
+      padding: 9px 11px;
       border-radius: 18px;
       border: 1px solid rgba(145, 192, 215, 0.12);
       background: rgba(255, 255, 255, 0.04);
       display: grid;
-      gap: 6px;
+      gap: 4px;
       align-content: start;
     }
 
     .report-header-meta-label {
       color: var(--muted);
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 800;
       letter-spacing: 0.14em;
       text-transform: uppercase;
@@ -2243,8 +2243,8 @@ function renderPlayerReportPage(report) {
 
     .report-header-meta-value {
       color: #eef8fc;
-      font-size: 14px;
-      line-height: 1.4;
+      font-size: 13px;
+      line-height: 1.28;
       font-weight: 700;
       overflow-wrap: anywhere;
     }
@@ -5076,26 +5076,35 @@ function renderPlayerIntelligenceReportPage(report) {
 
     .report-title {
       display: grid;
-      gap: 18px;
+      gap: 16px;
     }
 
-    .report-pill-wrap {
-      display: flex;
-      justify-content: center;
+    .page-separator {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
     }
 
-    .report-pill {
-      padding: 12px 40px;
+    .page-separator-line {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(103, 183, 255, 0.55), transparent);
+    }
+
+    .page-separator-badge {
+      padding: 8px 14px;
       border-radius: 999px;
-      border: 1px solid rgba(145, 192, 215, 0.18);
-      background: rgba(107, 198, 237, 0.08);
-      color: #dff5ff;
-      font-family: "Plus Jakarta Sans", sans-serif;
-      font-size: 14px;
+      border: 1px solid rgba(145, 192, 215, 0.14);
+      background: rgba(255, 255, 255, 0.04);
+      color: #dff0f8;
+      font-size: 12px;
       font-weight: 800;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      text-align: center;
+      white-space: nowrap;
     }
 
     .hero-grid,
@@ -5110,7 +5119,7 @@ function renderPlayerIntelligenceReportPage(report) {
 
     .hero-grid {
       grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
-      align-items: start;
+      align-items: stretch;
     }
 
     .section-grid {
@@ -5144,9 +5153,9 @@ function renderPlayerIntelligenceReportPage(report) {
     }
 
     .hero-panel {
-      padding: 28px;
+      padding: 24px;
       display: grid;
-      gap: 18px;
+      gap: 14px;
     }
 
     .surface-panel,
@@ -5154,6 +5163,10 @@ function renderPlayerIntelligenceReportPage(report) {
     .detail-panel,
     .table-panel {
       padding: 22px;
+    }
+
+    .surface-panel {
+      display: flex;
     }
 
     .hero-grid > *,
@@ -5166,24 +5179,24 @@ function renderPlayerIntelligenceReportPage(report) {
     }
 
     .summary-copy {
-      font-size: 17px;
-      line-height: 1.75;
+      font-size: 16px;
+      line-height: 1.6;
       color: #d7e7ef;
     }
 
     .meta-strip {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
     }
 
     .meta-chip {
-      padding: 9px 12px;
+      padding: 7px 10px;
       border-radius: 999px;
       border: 1px solid rgba(145, 192, 215, 0.14);
       background: rgba(255, 255, 255, 0.04);
       color: var(--ink);
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.05em;
     }
@@ -5251,6 +5264,7 @@ function renderPlayerIntelligenceReportPage(report) {
     .callout-stack {
       display: grid;
       gap: 14px;
+      flex: 1;
     }
 
     .callout {
@@ -5395,6 +5409,26 @@ function renderPlayerIntelligenceReportPage(report) {
 
     .tactical-grid {
       margin-top: 18px;
+    }
+
+    .stat-grid .table-scroll {
+      overflow-x: visible;
+    }
+
+    .stat-grid .report-table {
+      table-layout: auto;
+    }
+
+    .stat-grid .report-table th,
+    .stat-grid .report-table td {
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+
+    .stat-grid .report-table th:last-child,
+    .stat-grid .report-table td:last-child {
+      width: 1%;
+      white-space: nowrap;
     }
 
     @media (max-width: 1120px) {
@@ -6082,8 +6116,10 @@ function renderPlayerIntelligenceReportPage(report) {
         <div class="page-shell intelligence-shell">
           <section class="sheet">
             <div class="report-title">
-              <div class="report-pill-wrap">
-                <div class="report-pill">Player Intelligence</div>
+              <div class="page-separator">
+                <div class="page-separator-line"></div>
+                <div class="page-separator-badge">Player Intelligence</div>
+                <div class="page-separator-line"></div>
               </div>
               <div class="hero-grid">
                 <div class="hero-panel">
@@ -6121,6 +6157,22 @@ function renderPlayerIntelligenceReportPage(report) {
           </section>
 
           <section class="sheet">
+            <div class="card-grid">
+              ${summaryCards}
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="detail-panel">
+              <h3>Phase & Pressure Read</h3>
+              <p>Where this player’s impact shows up in an innings and what opposition planners should target first.</p>
+              <div class="card-grid tactical-grid">
+                ${tacticalCards}
+              </div>
+            </div>
+          </section>
+
+          <section class="sheet">
             <div class="plan-grid">
               <div class="summary-panel">
                 <h3>Batting Plan</h3>
@@ -6149,22 +6201,6 @@ function renderPlayerIntelligenceReportPage(report) {
                     <p>${escapeHtml(scopeLabel)}</p>
                   </div>
                 </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="sheet">
-            <div class="card-grid">
-              ${summaryCards}
-            </div>
-          </section>
-
-          <section class="sheet">
-            <div class="detail-panel">
-              <h3>Phase & Pressure Read</h3>
-              <p>Where this player’s impact shows up in an innings and what opposition planners should target first.</p>
-              <div class="card-grid tactical-grid">
-                ${tacticalCards}
               </div>
             </div>
           </section>

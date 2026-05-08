@@ -1045,26 +1045,35 @@
 
     .report-title {
       display: grid;
-      gap: 18px;
+      gap: 16px;
     }
 
-    .report-pill-wrap {
-      display: flex;
-      justify-content: center;
+    .page-separator {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
     }
 
-    .report-pill {
-      padding: 12px 40px;
+    .page-separator-line {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(103, 183, 255, 0.55), transparent);
+    }
+
+    .page-separator-badge {
+      padding: 8px 14px;
       border-radius: 999px;
-      border: 1px solid rgba(145, 192, 215, 0.18);
-      background: rgba(107, 198, 237, 0.08);
-      color: #dff5ff;
-      font-family: "Plus Jakarta Sans", sans-serif;
-      font-size: 14px;
+      border: 1px solid rgba(145, 192, 215, 0.14);
+      background: rgba(255, 255, 255, 0.04);
+      color: #dff0f8;
+      font-size: 12px;
       font-weight: 800;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      text-align: center;
+      white-space: nowrap;
     }
 
     .hero-grid,
@@ -1079,7 +1088,7 @@
 
     .hero-grid {
       grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
-      align-items: start;
+      align-items: stretch;
     }
 
     .section-grid {
@@ -1113,9 +1122,9 @@
     }
 
     .hero-panel {
-      padding: 28px;
+      padding: 24px;
       display: grid;
-      gap: 18px;
+      gap: 14px;
     }
 
     .surface-panel,
@@ -1123,6 +1132,10 @@
     .detail-panel,
     .table-panel {
       padding: 22px;
+    }
+
+    .surface-panel {
+      display: flex;
     }
 
     .hero-grid > *,
@@ -1135,24 +1148,24 @@
     }
 
     .summary-copy {
-      font-size: 17px;
-      line-height: 1.75;
+      font-size: 16px;
+      line-height: 1.6;
       color: #d7e7ef;
     }
 
     .meta-strip {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
     }
 
     .meta-chip {
-      padding: 9px 12px;
+      padding: 7px 10px;
       border-radius: 999px;
       border: 1px solid rgba(145, 192, 215, 0.14);
       background: rgba(255, 255, 255, 0.04);
       color: var(--ink);
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.05em;
     }
@@ -1220,6 +1233,7 @@
     .callout-stack {
       display: grid;
       gap: 14px;
+      flex: 1;
     }
 
     .callout {
@@ -1366,6 +1380,26 @@
       margin-top: 18px;
     }
 
+    .stat-grid .table-scroll {
+      overflow-x: visible;
+    }
+
+    .stat-grid .report-table {
+      table-layout: auto;
+    }
+
+    .stat-grid .report-table th,
+    .stat-grid .report-table td {
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+
+    .stat-grid .report-table th:last-child,
+    .stat-grid .report-table td:last-child {
+      width: 1%;
+      white-space: nowrap;
+    }
+
     @media (max-width: 1120px) {
       .hero-grid,
       .section-grid,
@@ -1430,8 +1464,10 @@
         <div class="page-shell intelligence-shell">
           <section class="sheet">
             <div class="report-title">
-              <div class="report-pill-wrap">
-                <div class="report-pill">Player Intelligence</div>
+              <div class="page-separator">
+                <div class="page-separator-line"></div>
+                <div class="page-separator-badge">Player Intelligence</div>
+                <div class="page-separator-line"></div>
               </div>
               <div class="hero-grid">
                 <div class="hero-panel">
@@ -1462,43 +1498,6 @@
                       <div class="callout-label">Pressure Note</div>
                       <p>Shows how often the player still finds a boundary after dot-ball pressure builds.</p>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="sheet">
-            <div class="plan-grid">
-              <div class="summary-panel">
-                <h3>Batting Plan</h3>
-                <p>How the report says to approach this player with the bat.</p>
-                
-      <ul class="bullet-list">
-        <li>Most vulnerable batting setup is against Right-Arm Pace in the current live sample.</li><li>Right-Arm Pace has produced the most dismissals so far, especially by caught.</li><li>Dot-ball pressure matters here. Dismissals have often come after about 1 dots in a row.</li>
-      </ul>
-    
-              </div>
-              <div class="summary-panel">
-                <h3>Bowling Plan</h3>
-                <p>How the report says to manage this player with the ball.</p>
-                <div class="empty-state">No bowling plan lines are available yet.</div>
-              </div>
-              <div class="summary-panel">
-                <h3>Player Summary</h3>
-                <p>Compact context for what the current intelligence report is saying.</p>
-                <div class="insight-list">
-                  <div class="insight-item">
-                    <div class="insight-title">Batting Profile</div>
-                    <p>Right Right Handed Batter</p>
-                  </div>
-                  <div class="insight-item">
-                    <div class="insight-title">Bowling Profile</div>
-                    <p>Right Arm Medium</p>
-                  </div>
-                  <div class="insight-item">
-                    <div class="insight-title">Scope</div>
-                    <p>All Divisions</p>
                   </div>
                 </div>
               </div>
@@ -1565,6 +1564,43 @@
         <div class="metric-note">Dismissal pressure appears after about 1 consecutive dot ball. Boundary response after three dots is 40%.</div>
       </div>
     
+              </div>
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="plan-grid">
+              <div class="summary-panel">
+                <h3>Batting Plan</h3>
+                <p>How the report says to approach this player with the bat.</p>
+                
+      <ul class="bullet-list">
+        <li>Most vulnerable batting setup is against Right-Arm Pace in the current live sample.</li><li>Right-Arm Pace has produced the most dismissals so far, especially by caught.</li><li>Dot-ball pressure matters here. Dismissals have often come after about 1 dots in a row.</li>
+      </ul>
+    
+              </div>
+              <div class="summary-panel">
+                <h3>Bowling Plan</h3>
+                <p>How the report says to manage this player with the ball.</p>
+                <div class="empty-state">No bowling plan lines are available yet.</div>
+              </div>
+              <div class="summary-panel">
+                <h3>Player Summary</h3>
+                <p>Compact context for what the current intelligence report is saying.</p>
+                <div class="insight-list">
+                  <div class="insight-item">
+                    <div class="insight-title">Batting Profile</div>
+                    <p>Right Right Handed Batter</p>
+                  </div>
+                  <div class="insight-item">
+                    <div class="insight-title">Bowling Profile</div>
+                    <p>Right Arm Medium</p>
+                  </div>
+                  <div class="insight-item">
+                    <div class="insight-title">Scope</div>
+                    <p>All Divisions</p>
+                  </div>
+                </div>
               </div>
             </div>
           </section>

@@ -6,7 +6,6 @@ import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import PlayerReportChat from "@/components/analytics/PlayerReportChat";
 import StandaloneReportActions from "@/components/analytics/StandaloneReportActions";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -741,17 +740,16 @@ const AnalyticsReport = () => {
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-7xl space-y-6">
             <div className="space-y-4">
-              <div className="max-w-4xl space-y-3">
-                <div className="flex flex-wrap gap-3">
-                  <Button variant="outline" asChild>
-                    <Link to={backToSearchUrl}>
-                      <ArrowLeft className="mr-2 h-4 w-4" />
-                      Back to Search
-                    </Link>
-                  </Button>
-                  <StandaloneReportActions
-                    reportLabel="Player Assessment"
-                    fileNameBase={`${title} player assessment`}
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" asChild>
+                  <Link to={backToSearchUrl}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Search
+                  </Link>
+                </Button>
+                <StandaloneReportActions
+                  reportLabel="Player Assessment"
+                  fileNameBase={`${title} player assessment`}
                   accessToken={accessToken}
                   frameRef={reportFrameRef}
                   reportHtml={reportDocumentHtml}
@@ -760,9 +758,13 @@ const AnalyticsReport = () => {
                   showDownload={false}
                   showEmail={false}
                 />
+              </div>
+              <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,23,33,0.92),rgba(6,18,27,0.98))] p-6 shadow-[0_24px_80px_rgba(2,6,23,0.38)]">
+                <div className="flex justify-center">
+                  <div className="rounded-full border border-sky-400/15 bg-sky-400/[0.08] px-8 py-3 font-display text-xl uppercase tracking-[0.18em] text-sky-100 md:px-12">
+                    Player Assessment
+                  </div>
                 </div>
-                <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl">{title}</h1>
-                <p className="text-lg text-muted-foreground">{quickRead}</p>
               </div>
             </div>
             <Card className="border-border/80 bg-card/85 shadow-xl">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -37,6 +37,41 @@ import {
   getCricketPlayerIntelligenceDocumentUrl,
 } from "@/lib/cricketApi";
 import { measureEmbeddedReportHeight } from "@/lib/iframeReport";
+
+class SectionErrorBoundary extends React.Component<
+  { title: string; children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { title: string; children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error(`Analytics intelligence section failed: ${this.props.title}`, error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Card className="border-amber-500/30 bg-amber-500/10 shadow-xl">
+          <CardHeader>
+            <CardTitle className="font-display text-2xl text-foreground">{this.props.title} unavailable</CardTitle>
+            <CardDescription className="text-amber-100/80">
+              This section could not be rendered for the current intelligence payload.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 function getDivisionId(value: string | null) {
   if (!value) {
@@ -1613,211 +1648,215 @@ const AnalyticsIntelligenceReport = () => {
 
             {intelligenceStatus === "success" && intelligenceReport ? (
               <>
-                <Card className="border-border/80 bg-card/85 shadow-xl">
-                  <CardHeader className="space-y-4 pb-0">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-cyan-200">
-                        <Crosshair className="h-3.5 w-3.5" />
-                        Summary
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-8 pt-6">
-                    <section className="grid gap-4 xl:grid-cols-2">
-                      <div className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/40 p-5">
-                        <div className="grid h-full gap-3 md:grid-cols-3">
-                          <div className="flex h-full flex-col rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-                            <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-200">Main Threat</p>
-                            <p className="mt-3 text-sm leading-6 text-foreground">{threatNarrative}</p>
-                          </div>
-                          <div className="flex h-full flex-col rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-                            <p className="text-[11px] uppercase tracking-[0.16em] text-amber-200">Main Weakness</p>
-                            <p className="mt-3 text-sm leading-6 text-foreground">{weaknessNarrative}</p>
-                          </div>
-                          <div className="flex h-full flex-col rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
-                            <p className="text-[11px] uppercase tracking-[0.16em] text-sky-200">Pressure Note</p>
-                            <p className="mt-3 text-sm leading-6 text-foreground">{pressureNarrative}</p>
-                          </div>
+                <SectionErrorBoundary title="Intelligence summary">
+                  <Card className="border-border/80 bg-card/85 shadow-xl">
+                    <CardHeader className="space-y-4 pb-0">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-cyan-200">
+                          <Crosshair className="h-3.5 w-3.5" />
+                          Summary
                         </div>
                       </div>
+                    </CardHeader>
+                    <CardContent className="space-y-8 pt-6">
+                      <section className="grid gap-4 xl:grid-cols-2">
+                        <div className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/40 p-5">
+                          <div className="grid h-full gap-3 md:grid-cols-3">
+                            <div className="flex h-full flex-col rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                              <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-200">Main Threat</p>
+                              <p className="mt-3 text-sm leading-6 text-foreground">{threatNarrative}</p>
+                            </div>
+                            <div className="flex h-full flex-col rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                              <p className="text-[11px] uppercase tracking-[0.16em] text-amber-200">Main Weakness</p>
+                              <p className="mt-3 text-sm leading-6 text-foreground">{weaknessNarrative}</p>
+                            </div>
+                            <div className="flex h-full flex-col rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+                              <p className="text-[11px] uppercase tracking-[0.16em] text-sky-200">Pressure Note</p>
+                              <p className="mt-3 text-sm leading-6 text-foreground">{pressureNarrative}</p>
+                            </div>
+                          </div>
+                        </div>
 
-                      <div className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/40 p-5">
-                        <div className="grid h-full flex-1 gap-3 sm:grid-cols-2">
-                          <div className="flex h-full rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.08] p-4">
+                        <div className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/40 p-5">
+                          <div className="grid h-full flex-1 gap-3 sm:grid-cols-2">
+                            <div className="flex h-full rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.08] p-4">
+                              <SectionMetric
+                                label="Confidence"
+                                value={confidenceValue}
+                                tone={recommendationTone}
+                                valueClassName="text-[2.1rem] leading-none"
+                                noteClassName="pt-2"
+                              />
+                            </div>
+                            <div className="flex h-full rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.08] p-4">
+                              <SectionMetric
+                                label="Percentile"
+                                value={formatOrdinal(intelligenceReport?.header?.percentileRank)}
+                                tone="good"
+                                valueClassName="text-[2.1rem] leading-none"
+                              />
+                            </div>
+                            <div className="flex h-full rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] p-4">
+                              <SectionMetric
+                                label="Composite Selector Score"
+                                value={formatNumber(intelligenceReport?.header?.compositeScore)}
+                                tone="good"
+                                valueClassName="text-[2.1rem] leading-none"
+                              />
+                            </div>
+                            <div className={`flex h-full rounded-2xl border p-4 ${getToneSurfaceClasses(threatProfile.tone)}`}>
+                              <SectionMetric
+                                label="Threat Level"
+                                value={threatProfile.label}
+                                tone={threatProfile.tone}
+                                valueClassName="text-[2.1rem] leading-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section className="space-y-4 border-t border-border/70 pt-6">
+                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Tactical Plan</p>
+                        <div className="grid gap-4 xl:grid-cols-2">
+                          <PlanColumn
+                            title="Batting"
+                            items={battingPlanItems}
+                            emptyState="No batting plan lines are available yet."
+                          />
+                          <PlanColumn
+                            title="Bowling"
+                            items={bowlingPlanItems}
+                            emptyState="No bowling plan lines are available yet."
+                          />
+                        </div>
+                      </section>
+
+                      <section className="space-y-4 border-t border-border/70 pt-6">
+                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Series Stats</p>
+                        <div className="grid gap-4 xl:grid-cols-3">
+                          <SummaryStatsCard title="Batting Stats" rows={battingStatRows} />
+                          <SummaryStatsCard title="Bowling Stats" rows={bowlingStatRows} />
+                          <SummaryStatsCard title="Fielding / Wicketkeeping Stats" rows={fieldingStatRows} />
+                        </div>
+                      </section>
+
+                      <section className="space-y-4 border-t border-border/70 pt-6">
+                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Snapshot</p>
+                        <div className="grid gap-4 xl:grid-cols-3">
+                          <div className="rounded-2xl border border-sky-500/25 bg-sky-500/[0.08] p-5">
                             <SectionMetric
-                              label="Confidence"
-                              value={confidenceValue}
-                              tone={recommendationTone}
-                              valueClassName="text-[2.1rem] leading-none"
-                              noteClassName="pt-2"
+                              label="Impact Phase"
+                              value={impactPhase.label}
+                              note={impactPhase.note}
+                              tone="watch"
+                              valueClassName="text-[2.35rem]"
                             />
                           </div>
-                          <div className="flex h-full rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.08] p-4">
+                          <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] p-5">
                             <SectionMetric
-                              label="Percentile"
-                              value={formatOrdinal(intelligenceReport?.header?.percentileRank)}
+                              label="Batting Sample"
+                              value={battingSampleLabel}
+                              note={battingSampleNote}
+                              tone="watch"
+                              valueClassName="text-[2.35rem]"
+                            />
+                          </div>
+                          <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.08] p-5">
+                            <SectionMetric
+                              label="Bowling Sample"
+                              value={bowlingSampleLabel}
+                              note={bowlingSampleNote}
                               tone="good"
-                              valueClassName="text-[2.1rem] leading-none"
-                            />
-                          </div>
-                          <div className="flex h-full rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] p-4">
-                            <SectionMetric
-                              label="Composite Selector Score"
-                              value={formatNumber(intelligenceReport?.header?.compositeScore)}
-                              tone="good"
-                              valueClassName="text-[2.1rem] leading-none"
-                            />
-                          </div>
-                          <div className={`flex h-full rounded-2xl border p-4 ${getToneSurfaceClasses(threatProfile.tone)}`}>
-                            <SectionMetric
-                              label="Threat Level"
-                              value={threatProfile.label}
-                              tone={threatProfile.tone}
-                              valueClassName="text-[2.1rem] leading-none"
+                              valueClassName="text-[2.35rem]"
                             />
                           </div>
                         </div>
-                      </div>
-                    </section>
+                      </section>
 
-                    <section className="space-y-4 border-t border-border/70 pt-6">
-                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Tactical Plan</p>
-                      <div className="grid gap-4 xl:grid-cols-2">
-                        <PlanColumn
-                          title="Batting"
-                          items={battingPlanItems}
-                          emptyState="No batting plan lines are available yet."
+                      <section className="border-t border-border/70 pt-6">
+                        <SummarySignalSection
+                          title="Threat"
+                          narrative={threatNarrative}
+                          items={intelligenceReport?.tacticalSummary?.strengths}
+                          emptyState="No clear threat signal is available yet in the live sample."
+                          metricPlacement="side"
                         />
-                        <PlanColumn
-                          title="Bowling"
-                          items={bowlingPlanItems}
-                          emptyState="No bowling plan lines are available yet."
+                      </section>
+
+                      <section className="border-t border-border/70 pt-6">
+                        <SummarySignalSection
+                          title="Weakness"
+                          narrative={weaknessNarrative}
+                          items={intelligenceReport?.tacticalSummary?.watchouts}
+                          emptyState="No clear weakness is available yet in the live sample."
+                          metricPlacement="side"
                         />
-                      </div>
-                    </section>
+                      </section>
 
-                    <section className="space-y-4 border-t border-border/70 pt-6">
-                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Series Stats</p>
-                      <div className="grid gap-4 xl:grid-cols-3">
-                        <SummaryStatsCard title="Batting Stats" rows={battingStatRows} />
-                        <SummaryStatsCard title="Bowling Stats" rows={bowlingStatRows} />
-                        <SummaryStatsCard title="Fielding / Wicketkeeping Stats" rows={fieldingStatRows} />
-                      </div>
-                    </section>
+                      <section className="border-t border-border/70 pt-6">
+                        <SummarySignalSection
+                          title="Pressure"
+                          narrative={pressureNarrative}
+                          items={pressureSignals}
+                          emptyState="No pressure markers are available yet in the live sample."
+                        />
+                      </section>
 
-                    <section className="space-y-4 border-t border-border/70 pt-6">
-                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Snapshot</p>
-                      <div className="grid gap-4 xl:grid-cols-3">
-                        <div className="rounded-2xl border border-sky-500/25 bg-sky-500/[0.08] p-5">
-                          <SectionMetric
-                            label="Impact Phase"
-                            value={impactPhase.label}
-                            note={impactPhase.note}
-                            tone="watch"
-                            valueClassName="text-[2.35rem]"
+                      <section className="space-y-4 border-t border-border/70 pt-6">
+                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Additional Insights</p>
+                        <div className="grid gap-4 xl:grid-cols-2">
+                          <InsightColumn
+                            title="Matchup & Usage"
+                            items={matchupAndUsageInsights}
+                            emptyState="No additional matchup or usage insights are available yet."
+                          />
+                          <InsightColumn
+                            title="Pressure & Evidence"
+                            items={pressureAndEvidenceInsights}
+                            emptyState="No additional pressure or evidence insights are available yet."
                           />
                         </div>
-                        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] p-5">
-                          <SectionMetric
-                            label="Batting Sample"
-                            value={battingSampleLabel}
-                            note={battingSampleNote}
-                            tone="watch"
-                            valueClassName="text-[2.35rem]"
-                          />
-                        </div>
-                        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.08] p-5">
-                          <SectionMetric
-                            label="Bowling Sample"
-                            value={bowlingSampleLabel}
-                            note={bowlingSampleNote}
-                            tone="good"
-                            valueClassName="text-[2.35rem]"
-                          />
+                      </section>
+                    </CardContent>
+                  </Card>
+                </SectionErrorBoundary>
+
+                <SectionErrorBoundary title="Intelligence details">
+                  <Card className="border-border/80 bg-card/85 shadow-xl">
+                    <CardHeader className="space-y-4 pb-0">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-cyan-200">
+                          <BrainCircuit className="h-3.5 w-3.5" />
+                          Details
                         </div>
                       </div>
-                    </section>
-
-                    <section className="border-t border-border/70 pt-6">
-                      <SummarySignalSection
-                        title="Threat"
-                        narrative={threatNarrative}
-                        items={intelligenceReport?.tacticalSummary?.strengths}
-                        emptyState="No clear threat signal is available yet in the live sample."
-                        metricPlacement="side"
+                    </CardHeader>
+                    <CardContent className="space-y-6 pt-6">
+                      <MatchupTable
+                        title="Batting vs bowler type"
+                        summary={summarizeMatchupSection(focusedLens?.batting?.byBowlerType, "batting")}
+                        rows={focusedLens?.batting?.byBowlerType}
+                        mode="batting"
                       />
-                    </section>
 
-                    <section className="border-t border-border/70 pt-6">
-                      <SummarySignalSection
-                        title="Weakness"
-                        narrative={weaknessNarrative}
-                        items={intelligenceReport?.tacticalSummary?.watchouts}
-                        emptyState="No clear weakness is available yet in the live sample."
-                        metricPlacement="side"
+                      <MatchupTable
+                        title="Bowling vs batter type"
+                        summary={summarizeMatchupSection(focusedLens?.bowling?.byBatterHand, "bowling")}
+                        rows={focusedLens?.bowling?.byBatterHand}
+                        mode="bowling"
                       />
-                    </section>
 
-                    <section className="border-t border-border/70 pt-6">
-                      <SummarySignalSection
-                        title="Pressure"
-                        narrative={pressureNarrative}
-                        items={pressureSignals}
-                        emptyState="No pressure markers are available yet in the live sample."
-                      />
-                    </section>
+                      <PhaseLensTable lens={focusedLens} />
 
-                    <section className="space-y-4 border-t border-border/70 pt-6">
-                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Additional Insights</p>
-                      <div className="grid gap-4 xl:grid-cols-2">
-                        <InsightColumn
-                          title="Matchup & Usage"
-                          items={matchupAndUsageInsights}
-                          emptyState="No additional matchup or usage insights are available yet."
-                        />
-                        <InsightColumn
-                          title="Pressure & Evidence"
-                          items={pressureAndEvidenceInsights}
-                          emptyState="No additional pressure or evidence insights are available yet."
-                        />
-                      </div>
-                    </section>
-                  </CardContent>
-                </Card>
+                      <DismissalTable rows={focusedLens?.dismissals} summary={summarizeDismissalSection(focusedLens?.dismissals)} />
 
-                <Card className="border-border/80 bg-card/85 shadow-xl">
-                  <CardHeader className="space-y-4 pb-0">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-cyan-200">
-                        <BrainCircuit className="h-3.5 w-3.5" />
-                        Details
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6 pt-6">
-                    <MatchupTable
-                      title="Batting vs bowler type"
-                      summary={summarizeMatchupSection(focusedLens?.batting?.byBowlerType, "batting")}
-                      rows={focusedLens?.batting?.byBowlerType}
-                      mode="batting"
-                    />
-
-                    <MatchupTable
-                      title="Bowling vs batter type"
-                      summary={summarizeMatchupSection(focusedLens?.bowling?.byBatterHand, "bowling")}
-                      rows={focusedLens?.bowling?.byBatterHand}
-                      mode="bowling"
-                    />
-
-                    <PhaseLensTable lens={focusedLens} />
-
-                    <DismissalTable rows={focusedLens?.dismissals} summary={summarizeDismissalSection(focusedLens?.dismissals)} />
-
-                    <EvidenceTable title="Batting evidence" items={intelligenceReport.commentaryEvidence?.batting} />
-                    <EvidenceTable title="Bowling evidence" items={intelligenceReport.commentaryEvidence?.bowling} />
-                    <EvidenceTable title="Dismissal evidence" items={intelligenceReport.commentaryEvidence?.dismissals} />
-                  </CardContent>
-                </Card>
+                      <EvidenceTable title="Batting evidence" items={intelligenceReport.commentaryEvidence?.batting} />
+                      <EvidenceTable title="Bowling evidence" items={intelligenceReport.commentaryEvidence?.bowling} />
+                      <EvidenceTable title="Dismissal evidence" items={intelligenceReport.commentaryEvidence?.dismissals} />
+                    </CardContent>
+                  </Card>
+                </SectionErrorBoundary>
               </>
             ) : null}
           </div>

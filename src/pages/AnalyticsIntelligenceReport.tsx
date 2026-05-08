@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   BrainCircuit,
   Crosshair,
+  ExternalLink,
   Loader2,
   RefreshCw,
   ShieldCheck,

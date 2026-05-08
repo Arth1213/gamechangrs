@@ -171,23 +171,6 @@ const LANDING_HERO_STRIP = [
     description: "Built to extend later to ESPNcricinfo and Cricbuzz.",
   },
 ];
-const LANDING_OUTCOMES = [
-  {
-    step: "01",
-    title: "Trusted Player Intelligence",
-    description: "Every key match, innings, and ball becomes structured, reusable data.",
-  },
-  {
-    step: "02",
-    title: "Fairer Evaluation",
-    description: "Players are judged by opposition quality, phase, matchup, and match impact, not just totals.",
-  },
-  {
-    step: "03",
-    title: "Coach-Ready Reporting",
-    description: "Search a player and get the full story in one decision-ready view.",
-  },
-];
 const LANDING_FOOTER_TAGS = [
   "Structured Data",
   "Opponent Context",
@@ -1500,40 +1483,44 @@ function AnalyticsLandingSections() {
     <>
       <Card className="border-border/80 bg-card/85 shadow-xl">
         <CardContent className="space-y-8 p-8 lg:p-10">
-          <div className="space-y-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-primary">What This App Really Is</p>
-            <h1 className="max-w-6xl font-display text-4xl font-bold leading-[0.96] text-foreground md:text-5xl lg:text-6xl">
-              From raw cricket site data to{" "}
-              <span className="text-primary">trusted analytics intelligence</span>, starting with{" "}
-              <span className="text-sky-400">CricClubs</span>.
-            </h1>
-            <p className="max-w-4xl text-lg leading-8 text-muted-foreground">
-              A private decision-support app that turns raw cricket data into{" "}
-              <span className="font-semibold text-foreground">fairer player evaluation</span>.
-            </p>
-            <div className="max-w-4xl border-l-4 border-primary pl-4 text-lg leading-8 text-cyan-100/90">
-              CricClubs shows <span className="font-semibold text-foreground">what happened</span>. This app shows{" "}
-              <span className="font-semibold text-foreground">what matters</span>.
-            </div>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {LANDING_HERO_STRIP.map((item) => (
-              <div
-                key={item.label}
-                className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/40 p-4 shadow-sm backdrop-blur"
-              >
-                <p className="min-h-[2.2rem] text-[11px] uppercase leading-5 tracking-[0.16em] text-muted-foreground">
-                  {item.label}
-                </p>
-                <p
-                  className={`mt-2 min-h-[3.2rem] font-display text-2xl leading-[1.02] text-primary md:min-h-[3.5rem] ${item.valueClassName ?? ""}`}
-                >
-                  {item.value}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
+          <div className="grid gap-6 xl:grid-cols-[0.98fr_1.02fr] xl:items-center">
+            <div className="space-y-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-primary">What This App Really Is</p>
+              <h1 className="max-w-5xl font-display text-4xl font-bold leading-[0.96] text-foreground md:text-5xl lg:text-6xl">
+                From raw cricket site data to{" "}
+                <span className="text-primary">trusted analytics intelligence</span>, starting with{" "}
+                <span className="text-sky-400">CricClubs</span>.
+              </h1>
+              <p className="max-w-4xl text-lg leading-8 text-muted-foreground">
+                A private decision-support app that turns raw cricket data into{" "}
+                <span className="font-semibold text-foreground">fairer player evaluation</span>.
+              </p>
+              <div className="max-w-4xl border-l-4 border-primary pl-4 text-lg leading-8 text-cyan-100/90">
+                CricClubs shows <span className="font-semibold text-foreground">what happened</span>. This app shows{" "}
+                <span className="font-semibold text-foreground">what matters</span>.
               </div>
-            ))}
+            </div>
+
+            <div className="rounded-[30px] border border-border/80 bg-background/35 p-4 backdrop-blur lg:p-5">
+              <div className="grid gap-3 md:grid-cols-2">
+                {LANDING_HERO_STRIP.map((item) => (
+                  <div
+                    key={item.label}
+                    className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/40 p-4 shadow-sm backdrop-blur"
+                  >
+                    <p className="min-h-[2.2rem] text-[11px] uppercase leading-5 tracking-[0.16em] text-muted-foreground">
+                      {item.label}
+                    </p>
+                    <p
+                      className={`mt-2 min-h-[3.2rem] font-display text-2xl leading-[1.02] text-primary md:min-h-[3.5rem] ${item.valueClassName ?? ""}`}
+                    >
+                      {item.value}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1604,31 +1591,6 @@ function AnalyticsLandingSections() {
           </div>
         </CardContent>
       </Card>
-
-      <div className="space-y-4">
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h2 className="font-display text-3xl text-foreground md:text-4xl">Key Outcomes You Should Expect</h2>
-          </div>
-          <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-            Faster understanding. Better trust. Fairer comparison.
-          </p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          {LANDING_OUTCOMES.map((item) => (
-            <Card key={item.step} className="border-border/80 bg-card/80 shadow-sm">
-              <CardContent className="space-y-3 p-6">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-sky-400 text-sm font-black text-slate-950">
-                  {item.step}
-                </div>
-                <h3 className="font-display text-2xl text-foreground">{item.title}</h3>
-                <p className="text-sm leading-7 text-muted-foreground">{item.description}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
 
       <Card className="border-border/80 bg-gradient-to-r from-primary/15 to-sky-400/10 shadow-xl">
         <CardContent className="grid gap-6 p-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
@@ -2686,8 +2648,6 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                   onAccessActivated={handleAccessActivated}
                 />
             ) : null}
-
-            <AnalyticsLandingSections />
 
           </div>
         </div>

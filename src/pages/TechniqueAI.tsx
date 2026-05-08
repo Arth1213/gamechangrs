@@ -142,72 +142,76 @@ function TechniqueAIGuestLanding() {
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-6xl space-y-6">
             <div className="rounded-[34px] border border-border/80 bg-card/80 p-5 shadow-xl lg:p-7">
-              <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr] xl:items-center">
-                <div className="flex flex-col gap-5 text-center xl:pr-4 xl:text-left">
-                  <div className="space-y-4">
-                    <div className="inline-flex items-center gap-2 self-center rounded-full border border-accent/20 bg-accent/10 px-4 py-2 xl:self-start">
-                      <Sparkles className="h-4 w-4 text-accent" />
-                      <span className="text-sm font-medium text-accent">Batting Technique AI</span>
-                    </div>
-
-                    <h1 className="font-display text-4xl font-bold leading-[0.94] text-foreground md:text-5xl xl:text-[4.15rem]">
-                      Upload a batting clip. Get scored technique feedback.
-                    </h1>
-                    <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:text-lg xl:mx-0">
-                      Pose-driven batting analysis with phase scoring, corrective drills, and saved reports once signed in.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap justify-center gap-3 xl:justify-start">
-                    <Button variant="hero" size="lg" asChild>
-                      <Link to="/auth">
-                        Sign In to Analyze
-                        <ArrowRight className="h-5 w-5" />
-                      </Link>
-                    </Button>
-                  </div>
-
-                  <div className="flex flex-wrap justify-center gap-2 xl:justify-start">
-                    <Badge variant="outline" className="border-border/80 bg-background/40">
-                      Batting-focused
-                    </Badge>
-                    <Badge variant="outline" className="border-border/80 bg-background/40">
-                      Pose-driven
-                    </Badge>
-                    <Badge variant="outline" className="border-border/80 bg-background/40">
-                      Saved history
-                    </Badge>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[22px] border border-border/80 bg-background/55 p-4 text-left">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
-                        <Video className="h-5 w-5 text-primary" />
+              <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr] xl:items-stretch">
+                <div className="flex h-full flex-col rounded-[30px] border border-border/80 bg-background/35 p-5 text-center xl:pr-4 xl:text-left">
+                  <div className="flex h-full flex-col justify-between gap-5">
+                    <div className="space-y-4">
+                      <div className="inline-flex items-center gap-2 self-center rounded-full border border-accent/20 bg-accent/10 px-4 py-2 xl:self-start">
+                        <Sparkles className="h-4 w-4 text-accent" />
+                        <span className="text-sm font-medium text-accent">Batting Technique AI</span>
                       </div>
-                      <p className="mt-4 text-xs uppercase tracking-[0.16em] text-primary/80">What it reads</p>
-                      <h3 className="mt-2 font-display text-2xl text-foreground">6 batting phases</h3>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Setup through shot match in one structured report.
+
+                      <h1 className="font-display text-4xl font-bold leading-[0.94] text-foreground md:text-5xl xl:text-[4.15rem]">
+                        Upload a batting clip. Get scored technique feedback.
+                      </h1>
+                      <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:text-lg xl:mx-0">
+                        Pose-driven batting analysis with phase scoring, corrective drills, and saved reports once signed in.
                       </p>
                     </div>
-                    <div className="rounded-[22px] border border-border/80 bg-background/55 p-4 text-left">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
-                        <Target className="h-5 w-5 text-primary" />
+
+                    <div className="space-y-5">
+                      <div className="flex flex-wrap justify-center gap-3 xl:justify-start">
+                        <Button variant="hero" size="lg" asChild>
+                          <Link to="/auth">
+                            Sign In to Analyze
+                            <ArrowRight className="h-5 w-5" />
+                          </Link>
+                        </Button>
                       </div>
-                      <p className="mt-4 text-xs uppercase tracking-[0.16em] text-primary/80">What you get</p>
-                      <h3 className="mt-2 font-display text-2xl text-foreground">One clear next drill</h3>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Scores, findings, and correction work tied directly to the clip.
-                      </p>
+
+                      <div className="flex flex-wrap justify-center gap-2 xl:justify-start">
+                        <Badge variant="outline" className="border-border/80 bg-background/40">
+                          Batting-focused
+                        </Badge>
+                        <Badge variant="outline" className="border-border/80 bg-background/40">
+                          Pose-driven
+                        </Badge>
+                        <Badge variant="outline" className="border-border/80 bg-background/40">
+                          Saved history
+                        </Badge>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-[22px] border border-border/80 bg-background/55 p-4 text-left">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
+                            <Video className="h-5 w-5 text-primary" />
+                          </div>
+                          <p className="mt-4 text-xs uppercase tracking-[0.16em] text-primary/80">What it reads</p>
+                          <h3 className="mt-2 font-display text-2xl text-foreground">6 batting phases</h3>
+                          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                            Setup through shot match in one structured report.
+                          </p>
+                        </div>
+                        <div className="rounded-[22px] border border-border/80 bg-background/55 p-4 text-left">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
+                            <Target className="h-5 w-5 text-primary" />
+                          </div>
+                          <p className="mt-4 text-xs uppercase tracking-[0.16em] text-primary/80">What you get</p>
+                          <h3 className="mt-2 font-display text-2xl text-foreground">One clear next drill</h3>
+                          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                            Scores, findings, and correction work tied directly to the clip.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <div
                   id="technique-ai-report-preview"
-                  className="rounded-[30px] border border-border/80 bg-card/85 p-5 shadow-xl lg:p-6"
+                  className="flex h-full flex-col rounded-[30px] border border-border/80 bg-card/85 p-5 shadow-xl lg:p-6"
                 >
-                  <div className="flex flex-col gap-5">
+                  <div className="flex h-full flex-col justify-between gap-5">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-xs uppercase tracking-[0.16em] text-primary/80">Sample Report</p>
@@ -222,7 +226,7 @@ function TechniqueAIGuestLanding() {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-border/80 bg-background/50 p-4">
+                    <div className="flex-1 rounded-2xl border border-border/80 bg-background/50 p-4">
                       <div className="mb-4 flex items-center justify-between gap-3">
                         <p className="font-medium text-foreground">Phase breakdown</p>
                         <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/10 text-emerald-300">

@@ -20,27 +20,15 @@ export const Footer = () => {
             </p>
           </div>
 
-          {/* Quick Links */}
+          {/* About */}
           <div>
-            <h4 className="font-display font-semibold text-foreground mb-4">Quick Links</h4>
-            <div className="grid grid-cols-3 gap-x-8 gap-y-3">
-              {[
-                { label: "Technique AI", path: "/techniqueai" },
-                { label: "Coaching Marketplace", path: "/coaching-marketplace" },
-                { label: "Analytics", path: "/analytics" },
-                { label: "Gear Marketplace", path: "/marketplace" },
-                { label: "About Us", path: "/about" },
-                { label: "Contact Us", path: "/contact" },
-              ].map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className="text-muted-foreground hover:text-primary text-sm transition-colors"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
+            <h4 className="font-display font-semibold text-foreground mb-4">About</h4>
+            <Link
+              to="/about"
+              className="text-muted-foreground hover:text-primary text-sm transition-colors"
+            >
+              About Us
+            </Link>
           </div>
 
           {/* Connect */}

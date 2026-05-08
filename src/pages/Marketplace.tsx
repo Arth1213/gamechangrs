@@ -186,25 +186,29 @@ function MarketplaceOverviewStrip({
     <section className="border-b border-border/80 bg-background py-8">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-6xl">
-          <div className="grid gap-5 lg:grid-cols-[0.86fr_1.14fr] lg:items-end">
-            <div className="max-w-2xl">
-              <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Marketplace flow</p>
-              <h2 className="mt-3 font-display text-3xl font-bold text-foreground md:text-4xl">{title}</h2>
-              <p className="mt-3 text-sm leading-7 text-muted-foreground md:text-base">{description}</p>
+          <div className="grid gap-5 lg:grid-cols-[0.86fr_1.14fr] lg:items-stretch">
+            <div className="flex h-full flex-col justify-between rounded-[30px] border border-border/80 bg-card/70 p-6">
+              <div className="max-w-2xl">
+                <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Marketplace flow</p>
+                <h2 className="mt-3 font-display text-3xl font-bold text-foreground md:text-4xl">{title}</h2>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground md:text-base">{description}</p>
+              </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              {marketplaceFlowCards.map((item) => (
-                <div key={item.title} className="rounded-[26px] border border-border/80 bg-card/70 p-5">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
-                    <item.icon className="h-5 w-5 text-primary" />
+            <div className="flex h-full flex-col rounded-[30px] border border-border/80 bg-card/70 p-5">
+              <div className="grid h-full gap-4 md:grid-cols-3">
+                {marketplaceFlowCards.map((item) => (
+                  <div key={item.title} className="rounded-[26px] border border-border/80 bg-background/40 p-5">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+                      <item.icon className="h-5 w-5 text-primary" />
+                    </div>
+                    <h3 className="mt-4 font-display text-[1.75rem] font-bold leading-none text-foreground">
+                      {item.title}
+                    </h3>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.description}</p>
                   </div>
-                  <h3 className="mt-4 font-display text-[1.75rem] font-bold leading-none text-foreground">
-                    {item.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.description}</p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -217,15 +221,15 @@ function MarketplaceRetailPartner() {
   return (
     <section className="border-t border-border bg-background py-8">
       <div className="container mx-auto px-4">
-        <div className="mx-auto max-w-6xl overflow-hidden rounded-[32px] border border-border bg-card/80 p-6 shadow-sm md:p-8">
-          <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+        <div className="mx-auto max-w-6xl overflow-hidden rounded-[30px] border border-border bg-card/80 p-5 shadow-sm md:p-6">
+          <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-primary">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 {featuredRetailPartner.eyebrow}
               </div>
 
-              <div className="mt-5 max-w-2xl">
+              <div className="mt-4 max-w-2xl">
                 <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">
                   {featuredRetailPartner.title}
                 </h2>
@@ -234,7 +238,7 @@ function MarketplaceRetailPartner() {
                 </p>
               </div>
 
-              <div className="mt-6 flex flex-wrap gap-2">
+              <div className="mt-5 flex flex-wrap gap-2">
                 {featuredRetailPartner.highlights.map((highlight) => (
                   <span
                     key={highlight}
@@ -245,7 +249,7 @@ function MarketplaceRetailPartner() {
                 ))}
               </div>
 
-              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <a href={featuredRetailPartner.href} target="_blank" rel="noreferrer" className="inline-flex">
                   <Button variant="hero" size="default">
                     Shop East Bay
@@ -260,15 +264,15 @@ function MarketplaceRetailPartner() {
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-border bg-background/60 p-6">
-              <div className="flex min-h-[260px] items-center justify-center rounded-[24px] border border-border bg-card/80 px-6 py-8">
+            <div className="rounded-[26px] border border-border bg-background/60 p-4">
+              <div className="flex min-h-[180px] items-center justify-center rounded-[22px] border border-border bg-card/80 px-4 py-5">
                 <img
                   src="/partners/east-bay-cricket-shop-logo.jpeg"
                   alt="East Bay Cricket Shop logo"
-                  className="h-auto max-h-[180px] w-auto max-w-full object-contain"
+                  className="h-auto max-h-[110px] w-auto max-w-full object-contain"
                 />
               </div>
-              <div className="mt-4 text-center">
+              <div className="mt-3 text-center">
                 <span className="inline-flex rounded-full border border-border bg-background/80 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                   {featuredRetailPartner.name}
                 </span>
@@ -295,75 +299,81 @@ function MarketplaceGuestLanding({
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-6xl">
           <div className="rounded-[34px] border border-border/80 bg-card/80 p-5 shadow-xl lg:p-7">
-            <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr] xl:items-center">
-              <div className="flex flex-col gap-5 text-center xl:pr-4 xl:text-left">
-                <div className="space-y-4">
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-primary/80">Community marketplace</p>
-                  <h1 className="font-display text-4xl font-bold leading-[0.94] text-foreground md:text-5xl xl:text-[4.1rem]">
-                    Move cricket gear through the community.
-                  </h1>
-                  <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:text-lg xl:mx-0">
-                    Browse live listings, surface donation gear, and let Game-Changrs handle the first email introduction between buyer and seller.
-                  </p>
-                </div>
+            <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr] xl:items-stretch">
+              <div className="flex h-full flex-col rounded-[30px] border border-border/80 bg-background/35 p-5 text-center xl:pr-4 xl:text-left">
+                <div className="flex h-full flex-col justify-between gap-5">
+                  <div className="space-y-4">
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-primary/80">Community marketplace</p>
+                    <h1 className="font-display text-4xl font-bold leading-[0.94] text-foreground md:text-5xl xl:text-[4.1rem]">
+                      Move cricket gear through the community.
+                    </h1>
+                    <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:text-lg xl:mx-0">
+                      Browse live listings, surface donation gear, and let Game-Changrs handle the first email introduction between buyer and seller.
+                    </p>
+                  </div>
 
-                <div className="flex flex-wrap justify-center gap-3 xl:justify-start">
-                  <Button variant="hero" size="default" asChild>
-                    <Link to="/auth">
-                      Get Started
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="default" asChild>
-                    <a href="#gear-marketplace-feed">Browse Live Listings</a>
-                  </Button>
-                </div>
+                  <div className="space-y-5">
+                    <div className="flex flex-wrap justify-center gap-3 xl:justify-start">
+                      <Button variant="hero" size="default" asChild>
+                        <Link to="/auth">
+                          Get Started
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Button variant="outline" size="default" asChild>
+                        <a href="#gear-marketplace-feed">Browse Live Listings</a>
+                      </Button>
+                    </div>
 
-                <div className="rounded-[24px] border border-border/80 bg-background/50 px-5 py-4 text-left text-sm leading-6 text-muted-foreground">
-                  Game-Changrs is the connection layer. Buyer and seller continue by email and complete the exchange offline.
+                    <div className="rounded-[24px] border border-border/80 bg-background/50 px-5 py-4 text-left text-sm leading-6 text-muted-foreground">
+                      Game-Changrs is the connection layer. Buyer and seller continue by email and complete the exchange offline.
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid gap-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <MarketplaceMetricTile label="Community listings" value={publicListingCount} tone="accent" />
-                  <MarketplaceMetricTile label="Donation listings" value={donationCount} tone="warm" />
-                  <MarketplaceMetricTile label="Gear categories" value={categoryCount} />
-                  <div className="rounded-[24px] border border-border/80 bg-background/60 px-5 py-5">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
-                      <Mail className="h-5 w-5 text-primary" />
+              <div className="flex h-full flex-col rounded-[30px] border border-border/80 bg-background/35 p-5">
+                <div className="grid gap-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <MarketplaceMetricTile label="Community listings" value={publicListingCount} tone="accent" />
+                    <MarketplaceMetricTile label="Donation listings" value={donationCount} tone="warm" />
+                    <MarketplaceMetricTile label="Gear categories" value={categoryCount} />
+                    <div className="rounded-[24px] border border-border/80 bg-background/60 px-5 py-5">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                        <Mail className="h-5 w-5 text-primary" />
+                      </div>
+                      <p className="mt-4 text-[11px] uppercase tracking-[0.22em] text-primary/80">Email intro</p>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        Game-Changrs opens the conversation, then buyer and seller handle the exchange directly.
+                      </p>
                     </div>
-                    <p className="mt-4 text-[11px] uppercase tracking-[0.22em] text-primary/80">Email intro</p>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      Game-Changrs opens the conversation, then buyer and seller handle the exchange directly.
-                    </p>
                   </div>
-                </div>
 
-                <div className="rounded-[26px] border border-border/80 bg-background/45 p-5">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-primary/80">Marketplace motion</p>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Keep usable gear moving through the community, whether the right next step is donation or a direct sale.
-                  </p>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[22px] border border-border/70 bg-card/60 p-4">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
-                        <HeartHandshake className="h-5 w-5 text-primary" />
+                  <div className="flex-1 rounded-[26px] border border-border/80 bg-background/45 p-5">
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-primary/80">Marketplace motion</p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      Keep usable gear moving through the community, whether the right next step is donation or a direct sale.
+                    </p>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-[22px] border border-border/70 bg-card/60 p-4">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                          <HeartHandshake className="h-5 w-5 text-primary" />
+                        </div>
+                        <h2 className="mt-4 font-display text-2xl font-bold leading-none text-foreground">Donate gear</h2>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          Publish free listings for useful gear that should stay in circulation across the cricket community.
+                        </p>
                       </div>
-                      <h2 className="mt-4 font-display text-2xl font-bold leading-none text-foreground">Donate gear</h2>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Publish free listings for useful gear that should stay in circulation across the cricket community.
-                      </p>
-                    </div>
 
-                    <div className="rounded-[22px] border border-border/70 bg-card/60 p-4">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
-                        <Tag className="h-5 w-5 text-primary" />
+                      <div className="rounded-[22px] border border-border/70 bg-card/60 p-4">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                          <Tag className="h-5 w-5 text-primary" />
+                        </div>
+                        <h2 className="mt-4 font-display text-2xl font-bold leading-none text-foreground">Sell gear</h2>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          Add price, condition, and location, then move the conversation to direct email once there is interest.
+                        </p>
                       </div>
-                      <h2 className="mt-4 font-display text-2xl font-bold leading-none text-foreground">Sell gear</h2>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Add price, condition, and location, then move the conversation to direct email once there is interest.
-                      </p>
                     </div>
                   </div>
                 </div>

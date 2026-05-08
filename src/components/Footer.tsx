@@ -40,7 +40,7 @@ export const Footer = () => {
                 </a>
               ))}
             </div>
-            <div className="mt-4">
+            <div className="mt-4 flex justify-center">
               <Link
                 to="/about"
                 className="text-muted-foreground hover:text-primary text-sm transition-colors"

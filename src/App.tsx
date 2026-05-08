@@ -22,7 +22,9 @@ import AnalysisHistory from "./pages/AnalysisHistory";
 import Marketplace from "./pages/Marketplace";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import Privacy from "./pages/Privacy";
 import Settings from "./pages/Settings";
+import Terms from "./pages/Terms";
 import FAQ from "./pages/FAQ";
 import CoachingMarketplace from "./pages/CoachingMarketplace";
 import CoachSignup from "./pages/CoachSignup";
@@ -101,11 +103,13 @@ const App = () => (
             <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/privacy" element={<Privacy />} />
             <Route path="/settings" element={
               <ProtectedRoute>
                 <Settings />
               </ProtectedRoute>
             } />
+            <Route path="/terms" element={<Terms />} />
             <Route path="/faq" element={<FAQ />} />
             <Route path="/coaching-marketplace" element={<CoachingMarketplace />} />
             <Route path="/coaching-marketplace/coach/:coachId" element={<CoachProfile />} />

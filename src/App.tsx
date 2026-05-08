@@ -35,7 +35,6 @@ import SessionRating from "./pages/SessionRating";
 import CoachProfile from "./pages/CoachProfile";
 import PlayerProfile from "./pages/PlayerProfile";
 import VerifyConnection from "./pages/VerifyConnection";
-import ArthProfile from "./pages/ArthProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,8 +49,6 @@ const App = () => (
           <NotificationProvider>
             <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/arth" element={<ArthProfile />} />
-            <Route path="/arth/*" element={<ArthProfile />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/techniqueai" element={<TechniqueAI />} />
             <Route path="/analytics" element={<Analytics />} />

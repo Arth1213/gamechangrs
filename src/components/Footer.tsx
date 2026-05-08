@@ -37,9 +37,9 @@ export const Footer = () => {
             <div className="grid grid-cols-3 gap-3">
               {[
                 { icon: Twitter, href: "https://x.com/game-changrs" },
-                { icon: Instagram, href: "https://instagram.com/game_chngrs" },
+                { icon: Instagram, href: "https://instagram.com/gamechangrs24" },
                 { icon: Youtube, href: "https://youtube.com" },
-                { icon: Linkedin, href: "https://linkedin.com" },
+                { icon: Linkedin, href: "https://linkedin.com/company/game-changrs" },
                 { icon: Mail, href: "mailto:arth@game-changrs.com" },
               ].map(({ icon: Icon, href }) => (
                 <a

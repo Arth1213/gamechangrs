@@ -68,9 +68,9 @@ const Contact = () => {
 
   const socials = [
     { icon: Twitter, href: "https://x.com/game-changrs", label: "Twitter" },
-    { icon: Instagram, href: "https://instagram.com/game_chngrs", label: "Instagram" },
+    { icon: Instagram, href: "https://instagram.com/gamechangrs24", label: "Instagram" },
     { icon: Youtube, href: "https://youtube.com/gamechangrs", label: "YouTube" },
-    { icon: Linkedin, href: "https://linkedin.com/company/gamechangrs", label: "LinkedIn" },
+    { icon: Linkedin, href: "https://linkedin.com/company/game-changrs", label: "LinkedIn" },
   ];
 
   return (

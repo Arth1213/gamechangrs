@@ -468,6 +468,23 @@ function buildPressureNarrative(profile: CricketPlayerIntelligenceLens["pressure
   return "No pressure pattern is available yet in the live sample.";
 }
 
+function buildExecutiveSummary(
+  threatNarrative: string,
+  weaknessNarrative: string,
+  pressureProfile: CricketPlayerIntelligenceLens["pressureProfile"],
+) {
+  const summaryParts = [
+    threatNarrative.replace(/^The player is mainly a /i, "Main ").replace(/\.$/, ""),
+    weaknessNarrative.replace(/^The player is most vulnerable against /i, "Vulnerability against ").replace(/\.$/, ""),
+  ];
+
+  if (pressureProfile?.dismissalDotThreshold !== null && pressureProfile?.dismissalDotThreshold !== undefined) {
+    summaryParts.push("Dot-ball pressure is the key stress signal");
+  }
+
+  return `${summaryParts.filter(Boolean).join(", ")}.`;
+}
+
 function summarizeMatchupSection(rows: CricketPlayerIntelligenceMatchupRow[] | undefined, mode: "batting" | "bowling") {
   if (!rows || rows.length === 0) {
     return mode === "batting"
@@ -1308,6 +1325,7 @@ const AnalyticsIntelligenceReport = () => {
   const threatNarrative = buildThreatNarrative(leadingStrength);
   const weaknessNarrative = buildWeaknessNarrative(leadingWatchout, battingPlanItems[0] || null);
   const pressureNarrative = buildPressureNarrative(pressureProfile);
+  const executiveSummary = buildExecutiveSummary(threatNarrative, weaknessNarrative, pressureProfile);
   const summaryStats: CricketPlayerIntelligenceSummaryStats | null = intelligenceReport?.summaryStats || null;
   const battingStatRows = [
     { label: "Matches", value: formatNumber(summaryStats?.batting?.matches) },
@@ -1607,9 +1625,7 @@ const AnalyticsIntelligenceReport = () => {
                     Player Intelligence Report
                   </Badge>
                   <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl">{title}</h1>
-                  <p className="max-w-4xl text-lg text-muted-foreground">
-                    {[threatNarrative, weaknessNarrative, pressureNarrative].filter(Boolean).join(" ")}
-                  </p>
+                  <p className="max-w-4xl text-lg text-muted-foreground">{executiveSummary}</p>
                   {scopeFallbackReason ? (
                     <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
                       {scopeFallbackReason}
@@ -1618,27 +1634,6 @@ const AnalyticsIntelligenceReport = () => {
                 </div>
               </div>
 
-              <Card className="border-border/80 bg-card shadow-card">
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Report Summary</p>
-                    <div className="rounded-2xl border border-border/80 bg-background/40 p-5">
-                      <p className="text-sm leading-7 text-foreground">
-                        {recommendationLabel
-                          ? `${recommendationLabel}. ${threatNarrative} ${weaknessNarrative} ${pressureNarrative}`
-                          : `${threatNarrative} ${weaknessNarrative} ${pressureNarrative}`}
-                      </p>
-                    </div>
-                    <dl className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                      <SummaryField label="Team" value={teamName || "-"} />
-                      <SummaryField label="Primary Role" value={roleLabel || "-"} />
-                      <SummaryField label="Batting Profile" value={battingStyleLabel} />
-                      <SummaryField label="Bowling Profile" value={bowlingStyleLabel} />
-                      <SummaryField label="Report Scope" value={scopeLabel} />
-                    </dl>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
             {intelligenceStatus === "loading" ? (
@@ -1677,11 +1672,6 @@ const AnalyticsIntelligenceReport = () => {
                   <CardTitle className="font-display text-3xl text-foreground">
                     GAME-CHANGRS Player Intelligence
                   </CardTitle>
-                  <CardDescription className="max-w-4xl text-base leading-7 text-muted-foreground">
-                    {recommendationLabel
-                      ? `${recommendationLabel}. ${threatNarrative} ${weaknessNarrative} ${pressureNarrative}`
-                      : `${threatNarrative} ${weaknessNarrative} ${pressureNarrative}`}
-                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">

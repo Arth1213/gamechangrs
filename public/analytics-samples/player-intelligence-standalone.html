@@ -1420,11 +1420,18 @@
     .stat-grid .report-table td {
       padding: 10px 12px;
       font-size: 13px;
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+
+    .stat-grid .report-table th:first-child,
+    .stat-grid .report-table td:first-child {
+      width: 70%;
     }
 
     .stat-grid .report-table th:last-child,
     .stat-grid .report-table td:last-child {
-      width: 1%;
+      width: 30%;
       white-space: nowrap;
     }
 
@@ -1476,6 +1483,10 @@
 
       .report-table {
         min-width: 640px;
+      }
+
+      .stat-grid .report-table {
+        min-width: 0;
       }
     }
 
@@ -1642,24 +1653,6 @@
                 <p>How the report says to manage this player with the ball.</p>
                 <div class="empty-state">No bowling plan lines are available yet.</div>
               </div>
-              <div class="summary-panel">
-                <h3>Player Summary</h3>
-                <p>Compact context for what the current intelligence report is saying.</p>
-                <div class="insight-list">
-                  <div class="insight-item">
-                    <div class="insight-title">Batting Profile</div>
-                    <p>Right Right Handed Batter</p>
-                  </div>
-                  <div class="insight-item">
-                    <div class="insight-title">Bowling Profile</div>
-                    <p>Right Arm Medium</p>
-                  </div>
-                  <div class="insight-item">
-                    <div class="insight-title">Scope</div>
-                    <p>All Divisions</p>
-                  </div>
-                </div>
-              </div>
             </div>
           </section>
 
@@ -1800,7 +1793,6 @@
             <div class="detail-grid">
               <div class="detail-panel">
                 <h3>Threat Signals</h3>
-                <p>The clearest live indicators behind the current threat read.</p>
                 
       <div class="insight-list">
         
@@ -1814,7 +1806,6 @@
               </div>
               <div class="detail-panel">
                 <h3>Watchouts</h3>
-                <p>The live indicators showing where the opposition can target this player.</p>
                 
       <div class="insight-list">
         
@@ -1833,7 +1824,6 @@
             <div class="detail-grid">
               <div class="detail-panel">
                 <h3>Matchup & Usage Insights</h3>
-                <p>How the player is being used and which matchups are shaping the read.</p>
                 
       <div class="insight-list">
         
@@ -1862,23 +1852,33 @@
               </div>
               <div class="detail-panel">
                 <h3>Pressure & Evidence Insights</h3>
-                <p>Pressure markers and commentary-backed interpretation from the live sample.</p>
                 
       <div class="insight-list">
         
             <div class="insight-item">
               <div class="insight-title">Rhythm signals</div>
-              <p>Boundary release usually comes after about 1.8 dots. Dismissal pressure appears after about 1 dots. After three dots, boundary response is 40% and wicket risk is 0%. High-pressure batting strike rate is 125.71.</p>
+              <ul class="bullet-list">
+                <li>Boundary release usually comes after about 1.8 dots.</li>
+                <li>Dismissal pressure appears after about 1 dots.</li>
+                <li>After three dots, boundary response is 40% and wicket risk is 0%.</li>
+                <li>High-pressure batting strike rate is 125.71.</li>
+              </ul>
             </div>
           
             <div class="insight-item">
               <div class="insight-title">Dismissal clustering</div>
-              <p>Wickets are clustering most against Right-Arm Pace, mainly through caught. The current pattern shows dismissals around 28.83 runs and 24.33 balls into the innings.</p>
+              <ul class="bullet-list">
+                <li>Wickets are clustering most against Right-Arm Pace, mainly through caught.</li>
+                <li>The current pattern shows dismissals around 28.83 runs and 24.33 balls into the innings.</li>
+              </ul>
             </div>
           
             <div class="insight-item">
               <div class="insight-title">Evidence-ranked matches</div>
-              <p>The first matches to review are Oct 2, 2025 Kings XI Dallas v Chicago Kingsmen, Oct 1, 2025 Silicon Valley Strikers v Kings XI Dallas, Sep 6, 2025 Kings XI Dallas v MetroPlex Tracers. These currently carry the strongest commentary-backed evidence for this player.</p>
+              <ul class="bullet-list">
+                <li>The first matches to review are Oct 2, 2025 Kings XI Dallas v Chicago Kingsmen, Oct 1, 2025 Silicon Valley Strikers v Kings XI Dallas, Sep 6, 2025 Kings XI Dallas v MetroPlex Tracers.</li>
+                <li>These currently carry the strongest commentary-backed evidence for this player.</li>
+              </ul>
             </div>
           
       </div>

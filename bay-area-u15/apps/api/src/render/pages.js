@@ -5451,11 +5451,18 @@ function renderPlayerIntelligenceReportPage(report) {
     .stat-grid .report-table td {
       padding: 10px 12px;
       font-size: 13px;
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+
+    .stat-grid .report-table th:first-child,
+    .stat-grid .report-table td:first-child {
+      width: 70%;
     }
 
     .stat-grid .report-table th:last-child,
     .stat-grid .report-table td:last-child {
-      width: 1%;
+      width: 30%;
       white-space: nowrap;
     }
 
@@ -5507,6 +5514,10 @@ function renderPlayerIntelligenceReportPage(report) {
 
       .report-table {
         min-width: 640px;
+      }
+
+      .stat-grid .report-table {
+        min-width: 0;
       }
     }
 
@@ -5757,6 +5768,55 @@ function renderPlayerIntelligenceReportPage(report) {
               <p>${escapeHtml(sanitizeCopy(item.detail || item.note))}</p>
             </div>
           `)
+          .join("")}
+      </div>
+    `;
+  }
+
+  function splitIntoBulletSentences(value) {
+    const text = sanitizeCopy(value, "");
+    if (!text) {
+      return [];
+    }
+
+    return text
+      .split(/(?<=[.?!])\s+(?=[A-Z0-9])/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  function insightBulletList(items, emptyState) {
+    const values = Array.isArray(items)
+      ? items.filter((item) =>
+          normalizeText(item?.title)
+          || normalizeText(item?.detail)
+          || normalizeText(item?.label)
+          || normalizeText(item?.note)
+        )
+      : [];
+
+    if (!values.length) {
+      return `<div class="empty-state">${escapeHtml(emptyState)}</div>`;
+    }
+
+    return `
+      <div class="insight-list">
+        ${values
+          .map((item) => {
+            const bullets = splitIntoBulletSentences(item.detail || item.note);
+            return `
+              <div class="insight-item">
+                <div class="insight-title">${escapeHtml(normalizeText(item.title) || normalizeText(item.label) || "Additional insight")}</div>
+                ${bullets.length
+                  ? `
+                    <ul class="bullet-list">
+                      ${bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")}
+                    </ul>
+                  `
+                  : `<p>${escapeHtml(sanitizeCopy(item.detail || item.note))}</p>`}
+              </div>
+            `;
+          })
           .join("")}
       </div>
     `;
@@ -6243,24 +6303,6 @@ function renderPlayerIntelligenceReportPage(report) {
                 <p>How the report says to manage this player with the ball.</p>
                 ${bulletList(tacticalPlan?.bowlingPlan, "No bowling plan lines are available yet.")}
               </div>
-              <div class="summary-panel">
-                <h3>Player Summary</h3>
-                <p>Compact context for what the current intelligence report is saying.</p>
-                <div class="insight-list">
-                  <div class="insight-item">
-                    <div class="insight-title">Batting Profile</div>
-                    <p>${escapeHtml(normalizeStyleLabel(battingStyle))}</p>
-                  </div>
-                  <div class="insight-item">
-                    <div class="insight-title">Bowling Profile</div>
-                    <p>${escapeHtml(normalizeStyleLabel(bowlingStyle))}</p>
-                  </div>
-                  <div class="insight-item">
-                    <div class="insight-title">Scope</div>
-                    <p>${escapeHtml(scopeLabel)}</p>
-                  </div>
-                </div>
-              </div>
             </div>
           </section>
 
@@ -6276,12 +6318,10 @@ function renderPlayerIntelligenceReportPage(report) {
             <div class="detail-grid">
               <div class="detail-panel">
                 <h3>Threat Signals</h3>
-                <p>The clearest live indicators behind the current threat read.</p>
                 ${insightList(tacticalSummary?.strengths, "No clear threat signal is available yet in the live sample.")}
               </div>
               <div class="detail-panel">
                 <h3>Watchouts</h3>
-                <p>The live indicators showing where the opposition can target this player.</p>
                 ${insightList(tacticalSummary?.watchouts, "No clear weakness is available yet in the live sample.")}
               </div>
             </div>
@@ -6291,13 +6331,11 @@ function renderPlayerIntelligenceReportPage(report) {
             <div class="detail-grid">
               <div class="detail-panel">
                 <h3>Matchup & Usage Insights</h3>
-                <p>How the player is being used and which matchups are shaping the read.</p>
                 ${insightList(additionalInsights?.matchupAndUsage, "No additional matchup or usage insights are available yet.")}
               </div>
               <div class="detail-panel">
                 <h3>Pressure & Evidence Insights</h3>
-                <p>Pressure markers and commentary-backed interpretation from the live sample.</p>
-                ${insightList(additionalInsights?.pressureAndEvidence, "No additional pressure or evidence insights are available yet.")}
+                ${insightBulletList(additionalInsights?.pressureAndEvidence, "No additional pressure or evidence insights are available yet.")}
               </div>
             </div>
           </section>

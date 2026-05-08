@@ -17,7 +17,6 @@ import {
   GraduationCap,
   UserCircle,
   ArrowRight,
-  Clock,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1143,33 +1142,24 @@ const CoachingMarketplace = () => {
           <section className="border-b border-border bg-card/40 pb-10 pt-28">
             <div className="container mx-auto px-4">
               <div className="mx-auto max-w-6xl">
-                <div className="rounded-[34px] border border-border/80 bg-card/80 p-5 shadow-xl lg:p-7">
-                  <div className="grid gap-5 xl:grid-cols-[0.94fr_1.06fr] xl:items-center">
-                    <div className="flex flex-col gap-5 text-center xl:pr-4 xl:text-left">
-                      <div className="space-y-4">
-                        <div className="inline-flex items-center gap-2 self-center rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary xl:self-start">
-                          <Sparkles className="h-4 w-4" />
-                          Coaching Marketplace
+                <div className="space-y-5">
+                  <div className="rounded-[34px] border border-border/80 bg-card/80 p-5 shadow-xl lg:p-7">
+                    <div className="grid gap-5 xl:grid-cols-[0.94fr_1.06fr] xl:items-center">
+                      <div className="flex flex-col gap-5 text-center xl:pr-4 xl:text-left">
+                        <div className="space-y-4">
+                          <div className="inline-flex items-center gap-2 self-center rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary xl:self-start">
+                            <Sparkles className="h-4 w-4" />
+                            Coaching Marketplace
+                          </div>
+                          <h1 className="font-display text-4xl font-bold leading-[0.94] text-foreground md:text-5xl xl:text-[4.25rem]">
+                            Find the right coach and keep the full training relationship in one place
+                          </h1>
+                          <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:text-lg xl:mx-0">
+                            Browse public coach profiles, compare fit, and move into coach or player onboarding when you are ready.
+                          </p>
                         </div>
-                        <h1 className="font-display text-4xl font-bold leading-[0.94] text-foreground md:text-5xl xl:text-[4.25rem]">
-                          Find the right coach and keep the full training relationship in one place
-                        </h1>
-                        <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:text-lg xl:mx-0">
-                          Browse public coach profiles, compare fit, and move into coach or player onboarding when you are ready.
-                        </p>
                       </div>
 
-                      <div className="flex flex-wrap justify-center gap-3 xl:justify-start">
-                        <Button variant="hero" asChild>
-                          <Link to="/coaching-marketplace/player-signup">Join as Player</Link>
-                        </Button>
-                        <Button variant="outline" asChild>
-                          <Link to="/coaching-marketplace/coach-signup">Become a Coach</Link>
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4">
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="flex min-h-[138px] h-full flex-col justify-between rounded-[24px] border border-primary/20 bg-primary/10 p-5">
                           <p className="font-display text-4xl font-bold leading-none text-foreground">{loading ? "-" : coaches.length}</p>
@@ -1184,40 +1174,42 @@ const CoachingMarketplace = () => {
                           <p className="mt-5 text-xs uppercase tracking-[0.16em] text-muted-foreground">Training categories</p>
                         </div>
                         <div className="flex min-h-[138px] h-full flex-col justify-between rounded-[24px] border border-border/80 bg-background/70 p-5">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
-                            <Clock className="h-5 w-5 text-primary" />
-                          </div>
-                          <div className="space-y-2">
-                            <p className="text-xs uppercase tracking-[0.16em] text-primary/80">Open preview</p>
-                            <p className="text-sm leading-6 text-muted-foreground">
-                              Browse first, then step into the right player or coach workflow when you are ready.
-                            </p>
-                          </div>
+                          <p className="font-display text-4xl font-bold leading-none text-foreground">{loading ? "-" : players.length}</p>
+                          <p className="mt-5 text-xs uppercase tracking-[0.16em] text-muted-foreground">Players registered</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[34px] border border-border/80 bg-card/80 p-5 shadow-xl lg:p-7">
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <div className="flex h-full flex-col justify-between rounded-[24px] border border-border/70 bg-background/55 p-5">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-primary/80">For players</p>
+                          <h2 className="mt-3 font-display text-3xl font-bold text-foreground">Find the right fit before you commit</h2>
+                          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                            Compare specialties, level, reviews, and location before you commit to coaching.
+                          </p>
+                        </div>
+                        <div className="mt-5">
+                          <Button variant="hero" asChild>
+                            <Link to="/coaching-marketplace/player-signup">Join as Player</Link>
+                          </Button>
                         </div>
                       </div>
 
-                      <div className="rounded-[26px] border border-border/80 bg-background/45 p-5">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Marketplace fit</p>
-                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                              The same surface supports discovery, trust, and scheduling for both sides of the relationship.
-                            </p>
-                          </div>
+                      <div className="flex h-full flex-col justify-between rounded-[24px] border border-border/70 bg-background/55 p-5">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-primary/80">For coaches</p>
+                          <h2 className="mt-3 font-display text-3xl font-bold text-foreground">Show credibility and build the right roster</h2>
+                          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                            Show credibility, accept the right requests, and keep the working relationship in one place.
+                          </p>
                         </div>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                          <div className="rounded-[22px] border border-border/70 bg-card/60 p-4">
-                            <p className="font-display text-xl font-bold text-foreground">For players</p>
-                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                              Compare specialties, level, reviews, and location before you commit to coaching.
-                            </p>
-                          </div>
-                          <div className="rounded-[22px] border border-border/70 bg-card/60 p-4">
-                            <p className="font-display text-xl font-bold text-foreground">For coaches</p>
-                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                              Show credibility, accept the right requests, and keep the working relationship in one place.
-                            </p>
-                          </div>
+                        <div className="mt-5">
+                          <Button variant="outline" asChild>
+                            <Link to="/coaching-marketplace/coach-signup">Join as Coach</Link>
+                          </Button>
                         </div>
                       </div>
                     </div>

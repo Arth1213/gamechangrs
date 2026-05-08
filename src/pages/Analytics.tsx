@@ -1486,7 +1486,7 @@ function AnalyticsLandingSections() {
           <div className="grid gap-6 xl:grid-cols-[0.98fr_1.02fr] xl:items-center">
             <div className="space-y-4">
               <p className="text-xs uppercase tracking-[0.18em] text-primary">What This App Really Is</p>
-              <h1 className="gc-type-hero max-w-5xl leading-[0.96] md:text-5xl lg:text-6xl">
+              <h1 className="gc-type-hero max-w-5xl leading-[0.96]">
                 From raw cricket site data to{" "}
                 <span className="text-primary">trusted analytics intelligence</span>, starting with{" "}
                 <span className="text-sky-400">CricClubs</span>.

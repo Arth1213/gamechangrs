@@ -17,11 +17,11 @@
       --muted: #a7b2b8;
       --primary: #72ae8a;
       --primary-soft: rgba(114, 174, 138, 0.14);
-      --shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+      --shadow: 0 14px 38px rgba(0, 0, 0, 0.24);
       --radius-xl: 24px;
       --radius-lg: 20px;
       --radius-md: 14px;
-      --max: 1120px;
+      --max: 1060px;
     }
 
     * {
@@ -60,7 +60,7 @@
     }
 
     .section {
-      padding: 34px 20px;
+      padding: 22px 18px;
     }
 
     .wrap {
@@ -72,8 +72,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 20px;
-      padding: 16px 20px;
+      gap: 16px;
+      padding: 13px 16px;
       border: 1px solid var(--border);
       background: rgba(11, 14, 18, 0.84);
       border-radius: var(--radius-lg);
@@ -90,13 +90,13 @@
     }
 
     .brand img {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
     }
 
     .brand span {
-      font-size: 1.4rem;
+      font-size: 1.2rem;
     }
 
     .brand strong {
@@ -108,7 +108,7 @@
       color: var(--muted);
       flex: 0 0 44%;
       max-width: 48ch;
-      font-size: 0.8rem;
+      font-size: 0.74rem;
       line-height: 1.34;
       text-align: right;
       text-wrap: balance;
@@ -117,9 +117,9 @@
     .hero-grid {
       display: grid;
       grid-template-columns: 1.03fr 0.97fr;
-      gap: 18px;
+      gap: 14px;
       align-items: stretch;
-      margin-top: 24px;
+      margin-top: 18px;
     }
 
     .hero-copy,
@@ -131,8 +131,8 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 20px;
-      padding: 30px 30px 28px;
+      gap: 16px;
+      padding: 22px 24px 20px;
       border: 1px solid var(--border);
       background: linear-gradient(180deg, rgba(14, 19, 23, 0.97), rgba(10, 13, 17, 0.97));
       border-radius: var(--radius-xl);
@@ -150,7 +150,7 @@
     }
 
     h1 {
-      font-size: clamp(3rem, 4.6vw, 4.4rem);
+      font-size: clamp(2.45rem, 3.8vw, 3.55rem);
       max-width: 12ch;
       line-height: 0.92;
     }
@@ -180,12 +180,12 @@
     .hero-proof {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
+      gap: 10px;
     }
 
     .proof-item {
-      min-height: 96px;
-      padding: 16px;
+      min-height: 74px;
+      padding: 13px;
       border-radius: var(--radius-lg);
       border: 1px solid rgba(48, 55, 62, 0.9);
       background: rgba(26, 31, 36, 0.94);
@@ -233,7 +233,7 @@
     .proof-item strong {
       display: block;
       color: var(--primary);
-      font-size: 0.96rem;
+      font-size: 0.88rem;
       letter-spacing: -0.04em;
     }
 
@@ -256,11 +256,11 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-height: 50px;
-      padding: 0 22px;
+      min-height: 42px;
+      padding: 0 18px;
       border-radius: 999px;
       font-weight: 700;
-      font-size: 0.92rem;
+      font-size: 0.84rem;
       letter-spacing: -0.01em;
       transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
     }
@@ -283,7 +283,7 @@
 
     .hero-visual {
       display: grid;
-      gap: 14px;
+      gap: 12px;
       align-content: start;
     }
 
@@ -297,11 +297,11 @@
     }
 
     .visual-frame.hero-shot {
-      min-height: 338px;
-      padding: 26px;
+      min-height: 290px;
+      padding: 20px;
       display: grid;
       align-content: start;
-      gap: 16px;
+      gap: 12px;
       background: linear-gradient(180deg, rgba(13, 18, 22, 0.98), rgba(9, 12, 15, 0.98));
     }
 
@@ -310,14 +310,14 @@
     }
 
     .shot-copy h2 {
-      font-size: clamp(1.95rem, 2.5vw, 2.45rem);
+      font-size: clamp(1.55rem, 2.1vw, 1.95rem);
       line-height: 1.02;
     }
 
     .shot-copy p {
       margin: 10px 0 0;
       color: rgba(255, 255, 255, 0.82);
-      font-size: 0.86rem;
+      font-size: 0.8rem;
       line-height: 1.5;
     }
 
@@ -328,12 +328,12 @@
     .hero-stack-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+      gap: 10px;
     }
 
     .hero-stack-card {
-      min-height: 92px;
-      padding: 16px;
+      min-height: 78px;
+      padding: 14px;
       border-radius: var(--radius-lg);
       background: rgba(26, 31, 36, 0.94);
       border: 1px solid rgba(48, 55, 62, 0.9);
@@ -355,7 +355,7 @@
 
     .hero-stack-card strong {
       display: block;
-      font-size: 0.94rem;
+      font-size: 0.88rem;
       font-weight: 800;
       letter-spacing: -0.03em;
       color: var(--text);
@@ -363,79 +363,32 @@
 
     .hero-stack-card span {
       display: block;
-      margin-top: 10px;
+      margin-top: 8px;
       color: var(--muted);
-      font-size: 0.8rem;
+      font-size: 0.76rem;
       line-height: 1.48;
-    }
-
-    .split-section {
-      display: grid;
-      grid-template-columns: 0.76fr 1.24fr;
-      gap: 18px;
-      align-items: start;
-      margin-top: 18px;
     }
 
     .section-kicker {
       display: inline-block;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       color: var(--primary);
-      font-size: 0.74rem;
+      font-size: 0.68rem;
       font-weight: 800;
       letter-spacing: 0.16em;
-      text-transform: uppercase;
-    }
-
-    .section-card {
-      padding: 24px;
-      border-radius: var(--radius-xl);
-      border: 1px solid rgba(48, 55, 62, 0.9);
-      background: rgba(26, 31, 36, 0.94);
-      backdrop-filter: blur(18px);
-      box-shadow: var(--shadow);
-    }
-
-    .section-card h2 {
-      font-size: clamp(1.75rem, 2.3vw, 2.1rem);
-      line-height: 1.03;
-    }
-
-    .section-card p {
-      margin: 12px 0 0;
-      color: var(--muted);
-      font-size: 0.88rem;
-      line-height: 1.54;
-    }
-
-    .highlights {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 18px;
-    }
-
-    .pill {
-      padding: 9px 13px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.035);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      color: #d9e0e4;
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
       text-transform: uppercase;
     }
 
     .capability-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+      gap: 10px;
+      margin-top: 14px;
     }
 
     .capability {
-      min-height: 142px;
-      padding: 18px;
+      min-height: 118px;
+      padding: 15px;
       border-radius: var(--radius-lg);
       border: 1px solid rgba(48, 55, 62, 0.9);
       background: rgba(26, 31, 36, 0.94);
@@ -445,14 +398,14 @@
     }
 
     .capability h3 {
-      font-size: 1.12rem;
+      font-size: 1rem;
       line-height: 1.06;
     }
 
     .capability p {
-      margin: 10px 0 0;
+      margin: 8px 0 0;
       color: var(--muted);
-      font-size: 0.84rem;
+      font-size: 0.8rem;
       line-height: 1.5;
     }
 
@@ -473,8 +426,8 @@
     }
 
     .difference-panel {
-      margin-top: 18px;
-      padding: 24px;
+      margin-top: 14px;
+      padding: 20px;
       border-radius: var(--radius-xl);
       border: 1px solid rgba(114, 174, 138, 0.18);
       background: linear-gradient(180deg, rgba(18, 23, 28, 0.98), rgba(12, 17, 21, 0.98));
@@ -482,14 +435,14 @@
     }
 
     .difference-panel h2 {
-      font-size: clamp(1.8rem, 2.4vw, 2.2rem);
+      font-size: clamp(1.55rem, 2.05vw, 1.95rem);
     }
 
     .difference-panel p {
-      margin: 10px 0 0;
+      margin: 8px 0 0;
       max-width: none;
       color: #d6dde0;
-      font-size: 0.9rem;
+      font-size: 0.84rem;
       line-height: 1.52;
     }
 
@@ -500,13 +453,13 @@
     .difference-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      margin-top: 18px;
+      gap: 10px;
+      margin-top: 14px;
     }
 
     .difference-item {
-      min-height: 122px;
-      padding: 18px;
+      min-height: 98px;
+      padding: 15px;
       border-radius: var(--radius-lg);
       border: 1px solid rgba(48, 55, 62, 0.9);
       background: rgba(26, 31, 36, 0.94);
@@ -514,47 +467,47 @@
 
     .difference-item strong {
       display: block;
-      font-size: 0.94rem;
-      margin-bottom: 8px;
+      font-size: 0.9rem;
+      margin-bottom: 6px;
       letter-spacing: -0.02em;
     }
 
     .difference-item span {
       color: var(--muted);
-      font-size: 0.88rem;
+      font-size: 0.82rem;
       line-height: 1.58;
     }
 
-    .footer-cta {
-      margin-top: 18px;
-      padding: 22px 24px;
-      border-radius: var(--radius-xl);
-      border: 1px solid rgba(114, 174, 138, 0.18);
-      background:
-        radial-gradient(circle at top right, rgba(114, 174, 138, 0.12), transparent 28%),
-        linear-gradient(135deg, rgba(16, 22, 27, 0.96), rgba(12, 17, 21, 0.96));
-      box-shadow: var(--shadow);
-      text-align: center;
+    @page {
+      size: 13in 8.5in;
+      margin: 0.18in;
     }
 
-    .footer-cta h2 {
-      font-size: clamp(1.7rem, 2.5vw, 2.3rem);
-      line-height: 0.98;
-      max-width: none;
-      margin: 0;
-    }
+    @media print {
+      html,
+      body {
+        width: 13in;
+        height: 8.5in;
+      }
 
-    .footer-cta p {
-      margin: 10px auto 0;
-      max-width: 56ch;
-      color: var(--muted);
-      font-size: 0.88rem;
-      line-height: 1.54;
-    }
+      body {
+        background:
+          radial-gradient(circle at top left, rgba(114, 174, 138, 0.1), transparent 26%),
+          linear-gradient(180deg, #080a0d 0%, #0c1014 50%, #080a0d 100%);
+      }
 
-    .footer-cta .cta-row {
-      justify-content: center;
-      margin-top: 18px;
+      .section {
+        padding: 0;
+      }
+
+      .wrap {
+        width: 100%;
+      }
+
+      * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
     }
 
     .subtle {
@@ -567,17 +520,13 @@
 
     @media (max-width: 1080px) {
       .hero-grid,
-      .split-section {
+      .difference-grid {
         grid-template-columns: 1fr;
       }
 
       .brand-note {
         flex: none;
         text-align: left;
-      }
-
-      .difference-grid {
-        grid-template-columns: 1fr;
       }
     }
 
@@ -588,9 +537,7 @@
 
       .brand-bar,
       .hero-copy,
-      .section-card,
-      .difference-panel,
-      .footer-cta {
+      .difference-panel {
         padding: 22px;
       }
 
@@ -608,11 +555,11 @@
       }
 
       .brand span {
-        font-size: 1.35rem;
+        font-size: 1.15rem;
       }
 
       h1 {
-        font-size: 2.8rem;
+        font-size: 2.2rem;
       }
 
       .hero-copy {
@@ -657,9 +604,6 @@
                 <span class="block-line">See cricket deeper.</span>
                 <span class="accent-line">Train smarter.</span>
               </h1>
-              <p class="lead">
-                Technique analysis, deeper match context,<br />coaching pathways, and gear access in one cricket platform.
-              </p>
             </div>
 
             <div class="hero-proof">
@@ -670,7 +614,6 @@
                   </span>
                   <strong>Technique AI</strong>
                 </div>
-                <span>Video feedback</span>
               </div>
               <div class="proof-item">
                 <div class="card-head">
@@ -679,7 +622,6 @@
                   </span>
                   <strong>Deep Analytics</strong>
                 </div>
-                <span>Context weighted</span>
               </div>
               <div class="proof-item">
                 <div class="card-head">
@@ -688,7 +630,6 @@
                   </span>
                   <strong>Community Tools</strong>
                 </div>
-                <span>Coach + gear flow</span>
               </div>
             </div>
 
@@ -748,21 +689,9 @@
           </div>
         </div>
 
-        <div class="split-section">
-          <div class="section-card">
-            <div class="section-kicker">What it covers</div>
-            <h2>Four connected layers.</h2>
-            <p>
-              Technique, performance context, coaching access, and community support in one system.
-            </p>
-            <div class="highlights">
-              <span class="pill">Technical review</span>
-              <span class="pill">Match context</span>
-              <span class="pill">Coach access</span>
-              <span class="pill">Community exchange</span>
-            </div>
-          </div>
-
+        <div class="difference-panel">
+          <div class="section-kicker">What it covers</div>
+          <h2>Four connected layers.</h2>
           <div class="capability-grid">
             <div class="capability technique">
               <div class="card-head">
@@ -860,17 +789,6 @@
           </div>
         </div>
 
-        <div class="footer-cta">
-          <div class="section-kicker">Share GameChangrs</div>
-          <h2>Bring more people into <span class="accent-line">GameChangrs.</span></h2>
-          <p>
-            If you know a player, coach, academy, club, or cricket community that wants better cricket intelligence, send them here.
-          </p>
-          <div class="cta-row">
-            <a class="cta primary" href="https://game-changrs.com">Open game-changrs.com</a>
-            <a class="cta secondary" href="https://game-changrs.com/analytics">Explore Analytics</a>
-          </div>
-        </div>
       </div>
     </section>
   </div>

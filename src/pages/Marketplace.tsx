@@ -536,172 +536,174 @@ function OwnerListingsSection({
   return (
     <section className="border-b border-border py-8">
       <div className="container mx-auto px-4">
-        <div className="mb-6 grid gap-4 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
-          <div className="rounded-[28px] border border-border/80 bg-card/75 p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Owner view</p>
-            <h2 className="gc-type-section mt-2">Your Listings</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Manage live items, publish new gear, and toggle sold or donated history from one workspace.
-            </p>
-          </div>
-
-          <div className="rounded-[28px] border border-border/80 bg-card/75 p-5">
-            <div className="grid gap-3 md:grid-cols-3">
-              <Button onClick={() => onCreateListing("donation")} className="w-full">
-                <HeartHandshake className="h-4 w-4" />
-                Donate Gear
-              </Button>
-              <Button variant="outline" onClick={() => onCreateListing("sale")} className="w-full">
-                <Tag className="h-4 w-4" />
-                Sell Gear
-              </Button>
-              <Button variant="outline" onClick={onToggleShowCompleted} className="w-full">
-                {showCompletedListings ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                {completedToggleLabel}
-              </Button>
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-6 grid gap-4 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
+            <div className="rounded-[28px] border border-border/80 bg-card/75 p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Owner view</p>
+              <h2 className="gc-type-section mt-2">Your Listings</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Manage live items, publish new gear, and toggle sold or donated history from one workspace.
+              </p>
             </div>
-          </div>
-        </div>
 
-        {isLoading ? (
-          <div className="rounded-3xl border border-border bg-gradient-card p-8 text-sm text-muted-foreground">
-            Loading your listings...
-          </div>
-        ) : ownerListings.length === 0 ? (
-          <div className="rounded-3xl border border-border bg-gradient-card p-8">
-              <h3 className="gc-type-card-title">
-              {hasHiddenCompletedListings ? "No live listings right now" : "No active listings yet"}
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {hasHiddenCompletedListings
-                ? `You have ${completedListingsCount} sold/donated item${completedListingsCount === 1 ? "" : "s"} hidden from this view. Use Show Sold/Donated to review them.`
-                : "Your gear will appear here once you create the first listing."}
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button onClick={() => onCreateListing("donation")}>
-                <HeartHandshake className="h-4 w-4" />
-                Donate Gear
-              </Button>
-              <Button variant="outline" onClick={() => onCreateListing("sale")}>
-                <Tag className="h-4 w-4" />
-                Sell Gear
-              </Button>
-              {hasHiddenCompletedListings ? (
-                <Button variant="outline" onClick={onToggleShowCompleted}>
-                  <Eye className="h-4 w-4" />
-                  Show Sold/Donated
+            <div className="rounded-[28px] border border-border/80 bg-card/75 p-5">
+              <div className="grid gap-3 md:grid-cols-3">
+                <Button onClick={() => onCreateListing("donation")} className="w-full">
+                  <HeartHandshake className="h-4 w-4" />
+                  Donate Gear
                 </Button>
-              ) : null}
+                <Button variant="outline" onClick={() => onCreateListing("sale")} className="w-full">
+                  <Tag className="h-4 w-4" />
+                  Sell Gear
+                </Button>
+                <Button variant="outline" onClick={onToggleShowCompleted} className="w-full">
+                  {showCompletedListings ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {completedToggleLabel}
+                </Button>
+              </div>
             </div>
           </div>
-        ) : (
-          <div className={`grid gap-6 ${ownerListings.length > 1 ? "lg:grid-cols-2" : ""}`}>
-            {ownerListings.map((listing) => (
-              <div key={listing.id} className="overflow-hidden rounded-3xl border border-border bg-gradient-card">
-                <div className="grid gap-0 md:grid-cols-[0.95fr_1.05fr]">
-                  <div className="relative min-h-[240px] bg-secondary/40">
-                    {listing.image_url ? (
-                      <img
-                        src={listing.image_url}
-                        alt={listing.title || "Your listing"}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full min-h-[240px] w-full items-center justify-center">
-                        <Package className="h-12 w-12 text-muted-foreground/30" />
-                      </div>
-                    )}
 
-                    <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-                      <span
-                        className={`rounded-full px-3 py-1 text-[11px] font-medium ${
-                          listing.listing_type === "donation"
-                            ? "bg-green-500/90 text-white"
-                            : "bg-primary/90 text-primary-foreground"
-                        }`}
-                      >
-                        {listing.listing_type === "donation" ? "Donation" : "For Sale"}
-                      </span>
-                      <span className="rounded-full bg-background/90 px-3 py-1 text-[11px] font-medium text-foreground">
-                        Your listing
-                      </span>
-                    </div>
-
-                    {isCompletedListing(listing) ? (
-                      <>
-                        <div className="absolute inset-0 bg-background/45" />
-                        <div className="absolute -left-12 top-7 rotate-[-28deg] bg-destructive px-14 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-destructive-foreground shadow-lg">
-                          {getCompletedListingLabel(listing)}
+          {isLoading ? (
+            <div className="rounded-3xl border border-border bg-gradient-card p-8 text-sm text-muted-foreground">
+              Loading your listings...
+            </div>
+          ) : ownerListings.length === 0 ? (
+            <div className="rounded-3xl border border-border bg-gradient-card p-8">
+                <h3 className="gc-type-card-title">
+                {hasHiddenCompletedListings ? "No live listings right now" : "No active listings yet"}
+              </h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {hasHiddenCompletedListings
+                  ? `You have ${completedListingsCount} sold/donated item${completedListingsCount === 1 ? "" : "s"} hidden from this view. Use Show Sold/Donated to review them.`
+                  : "Your gear will appear here once you create the first listing."}
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Button onClick={() => onCreateListing("donation")}>
+                  <HeartHandshake className="h-4 w-4" />
+                  Donate Gear
+                </Button>
+                <Button variant="outline" onClick={() => onCreateListing("sale")}>
+                  <Tag className="h-4 w-4" />
+                  Sell Gear
+                </Button>
+                {hasHiddenCompletedListings ? (
+                  <Button variant="outline" onClick={onToggleShowCompleted}>
+                    <Eye className="h-4 w-4" />
+                    Show Sold/Donated
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <div className={`grid gap-6 ${ownerListings.length > 1 ? "lg:grid-cols-2" : ""}`}>
+              {ownerListings.map((listing) => (
+                <div key={listing.id} className="overflow-hidden rounded-3xl border border-border bg-gradient-card">
+                  <div className="grid gap-0 md:grid-cols-[0.95fr_1.05fr]">
+                    <div className="relative min-h-[240px] bg-secondary/40">
+                      {listing.image_url ? (
+                        <img
+                          src={listing.image_url}
+                          alt={listing.title || "Your listing"}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full min-h-[240px] w-full items-center justify-center">
+                          <Package className="h-12 w-12 text-muted-foreground/30" />
                         </div>
-                        <div className="absolute right-4 bottom-4 rounded-full bg-background/90 p-2 text-destructive">
-                          <X className="h-5 w-5" />
+                      )}
+
+                      <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+                        <span
+                          className={`rounded-full px-3 py-1 text-[11px] font-medium ${
+                            listing.listing_type === "donation"
+                              ? "bg-green-500/90 text-white"
+                              : "bg-primary/90 text-primary-foreground"
+                          }`}
+                        >
+                          {listing.listing_type === "donation" ? "Donation" : "For Sale"}
+                        </span>
+                        <span className="rounded-full bg-background/90 px-3 py-1 text-[11px] font-medium text-foreground">
+                          Your listing
+                        </span>
+                      </div>
+
+                      {isCompletedListing(listing) ? (
+                        <>
+                          <div className="absolute inset-0 bg-background/45" />
+                          <div className="absolute -left-12 top-7 rotate-[-28deg] bg-destructive px-14 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-destructive-foreground shadow-lg">
+                            {getCompletedListingLabel(listing)}
+                          </div>
+                          <div className="absolute right-4 bottom-4 rounded-full bg-background/90 p-2 text-destructive">
+                            <X className="h-5 w-5" />
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
+
+                    <div className="p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="font-display text-2xl font-bold text-foreground">{listing.title}</h3>
+                          <p className="mt-2 text-sm text-muted-foreground">{formatListingDate(listing.created_at)}</p>
                         </div>
-                      </>
-                    ) : null}
-                  </div>
-
-                  <div className="p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="font-display text-2xl font-bold text-foreground">{listing.title}</h3>
-                        <p className="mt-2 text-sm text-muted-foreground">{formatListingDate(listing.created_at)}</p>
+                        <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-right">
+                          <p className="font-display text-2xl font-bold text-foreground">
+                            {formatListingPrice(listing)}
+                          </p>
+                          <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                            {listing.listing_type === "donation" ? "Donation" : "Price"}
+                          </p>
+                        </div>
                       </div>
-                      <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-right">
-                        <p className="font-display text-2xl font-bold text-foreground">
-                          {formatListingPrice(listing)}
-                        </p>
-                        <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                          {listing.listing_type === "donation" ? "Donation" : "Price"}
-                        </p>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+                        {listing.condition ? (
+                          <span className="rounded-full border border-border px-3 py-1 text-muted-foreground">
+                            {listing.condition}
+                          </span>
+                        ) : null}
+                        {listing.category ? (
+                          <span className="rounded-full border border-border px-3 py-1 text-muted-foreground">
+                            {listing.category}
+                          </span>
+                        ) : null}
+                        {listing.location ? (
+                          <span className="rounded-full border border-border px-3 py-1 text-muted-foreground">
+                            {listing.location}
+                          </span>
+                        ) : null}
                       </div>
-                    </div>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
-                      {listing.condition ? (
-                        <span className="rounded-full border border-border px-3 py-1 text-muted-foreground">
-                          {listing.condition}
-                        </span>
+                      {listing.description ? (
+                        <p className="mt-5 line-clamp-4 text-sm leading-6 text-muted-foreground">{listing.description}</p>
                       ) : null}
-                      {listing.category ? (
-                        <span className="rounded-full border border-border px-3 py-1 text-muted-foreground">
-                          {listing.category}
-                        </span>
-                      ) : null}
-                      {listing.location ? (
-                        <span className="rounded-full border border-border px-3 py-1 text-muted-foreground">
-                          {listing.location}
-                        </span>
-                      ) : null}
-                    </div>
 
-                    {listing.description ? (
-                      <p className="mt-5 line-clamp-4 text-sm leading-6 text-muted-foreground">{listing.description}</p>
-                    ) : null}
-
-                    <div className="mt-5 flex flex-wrap gap-3">
-                      <Button variant="outline" onClick={() => onEdit(listing)}>
-                        <Pencil className="h-4 w-4" />
-                        Update
-                      </Button>
-                      {!isCompletedListing(listing) ? (
-                        <Button variant="outline" onClick={() => onMarkCompleted(listing)}>
-                          {getCompletedListingActionLabel(listing)}
+                      <div className="mt-5 flex flex-wrap gap-3">
+                        <Button variant="outline" onClick={() => onEdit(listing)}>
+                          <Pencil className="h-4 w-4" />
+                          Update
                         </Button>
-                      ) : null}
-                      <Button variant="ghost" onClick={() => onDelete(listing)}>
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </Button>
-                      <Button variant="ghost" onClick={onRefresh}>
-                        Refresh
-                      </Button>
+                        {!isCompletedListing(listing) ? (
+                          <Button variant="outline" onClick={() => onMarkCompleted(listing)}>
+                            {getCompletedListingActionLabel(listing)}
+                          </Button>
+                        ) : null}
+                        <Button variant="ghost" onClick={() => onDelete(listing)}>
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </Button>
+                        <Button variant="ghost" onClick={onRefresh}>
+                          Refresh
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -1046,85 +1048,87 @@ const Marketplace = () => {
 
       <section className="py-8">
         <div className="container mx-auto px-4">
-          <div className="rounded-[32px] border border-border/80 bg-card/70 p-6 shadow-sm lg:p-8">
-            <MarketplaceSearchSection
-              category={category}
-              categories={categories}
-              searchQuery={searchQuery}
-              onCategoryChange={setCategory}
-              onSearchChange={setSearchQuery}
-              eyebrow={user ? "Marketplace feed" : "Marketplace preview"}
-              title={user ? "Browse Gear" : "Live Gear Feed"}
-              description={
-                user
-                  ? "Search the active feed, open donation or sale listings, and continue the conversation with the seller by email."
-                  : "This public preview shows the live listings. Sign in when you want to donate, sell, or contact a seller by email."
-              }
-            />
+          <div className="mx-auto max-w-6xl">
+            <div className="rounded-[32px] border border-border/80 bg-card/70 p-6 shadow-sm lg:p-8">
+              <MarketplaceSearchSection
+                category={category}
+                categories={categories}
+                searchQuery={searchQuery}
+                onCategoryChange={setCategory}
+                onSearchChange={setSearchQuery}
+                eyebrow={user ? "Marketplace feed" : "Marketplace preview"}
+                title={user ? "Browse Gear" : "Live Gear Feed"}
+                description={
+                  user
+                    ? "Search the active feed, open donation or sale listings, and continue the conversation with the seller by email."
+                    : "This public preview shows the live listings. Sign in when you want to donate, sell, or contact a seller by email."
+                }
+              />
 
-            <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-wrap gap-3">
-                <Badge variant="outline" className="border-border/80 bg-background/40">
-                  <Tag className="mr-1 h-3.5 w-3.5" />
-                  {publicListingCount} live listings
-                </Badge>
-                <Badge variant="outline" className="border-border/80 bg-background/40">
-                  <HeartHandshake className="mr-1 h-3.5 w-3.5" />
-                  {donationCount} donation items
-                </Badge>
-                <Badge variant="outline" className="border-border/80 bg-background/40">
-                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                  Direct contact by email
-                </Badge>
+              <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-wrap gap-3">
+                  <Badge variant="outline" className="border-border/80 bg-background/40">
+                    <Tag className="mr-1 h-3.5 w-3.5" />
+                    {publicListingCount} live listings
+                  </Badge>
+                  <Badge variant="outline" className="border-border/80 bg-background/40">
+                    <HeartHandshake className="mr-1 h-3.5 w-3.5" />
+                    {donationCount} donation items
+                  </Badge>
+                  <Badge variant="outline" className="border-border/80 bg-background/40">
+                    <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                    Direct contact by email
+                  </Badge>
+                </div>
+
+                {!user ? (
+                  <Button variant="outline" asChild>
+                    <Link to="/auth">
+                      Sign In to Participate
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                ) : null}
               </div>
 
-              {!user ? (
-                <Button variant="outline" asChild>
-                  <Link to="/auth">
-                    Sign In to Participate
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-              ) : null}
-            </div>
-
-            <div className="mt-6">
-              {isLoading ? (
-                <div className="rounded-3xl border border-border bg-background/50 p-10 text-center text-muted-foreground">
-                  Loading listings...
-                </div>
-              ) : marketplaceListings.length === 0 ? (
-                <div className="rounded-3xl border border-border bg-background/50 p-10 text-center">
-                  <p className="mb-4 text-muted-foreground">No marketplace listings found for the current filters.</p>
-                  <div className="flex flex-wrap justify-center gap-3">
-                    {user ? (
-                      <>
-                        <Button size="sm" onClick={() => handleCreateListing("donation")}>
-                          <HeartHandshake className="mr-2 h-4 w-4" />
-                          Donate Gear
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleCreateListing("sale")}>
-                          <Tag className="mr-2 h-4 w-4" />
-                          Sell Gear
-                        </Button>
-                      </>
-                    ) : (
-                      <Button variant="outline" size="sm" asChild>
-                        <Link to="/auth">
-                          <Plus className="mr-2 h-4 w-4" />
-                          Sign In to List Gear
-                        </Link>
-                      </Button>
-                    )}
+              <div className="mt-6">
+                {isLoading ? (
+                  <div className="rounded-3xl border border-border bg-background/50 p-10 text-center text-muted-foreground">
+                    Loading listings...
                   </div>
-                </div>
-              ) : (
-                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                  {marketplaceListings.map((listing) => (
-                    <MarketplaceCard key={listing.id} listing={listing} onContact={handleContact} />
-                  ))}
-                </div>
-              )}
+                ) : marketplaceListings.length === 0 ? (
+                  <div className="rounded-3xl border border-border bg-background/50 p-10 text-center">
+                    <p className="mb-4 text-muted-foreground">No marketplace listings found for the current filters.</p>
+                    <div className="flex flex-wrap justify-center gap-3">
+                      {user ? (
+                        <>
+                          <Button size="sm" onClick={() => handleCreateListing("donation")}>
+                            <HeartHandshake className="mr-2 h-4 w-4" />
+                            Donate Gear
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleCreateListing("sale")}>
+                            <Tag className="mr-2 h-4 w-4" />
+                            Sell Gear
+                          </Button>
+                        </>
+                      ) : (
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to="/auth">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Sign In to List Gear
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                    {marketplaceListings.map((listing) => (
+                      <MarketplaceCard key={listing.id} listing={listing} onContact={handleContact} />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

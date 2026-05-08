@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Twitter, Instagram, Youtube, Linkedin, Mail } from "lucide-react";
+import { Instagram, Linkedin, Mail } from "lucide-react";
 import { CricketBrandTile } from "@/components/CricketBrandTile";
 
 export const Footer = () => {
@@ -20,25 +20,12 @@ export const Footer = () => {
             </p>
           </div>
 
-          {/* About */}
-          <div>
-            <h4 className="font-display font-semibold text-foreground mb-4">About</h4>
-            <Link
-              to="/about"
-              className="text-muted-foreground hover:text-primary text-sm transition-colors"
-            >
-              About Us
-            </Link>
-          </div>
-
           {/* Connect */}
           <div>
             <h4 className="font-display font-semibold text-foreground mb-4">Connect With Us</h4>
             <div className="grid grid-cols-3 gap-3">
               {[
-                { icon: Twitter, href: "https://x.com/game-changrs" },
                 { icon: Instagram, href: "https://instagram.com/gamechangrs24" },
-                { icon: Youtube, href: "https://youtube.com" },
                 { icon: Linkedin, href: "https://linkedin.com/company/game-changrs" },
                 { icon: Mail, href: "mailto:arth@game-changrs.com" },
               ].map(({ icon: Icon, href }) => (
@@ -52,6 +39,14 @@ export const Footer = () => {
                   <Icon className="w-5 h-5" />
                 </a>
               ))}
+            </div>
+            <div className="mt-4">
+              <Link
+                to="/about"
+                className="text-muted-foreground hover:text-primary text-sm transition-colors"
+              >
+                About Us
+              </Link>
             </div>
           </div>
         </div>

@@ -26,6 +26,8 @@ type StandaloneReportActionsProps = {
   reportHtml?: string | null;
   emailUrl?: string | null;
   disabled?: boolean;
+  showDownload?: boolean;
+  showEmail?: boolean;
   className?: string;
 };
 
@@ -97,6 +99,8 @@ export default function StandaloneReportActions({
   reportHtml,
   emailUrl,
   disabled = false,
+  showDownload = true,
+  showEmail = true,
   className,
 }: StandaloneReportActionsProps) {
   const { toast } = useToast();
@@ -198,17 +202,21 @@ export default function StandaloneReportActions({
           <Printer className="mr-2 h-4 w-4" />
           Print / Save
         </Button>
-        <Button type="button" variant="outline" onClick={() => void handleDownload()} disabled={isActionDisabled || !frameRef.current || downloadStatus === "loading"}>
-          {downloadStatus === "loading" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-          Download PDF
-        </Button>
-        <Button type="button" onClick={() => setEmailDialogOpen(true)} disabled={isActionDisabled || !frameRef.current}>
-          <Mail className="mr-2 h-4 w-4" />
-          Email PDF
-        </Button>
+        {showDownload ? (
+          <Button type="button" variant="outline" onClick={() => void handleDownload()} disabled={isActionDisabled || !frameRef.current || downloadStatus === "loading"}>
+            {downloadStatus === "loading" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+            Download PDF
+          </Button>
+        ) : null}
+        {showEmail ? (
+          <Button type="button" onClick={() => setEmailDialogOpen(true)} disabled={isActionDisabled || !frameRef.current}>
+            <Mail className="mr-2 h-4 w-4" />
+            Email PDF
+          </Button>
+        ) : null}
       </div>
 
-      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+      <Dialog open={showEmail && emailDialogOpen} onOpenChange={setEmailDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Email {reportLabel} PDF</DialogTitle>

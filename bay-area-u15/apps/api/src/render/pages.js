@@ -5109,6 +5109,7 @@ function renderPlayerIntelligenceReportPage(report) {
 
     .hero-grid,
     .section-grid,
+    .dynamic-panel-grid,
     .card-grid,
     .detail-grid,
     .plan-grid,
@@ -5124,6 +5125,11 @@ function renderPlayerIntelligenceReportPage(report) {
 
     .section-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dynamic-panel-grid {
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      align-items: start;
     }
 
     .card-grid {
@@ -5176,6 +5182,7 @@ function renderPlayerIntelligenceReportPage(report) {
 
     .hero-grid > *,
     .section-grid > *,
+    .dynamic-panel-grid > *,
     .card-grid > *,
     .detail-grid > *,
     .plan-grid > *,
@@ -5538,6 +5545,54 @@ function renderPlayerIntelligenceReportPage(report) {
       line-height: 1.6;
     }
 
+    .dismissal-pattern-table,
+    .phase-metrics-table {
+      table-layout: auto;
+    }
+
+    .dismissal-pattern-table th,
+    .dismissal-pattern-table td,
+    .phase-metrics-table th,
+    .phase-metrics-table td {
+      padding: 10px 12px;
+      font-size: 13px;
+      overflow-wrap: normal;
+      word-break: normal;
+      white-space: nowrap;
+    }
+
+    .dismissal-pattern-table th:first-child,
+    .dismissal-pattern-table td:first-child {
+      width: 46%;
+      white-space: normal;
+    }
+
+    .dismissal-pattern-table th:nth-child(2),
+    .dismissal-pattern-table td:nth-child(2),
+    .dismissal-pattern-table th:nth-child(3),
+    .dismissal-pattern-table td:nth-child(3),
+    .dismissal-pattern-table th:nth-child(4),
+    .dismissal-pattern-table td:nth-child(4) {
+      width: 18%;
+    }
+
+    .phase-metrics-table th:first-child,
+    .phase-metrics-table td:first-child {
+      width: 28%;
+      white-space: normal;
+    }
+
+    .phase-metrics-table th:nth-child(2),
+    .phase-metrics-table td:nth-child(2),
+    .phase-metrics-table th:nth-child(3),
+    .phase-metrics-table td:nth-child(3),
+    .phase-metrics-table th:nth-child(4),
+    .phase-metrics-table td:nth-child(4),
+    .phase-metrics-table th:nth-child(5),
+    .phase-metrics-table td:nth-child(5) {
+      width: 18%;
+    }
+
     .evidence-table th:nth-child(1),
     .evidence-table td:nth-child(1) {
       width: 28%;
@@ -5587,6 +5642,7 @@ function renderPlayerIntelligenceReportPage(report) {
 
     .tactical-grid {
       margin-top: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     }
 
     .tactical-grid .metric-card {
@@ -6123,7 +6179,7 @@ function renderPlayerIntelligenceReportPage(report) {
       <div class="table-panel">
         <h3>Dismissal Pattern</h3>
         <div class="table-scroll">
-          <table class="report-table">
+          <table class="report-table dismissal-pattern-table">
             <thead>
               <tr>
                 <th>Bowler Type</th>
@@ -6180,7 +6236,7 @@ function renderPlayerIntelligenceReportPage(report) {
       <div class="table-panel">
         <h3>Phase Metrics</h3>
         <div class="table-scroll">
-          <table class="report-table">
+          <table class="report-table phase-metrics-table">
             <thead>
               <tr>
                 <th>Phase</th>
@@ -6225,6 +6281,10 @@ function renderPlayerIntelligenceReportPage(report) {
         </div>
       </div>
     `;
+  }
+
+  function hasRows(rows) {
+    return Array.isArray(rows) && rows.length > 0;
   }
 
   function formatEvidenceMoment(item) {
@@ -6508,6 +6568,21 @@ function renderPlayerIntelligenceReportPage(report) {
     { label: "Stumpings", value: displayNumber(summaryStats?.fielding?.stumpings, 0) },
   ];
 
+  const matchupEvidencePanels = [
+    hasRows(focusedLens?.batting?.byBowlerType)
+      ? renderMatchupTable("Batting Vs Bowler Type", focusedLens?.batting?.byBowlerType, "batting")
+      : null,
+    hasRows(focusedLens?.bowling?.byBatterHand)
+      ? renderMatchupTable("Bowling Vs Batter Type", focusedLens?.bowling?.byBatterHand, "bowling")
+      : null,
+    hasRows(commentaryEvidence?.batting)
+      ? renderEvidenceTable("Batting Evidence", commentaryEvidence?.batting)
+      : null,
+    hasRows(commentaryEvidence?.bowling)
+      ? renderEvidenceTable("Bowling Evidence", commentaryEvidence?.bowling)
+      : null,
+  ].filter(Boolean).join("");
+
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -6635,12 +6710,15 @@ function renderPlayerIntelligenceReportPage(report) {
             </div>
           </section>
 
-          <section class="sheet">
-            <div class="section-grid">
-              ${renderMatchupTable("Batting Vs Bowler Type", focusedLens?.batting?.byBowlerType, "batting")}
-              ${renderMatchupTable("Bowling Vs Batter Type", focusedLens?.bowling?.byBatterHand, "bowling")}
-            </div>
-          </section>
+          ${matchupEvidencePanels
+            ? `
+              <section class="sheet">
+                <div class="dynamic-panel-grid">
+                  ${matchupEvidencePanels}
+                </div>
+              </section>
+            `
+            : ""}
 
           <section class="sheet">
             <div class="section-grid">
@@ -6650,13 +6728,9 @@ function renderPlayerIntelligenceReportPage(report) {
           </section>
 
           <section class="sheet">
-            <div class="section-grid">
-              ${renderEvidenceTable("Batting Evidence", commentaryEvidence?.batting)}
-              ${renderEvidenceTable("Bowling Evidence", commentaryEvidence?.bowling)}
-            </div>
-            <div style="margin-top: 16px;">
-              ${renderEvidenceTable("Dismissal Evidence", commentaryEvidence?.dismissals)}
-            </div>
+            ${hasRows(commentaryEvidence?.dismissals)
+              ? renderEvidenceTable("Dismissal Evidence", commentaryEvidence?.dismissals)
+              : ""}
             <div class="footnote">
               <div>Copyright &copy; 2026 game-changrs.com and Arth Arun.</div>
               <div>Concept, design direction, analytics framework, and associated code/materials are proprietary.</div>

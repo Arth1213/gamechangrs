@@ -1486,7 +1486,7 @@ function AnalyticsLandingSections() {
           <div className="grid gap-6 xl:grid-cols-[0.98fr_1.02fr] xl:items-center">
             <div className="space-y-4">
               <p className="text-xs uppercase tracking-[0.18em] text-primary">What This App Really Is</p>
-              <h1 className="max-w-5xl font-display text-4xl font-bold leading-[0.96] text-foreground md:text-5xl lg:text-6xl">
+              <h1 className="gc-type-hero max-w-5xl leading-[0.96] md:text-5xl lg:text-6xl">
                 From raw cricket site data to{" "}
                 <span className="text-primary">trusted analytics intelligence</span>, starting with{" "}
                 <span className="text-sky-400">CricClubs</span>.
@@ -1512,7 +1512,7 @@ function AnalyticsLandingSections() {
                       {item.label}
                     </p>
                     <p
-                      className={`mt-2 min-h-[3.2rem] font-display text-2xl leading-[1.02] text-primary md:min-h-[3.5rem] ${item.valueClassName ?? ""}`}
+                      className={`gc-type-card-title mt-2 min-h-[3.2rem] leading-[1.02] text-primary md:min-h-[3.5rem] ${item.valueClassName ?? ""}`}
                     >
                       {item.value}
                     </p>
@@ -1531,7 +1531,7 @@ function AnalyticsLandingSections() {
             <div className="rounded-[30px] border border-border/80 bg-background/35 p-6 backdrop-blur">
               <div className="space-y-2">
                 <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Live Features</p>
-                <h3 className="font-display text-3xl text-foreground">Report-ready today</h3>
+                <h3 className="gc-type-section">Report-ready today</h3>
                 <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
                   Open either sample report directly from here.
                 </p>
@@ -1551,7 +1551,7 @@ function AnalyticsLandingSections() {
                         >
                           {sample.title}
                         </Badge>
-                        <h4 className="font-display text-3xl text-foreground">{sample.title}</h4>
+                        <h4 className="gc-type-section text-3xl md:text-3xl">{sample.title}</h4>
                         <p className="max-w-xl text-sm leading-7 text-muted-foreground">{sample.description}</p>
                       </div>
 
@@ -1570,7 +1570,7 @@ function AnalyticsLandingSections() {
             <div className="rounded-[30px] border border-border/80 bg-background/35 p-6 backdrop-blur">
               <div className="space-y-2">
                 <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Upcoming</p>
-                <h3 className="font-display text-3xl text-foreground">What comes next</h3>
+                <h3 className="gc-type-section">What comes next</h3>
                 <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
                   The analytics shell is being extended beyond individual-player workflows.
                 </p>
@@ -1583,7 +1583,7 @@ function AnalyticsLandingSections() {
                     className="rounded-2xl border border-border/80 bg-card/55 p-5 shadow-sm"
                   >
                     <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Coming next {index + 1}</p>
-                    <p className="mt-4 font-display text-2xl text-foreground">{item}</p>
+                    <p className="gc-type-card-title mt-4">{item}</p>
                   </div>
                 ))}
               </div>
@@ -1595,7 +1595,7 @@ function AnalyticsLandingSections() {
       <Card className="border-border/80 bg-gradient-to-r from-primary/15 to-sky-400/10 shadow-xl">
         <CardContent className="grid gap-6 p-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <div className="space-y-3">
-            <h2 className="font-display text-3xl text-foreground">The outcome you are really buying</h2>
+            <h2 className="gc-type-section">The outcome you are really buying</h2>
             <p className="text-sm leading-7 text-muted-foreground">
               A private internal system for{" "}
               <span className="font-semibold text-foreground">better, faster, fairer player judgments</span>.

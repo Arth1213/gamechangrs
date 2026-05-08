@@ -55,7 +55,7 @@ export const HeroSection = () => {
             <div className="rounded-[32px] border border-border/80 bg-card/80 p-6 shadow-card lg:p-8">
               <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)] lg:gap-12 xl:gap-16">
                 <div className="animate-slide-up text-center lg:text-left" style={{ animationDelay: "0.05s" }}>
-                  <h1 className="font-display text-3xl font-bold leading-tight text-foreground sm:text-5xl md:text-6xl lg:text-[4.1rem]">
+                  <h1 className="gc-type-hero sm:text-5xl md:text-6xl lg:text-[4.1rem]">
                     Sports Analytics, AI for{" "}
                     <span className="text-gradient-primary">Smarter Cricket</span>
                   </h1>
@@ -103,7 +103,7 @@ export const HeroSection = () => {
                     >
                       <feature.icon className={`h-5 w-5 ${feature.iconClass}`} />
                     </div>
-                    <h3 className="font-display text-lg font-semibold text-foreground">
+                    <h3 className="gc-type-card-title text-lg font-semibold md:text-xl">
                       {feature.title}
                     </h3>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">

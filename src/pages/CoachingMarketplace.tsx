@@ -1151,7 +1151,7 @@ const CoachingMarketplace = () => {
                             <Sparkles className="h-4 w-4" />
                             Coaching Marketplace
                           </div>
-                          <h1 className="font-display text-4xl font-bold leading-[0.94] text-foreground md:text-5xl xl:text-[4.25rem]">
+                          <h1 className="gc-type-hero leading-[0.94] md:text-5xl xl:text-[4.25rem]">
                             Find the right coach and keep the full training relationship in one place
                           </h1>
                           <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:text-lg xl:mx-0">
@@ -1162,19 +1162,19 @@ const CoachingMarketplace = () => {
 
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="flex min-h-[138px] h-full flex-col justify-between rounded-[24px] border border-primary/20 bg-primary/10 p-5">
-                          <p className="font-display text-4xl font-bold leading-none text-foreground">{loading ? "-" : coaches.length}</p>
+                          <p className="gc-type-metric">{loading ? "-" : coaches.length}</p>
                           <p className="mt-5 text-xs uppercase tracking-[0.16em] text-muted-foreground">Active coaches</p>
                         </div>
                         <div className="flex min-h-[138px] h-full flex-col justify-between rounded-[24px] border border-border/80 bg-background/70 p-5">
-                          <p className="font-display text-4xl font-bold leading-none text-foreground">{loading ? "-" : verifiedCoachCount}</p>
+                          <p className="gc-type-metric">{loading ? "-" : verifiedCoachCount}</p>
                           <p className="mt-5 text-xs uppercase tracking-[0.16em] text-muted-foreground">Verified coaches</p>
                         </div>
                         <div className="flex min-h-[138px] h-full flex-col justify-between rounded-[24px] border border-border/80 bg-background/70 p-5">
-                          <p className="font-display text-4xl font-bold leading-none text-foreground">{loading ? "-" : categories.length}</p>
+                          <p className="gc-type-metric">{loading ? "-" : categories.length}</p>
                           <p className="mt-5 text-xs uppercase tracking-[0.16em] text-muted-foreground">Training categories</p>
                         </div>
                         <div className="flex min-h-[138px] h-full flex-col justify-between rounded-[24px] border border-border/80 bg-background/70 p-5">
-                          <p className="font-display text-4xl font-bold leading-none text-foreground">{loading ? "-" : players.length}</p>
+                          <p className="gc-type-metric">{loading ? "-" : players.length}</p>
                           <p className="mt-5 text-xs uppercase tracking-[0.16em] text-muted-foreground">Players registered</p>
                         </div>
                       </div>
@@ -1186,7 +1186,7 @@ const CoachingMarketplace = () => {
                       <div className="flex h-full flex-col justify-between rounded-[24px] border border-border/70 bg-background/55 p-5">
                         <div>
                           <p className="text-xs uppercase tracking-[0.18em] text-primary/80">For players</p>
-                          <h2 className="mt-3 font-display text-3xl font-bold text-foreground">Find the right fit before you commit</h2>
+                          <h2 className="gc-type-section mt-3">Find the right fit before you commit</h2>
                           <p className="mt-3 text-sm leading-6 text-muted-foreground">
                             Compare specialties, level, reviews, and location before you commit to coaching.
                           </p>
@@ -1201,7 +1201,7 @@ const CoachingMarketplace = () => {
                       <div className="flex h-full flex-col justify-between rounded-[24px] border border-border/70 bg-background/55 p-5">
                         <div>
                           <p className="text-xs uppercase tracking-[0.18em] text-primary/80">For coaches</p>
-                          <h2 className="mt-3 font-display text-3xl font-bold text-foreground">Show credibility and build the right roster</h2>
+                          <h2 className="gc-type-section mt-3">Show credibility and build the right roster</h2>
                           <p className="mt-3 text-sm leading-6 text-muted-foreground">
                             Show credibility, accept the right requests, and keep the working relationship in one place.
                           </p>
@@ -1233,7 +1233,7 @@ const CoachingMarketplace = () => {
                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
                           <Search className="h-5 w-5 text-primary" />
                         </div>
-                        <h3 className="mt-4 font-display text-2xl font-bold text-foreground">Browse</h3>
+                        <h3 className="gc-type-card-title mt-4">Browse</h3>
                         <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">
                           Review public coach profiles, specialties, level, and location.
                         </p>
@@ -1242,7 +1242,7 @@ const CoachingMarketplace = () => {
                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
                           <Users className="h-5 w-5 text-primary" />
                         </div>
-                        <h3 className="mt-4 font-display text-2xl font-bold text-foreground">Connect</h3>
+                        <h3 className="gc-type-card-title mt-4">Connect</h3>
                         <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">
                           Create the right persona, send requests, and move into a verified coaching relationship.
                         </p>
@@ -1251,7 +1251,7 @@ const CoachingMarketplace = () => {
                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
                           <Calendar className="h-5 w-5 text-primary" />
                         </div>
-                        <h3 className="mt-4 font-display text-2xl font-bold text-foreground">Schedule</h3>
+                        <h3 className="gc-type-card-title mt-4">Schedule</h3>
                         <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">
                           Keep upcoming sessions and calendar context visible once the relationship is active.
                         </p>
@@ -1261,7 +1261,7 @@ const CoachingMarketplace = () => {
 
                   <div className="rounded-[30px] border border-border bg-card/70 p-5 lg:p-6">
                     <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Coverage</p>
-                    <h2 className="mt-2 font-display text-2xl font-bold text-foreground">Training areas already in the marketplace</h2>
+                    <h2 className="gc-type-section mt-2">Training areas already in the marketplace</h2>
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">
                       The current public marketplace already spans core batting, bowling, fielding, and wicketkeeping skill areas.
                     </p>
@@ -1284,7 +1284,7 @@ const CoachingMarketplace = () => {
                 <div className="mb-8 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                   <div>
                     <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Featured coaches</p>
-                    <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">Public coach profiles</h2>
+                    <h2 className="gc-type-section mt-2">Public coach profiles</h2>
                     <p className="mt-2 max-w-3xl text-sm text-muted-foreground">A public preview of the current coaching marketplace.</p>
                   </div>
                   <div className="flex flex-wrap gap-3">
@@ -1311,7 +1311,7 @@ const CoachingMarketplace = () => {
                       <div key={coach.id} className="rounded-2xl border border-border bg-card/80 p-6">
                         <div className="mb-4 flex items-start justify-between gap-3">
                           <div>
-                            <h3 className="font-display text-xl font-bold text-foreground">{coach.name}</h3>
+                            <h3 className="gc-type-card-title text-xl md:text-xl">{coach.name}</h3>
                             {coach.location ? (
                               <div className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
                                 <MapPin className="h-3 w-3" />

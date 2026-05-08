@@ -151,7 +151,7 @@ function TechniqueAIGuestLanding() {
                         <span className="text-sm font-medium text-accent">Batting Technique AI</span>
                       </div>
 
-                      <h1 className="font-display text-4xl font-bold leading-[0.94] text-foreground md:text-5xl xl:text-[4.15rem]">
+                      <h1 className="gc-type-hero leading-[0.94] md:text-5xl xl:text-[4.15rem]">
                         Upload a batting clip. Get scored technique feedback.
                       </h1>
                       <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:text-lg xl:mx-0">
@@ -187,7 +187,7 @@ function TechniqueAIGuestLanding() {
                             <Video className="h-5 w-5 text-primary" />
                           </div>
                           <p className="mt-4 text-xs uppercase tracking-[0.16em] text-primary/80">What it reads</p>
-                          <h3 className="mt-2 font-display text-2xl text-foreground">6 batting phases</h3>
+                          <h3 className="gc-type-card-title mt-2">6 batting phases</h3>
                           <p className="mt-2 text-sm leading-6 text-muted-foreground">
                             Setup through shot match in one structured report.
                           </p>
@@ -197,7 +197,7 @@ function TechniqueAIGuestLanding() {
                             <Target className="h-5 w-5 text-primary" />
                           </div>
                           <p className="mt-4 text-xs uppercase tracking-[0.16em] text-primary/80">What you get</p>
-                          <h3 className="mt-2 font-display text-2xl text-foreground">One clear next drill</h3>
+                          <h3 className="gc-type-card-title mt-2">One clear next drill</h3>
                           <p className="mt-2 text-sm leading-6 text-muted-foreground">
                             Scores, findings, and correction work tied directly to the clip.
                           </p>
@@ -215,13 +215,13 @@ function TechniqueAIGuestLanding() {
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-xs uppercase tracking-[0.16em] text-primary/80">Sample Report</p>
-                        <h2 className="mt-2 font-display text-3xl font-bold text-foreground">Batting Analysis</h2>
+                        <h2 className="gc-type-section mt-2">Batting Analysis</h2>
                         <p className="mt-2 text-sm leading-6 text-muted-foreground">
                           Technique AI turns one batting clip into a clear report with scores, findings, and next drills.
                         </p>
                       </div>
                       <div className="rounded-3xl border border-primary/20 bg-primary/10 px-5 py-4 text-center">
-                        <p className="font-display text-4xl font-bold text-foreground">84</p>
+                        <p className="gc-type-metric">84</p>
                         <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Overall score</p>
                       </div>
                     </div>
@@ -280,7 +280,7 @@ function TechniqueAIGuestLanding() {
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
                     <item.icon className="h-5 w-5 text-primary" />
                   </div>
-                  <h3 className="mt-4 font-display text-2xl text-foreground">{item.title}</h3>
+                  <h3 className="gc-type-card-title mt-4">{item.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
                 </div>
               ))}
@@ -295,7 +295,7 @@ function TechniqueAIGuestLanding() {
             <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.16em] text-primary/80">What It Scores</p>
-                <h2 className="mt-2 font-display text-3xl text-foreground md:text-4xl">The batting phases it reads</h2>
+                <h2 className="gc-type-section mt-2 md:text-4xl">The batting phases it reads</h2>
               </div>
               <p className="max-w-xl text-sm leading-6 text-muted-foreground">
                 The current Technique AI flow is built around batting movement and phase-based scoring.
@@ -306,7 +306,7 @@ function TechniqueAIGuestLanding() {
               {TECHNIQUE_PHASES.map((phase) => (
                 <div key={phase.title} className="rounded-2xl border border-border/80 bg-card/80 p-5 shadow-sm">
                   <p className="text-[11px] uppercase tracking-[0.16em] text-primary/80">Phase</p>
-                  <h3 className="mt-2 font-display text-2xl text-foreground">{phase.title}</h3>
+                  <h3 className="gc-type-card-title mt-2">{phase.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{phase.description}</p>
                 </div>
               ))}
@@ -321,7 +321,7 @@ function TechniqueAIGuestLanding() {
             <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.16em] text-primary/80">How It Works</p>
-                <h2 className="mt-2 font-display text-3xl text-foreground md:text-4xl">From clip to report</h2>
+                <h2 className="gc-type-section mt-2 md:text-4xl">From clip to report</h2>
               </div>
             </div>
 
@@ -336,7 +336,7 @@ function TechniqueAIGuestLanding() {
                       Step {index + 1}
                     </span>
                   </div>
-                  <h3 className="mt-4 font-display text-2xl text-foreground">{step.title}</h3>
+                  <h3 className="gc-type-card-title mt-4">{step.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{step.description}</p>
                 </div>
               ))}
@@ -351,7 +351,7 @@ function TechniqueAIGuestLanding() {
             <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
               <div className="rounded-3xl border border-border/80 bg-card/80 p-6 shadow-sm">
                 <p className="text-xs uppercase tracking-[0.16em] text-primary/80">Recording Guidance</p>
-                <h2 className="mt-3 font-display text-3xl text-foreground">Get a cleaner read</h2>
+                <h2 className="gc-type-section mt-3">Get a cleaner read</h2>
                 <div className="mt-5 space-y-4">
                   {CAPTURE_GUIDANCE.map((item) => (
                     <div key={item} className="flex items-start gap-3">
@@ -364,28 +364,28 @@ function TechniqueAIGuestLanding() {
 
               <div className="rounded-3xl border border-primary/20 bg-gradient-to-r from-primary/15 to-sky-400/10 p-6 shadow-xl">
                 <p className="text-xs uppercase tracking-[0.16em] text-primary/80">Signed-In Benefits</p>
-                <h2 className="mt-3 font-display text-3xl text-foreground">Keep your report library</h2>
+                <h2 className="gc-type-section mt-3">Keep your report library</h2>
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
                   <div className="rounded-2xl border border-border/80 bg-background/50 p-4">
-                    <p className="font-display text-2xl text-foreground">Saved reports</p>
+                    <p className="gc-type-card-title">Saved reports</p>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
                       Reopen prior analyses without re-uploading the clip.
                     </p>
                   </div>
                   <div className="rounded-2xl border border-border/80 bg-background/50 p-4">
-                    <p className="font-display text-2xl text-foreground">Video history</p>
+                    <p className="gc-type-card-title">Video history</p>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
                       Keep track of recent uploads and report dates.
                     </p>
                   </div>
                   <div className="rounded-2xl border border-border/80 bg-background/50 p-4">
-                    <p className="font-display text-2xl text-foreground">Detailed report</p>
+                    <p className="gc-type-card-title">Detailed report</p>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
                       Overall score, findings, angle reads, and improvement areas.
                     </p>
                   </div>
                   <div className="rounded-2xl border border-border/80 bg-background/50 p-4">
-                    <p className="font-display text-2xl text-foreground">Next drills</p>
+                    <p className="gc-type-card-title">Next drills</p>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
                       Practical correction work tied directly to the report.
                     </p>
@@ -434,7 +434,7 @@ function TechniqueAIWorkspace({
       <section className="pt-32 pb-12 bg-gradient-hero">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
+            <h1 className="gc-type-hero mb-6 md:text-5xl lg:text-6xl">
               <span className="text-gradient-primary">Technique AI</span>
             </h1>
             <p className="text-lg text-muted-foreground">Upload a batting clip for scored feedback and drills.</p>
@@ -449,7 +449,7 @@ function TechniqueAIWorkspace({
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Your Technique AI library</p>
-                  <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">Saved Reports</h2>
+                  <h2 className="gc-type-section mt-2">Saved Reports</h2>
                 </div>
                 <Button variant="outline" asChild>
                   <Link to="/analysis-history">
@@ -475,22 +475,22 @@ function TechniqueAIWorkspace({
                   <div className="inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-primary">
                     Start here
                   </div>
-                  <h3 className="mt-4 font-display text-2xl font-bold text-foreground">No saved reports yet.</h3>
+                  <h3 className="gc-type-card-title mt-4">No saved reports yet.</h3>
                   <p className="mt-3 text-sm leading-6 text-muted-foreground">
                     Analyze a clip, then use <span className="font-medium text-foreground">Save report</span>. The saved
                     video and analysis report will appear here with the report date and time.
                   </p>
                   <div className="mt-6 grid gap-3 sm:grid-cols-3">
                     <div className="rounded-2xl border border-border bg-gradient-card p-5">
-                      <p className="font-display text-3xl font-bold text-foreground">0</p>
+                      <p className="gc-type-metric text-3xl md:text-3xl">0</p>
                       <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Saved analyses</p>
                     </div>
                     <div className="rounded-2xl border border-border bg-gradient-card p-5">
-                      <p className="font-display text-lg font-bold text-foreground">Video + report</p>
+                      <p className="gc-type-card-title text-lg md:text-xl">Video + report</p>
                       <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Stored together</p>
                     </div>
                     <div className="rounded-2xl border border-border bg-gradient-card p-5">
-                      <p className="font-display text-lg font-bold text-foreground">Date + time</p>
+                      <p className="gc-type-card-title text-lg md:text-xl">Date + time</p>
                       <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Saved on each report</p>
                     </div>
                   </div>
@@ -507,15 +507,15 @@ function TechniqueAIWorkspace({
                 <div className="space-y-5">
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl border border-primary/20 bg-primary/10 p-5">
-                      <p className="font-display text-3xl font-bold text-foreground">{analyses.length}</p>
+                      <p className="gc-type-metric text-3xl md:text-3xl">{analyses.length}</p>
                       <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Reports shown</p>
                     </div>
                     <div className="rounded-2xl border border-border bg-gradient-card p-5">
-                      <p className="font-display text-3xl font-bold text-foreground">{latestAnalysis?.overall_score ?? "--"}</p>
+                      <p className="gc-type-metric text-3xl md:text-3xl">{latestAnalysis?.overall_score ?? "--"}</p>
                       <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Latest score</p>
                     </div>
                     <div className="rounded-2xl border border-border bg-gradient-card p-5">
-                      <p className="font-display text-lg font-bold text-foreground">
+                      <p className="gc-type-card-title text-lg md:text-xl">
                         {latestAnalysis ? format(new Date(latestAnalysis.created_at), "MMM d, yyyy") : "--"}
                       </p>
                       <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Latest upload</p>
@@ -536,7 +536,7 @@ function TechniqueAIWorkspace({
                             </h3>
                           </div>
                           <div
-                            className={`rounded-2xl border px-4 py-2 font-display text-2xl font-bold ${getScoreTone(analysis.overall_score)}`}
+                            className={`gc-type-card-title rounded-2xl border px-4 py-2 md:text-2xl ${getScoreTone(analysis.overall_score)}`}
                           >
                             {analysis.overall_score}
                           </div>
@@ -596,7 +596,7 @@ function TechniqueAIWorkspace({
                   <BarChart3 className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="font-display text-2xl font-bold text-foreground">New Analysis</h2>
+                  <h2 className="gc-type-section">New Analysis</h2>
                 </div>
               </div>
               <TechniqueAIComponent onReportSaved={onReportSaved} />

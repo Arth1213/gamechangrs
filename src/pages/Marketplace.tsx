@@ -144,9 +144,9 @@ function MarketplaceHeroCard({
         : "border-border bg-background/70";
 
   return (
-    <div className={`flex min-h-[144px] flex-col justify-between rounded-[26px] border px-5 py-4 ${toneClass}`}>
-      <p className="font-display text-4xl font-bold leading-none text-foreground">{value}</p>
-      <p className="max-w-[10ch] text-xs uppercase leading-[1.45] tracking-[0.18em] text-muted-foreground">{label}</p>
+    <div className={`flex min-h-[170px] flex-col justify-between rounded-[24px] border px-5 py-5 ${toneClass}`}>
+      <p className="gc-type-metric">{value}</p>
+      <p className="text-xs uppercase leading-[1.45] tracking-[0.18em] text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -170,7 +170,7 @@ function MarketplaceMetricTile({
   return (
     <div className={`rounded-[24px] border px-5 py-5 ${toneClass}`}>
       <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{label}</p>
-      <p className="mt-4 font-display text-4xl font-bold leading-none text-foreground">{value}</p>
+      <p className="gc-type-metric mt-4">{value}</p>
     </div>
   );
 }
@@ -190,7 +190,7 @@ function MarketplaceOverviewStrip({
             <div className="flex h-full flex-col justify-between rounded-[30px] border border-border/80 bg-card/70 p-6">
               <div className="max-w-2xl">
                 <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Marketplace flow</p>
-                <h2 className="mt-3 font-display text-3xl font-bold text-foreground md:text-4xl">{title}</h2>
+                <h2 className="gc-type-section mt-3 md:text-4xl">{title}</h2>
                 <p className="mt-3 text-sm leading-7 text-muted-foreground md:text-base">{description}</p>
               </div>
             </div>
@@ -230,7 +230,7 @@ function MarketplaceRetailPartner() {
               </div>
 
               <div className="mt-4 max-w-2xl">
-                <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">
+                <h2 className="gc-type-section">
                   {featuredRetailPartner.title}
                 </h2>
                 <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
@@ -304,7 +304,7 @@ function MarketplaceGuestLanding({
                 <div className="flex h-full flex-col justify-between gap-5">
                   <div className="space-y-4">
                     <p className="text-[11px] uppercase tracking-[0.24em] text-primary/80">Community marketplace</p>
-                    <h1 className="font-display text-4xl font-bold leading-[0.94] text-foreground md:text-5xl xl:text-[4.1rem]">
+                    <h1 className="gc-type-hero leading-[0.94] md:text-5xl xl:text-[4.1rem]">
                       Move cricket gear through the community.
                     </h1>
                     <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:text-lg xl:mx-0">
@@ -359,7 +359,7 @@ function MarketplaceGuestLanding({
                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
                           <HeartHandshake className="h-5 w-5 text-primary" />
                         </div>
-                        <h2 className="mt-4 font-display text-2xl font-bold leading-none text-foreground">Donate gear</h2>
+                        <h2 className="gc-type-card-title mt-4 leading-none">Donate gear</h2>
                         <p className="mt-2 text-sm leading-6 text-muted-foreground">
                           Publish free listings for useful gear that should stay in circulation across the cricket community.
                         </p>
@@ -369,7 +369,7 @@ function MarketplaceGuestLanding({
                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
                           <Tag className="h-5 w-5 text-primary" />
                         </div>
-                        <h2 className="mt-4 font-display text-2xl font-bold leading-none text-foreground">Sell gear</h2>
+                        <h2 className="gc-type-card-title mt-4 leading-none">Sell gear</h2>
                         <p className="mt-2 text-sm leading-6 text-muted-foreground">
                           Add price, condition, and location, then move the conversation to direct email once there is interest.
                         </p>
@@ -403,7 +403,7 @@ function MarketplaceWorkspaceHero({
     <section className="border-b border-border bg-card/50 pb-12 pt-32">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-6xl">
-          <div className="grid gap-8 lg:grid-cols-[0.88fr_1fr] lg:items-stretch">
+          <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
             <div className="rounded-[32px] border border-border/80 bg-card/85 p-6 shadow-xl lg:p-8">
               <div className="flex h-full flex-col justify-between gap-5">
                 <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
@@ -412,7 +412,7 @@ function MarketplaceWorkspaceHero({
                 </div>
 
                 <div className="space-y-3">
-                  <h1 className="max-w-xl font-display text-3xl font-bold leading-tight text-foreground md:text-4xl lg:text-[2.8rem]">
+                  <h1 className="gc-type-hero max-w-xl">
                     {userName}, move cricket gear.
                   </h1>
                   <p className="max-w-xl text-base leading-7 text-muted-foreground">
@@ -426,8 +426,14 @@ function MarketplaceWorkspaceHero({
               </div>
             </div>
 
-            <div className="ml-auto w-full max-w-[460px] rounded-[32px] border border-border/80 bg-card/85 p-5 shadow-xl">
-              <div className="grid h-full gap-3 md:grid-cols-3">
+            <div className="flex h-full flex-col rounded-[32px] border border-border/80 bg-card/85 p-5 shadow-xl lg:p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Workspace snapshot</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Your live listing position across the marketplace.</p>
+                </div>
+              </div>
+              <div className="grid h-full gap-4 md:grid-cols-3">
                 <MarketplaceHeroCard label="Your active listings" value={ownerListingCount} tone="accent" />
                 <MarketplaceHeroCard label="Community feed" value={publicListingCount} />
                 <MarketplaceHeroCard label="Donation opportunities" value={donationCount} tone="warm" />
@@ -460,44 +466,42 @@ function MarketplaceSearchSection({
   description: string;
 }) {
   return (
-    <section id="gear-marketplace-feed" className="border-y border-border bg-card/30 py-8">
-      <div className="container mx-auto px-4">
-        <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-primary/80">{eyebrow}</p>
-            <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">{title}</h2>
-            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{description}</p>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 md:flex-row">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Search for gear..."
-              className="h-10 w-full rounded-lg border border-border bg-secondary pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-
-          <div className="flex gap-3">
-            <select
-              value={category}
-              onChange={(event) => onCategoryChange(event.target.value)}
-              className="h-10 rounded-lg border border-border bg-secondary px-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              {categories.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </div>
+    <div id="gear-marketplace-feed">
+      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-primary/80">{eyebrow}</p>
+          <h2 className="gc-type-section mt-2">{title}</h2>
+          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{description}</p>
         </div>
       </div>
-    </section>
+
+      <div className="flex flex-col gap-3 md:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Search for gear..."
+            className="h-11 w-full rounded-xl border border-border bg-secondary pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <select
+            value={category}
+            onChange={(event) => onCategoryChange(event.target.value)}
+            className="h-11 rounded-xl border border-border bg-secondary px-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {categories.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -525,30 +529,37 @@ function OwnerListingsSection({
   onMarkCompleted: (listing: Listing) => void;
 }) {
   const hasHiddenCompletedListings = !showCompletedListings && completedListingsCount > 0;
+  const completedToggleLabel = showCompletedListings
+    ? "Hide Sold/Donated"
+    : `Show Sold/Donated${completedListingsCount > 0 ? ` (${completedListingsCount})` : ""}`;
 
   return (
     <section className="border-b border-border py-8">
       <div className="container mx-auto px-4">
-        <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div>
+        <div className="mb-6 grid gap-4 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
+          <div className="rounded-[28px] border border-border/80 bg-card/75 p-5">
             <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Owner view</p>
-            <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">Your Listings</h2>
+            <h2 className="gc-type-section mt-2">Your Listings</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Manage live items, publish new gear, and toggle sold or donated history from one workspace.
+            </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={() => onCreateListing("donation")}>
-              <HeartHandshake className="h-4 w-4" />
-              Donate Gear
-            </Button>
-            <Button variant="outline" onClick={() => onCreateListing("sale")}>
-              <Tag className="h-4 w-4" />
-              Sell Gear
-            </Button>
-            <Button variant="outline" onClick={onToggleShowCompleted}>
-              {showCompletedListings ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              {showCompletedListings
-                ? "Hide Sold/Donated"
-                : `Show Sold/Donated${completedListingsCount > 0 ? ` (${completedListingsCount})` : ""}`}
-            </Button>
+
+          <div className="rounded-[28px] border border-border/80 bg-card/75 p-5">
+            <div className="grid gap-3 md:grid-cols-3">
+              <Button onClick={() => onCreateListing("donation")} className="w-full">
+                <HeartHandshake className="h-4 w-4" />
+                Donate Gear
+              </Button>
+              <Button variant="outline" onClick={() => onCreateListing("sale")} className="w-full">
+                <Tag className="h-4 w-4" />
+                Sell Gear
+              </Button>
+              <Button variant="outline" onClick={onToggleShowCompleted} className="w-full">
+                {showCompletedListings ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {completedToggleLabel}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -558,7 +569,7 @@ function OwnerListingsSection({
           </div>
         ) : ownerListings.length === 0 ? (
           <div className="rounded-3xl border border-border bg-gradient-card p-8">
-            <h3 className="font-display text-xl font-bold text-foreground">
+              <h3 className="gc-type-card-title">
               {hasHiddenCompletedListings ? "No live listings right now" : "No active listings yet"}
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -1033,85 +1044,89 @@ const Marketplace = () => {
         />
       ) : null}
 
-      <MarketplaceSearchSection
-        category={category}
-        categories={categories}
-        searchQuery={searchQuery}
-        onCategoryChange={setCategory}
-        onSearchChange={setSearchQuery}
-        eyebrow={user ? "Marketplace feed" : "Marketplace preview"}
-        title={user ? "Browse Gear" : "Live Gear Feed"}
-        description={
-          user
-            ? "Search the active feed, open donation or sale listings, and continue the conversation with the seller by email."
-            : "This public preview shows the live listings. Sign in when you want to donate, sell, or contact a seller by email."
-        }
-      />
-
       <section className="py-8">
         <div className="container mx-auto px-4">
-          <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-3">
-              <Badge variant="outline" className="border-border/80 bg-background/40">
-                <Tag className="mr-1 h-3.5 w-3.5" />
-                {publicListingCount} live listings
-              </Badge>
-              <Badge variant="outline" className="border-border/80 bg-background/40">
-                <HeartHandshake className="mr-1 h-3.5 w-3.5" />
-                {donationCount} donation items
-              </Badge>
-              <Badge variant="outline" className="border-border/80 bg-background/40">
-                <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                Direct contact by email
-              </Badge>
-            </div>
+          <div className="rounded-[32px] border border-border/80 bg-card/70 p-6 shadow-sm lg:p-8">
+            <MarketplaceSearchSection
+              category={category}
+              categories={categories}
+              searchQuery={searchQuery}
+              onCategoryChange={setCategory}
+              onSearchChange={setSearchQuery}
+              eyebrow={user ? "Marketplace feed" : "Marketplace preview"}
+              title={user ? "Browse Gear" : "Live Gear Feed"}
+              description={
+                user
+                  ? "Search the active feed, open donation or sale listings, and continue the conversation with the seller by email."
+                  : "This public preview shows the live listings. Sign in when you want to donate, sell, or contact a seller by email."
+              }
+            />
 
-            {!user ? (
-              <Button variant="outline" asChild>
-                <Link to="/auth">
-                  Sign In to Participate
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            ) : null}
-          </div>
-
-          {isLoading ? (
-            <div className="rounded-3xl border border-border bg-card/70 p-10 text-center text-muted-foreground">
-              Loading listings...
-            </div>
-          ) : marketplaceListings.length === 0 ? (
-            <div className="rounded-3xl border border-border bg-card/70 p-10 text-center">
-              <p className="mb-4 text-muted-foreground">No marketplace listings found for the current filters.</p>
-              <div className="flex flex-wrap justify-center gap-3">
-                {user ? (
-                  <>
-                    <Button size="sm" onClick={() => handleCreateListing("donation")}>
-                      <HeartHandshake className="mr-2 h-4 w-4" />
-                      Donate Gear
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleCreateListing("sale")}>
-                      <Tag className="mr-2 h-4 w-4" />
-                      Sell Gear
-                    </Button>
-                  </>
-                ) : (
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to="/auth">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Sign In to List Gear
-                    </Link>
-                  </Button>
-                )}
+            <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap gap-3">
+                <Badge variant="outline" className="border-border/80 bg-background/40">
+                  <Tag className="mr-1 h-3.5 w-3.5" />
+                  {publicListingCount} live listings
+                </Badge>
+                <Badge variant="outline" className="border-border/80 bg-background/40">
+                  <HeartHandshake className="mr-1 h-3.5 w-3.5" />
+                  {donationCount} donation items
+                </Badge>
+                <Badge variant="outline" className="border-border/80 bg-background/40">
+                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                  Direct contact by email
+                </Badge>
               </div>
+
+              {!user ? (
+                <Button variant="outline" asChild>
+                  <Link to="/auth">
+                    Sign In to Participate
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              ) : null}
             </div>
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {marketplaceListings.map((listing) => (
-                <MarketplaceCard key={listing.id} listing={listing} onContact={handleContact} />
-              ))}
+
+            <div className="mt-6">
+              {isLoading ? (
+                <div className="rounded-3xl border border-border bg-background/50 p-10 text-center text-muted-foreground">
+                  Loading listings...
+                </div>
+              ) : marketplaceListings.length === 0 ? (
+                <div className="rounded-3xl border border-border bg-background/50 p-10 text-center">
+                  <p className="mb-4 text-muted-foreground">No marketplace listings found for the current filters.</p>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {user ? (
+                      <>
+                        <Button size="sm" onClick={() => handleCreateListing("donation")}>
+                          <HeartHandshake className="mr-2 h-4 w-4" />
+                          Donate Gear
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleCreateListing("sale")}>
+                          <Tag className="mr-2 h-4 w-4" />
+                          Sell Gear
+                        </Button>
+                      </>
+                    ) : (
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to="/auth">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Sign In to List Gear
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {marketplaceListings.map((listing) => (
+                    <MarketplaceCard key={listing.id} listing={listing} onContact={handleContact} />
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </section>
 
@@ -1120,7 +1135,7 @@ const Marketplace = () => {
           <section className="border-t border-border bg-gradient-card py-10">
             <div className="container mx-auto px-4">
               <div className="mx-auto max-w-4xl rounded-[28px] border border-border bg-card/80 p-8 text-center">
-                <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">Ready to move gear?</h2>
+                <h2 className="gc-type-card-title">Ready to move gear?</h2>
                 <p className="mb-6 mt-2 text-sm text-muted-foreground">
                   Use Game-Changrs to make the introduction. Buyer and seller continue directly by email after that.
                 </p>

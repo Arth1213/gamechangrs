@@ -5910,22 +5910,6 @@ function renderPlayerIntelligenceReportPage(report) {
                   </div>
                   ${fallbackReason ? `<div class="empty-state">${escapeHtml(fallbackReason)}</div>` : ""}
                 </div>
-                <div class="surface-panel">
-                  <div class="callout-stack">
-                    <div class="callout good">
-                      <div class="callout-label">Main Threat</div>
-                      <p>${escapeHtml(threatNarrative)}</p>
-                    </div>
-                    <div class="callout risk">
-                      <div class="callout-label">Main Weakness</div>
-                      <p>${escapeHtml(weaknessNarrative)}</p>
-                    </div>
-                    <div class="callout watch">
-                      <div class="callout-label">Pressure Note</div>
-                      <p>${escapeHtml(pressureNarrative)}</p>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </section>
@@ -5933,6 +5917,25 @@ function renderPlayerIntelligenceReportPage(report) {
           <section class="sheet">
             <div class="card-grid">
               ${summaryCards}
+            </div>
+          </section>
+
+          <section class="sheet">
+            <div class="surface-panel">
+              <div class="callout-stack">
+                <div class="callout good">
+                  <div class="callout-label">Main Threat</div>
+                  <p>${escapeHtml(threatNarrative)}</p>
+                </div>
+                <div class="callout risk">
+                  <div class="callout-label">Main Weakness</div>
+                  <p>${escapeHtml(weaknessNarrative)}</p>
+                </div>
+                <div class="callout watch">
+                  <div class="callout-label">Pressure Note</div>
+                  <p>${escapeHtml(pressureNarrative)}</p>
+                </div>
+              </div>
             </div>
           </section>
 

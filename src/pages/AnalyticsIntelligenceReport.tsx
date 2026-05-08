@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
-  Crosshair,
   ExternalLink,
   Loader2,
   RefreshCw,
@@ -1204,7 +1203,6 @@ const AnalyticsIntelligenceReport = () => {
   const threatNarrative = buildThreatNarrative(leadingStrength);
   const weaknessNarrative = buildWeaknessNarrative(leadingWatchout, battingPlanItems[0] || null);
   const pressureNarrative = buildPressureNarrative(pressureProfile);
-  const executiveSummary = buildExecutiveSummary(threatNarrative, weaknessNarrative, pressureProfile);
   const summaryStats: CricketPlayerIntelligenceSummaryStats | null = intelligenceReport?.summaryStats || null;
   const battingStatRows = [
     { label: "Matches", value: formatNumber(summaryStats?.batting?.matches) },
@@ -1528,81 +1526,9 @@ const AnalyticsIntelligenceReport = () => {
 
             {intelligenceStatus === "success" && intelligenceReport ? (
               <Card className="border-border/80 bg-card/85 shadow-xl">
-                <CardHeader className="space-y-4">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-cyan-200">
-                    <Crosshair className="h-3.5 w-3.5" />
-                    Player Intelligence
-                  </div>
-                  <CardTitle className="font-display text-3xl text-foreground">
-                    GAME-CHANGRS Player Intelligence
-                  </CardTitle>
-                  <CardDescription className="max-w-4xl text-base leading-7 text-muted-foreground">
-                    {executiveSummary}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {scopeFallbackReason ? (
-                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-                      {scopeFallbackReason}
-                    </div>
-                  ) : null}
-
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.08] p-4">
-                      <SectionMetric
-                        label="Confidence"
-                        value={confidenceValue}
-                        tone={recommendationTone}
-                        valueClassName="text-[2rem] leading-none"
-                        note="How strong the live evidence is for this intelligence read."
-                      />
-                    </div>
-                    <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.08] p-4">
-                      <SectionMetric
-                        label="Percentile"
-                        value={formatOrdinal(intelligenceReport?.header?.percentileRank)}
-                        tone="good"
-                        valueClassName="text-[2rem] leading-none"
-                        note={threatProfile.note}
-                      />
-                    </div>
-                    <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] p-4">
-                      <SectionMetric
-                        label="Composite Selector Score"
-                        value={formatNumber(intelligenceReport?.header?.compositeScore)}
-                        note="Current selector score feeding the report."
-                        tone="good"
-                        valueClassName="text-[2rem] leading-none"
-                      />
-                    </div>
-                    <div className={`rounded-2xl border p-4 ${getToneSurfaceClasses(threatProfile.tone)}`}>
-                      <SectionMetric
-                        label="Threat Level"
-                        value={threatProfile.label}
-                        tone={threatProfile.tone}
-                        note={threatProfile.note}
-                        valueClassName="text-[2rem] leading-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 xl:grid-cols-3">
-                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-200">Main Threat</p>
-                      <p className="mt-3 text-sm leading-6 text-foreground">{threatNarrative}</p>
-                    </div>
-                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-amber-200">Main Weakness</p>
-                      <p className="mt-3 text-sm leading-6 text-foreground">{weaknessNarrative}</p>
-                    </div>
-                    <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-sky-200">Pressure Note</p>
-                      <p className="mt-3 text-sm leading-6 text-foreground">{pressureNarrative}</p>
-                    </div>
-                  </div>
-
+                <CardContent className="space-y-4 p-6">
                   {(reportDocumentStatus === "loading" || (reportDocumentStatus === "success" && isFrameLoading)) ? (
-                    <div className="space-y-4 border-t border-border/70 pt-6">
+                    <div className="space-y-4">
                       <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-background/60 px-4 py-3 text-sm text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Loading the protected report inside the Game-Changrs shell.
@@ -1628,17 +1554,15 @@ const AnalyticsIntelligenceReport = () => {
                   ) : null}
 
                   {reportDocumentStatus === "success" && reportDocumentHtml ? (
-                    <div className="space-y-4 border-t border-border/70 pt-6">
-                      <iframe
-                        key={reportDocumentUrl}
-                        ref={reportFrameRef}
-                        title={`${title} intelligence report`}
-                        srcDoc={reportDocumentHtml}
-                        onLoad={handleStandaloneFrameLoad}
-                        style={{ height: `${standaloneFrameHeight}px` }}
-                        className="block w-full rounded-2xl border border-border/80 bg-white"
-                      />
-                    </div>
+                    <iframe
+                      key={reportDocumentUrl}
+                      ref={reportFrameRef}
+                      title={`${title} intelligence report`}
+                      srcDoc={reportDocumentHtml}
+                      onLoad={handleStandaloneFrameLoad}
+                      style={{ height: `${standaloneFrameHeight}px` }}
+                      className="block w-full rounded-2xl border border-border/80 bg-white"
+                    />
                   ) : null}
                 </CardContent>
               </Card>

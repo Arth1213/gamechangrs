@@ -82,6 +82,24 @@ function getDivisionId(value: string | null) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function normalizeTextValue(value: unknown) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value).replace(/\s+/g, " ").trim();
+}
+
+function normalizeStringArray(values: unknown) {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  return values
+    .map((value) => normalizeTextValue(value))
+    .filter(Boolean);
+}
+
 function formatNumber(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return "-";
@@ -116,12 +134,14 @@ function getToneSurfaceClasses(tone: string | null | undefined) {
   }
 }
 
-function sanitizeIntelligenceCopy(value: string | null | undefined) {
-  if (!value) {
+function sanitizeIntelligenceCopy(value: unknown) {
+  const normalized = normalizeTextValue(value);
+
+  if (!normalized) {
     return "";
   }
 
-  return value
+  return normalized
     .replace(
       /This is the lowest-stability batting split in the current intelligence sample\.?/gi,
       "This is the most vulnerable batting setup in the current sample."
@@ -183,20 +203,20 @@ function formatCountLabel(value: number | null | undefined, singular: string, pl
   return `${formatNumber(rounded)} ${label}`;
 }
 
-function toTitleCase(value: string) {
-  return value
+function toTitleCase(value: unknown) {
+  return normalizeTextValue(value)
     .split(/\s+/)
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(" ");
 }
 
-function formatStyleLabel(value: string | null | undefined) {
-  if (!value) {
+function formatStyleLabel(value: unknown) {
+  const normalized = normalizeTextValue(value).replace(/_/g, " ").replace(/\s+/g, " ");
+
+  if (!normalized) {
     return "-";
   }
-
-  const normalized = value.trim().replace(/_/g, " ").replace(/\s+/g, " ");
 
   if (/^left left handed batter$/i.test(normalized) || /^left handed batter$/i.test(normalized)) {
     return "Left-Hand Batter";
@@ -225,8 +245,8 @@ function formatStyleLabel(value: string | null | undefined) {
   return toTitleCase(normalized);
 }
 
-function getRecommendationTone(label: string | null | undefined) {
-  const normalized = label?.trim().toLowerCase() || "";
+function getRecommendationTone(label: unknown) {
+  const normalized = normalizeTextValue(label).toLowerCase();
 
   if (!normalized) {
     return undefined;
@@ -350,8 +370,8 @@ function buildImpactPhase(roleType: string | null | undefined, lens: CricketPlay
   };
 }
 
-function parseSignalLabel(label: string | null | undefined) {
-  const normalized = label?.trim() || "";
+function parseSignalLabel(label: unknown) {
+  const normalized = normalizeTextValue(label);
   if (!normalized) {
     return { context: "unknown", target: "" };
   }
@@ -403,7 +423,7 @@ function formatSignalTitle(label: string | null | undefined) {
     case "batting-risk":
       return parsed.target ? `Batting pressure against ${parsed.target}` : "Batting pressure";
     default:
-      return sanitizeIntelligenceCopy(label?.trim() || "Live signal");
+      return sanitizeIntelligenceCopy(label || "Live signal");
   }
 }
 
@@ -1245,16 +1265,17 @@ const AnalyticsIntelligenceReport = () => {
     }
   };
 
-  const title =
+  const title = normalizeTextValue(
     intelligenceReport?.header?.playerName ||
     routeState.displayName ||
-    (Number.isFinite(numericPlayerId) ? `Player ${numericPlayerId}` : "Player intelligence");
-  const teamName = intelligenceReport?.header?.teamName || routeState.teamName || null;
-  const roleLabel = intelligenceReport?.header?.roleLabel || routeState.roleLabel || null;
-  const scopeLabel = intelligenceReport?.meta?.scope?.scopeLabel || "Series intelligence";
-  const scopeFallbackReason = intelligenceReport?.meta?.scope?.fallbackReason || null;
+    (Number.isFinite(numericPlayerId) ? `Player ${numericPlayerId}` : "Player intelligence")
+  ) || "Player intelligence";
+  const teamName = normalizeTextValue(intelligenceReport?.header?.teamName || routeState.teamName) || null;
+  const roleLabel = normalizeTextValue(intelligenceReport?.header?.roleLabel || routeState.roleLabel) || null;
+  const scopeLabel = normalizeTextValue(intelligenceReport?.meta?.scope?.scopeLabel) || "Series intelligence";
+  const scopeFallbackReason = normalizeTextValue(intelligenceReport?.meta?.scope?.fallbackReason) || null;
   const focusedLens = intelligenceReport?.focusedLens || null;
-  const recommendationLabel = intelligenceReport?.header?.recommendationLabel || null;
+  const recommendationLabel = normalizeTextValue(intelligenceReport?.header?.recommendationLabel) || null;
   const recommendationTone = getRecommendationTone(recommendationLabel);
   const threatProfile = getThreatProfile(intelligenceReport?.header?.percentileRank);
   const battingStyleLabel = formatStyleLabel(intelligenceReport?.header?.battingStyle);
@@ -1271,8 +1292,8 @@ const AnalyticsIntelligenceReport = () => {
   const leadingStrength = intelligenceReport?.tacticalSummary?.strengths?.[0] || null;
   const leadingWatchout = intelligenceReport?.tacticalSummary?.watchouts?.[0] || null;
   const pressureProfile = focusedLens?.pressureProfile || null;
-  const battingPlanItems = intelligenceReport?.tacticalPlan?.battingPlan ?? [];
-  const bowlingPlanItems = intelligenceReport?.tacticalPlan?.bowlingPlan ?? [];
+  const battingPlanItems = normalizeStringArray(intelligenceReport?.tacticalPlan?.battingPlan);
+  const bowlingPlanItems = normalizeStringArray(intelligenceReport?.tacticalPlan?.bowlingPlan);
   const pressureSignals = intelligenceReport?.tacticalSummary?.pressureSignals ?? [];
   const confidenceValue =
     intelligenceReport?.header?.confidenceScore !== null && intelligenceReport?.header?.confidenceScore !== undefined
@@ -1647,234 +1668,86 @@ const AnalyticsIntelligenceReport = () => {
             ) : null}
 
             {intelligenceStatus === "success" && intelligenceReport ? (
-              <>
-                <SectionErrorBoundary title="Intelligence summary">
-                  <Card className="border-border/80 bg-card/85 shadow-xl">
-                    <CardHeader className="space-y-4 pb-0">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-cyan-200">
-                          <Crosshair className="h-3.5 w-3.5" />
-                          Summary
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-8 pt-6">
-                      <section className="grid gap-4 xl:grid-cols-2">
-                        <div className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/40 p-5">
-                          <div className="grid h-full gap-3 md:grid-cols-3">
-                            <div className="flex h-full flex-col rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-                              <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-200">Main Threat</p>
-                              <p className="mt-3 text-sm leading-6 text-foreground">{threatNarrative}</p>
-                            </div>
-                            <div className="flex h-full flex-col rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-                              <p className="text-[11px] uppercase tracking-[0.16em] text-amber-200">Main Weakness</p>
-                              <p className="mt-3 text-sm leading-6 text-foreground">{weaknessNarrative}</p>
-                            </div>
-                            <div className="flex h-full flex-col rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
-                              <p className="text-[11px] uppercase tracking-[0.16em] text-sky-200">Pressure Note</p>
-                              <p className="mt-3 text-sm leading-6 text-foreground">{pressureNarrative}</p>
-                            </div>
-                          </div>
-                        </div>
+              <Card className="border-border/80 bg-card/85 shadow-xl">
+                <CardHeader className="space-y-4">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-cyan-200">
+                    <Crosshair className="h-3.5 w-3.5" />
+                    Player Intelligence
+                  </div>
+                  <CardTitle className="font-display text-3xl text-foreground">
+                    GAME-CHANGRS Player Intelligence
+                  </CardTitle>
+                  <CardDescription className="max-w-4xl text-base leading-7 text-muted-foreground">
+                    {recommendationLabel
+                      ? `${recommendationLabel}. ${threatNarrative} ${weaknessNarrative} ${pressureNarrative}`
+                      : `${threatNarrative} ${weaknessNarrative} ${pressureNarrative}`}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                    <SummaryField label="Team" value={teamName || "-"} />
+                    <SummaryField label="Primary Role" value={roleLabel || "-"} />
+                    <SummaryField label="Batting Profile" value={battingStyleLabel} />
+                    <SummaryField label="Bowling Profile" value={bowlingStyleLabel} />
+                    <SummaryField label="Report Scope" value={scopeLabel} />
+                  </div>
 
-                        <div className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/40 p-5">
-                          <div className="grid h-full flex-1 gap-3 sm:grid-cols-2">
-                            <div className="flex h-full rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.08] p-4">
-                              <SectionMetric
-                                label="Confidence"
-                                value={confidenceValue}
-                                tone={recommendationTone}
-                                valueClassName="text-[2.1rem] leading-none"
-                                noteClassName="pt-2"
-                              />
-                            </div>
-                            <div className="flex h-full rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.08] p-4">
-                              <SectionMetric
-                                label="Percentile"
-                                value={formatOrdinal(intelligenceReport?.header?.percentileRank)}
-                                tone="good"
-                                valueClassName="text-[2.1rem] leading-none"
-                              />
-                            </div>
-                            <div className="flex h-full rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] p-4">
-                              <SectionMetric
-                                label="Composite Selector Score"
-                                value={formatNumber(intelligenceReport?.header?.compositeScore)}
-                                tone="good"
-                                valueClassName="text-[2.1rem] leading-none"
-                              />
-                            </div>
-                            <div className={`flex h-full rounded-2xl border p-4 ${getToneSurfaceClasses(threatProfile.tone)}`}>
-                              <SectionMetric
-                                label="Threat Level"
-                                value={threatProfile.label}
-                                tone={threatProfile.tone}
-                                valueClassName="text-[2.1rem] leading-none"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </section>
-
-                      <section className="space-y-4 border-t border-border/70 pt-6">
-                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Tactical Plan</p>
-                        <div className="grid gap-4 xl:grid-cols-2">
-                          <PlanColumn
-                            title="Batting"
-                            items={battingPlanItems}
-                            emptyState="No batting plan lines are available yet."
-                          />
-                          <PlanColumn
-                            title="Bowling"
-                            items={bowlingPlanItems}
-                            emptyState="No bowling plan lines are available yet."
-                          />
-                        </div>
-                      </section>
-
-                      <section className="space-y-4 border-t border-border/70 pt-6">
-                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Series Stats</p>
-                        <div className="grid gap-4 xl:grid-cols-3">
-                          <SummaryStatsCard title="Batting Stats" rows={battingStatRows} />
-                          <SummaryStatsCard title="Bowling Stats" rows={bowlingStatRows} />
-                          <SummaryStatsCard title="Fielding / Wicketkeeping Stats" rows={fieldingStatRows} />
-                        </div>
-                      </section>
-
-                      <section className="space-y-4 border-t border-border/70 pt-6">
-                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Snapshot</p>
-                        <div className="grid gap-4 xl:grid-cols-3">
-                          <div className="rounded-2xl border border-sky-500/25 bg-sky-500/[0.08] p-5">
-                            <SectionMetric
-                              label="Impact Phase"
-                              value={impactPhase.label}
-                              note={impactPhase.note}
-                              tone="watch"
-                              valueClassName="text-[2.35rem]"
-                            />
-                          </div>
-                          <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] p-5">
-                            <SectionMetric
-                              label="Batting Sample"
-                              value={battingSampleLabel}
-                              note={battingSampleNote}
-                              tone="watch"
-                              valueClassName="text-[2.35rem]"
-                            />
-                          </div>
-                          <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.08] p-5">
-                            <SectionMetric
-                              label="Bowling Sample"
-                              value={bowlingSampleLabel}
-                              note={bowlingSampleNote}
-                              tone="good"
-                              valueClassName="text-[2.35rem]"
-                            />
-                          </div>
-                        </div>
-                      </section>
-
-                      <section className="border-t border-border/70 pt-6">
-                        <SummarySignalSection
-                          title="Threat"
-                          narrative={threatNarrative}
-                          items={intelligenceReport?.tacticalSummary?.strengths}
-                          emptyState="No clear threat signal is available yet in the live sample."
-                          metricPlacement="side"
-                        />
-                      </section>
-
-                      <section className="border-t border-border/70 pt-6">
-                        <SummarySignalSection
-                          title="Weakness"
-                          narrative={weaknessNarrative}
-                          items={intelligenceReport?.tacticalSummary?.watchouts}
-                          emptyState="No clear weakness is available yet in the live sample."
-                          metricPlacement="side"
-                        />
-                      </section>
-
-                      <section className="border-t border-border/70 pt-6">
-                        <SummarySignalSection
-                          title="Pressure"
-                          narrative={pressureNarrative}
-                          items={pressureSignals}
-                          emptyState="No pressure markers are available yet in the live sample."
-                        />
-                      </section>
-
-                      <section className="space-y-4 border-t border-border/70 pt-6">
-                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Additional Insights</p>
-                        <div className="grid gap-4 xl:grid-cols-2">
-                          <InsightColumn
-                            title="Matchup & Usage"
-                            items={matchupAndUsageInsights}
-                            emptyState="No additional matchup or usage insights are available yet."
-                          />
-                          <InsightColumn
-                            title="Pressure & Evidence"
-                            items={pressureAndEvidenceInsights}
-                            emptyState="No additional pressure or evidence insights are available yet."
-                          />
-                        </div>
-                      </section>
-                    </CardContent>
-                  </Card>
-                </SectionErrorBoundary>
-
-                <SectionErrorBoundary title="Intelligence details">
-                  <Card className="border-border/80 bg-card/85 shadow-xl">
-                    <CardHeader className="space-y-4 pb-0">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-cyan-200">
-                          <BrainCircuit className="h-3.5 w-3.5" />
-                          Details
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6 pt-6">
-                      <MatchupTable
-                        title="Batting vs bowler type"
-                        summary={summarizeMatchupSection(focusedLens?.batting?.byBowlerType, "batting")}
-                        rows={focusedLens?.batting?.byBowlerType}
-                        mode="batting"
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.08] p-4">
+                      <SectionMetric
+                        label="Confidence"
+                        value={confidenceValue}
+                        tone={recommendationTone}
+                        valueClassName="text-[2rem] leading-none"
                       />
-
-                      <MatchupTable
-                        title="Bowling vs batter type"
-                        summary={summarizeMatchupSection(focusedLens?.bowling?.byBatterHand, "bowling")}
-                        rows={focusedLens?.bowling?.byBatterHand}
-                        mode="bowling"
+                    </div>
+                    <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.08] p-4">
+                      <SectionMetric
+                        label="Percentile"
+                        value={formatOrdinal(intelligenceReport?.header?.percentileRank)}
+                        tone="good"
+                        valueClassName="text-[2rem] leading-none"
                       />
+                    </div>
+                    <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] p-4">
+                      <SectionMetric
+                        label="Batting Sample"
+                        value={battingSampleLabel}
+                        note={battingSampleNote}
+                        tone="watch"
+                        valueClassName="text-[2rem] leading-none"
+                      />
+                    </div>
+                    <div className={`rounded-2xl border p-4 ${getToneSurfaceClasses(threatProfile.tone)}`}>
+                      <SectionMetric
+                        label="Threat Level"
+                        value={threatProfile.label}
+                        tone={threatProfile.tone}
+                        valueClassName="text-[2rem] leading-none"
+                      />
+                    </div>
+                  </div>
 
-                      <PhaseLensTable lens={focusedLens} />
-
-                      <DismissalTable rows={focusedLens?.dismissals} summary={summarizeDismissalSection(focusedLens?.dismissals)} />
-
-                      <EvidenceTable title="Batting evidence" items={intelligenceReport.commentaryEvidence?.batting} />
-                      <EvidenceTable title="Bowling evidence" items={intelligenceReport.commentaryEvidence?.bowling} />
-                      <EvidenceTable title="Dismissal evidence" items={intelligenceReport.commentaryEvidence?.dismissals} />
-                    </CardContent>
-                  </Card>
-                </SectionErrorBoundary>
-              </>
+                  <div className="grid gap-4 xl:grid-cols-3">
+                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-200">Main Threat</p>
+                      <p className="mt-3 text-sm leading-6 text-foreground">{threatNarrative}</p>
+                    </div>
+                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-amber-200">Main Weakness</p>
+                      <p className="mt-3 text-sm leading-6 text-foreground">{weaknessNarrative}</p>
+                    </div>
+                    <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-sky-200">Pressure Note</p>
+                      <p className="mt-3 text-sm leading-6 text-foreground">{pressureNarrative}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             ) : null}
           </div>
         </div>
       </section>
-
-      {!isStandalone ? (
-        <PlayerReportChat
-          report={null}
-          mode="intelligence"
-          playerName={title}
-          playerId={numericPlayerId}
-          seriesConfigKey={effectiveSeriesKey}
-          seriesName={intelligenceReport?.meta?.series?.name || routeState.seriesName || null}
-          divisionId={divisionId}
-          divisionLabel={intelligenceReport?.meta?.scope?.scopeLabel || routeState.divisionLabel || null}
-        />
-      ) : null}
 
       {!isStandalone ? <Footer /> : null}
     </div>

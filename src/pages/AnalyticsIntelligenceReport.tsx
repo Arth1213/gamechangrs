@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
-  BrainCircuit,
   Crosshair,
   ExternalLink,
   Loader2,
@@ -193,58 +192,6 @@ function formatOrdinal(value: number | null | undefined) {
   }
 }
 
-function formatCountLabel(value: number | null | undefined, singular: string, plural?: string) {
-  if (value === null || value === undefined || !Number.isFinite(value)) {
-    return null;
-  }
-
-  const rounded = Math.round(value);
-  const label = rounded === 1 ? singular : plural || `${singular}s`;
-  return `${formatNumber(rounded)} ${label}`;
-}
-
-function toTitleCase(value: unknown) {
-  return normalizeTextValue(value)
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(" ");
-}
-
-function formatStyleLabel(value: unknown) {
-  const normalized = normalizeTextValue(value).replace(/_/g, " ").replace(/\s+/g, " ");
-
-  if (!normalized) {
-    return "-";
-  }
-
-  if (/^left left handed batter$/i.test(normalized) || /^left handed batter$/i.test(normalized)) {
-    return "Left-Hand Batter";
-  }
-
-  if (/^right right handed batter$/i.test(normalized) || /^right handed batter$/i.test(normalized)) {
-    return "Right-Hand Batter";
-  }
-
-  if (/^left arm off spin$/i.test(normalized)) {
-    return "Left-Arm Off Spin";
-  }
-
-  if (/^right arm off spin$/i.test(normalized)) {
-    return "Right-Arm Off Spin";
-  }
-
-  if (/^left arm pace$/i.test(normalized)) {
-    return "Left-Arm Pace";
-  }
-
-  if (/^right arm pace$/i.test(normalized)) {
-    return "Right-Arm Pace";
-  }
-
-  return toTitleCase(normalized);
-}
-
 function getRecommendationTone(label: unknown) {
   const normalized = normalizeTextValue(label).toLowerCase();
 
@@ -337,37 +284,6 @@ function pickBestPhase(rows: IntelligencePhaseRows | null | undefined, mode: "ba
 
     return candidateScore > bestScore ? candidate : best;
   }, null as { phaseKey: "powerplay" | "middle" | "death"; row: CricketPlayerIntelligenceMatchupRow | null } | null);
-}
-
-function buildImpactPhase(roleType: string | null | undefined, lens: CricketPlayerIntelligenceLens | null) {
-  const battingBest = pickBestPhase(lens?.batting?.byPhase, "batting");
-  const bowlingBest = pickBestPhase(lens?.bowling?.byPhase, "bowling");
-  const normalizedRole = roleType?.toLowerCase() || "";
-
-  const preferred = normalizedRole.includes("bowling")
-    ? bowlingBest || battingBest
-    : battingBest || bowlingBest;
-
-  if (!preferred) {
-    return {
-      label: "-",
-      note: "No phase-level sample is available yet.",
-    };
-  }
-
-  const notes = [
-    battingBest
-      ? `Batting peak: ${getPhaseLabel(battingBest.phaseKey)}`
-      : null,
-    bowlingBest
-      ? `Bowling control: ${getPhaseLabel(bowlingBest.phaseKey)}`
-      : null,
-  ].filter((item): item is string => Boolean(item));
-
-  return {
-    label: getPhaseLabel(preferred.phaseKey),
-    note: notes.join(" • "),
-  };
 }
 
 function parseSignalLabel(label: unknown) {
@@ -546,21 +462,6 @@ function buildEvidenceNarrative(
     default:
       return "These live match moments back up the current report read.";
   }
-}
-
-function SummaryField({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="space-y-1">
-      <dt className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{label}</dt>
-      <dd className="mt-1 text-sm font-semibold text-foreground">{value}</dd>
-    </div>
-  );
 }
 
 function SectionMetric({
@@ -1287,41 +1188,19 @@ const AnalyticsIntelligenceReport = () => {
     routeState.displayName ||
     (Number.isFinite(numericPlayerId) ? `Player ${numericPlayerId}` : "Player intelligence")
   ) || "Player intelligence";
-  const teamName = normalizeTextValue(intelligenceReport?.header?.teamName || routeState.teamName) || null;
-  const roleLabel = normalizeTextValue(intelligenceReport?.header?.roleLabel || routeState.roleLabel) || null;
-  const scopeLabel = normalizeTextValue(intelligenceReport?.meta?.scope?.scopeLabel) || "Series intelligence";
   const scopeFallbackReason = normalizeTextValue(intelligenceReport?.meta?.scope?.fallbackReason) || null;
   const focusedLens = intelligenceReport?.focusedLens || null;
   const recommendationLabel = normalizeTextValue(intelligenceReport?.header?.recommendationLabel) || null;
   const recommendationTone = getRecommendationTone(recommendationLabel);
   const threatProfile = getThreatProfile(intelligenceReport?.header?.percentileRank);
-  const battingStyleLabel = formatStyleLabel(intelligenceReport?.header?.battingStyle);
-  const bowlingStyleLabel = formatStyleLabel(intelligenceReport?.header?.bowlingStyle);
-  const battingOverall = focusedLens?.batting?.overall || null;
-  const bowlingOverall = focusedLens?.bowling?.overall || null;
-  const impactPhase = buildImpactPhase(intelligenceReport?.header?.roleType, focusedLens);
-  const battingSampleLabel = focusedLens?.sample?.battingLegalBalls
-    ? `${formatNumber(focusedLens.sample.battingLegalBalls)} balls`
-    : "-";
-  const bowlingSampleLabel = focusedLens?.sample?.bowlingLegalBalls
-    ? `${formatNumber(focusedLens.sample.bowlingLegalBalls)} balls`
-    : "-";
   const leadingStrength = intelligenceReport?.tacticalSummary?.strengths?.[0] || null;
   const leadingWatchout = intelligenceReport?.tacticalSummary?.watchouts?.[0] || null;
   const pressureProfile = focusedLens?.pressureProfile || null;
   const battingPlanItems = normalizeStringArray(intelligenceReport?.tacticalPlan?.battingPlan);
-  const bowlingPlanItems = normalizeStringArray(intelligenceReport?.tacticalPlan?.bowlingPlan);
-  const pressureSignals = intelligenceReport?.tacticalSummary?.pressureSignals ?? [];
   const confidenceValue =
     intelligenceReport?.header?.confidenceScore !== null && intelligenceReport?.header?.confidenceScore !== undefined
       ? `${intelligenceReport.header.confidenceLabel || "Live"} · ${formatNumber(intelligenceReport.header.confidenceScore)}`
       : intelligenceReport?.header?.confidenceLabel || "-";
-  const battingSampleNote = battingOverall?.matchCount
-    ? `Across ${formatCountLabel(battingOverall.matchCount, "match")} in the current sample.`
-    : "No batting sample yet.";
-  const bowlingSampleNote = bowlingOverall?.matchCount
-    ? `Across ${formatCountLabel(bowlingOverall.matchCount, "match")} in the current sample.`
-    : "No bowling sample yet.";
   const threatNarrative = buildThreatNarrative(leadingStrength);
   const weaknessNarrative = buildWeaknessNarrative(leadingWatchout, battingPlanItems[0] || null);
   const pressureNarrative = buildPressureNarrative(pressureProfile);
@@ -1610,28 +1489,13 @@ const AnalyticsIntelligenceReport = () => {
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-7xl space-y-8">
             <div className="space-y-5">
-              <div className="space-y-4">
-                <div className="flex flex-wrap gap-3">
-                  <Button variant="outline" asChild>
-                    <Link to={backToSearchUrl}>
-                      <ArrowLeft className="mr-2 h-4 w-4" />
-                      Back to Search
-                    </Link>
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  <Badge className="gap-2 border border-cyan-400/20 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/10">
-                    <BrainCircuit className="h-3.5 w-3.5" />
-                    Player Intelligence Report
-                  </Badge>
-                  <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl">{title}</h1>
-                  <p className="max-w-4xl text-lg text-muted-foreground">{executiveSummary}</p>
-                  {scopeFallbackReason ? (
-                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-                      {scopeFallbackReason}
-                    </div>
-                  ) : null}
-                </div>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" asChild>
+                  <Link to={backToSearchUrl}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Search
+                  </Link>
+                </Button>
               </div>
 
             </div>
@@ -1672,15 +1536,16 @@ const AnalyticsIntelligenceReport = () => {
                   <CardTitle className="font-display text-3xl text-foreground">
                     GAME-CHANGRS Player Intelligence
                   </CardTitle>
+                  <CardDescription className="max-w-4xl text-base leading-7 text-muted-foreground">
+                    {executiveSummary}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                    <SummaryField label="Team" value={teamName || "-"} />
-                    <SummaryField label="Primary Role" value={roleLabel || "-"} />
-                    <SummaryField label="Batting Profile" value={battingStyleLabel} />
-                    <SummaryField label="Bowling Profile" value={bowlingStyleLabel} />
-                    <SummaryField label="Report Scope" value={scopeLabel} />
-                  </div>
+                  {scopeFallbackReason ? (
+                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                      {scopeFallbackReason}
+                    </div>
+                  ) : null}
 
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.08] p-4">
@@ -1689,6 +1554,7 @@ const AnalyticsIntelligenceReport = () => {
                         value={confidenceValue}
                         tone={recommendationTone}
                         valueClassName="text-[2rem] leading-none"
+                        note="How strong the live evidence is for this intelligence read."
                       />
                     </div>
                     <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.08] p-4">
@@ -1697,14 +1563,15 @@ const AnalyticsIntelligenceReport = () => {
                         value={formatOrdinal(intelligenceReport?.header?.percentileRank)}
                         tone="good"
                         valueClassName="text-[2rem] leading-none"
+                        note={threatProfile.note}
                       />
                     </div>
                     <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] p-4">
                       <SectionMetric
-                        label="Batting Sample"
-                        value={battingSampleLabel}
-                        note={battingSampleNote}
-                        tone="watch"
+                        label="Composite Selector Score"
+                        value={formatNumber(intelligenceReport?.header?.compositeScore)}
+                        note="Current selector score feeding the report."
+                        tone="good"
                         valueClassName="text-[2rem] leading-none"
                       />
                     </div>
@@ -1713,6 +1580,7 @@ const AnalyticsIntelligenceReport = () => {
                         label="Threat Level"
                         value={threatProfile.label}
                         tone={threatProfile.tone}
+                        note={threatProfile.note}
                         valueClassName="text-[2rem] leading-none"
                       />
                     </div>

@@ -5261,8 +5261,9 @@ function renderPlayerIntelligenceReportPage(report) {
 
     .hero-fact-value {
       color: #eef8fc;
-      font-size: 14px;
-      line-height: 1.35;
+      font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+      font-size: clamp(20px, 2.5vw, 28px);
+      line-height: 1.05;
       font-weight: 700;
       overflow-wrap: anywhere;
     }
@@ -5586,6 +5587,36 @@ function renderPlayerIntelligenceReportPage(report) {
 
     .tactical-grid {
       margin-top: 18px;
+    }
+
+    .tactical-grid .metric-card {
+      padding: 20px;
+      grid-template-rows: auto minmax(76px, auto) 1fr;
+      gap: 14px;
+      align-content: stretch;
+    }
+
+    .tactical-grid .metric-label {
+      min-height: 28px;
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .tactical-grid .metric-value {
+      display: flex;
+      align-items: center;
+      min-height: 76px;
+    }
+
+    .tactical-grid .metric-note {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #dcebf2;
+      font-weight: 600;
+      display: flex;
+      align-items: flex-start;
+      padding-top: 10px;
+      border-top: 1px solid rgba(145, 192, 215, 0.12);
     }
 
     .stat-grid .table-scroll {
@@ -6096,7 +6127,6 @@ function renderPlayerIntelligenceReportPage(report) {
             <thead>
               <tr>
                 <th>Bowler Type</th>
-                <th>Dismissal</th>
                 <th class="align-right">Wickets</th>
                 <th class="align-right">Matches</th>
                 <th class="align-right">Avg Runs At Wicket</th>
@@ -6107,10 +6137,86 @@ function renderPlayerIntelligenceReportPage(report) {
                 .map((row) => `
                   <tr>
                     <td>${escapeHtml(normalizeText(row.bowlerStyleLabel) || "Unknown style")}</td>
-                    <td>${escapeHtml(normalizeText(row.dismissalType) || "Dismissal")}</td>
                     <td class="align-right">${escapeHtml(displayNumber(row.dismissalCount, 0))}</td>
                     <td class="align-right">${escapeHtml(displayNumber(row.matchCount, 0))}</td>
                     <td class="align-right">${escapeHtml(displayNumber(row.averageRunsAtDismissal, 1))}</td>
+                  </tr>
+                `)
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderPhaseMetricsTable(role, battingPhases, bowlingPhases) {
+    const primaryDiscipline = inferPrimaryDiscipline(role);
+    const hasBattingPhase = ["powerplay", "middle", "death"].some((phase) => battingPhases?.[phase]);
+    const hasBowlingPhase = ["powerplay", "middle", "death"].some((phase) => bowlingPhases?.[phase]);
+    const mode =
+      primaryDiscipline === "bowling"
+        ? (hasBowlingPhase ? "bowling" : hasBattingPhase ? "batting" : null)
+        : primaryDiscipline === "batting"
+          ? (hasBattingPhase ? "batting" : hasBowlingPhase ? "bowling" : null)
+          : (hasBattingPhase ? "batting" : hasBowlingPhase ? "bowling" : null);
+
+    if (!mode) {
+      return `
+        <div class="table-panel">
+          <h3>Phase Metrics</h3>
+          <div class="empty-state">No phase split metrics are available yet.</div>
+        </div>
+      `;
+    }
+
+    const phases = ["powerplay", "middle", "death"];
+    const rows = phases.map((phaseKey) => ({
+      phaseLabel: formatPhaseLabel(phaseKey),
+      row: mode === "bowling" ? bowlingPhases?.[phaseKey] || null : battingPhases?.[phaseKey] || null,
+    }));
+
+    return `
+      <div class="table-panel">
+        <h3>Phase Metrics</h3>
+        <div class="table-scroll">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Phase</th>
+                ${mode === "bowling"
+                  ? `
+                    <th class="align-right">Wickets</th>
+                    <th class="align-right">Balls</th>
+                    <th class="align-right">Economy</th>
+                    <th class="align-right">Dot %</th>
+                  `
+                  : `
+                    <th class="align-right">Runs</th>
+                    <th class="align-right">Balls</th>
+                    <th class="align-right">Strike Rate</th>
+                    <th class="align-right">Dismissals</th>
+                  `}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows
+                .map(({ phaseLabel, row }) => `
+                  <tr>
+                    <td>${escapeHtml(phaseLabel)}</td>
+                    ${mode === "bowling"
+                      ? `
+                        <td class="align-right">${escapeHtml(displayNumber(row?.wickets, 0))}</td>
+                        <td class="align-right">${escapeHtml(displayNumber(row?.legalBalls, 0))}</td>
+                        <td class="align-right">${escapeHtml(displayNumber(row?.economy, 1))}</td>
+                        <td class="align-right">${escapeHtml(displayNumber(row?.dotBallPct, 1))}</td>
+                      `
+                      : `
+                        <td class="align-right">${escapeHtml(displayNumber(row?.runsScored, 0))}</td>
+                        <td class="align-right">${escapeHtml(displayNumber(row?.legalBalls, 0))}</td>
+                        <td class="align-right">${escapeHtml(displayNumber(row?.strikeRate, 1))}</td>
+                        <td class="align-right">${escapeHtml(displayNumber(row?.dismissals, 0))}</td>
+                      `}
                   </tr>
                 `)
                 .join("")}
@@ -6268,9 +6374,64 @@ function renderPlayerIntelligenceReportPage(report) {
       };
     }
 
+    return null;
+  }
+
+  function inferPrimaryDiscipline(role) {
+    const normalized = normalizeLabel(role);
+    if (!normalized) {
+      return null;
+    }
+    if (normalized.includes("bowling all")) {
+      return "bowling";
+    }
+    if (normalized.includes("batting all")) {
+      return "batting";
+    }
+    if (normalized.includes("bowler")) {
+      return "bowling";
+    }
+    if (
+      normalized.includes("batter")
+      || normalized.includes("batsman")
+      || normalized.includes("keeper")
+      || normalized.includes("wicketkeeper")
+    ) {
+      return "batting";
+    }
+    return null;
+  }
+
+  function buildPeakThreatPhaseCard(role, battingPhase, bowlingPhase) {
+    const primaryDiscipline = inferPrimaryDiscipline(role);
+    const preferredPhase =
+      primaryDiscipline === "bowling"
+        ? (bowlingPhase || battingPhase)
+        : primaryDiscipline === "batting"
+          ? (battingPhase || bowlingPhase)
+          : (battingPhase || bowlingPhase);
+
+    if (!preferredPhase) {
+      return null;
+    }
+
+    const isBowling = preferredPhase === bowlingPhase && (!battingPhase || primaryDiscipline === "bowling");
+    const phaseLabel = formatPhaseLabel(preferredPhase.phaseKey);
+
+    if (isBowling) {
+      return {
+        label: "Peak Threat Phase",
+        value: phaseLabel,
+        note: `Primary bowling threat peaks in the ${phaseLabel}: ${displayNumber(preferredPhase.row.wickets, 0, "0")} wickets from ${displayNumber(preferredPhase.row.legalBalls, 0, "0")} balls at ${displayNumber(preferredPhase.row.economy, 1, "0")} economy.`,
+        tone: "good",
+      };
+    }
+
     return {
-      value: "Building",
-      note: "Pressure rhythm markers are still building from the live sample.",
+      label: "Peak Threat Phase",
+      value: phaseLabel,
+      note: `Primary batting threat peaks in the ${phaseLabel}: ${displayNumber(preferredPhase.row.runsScored, 0, "0")} runs from ${displayNumber(preferredPhase.row.legalBalls, 0, "0")} balls at ${displayNumber(preferredPhase.row.strikeRate, 1, "0")} strike rate.`,
+      tone: "good",
     };
   }
 
@@ -6280,38 +6441,12 @@ function renderPlayerIntelligenceReportPage(report) {
   const pressureCard = buildPressureCard(leadingPressure);
   const scopeHeroLabel = scopeLabel === "All Divisions" ? "All tracked phases and divisions" : scopeLabel;
 
-  const summaryCards = [
-    metricCard(
-      "Confidence",
-      header?.confidenceScore !== undefined && header?.confidenceScore !== null
-        ? `${normalizeText(header.confidenceLabel) || "Live"} · ${displayNumber(header.confidenceScore, 1)}`
-        : normalizeText(header.confidenceLabel) || "—",
-      "How strong the live evidence is for this intelligence read.",
-      "watch"
-    ),
-    metricCard(
-      "Percentile",
-      formatOrdinal(header.percentileRank),
-      threatProfile.note,
-      threatProfile.tone
-    ),
-    metricCard(
-      "Composite Selector Score",
-      displayNumber(header.compositeScore, 1),
-      "Current selector score feeding the report.",
-      "good"
-    ),
-    metricCard(
-      "Threat Level",
-      threatProfile.label,
-      threatProfile.note,
-      threatProfile.tone
-    ),
-  ].join("");
-
   const battingPhaseWindow = pickBestPhase(focusedLens?.batting?.byPhase, "batting");
   const bowlingPhaseWindow = pickBestPhase(focusedLens?.bowling?.byPhase, "bowling");
   const leadingDismissalCluster = focusedLens?.dismissals?.[0] || null;
+  const peakThreatPhaseCard = !pressureCard
+    ? buildPeakThreatPhaseCard(roleLabel, battingPhaseWindow, bowlingPhaseWindow)
+    : null;
 
   const tacticalCards = [
     metricCard(
@@ -6338,13 +6473,15 @@ function renderPlayerIntelligenceReportPage(report) {
         : "No dismissal cluster is available yet in the live sample.",
       "risk"
     ),
-    metricCard(
-      "Pressure Trigger",
-      pressureCard.value,
-      pressureCard.note,
-      "watch"
-    ),
-  ].join("");
+    pressureCard
+      ? metricCard(
+          "Pressure Trigger",
+          pressureCard.value,
+          pressureCard.note,
+          "watch"
+        )
+      : null,
+  ].filter(Boolean).join("");
 
   const battingStatRows = [
     { label: "Matches", value: displayNumber(summaryStats?.batting?.matches, 0) },
@@ -6418,20 +6555,26 @@ function renderPlayerIntelligenceReportPage(report) {
                       <div class="callout-label">Main Weakness</div>
                       <p>${escapeHtml(weaknessNarrative)}</p>
                     </div>
-                    <div class="callout watch">
-                      <div class="callout-label">Pressure Trigger</div>
-                      <div class="callout-value watch">${escapeHtml(pressureCard.value)}</div>
-                      <p>${escapeHtml(pressureCard.note)}</p>
-                    </div>
+                    ${pressureCard
+                      ? `
+                        <div class="callout watch">
+                          <div class="callout-label">Pressure Trigger</div>
+                          <div class="callout-value watch">${escapeHtml(pressureCard.value)}</div>
+                          <p>${escapeHtml(pressureCard.note)}</p>
+                        </div>
+                      `
+                      : peakThreatPhaseCard
+                        ? `
+                          <div class="callout good">
+                            <div class="callout-label">${escapeHtml(peakThreatPhaseCard.label)}</div>
+                            <div class="callout-value good">${escapeHtml(peakThreatPhaseCard.value)}</div>
+                            <p>${escapeHtml(peakThreatPhaseCard.note)}</p>
+                          </div>
+                        `
+                        : ""}
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
-
-          <section class="sheet">
-            <div class="card-grid">
-              ${summaryCards}
             </div>
           </section>
 
@@ -6500,7 +6643,10 @@ function renderPlayerIntelligenceReportPage(report) {
           </section>
 
           <section class="sheet">
-            ${renderDismissalTable(focusedLens?.dismissals)}
+            <div class="section-grid">
+              ${renderDismissalTable(focusedLens?.dismissals)}
+              ${renderPhaseMetricsTable(roleLabel, focusedLens?.batting?.byPhase, focusedLens?.bowling?.byPhase)}
+            </div>
           </section>
 
           <section class="sheet">

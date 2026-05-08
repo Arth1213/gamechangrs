@@ -1230,8 +1230,9 @@
 
     .hero-fact-value {
       color: #eef8fc;
-      font-size: 14px;
-      line-height: 1.35;
+      font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+      font-size: clamp(20px, 2.5vw, 28px);
+      line-height: 1.05;
       font-weight: 700;
       overflow-wrap: anywhere;
     }
@@ -1557,6 +1558,36 @@
       margin-top: 18px;
     }
 
+    .tactical-grid .metric-card {
+      padding: 20px;
+      grid-template-rows: auto minmax(76px, auto) 1fr;
+      gap: 14px;
+      align-content: stretch;
+    }
+
+    .tactical-grid .metric-label {
+      min-height: 28px;
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .tactical-grid .metric-value {
+      display: flex;
+      align-items: center;
+      min-height: 76px;
+    }
+
+    .tactical-grid .metric-note {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #dcebf2;
+      font-weight: 600;
+      display: flex;
+      align-items: flex-start;
+      padding-top: 10px;
+      border-top: 1px solid rgba(145, 192, 215, 0.12);
+    }
+
     .stat-grid .table-scroll {
       overflow-x: visible;
     }
@@ -1719,36 +1750,6 @@
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
-
-          <section class="sheet">
-            <div class="card-grid">
-              
-      <div class="metric-card">
-        <div class="metric-label">Confidence</div>
-        <div class="metric-value watch">High · 100</div>
-        <div class="metric-note">How strong the live evidence is for this intelligence read.</div>
-      </div>
-    
-      <div class="metric-card">
-        <div class="metric-label">Percentile</div>
-        <div class="metric-value watch">64th</div>
-        <div class="metric-note">Manageable, but still a live planning concern.</div>
-      </div>
-    
-      <div class="metric-card">
-        <div class="metric-label">Composite Selector Score</div>
-        <div class="metric-value good">58.4</div>
-        <div class="metric-note">Current selector score feeding the report.</div>
-      </div>
-    
-      <div class="metric-card">
-        <div class="metric-label">Threat Level</div>
-        <div class="metric-value watch">Amber</div>
-        <div class="metric-note">Manageable, but still a live planning concern.</div>
-      </div>
-    
             </div>
           </section>
 
@@ -2098,14 +2099,14 @@
           </section>
 
           <section class="sheet">
-            
+            <div class="section-grid">
+              
       <div class="table-panel">
         <h3>Dismissal Pattern</h3>
         <table class="report-table">
           <thead>
             <tr>
               <th>Bowler Type</th>
-              <th>Dismissal</th>
               <th class="align-right">Wickets</th>
               <th class="align-right">Matches</th>
               <th class="align-right">Avg Runs At Wicket</th>
@@ -2115,7 +2116,6 @@
             
                 <tr>
                   <td>Right-Arm Pace</td>
-                  <td>caught</td>
                   <td class="align-right">6</td>
                   <td class="align-right">6</td>
                   <td class="align-right">28.8</td>
@@ -2123,7 +2123,6 @@
               
                 <tr>
                   <td>Right-Arm Pace</td>
-                  <td>stumped</td>
                   <td class="align-right">1</td>
                   <td class="align-right">1</td>
                   <td class="align-right">32</td>
@@ -2131,7 +2130,6 @@
               
                 <tr>
                   <td>Off-Spin</td>
-                  <td>c&amp;b N Kumar</td>
                   <td class="align-right">1</td>
                   <td class="align-right">1</td>
                   <td class="align-right">37</td>
@@ -2141,6 +2139,46 @@
         </table>
       </div>
     
+              
+      <div class="table-panel">
+        <h3>Phase Metrics</h3>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Phase</th>
+              <th class="align-right">Runs</th>
+              <th class="align-right">Balls</th>
+              <th class="align-right">Strike Rate</th>
+              <th class="align-right">Dismissals</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Powerplay</td>
+              <td class="align-right">81</td>
+              <td class="align-right">89</td>
+              <td class="align-right">91.0</td>
+              <td class="align-right">3</td>
+            </tr>
+            <tr>
+              <td>Middle</td>
+              <td class="align-right">42</td>
+              <td class="align-right">19</td>
+              <td class="align-right">221.1</td>
+              <td class="align-right">0</td>
+            </tr>
+            <tr>
+              <td>Death</td>
+              <td class="align-right">77</td>
+              <td class="align-right">52</td>
+              <td class="align-right">148.1</td>
+              <td class="align-right">1</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    
+            </div>
           </section>
 
           <section class="sheet">

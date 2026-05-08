@@ -1193,7 +1193,7 @@ const AnalyticsIntelligenceReport = () => {
   }, [reportDocumentHtml]);
 
   useEffect(() => {
-    if (!isStandalone || viewerStatus !== "success" || !hasViewerAccess || !reportDocumentUrl || !accessToken) {
+    if (viewerStatus !== "success" || !hasViewerAccess || !reportDocumentUrl || !accessToken) {
       setReportDocumentStatus("idle");
       setReportDocumentError(null);
       setReportDocumentHtml(null);
@@ -1229,7 +1229,7 @@ const AnalyticsIntelligenceReport = () => {
       });
 
     return () => controller.abort();
-  }, [accessToken, hasViewerAccess, isStandalone, reportDocumentReloadKey, reportDocumentUrl, viewerStatus]);
+  }, [accessToken, hasViewerAccess, reportDocumentReloadKey, reportDocumentUrl, viewerStatus]);
 
   const handleRetryViewerAccess = () => setViewerReloadKey((value) => value + 1);
   const handleRetryIntelligence = () => setIntelligenceReloadKey((value) => value + 1);
@@ -1742,6 +1742,46 @@ const AnalyticsIntelligenceReport = () => {
                       <p className="mt-3 text-sm leading-6 text-foreground">{pressureNarrative}</p>
                     </div>
                   </div>
+
+                  {(reportDocumentStatus === "loading" || (reportDocumentStatus === "success" && isFrameLoading)) ? (
+                    <div className="space-y-4 border-t border-border/70 pt-6">
+                      <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-background/60 px-4 py-3 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading the protected report inside the Game-Changrs shell.
+                      </div>
+                      <Skeleton className="h-[70vh] w-full rounded-2xl" />
+                    </div>
+                  ) : null}
+
+                  {reportDocumentStatus === "error" && reportDocumentError ? (
+                    <div className="flex flex-col gap-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-sm text-destructive sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <div className="space-y-1">
+                          <p>The protected report could not be loaded.</p>
+                          <p className="text-destructive/80">{reportDocumentError}</p>
+                        </div>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setReportDocumentReloadKey((current) => current + 1)}>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Retry Report
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  {reportDocumentStatus === "success" && reportDocumentHtml ? (
+                    <div className="space-y-4 border-t border-border/70 pt-6">
+                      <iframe
+                        key={reportDocumentUrl}
+                        ref={reportFrameRef}
+                        title={`${title} intelligence report`}
+                        srcDoc={reportDocumentHtml}
+                        onLoad={handleStandaloneFrameLoad}
+                        style={{ height: `${standaloneFrameHeight}px` }}
+                        className="block w-full rounded-2xl border border-border/80 bg-white"
+                      />
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
             ) : null}

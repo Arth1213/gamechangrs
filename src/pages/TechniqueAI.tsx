@@ -151,7 +151,7 @@ function TechniqueAIGuestLanding() {
                         <span className="text-sm font-medium text-accent">Batting Technique AI</span>
                       </div>
 
-                      <h1 className="gc-type-hero leading-[0.94] md:text-5xl xl:text-[4.15rem]">
+                      <h1 className="gc-type-hero leading-[0.94]">
                         Upload a batting clip. Get scored technique feedback.
                       </h1>
                       <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:text-lg xl:mx-0">
@@ -409,6 +409,7 @@ function TechniqueAIGuestLanding() {
 }
 
 function TechniqueAIWorkspace({
+  userName,
   analyses,
   latestAnalysis,
   authLoading,
@@ -416,6 +417,7 @@ function TechniqueAIWorkspace({
   historyError,
   onReportSaved,
 }: {
+  userName: string;
   analyses: AnalysisResult[];
   latestAnalysis: AnalysisResult | null;
   authLoading: boolean;
@@ -431,13 +433,63 @@ function TechniqueAIWorkspace({
 
   return (
     <>
-      <section className="pt-32 pb-12 bg-gradient-hero">
+      <section className="border-b border-border bg-card/50 pb-12 pt-32">
         <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="gc-type-hero mb-6 md:text-5xl lg:text-6xl">
-              <span className="text-gradient-primary">Technique AI</span>
-            </h1>
-            <p className="text-lg text-muted-foreground">Upload a batting clip for scored feedback and drills.</p>
+          <div className="mx-auto max-w-6xl">
+            <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
+              <div className="rounded-[32px] border border-border/80 bg-card/85 p-6 shadow-xl lg:p-8">
+                <div className="flex h-full flex-col justify-between gap-5">
+                  <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
+                    <Sparkles className="h-4 w-4" />
+                    Your Technique AI Workspace
+                  </div>
+
+                  <div className="space-y-3">
+                    <h1 className="gc-type-hero max-w-xl">
+                      Welcome back, {userName}.
+                    </h1>
+                    <p className="max-w-2xl text-base leading-7 text-muted-foreground">
+                      Upload batting clips, track saved analyses, and keep your latest scoring feedback in one place.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-border/70 bg-background/50 px-4 py-3 text-sm text-muted-foreground">
+                    This workspace keeps your video-based batting reviews, report history, and next analysis flow together.
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex h-full flex-col rounded-[32px] border border-border/80 bg-card/85 p-5 shadow-xl lg:p-6">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Workspace snapshot</p>
+                    <p className="mt-2 text-sm text-muted-foreground">Your recent Technique AI activity at a glance.</p>
+                  </div>
+                </div>
+                <div className="grid h-full gap-4 md:grid-cols-3">
+                  <div className="flex min-h-[170px] flex-col justify-between rounded-[24px] border border-primary/20 bg-primary/10 px-5 py-5">
+                    <p className="gc-type-metric">{historyLoading ? "-" : analyses.length}</p>
+                    <p className="text-xs uppercase leading-[1.45] tracking-[0.18em] text-muted-foreground">Saved analyses</p>
+                  </div>
+                  <div className="flex min-h-[170px] flex-col justify-between rounded-[24px] border border-border bg-background/70 px-5 py-5">
+                    <p className="gc-type-metric">{historyLoading ? "-" : latestAnalysis?.overall_score ?? "--"}</p>
+                    <p className="text-xs uppercase leading-[1.45] tracking-[0.18em] text-muted-foreground">Latest score</p>
+                  </div>
+                  <div className="flex min-h-[170px] flex-col justify-between rounded-[24px] border border-border bg-background/70 px-5 py-5">
+                    <p className="gc-type-card-title text-lg md:text-xl">
+                      {historyLoading
+                        ? "-"
+                        : latestAnalysis
+                          ? format(new Date(latestAnalysis.created_at), "MMM d, yyyy")
+                          : "Ready"}
+                    </p>
+                    <p className="text-xs uppercase leading-[1.45] tracking-[0.18em] text-muted-foreground">
+                      {latestAnalysis ? "Latest upload" : "First upload"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -613,6 +665,7 @@ const TechniqueAI = () => {
   const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "your workspace";
 
   const fetchAnalyses = async (savedReport?: AnalysisResult) => {
     if (!user) {
@@ -674,6 +727,7 @@ const TechniqueAI = () => {
       <Navbar />
       {user ? (
         <TechniqueAIWorkspace
+          userName={displayName}
           analyses={analyses}
           latestAnalysis={latestAnalysis}
           authLoading={authLoading}

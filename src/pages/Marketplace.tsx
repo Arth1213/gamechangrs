@@ -304,7 +304,7 @@ function MarketplaceGuestLanding({
                 <div className="flex h-full flex-col justify-between gap-5">
                   <div className="space-y-4">
                     <p className="text-[11px] uppercase tracking-[0.24em] text-primary/80">Community marketplace</p>
-                    <h1 className="gc-type-hero leading-[0.94] md:text-5xl xl:text-[4.1rem]">
+                    <h1 className="gc-type-hero leading-[0.94]">
                       Move cricket gear through the community.
                     </h1>
                     <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:text-lg xl:mx-0">
@@ -595,7 +595,7 @@ function OwnerListingsSection({
             </div>
           </div>
         ) : (
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className={`grid gap-6 ${ownerListings.length > 1 ? "lg:grid-cols-2" : ""}`}>
             {ownerListings.map((listing) => (
               <div key={listing.id} className="overflow-hidden rounded-3xl border border-border bg-gradient-card">
                 <div className="grid gap-0 md:grid-cols-[0.95fr_1.05fr]">
@@ -1134,7 +1134,7 @@ const Marketplace = () => {
         <>
           <section className="border-t border-border bg-gradient-card py-10">
             <div className="container mx-auto px-4">
-              <div className="mx-auto max-w-4xl rounded-[28px] border border-border bg-card/80 p-8 text-center">
+              <div className="mx-auto max-w-6xl rounded-[28px] border border-border bg-card/80 p-8 text-center">
                 <h2 className="gc-type-card-title">Ready to move gear?</h2>
                 <p className="mb-6 mt-2 text-sm text-muted-foreground">
                   Use Game-Changrs to make the introduction. Buyer and seller continue directly by email after that.

@@ -95,6 +95,7 @@ const CoachingMarketplace = () => {
   const playerUpcomingSessions = playerSessions.filter(
     (session) => new Date(session.session_date_time_utc) > new Date() && session.status !== "canceled",
   );
+  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "your team";
 
   useEffect(() => {
     fetchData();
@@ -512,34 +513,49 @@ const CoachingMarketplace = () => {
           <section className="border-b border-border bg-card/50 pb-12 pt-32">
             <div className="container mx-auto px-4">
               <div className="mx-auto max-w-6xl">
-                <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:items-end">
-                  <div className="space-y-4">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
-                      <Sparkles className="h-4 w-4" />
-                      Coaching Marketplace
-                    </div>
-                    <div className="space-y-3">
-                      <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl">
-                        Your coaching marketplace
-                      </h1>
-                      <p className="max-w-3xl text-lg text-muted-foreground">
-                        Manage coach and player roles, keep the schedule visible, and move into the right workspace without leaving this page.
-                      </p>
+                <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
+                  <div className="rounded-[32px] border border-border/80 bg-card/85 p-6 shadow-xl lg:p-8">
+                    <div className="flex h-full flex-col justify-between gap-5">
+                      <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
+                        <Sparkles className="h-4 w-4" />
+                        Your Coaching Marketplace
+                      </div>
+
+                      <div className="space-y-3">
+                        <h1 className="gc-type-hero max-w-xl">
+                          {displayName}, run your coaching marketplace.
+                        </h1>
+                        <p className="max-w-2xl text-base leading-7 text-muted-foreground">
+                          Manage coach and player personas, keep the session pipeline visible, and move into the right workspace without leaving this page.
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-border/70 bg-background/50 px-4 py-3 text-sm text-muted-foreground">
+                        Keep onboarding, discovery, connections, and schedule context together in one coaching workspace.
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-                    <div className="rounded-2xl border border-border bg-background/70 p-5">
-                      <p className="font-display text-2xl font-bold text-foreground">{coachProfile ? "Active" : "Not set"}</p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Coach profile</p>
+                  <div className="flex h-full flex-col rounded-[32px] border border-border/80 bg-card/85 p-5 shadow-xl lg:p-6">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Workspace snapshot</p>
+                        <p className="mt-2 text-sm text-muted-foreground">Your current coaching-marketplace setup and schedule status.</p>
+                      </div>
                     </div>
-                    <div className="rounded-2xl border border-border bg-background/70 p-5">
-                      <p className="font-display text-2xl font-bold text-foreground">{playerProfile ? "Active" : "Not set"}</p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Player profile</p>
-                    </div>
-                    <div className="rounded-2xl border border-primary/20 bg-primary/10 p-5">
-                      <p className="font-display text-2xl font-bold text-foreground">{totalUpcomingSessions}</p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Upcoming sessions</p>
+                    <div className="grid h-full gap-4 md:grid-cols-3">
+                      <div className="rounded-[24px] border border-border bg-background/70 p-5">
+                        <p className="gc-type-card-title">{coachProfile ? "Active" : "Not set"}</p>
+                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Coach profile</p>
+                      </div>
+                      <div className="rounded-[24px] border border-border bg-background/70 p-5">
+                        <p className="gc-type-card-title">{playerProfile ? "Active" : "Not set"}</p>
+                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Player profile</p>
+                      </div>
+                      <div className="rounded-[24px] border border-primary/20 bg-primary/10 p-5">
+                        <p className="gc-type-metric text-3xl md:text-3xl">{totalUpcomingSessions}</p>
+                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Upcoming sessions</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1151,7 +1167,7 @@ const CoachingMarketplace = () => {
                             <Sparkles className="h-4 w-4" />
                             Coaching Marketplace
                           </div>
-                          <h1 className="gc-type-hero leading-[0.94] md:text-5xl xl:text-[4.25rem]">
+                          <h1 className="gc-type-hero leading-[0.94]">
                             Find the right coach and keep the full training relationship in one place
                           </h1>
                           <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:text-lg xl:mx-0">

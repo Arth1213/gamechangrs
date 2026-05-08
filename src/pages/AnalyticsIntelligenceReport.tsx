@@ -1251,9 +1251,6 @@ const AnalyticsIntelligenceReport = () => {
   const threatNarrative = buildThreatNarrative(leadingStrength);
   const weaknessNarrative = buildWeaknessNarrative(leadingWatchout, battingPlanItems[0] || null);
   const pressureNarrative = buildPressureNarrative(pressureProfile);
-  const heroNarrative = recommendationLabel
-    ? `${recommendationLabel}. ${threatNarrative} ${weaknessNarrative} ${pressureNarrative}`
-    : `${threatNarrative} ${weaknessNarrative} ${pressureNarrative}`;
   const summaryStats: CricketPlayerIntelligenceSummaryStats | null = intelligenceReport?.summaryStats || null;
   const battingStatRows = [
     { label: "Matches", value: formatNumber(summaryStats?.batting?.matches) },
@@ -1556,74 +1553,44 @@ const AnalyticsIntelligenceReport = () => {
                     disabled={reportDocumentStatus !== "success" || isFrameLoading}
                   />
                 </div>
-                <Card className="overflow-hidden border-border/80 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.12),transparent_24%),rgba(15,23,42,0.92)] shadow-xl">
-                  <CardContent className="p-6 md:p-8">
-                    <div className="flex justify-center">
-                      <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.22em] text-slate-100">
-                        <BrainCircuit className="h-4 w-4 text-cyan-300" />
-                        Player Intelligence
-                      </div>
+                <div className="space-y-3">
+                  <Badge className="gap-2 border border-cyan-400/20 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/10">
+                    <BrainCircuit className="h-3.5 w-3.5" />
+                    Player Intelligence Report
+                  </Badge>
+                  <h1 className="font-display text-4xl font-bold text-foreground md:text-5xl">{title}</h1>
+                  <p className="max-w-4xl text-lg text-muted-foreground">
+                    {[threatNarrative, weaknessNarrative, pressureNarrative].filter(Boolean).join(" ")}
+                  </p>
+                  {scopeFallbackReason ? (
+                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                      {scopeFallbackReason}
                     </div>
-
-                    <div className="mt-6 border-t border-cyan-400/12 pt-8">
-                      <div className="space-y-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300">Game-Changrs Player Intelligence</p>
-                        <div className="flex flex-wrap items-center gap-4">
-                          <h1 className="font-display text-4xl font-bold text-slate-50 md:text-6xl">{title}</h1>
-                          {recommendationLabel ? (
-                            <Badge className={`border px-5 py-2 text-base ${getToneClasses(recommendationTone)}`}>
-                              {recommendationLabel}
-                            </Badge>
-                          ) : null}
-                        </div>
-                        <p className="max-w-6xl text-lg leading-9 text-slate-100 md:text-[1.6rem] md:leading-[1.5]">
-                          {heroNarrative}
-                        </p>
-                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-                          <div className="rounded-[24px] border border-cyan-400/12 bg-slate-950/25 p-5">
-                            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-300">Team</p>
-                            <p className="mt-4 text-2xl font-semibold leading-snug text-slate-50">{teamName || "-"}</p>
-                          </div>
-                          <div className="rounded-[24px] border border-cyan-400/12 bg-slate-950/25 p-5">
-                            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-300">Primary Role</p>
-                            <p className="mt-4 text-2xl font-semibold leading-snug text-slate-50">{roleLabel || "-"}</p>
-                          </div>
-                          <div className="rounded-[24px] border border-cyan-400/12 bg-slate-950/25 p-5">
-                            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-300">Report Scope</p>
-                            <p className="mt-4 text-2xl font-semibold leading-snug text-slate-50">{scopeLabel}</p>
-                          </div>
-                          <div className="rounded-[24px] border border-emerald-500/20 bg-emerald-500/[0.08] p-5">
-                            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-300">Threat Level</p>
-                            <p className="mt-4 text-2xl font-semibold leading-snug text-emerald-300">{threatProfile.label}</p>
-                          </div>
-                          <div className="rounded-[24px] border border-emerald-500/20 bg-emerald-500/[0.08] p-5">
-                            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-300">Confidence</p>
-                            <p className="mt-4 text-2xl font-semibold leading-snug text-emerald-300">{confidenceValue}</p>
-                          </div>
-                          <div className="rounded-[24px] border border-emerald-500/20 bg-emerald-500/[0.08] p-5">
-                            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-300">Percentile</p>
-                            <p className="mt-4 text-2xl font-semibold leading-snug text-emerald-300">
-                              {formatOrdinal(intelligenceReport?.header?.percentileRank)}
-                            </p>
-                          </div>
-                          <div className="rounded-[24px] border border-emerald-500/20 bg-emerald-500/[0.08] p-5">
-                            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-300">Composite Score</p>
-                            <p className="mt-4 text-2xl font-semibold leading-snug text-emerald-300">
-                              {formatNumber(intelligenceReport?.header?.compositeScore)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {scopeFallbackReason ? (
-                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-                    {scopeFallbackReason}
-                  </div>
-                ) : null}
+                  ) : null}
+                </div>
               </div>
+
+              <Card className="border-border/80 bg-card shadow-card">
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Report Summary</p>
+                    <div className="rounded-2xl border border-border/80 bg-background/40 p-5">
+                      <p className="text-sm leading-7 text-foreground">
+                        {recommendationLabel
+                          ? `${recommendationLabel}. ${threatNarrative} ${weaknessNarrative} ${pressureNarrative}`
+                          : `${threatNarrative} ${weaknessNarrative} ${pressureNarrative}`}
+                      </p>
+                    </div>
+                    <dl className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                      <SummaryField label="Team" value={teamName || "-"} />
+                      <SummaryField label="Primary Role" value={roleLabel || "-"} />
+                      <SummaryField label="Batting Profile" value={battingStyleLabel} />
+                      <SummaryField label="Bowling Profile" value={bowlingStyleLabel} />
+                      <SummaryField label="Report Scope" value={scopeLabel} />
+                    </dl>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {intelligenceStatus === "loading" ? (
@@ -1654,7 +1621,7 @@ const AnalyticsIntelligenceReport = () => {
 
             {intelligenceStatus === "success" && intelligenceReport ? (
               <>
-                <Card className="border-border/80 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.08),transparent_24%),rgba(15,23,42,0.88)] shadow-xl">
+                <Card className="border-border/80 bg-card/85 shadow-xl">
                   <CardHeader className="space-y-4 pb-0">
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-cyan-200">
@@ -1665,7 +1632,7 @@ const AnalyticsIntelligenceReport = () => {
                   </CardHeader>
                   <CardContent className="space-y-8 pt-6">
                     <section className="grid gap-4 xl:grid-cols-2">
-                      <div className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/55 p-5">
+                      <div className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/40 p-5">
                         <div className="grid h-full gap-3 md:grid-cols-3">
                           <div className="flex h-full flex-col rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
                             <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-200">Main Threat</p>
@@ -1682,7 +1649,7 @@ const AnalyticsIntelligenceReport = () => {
                         </div>
                       </div>
 
-                      <div className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/55 p-5">
+                      <div className="flex h-full flex-col rounded-2xl border border-border/80 bg-background/40 p-5">
                         <div className="grid h-full flex-1 gap-3 sm:grid-cols-2">
                           <div className="flex h-full rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.08] p-4">
                             <SectionMetric
@@ -1826,7 +1793,7 @@ const AnalyticsIntelligenceReport = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="border-border/80 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.08),transparent_24%),rgba(15,23,42,0.88)] shadow-xl">
+                <Card className="border-border/80 bg-card/85 shadow-xl">
                   <CardHeader className="space-y-4 pb-0">
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-cyan-200">

@@ -5064,8 +5064,8 @@ function renderPlayerIntelligenceReportPage(report) {
   const battingStyle = normalizeText(header.battingStyle) || "Unknown";
   const bowlingStyle = normalizeText(header.bowlingStyle) || "Unknown";
 
-  const leadingStrength = tacticalSummary?.strengths?.[0] || null;
-  const leadingWatchout = tacticalSummary?.watchouts?.[0] || null;
+  const leadingStrength = pickPreferredSignal(tacticalSummary?.strengths);
+  const leadingWatchout = pickPreferredSignal(tacticalSummary?.watchouts);
   const leadingPressure = tacticalSummary?.pressureSignals?.[0] || null;
 
   const INTELLIGENCE_REPORT_CSS = `
@@ -5854,6 +5854,40 @@ function renderPlayerIntelligenceReportPage(report) {
       .trim();
   }
 
+  function isPlaceholderIntelligenceLabel(value) {
+    const text = normalizeText(value).toLowerCase();
+    return (
+      !text
+      || text === "unknown"
+      || text === "unknown style"
+      || text === "unknown setup"
+      || text === "unclassified"
+    );
+  }
+
+  function preferKnownIntelligenceItem(rows, getLabel) {
+    if (!Array.isArray(rows) || !rows.length) {
+      return null;
+    }
+
+    return rows.find((row) => !isPlaceholderIntelligenceLabel(getLabel(row))) || rows[0] || null;
+  }
+
+  function pickPreferredSignal(signals) {
+    if (!Array.isArray(signals) || !signals.length) {
+      return null;
+    }
+
+    return (
+      signals.find((signal) => {
+        const parsed = parseSignalLabel(signal?.label);
+        return Boolean(parsed.target);
+      })
+      || signals[0]
+      || null
+    );
+  }
+
   function getThreatTone(percentileRank) {
     const numeric = toNumber(percentileRank, null);
     if (numeric === null) {
@@ -5894,22 +5928,26 @@ function renderPlayerIntelligenceReportPage(report) {
     }
 
     if (normalized.startsWith("Batting vs ")) {
-      return { context: "batting", target: normalized.replace("Batting vs ", "") };
+      const target = normalized.replace("Batting vs ", "");
+      return { context: "batting", target: isPlaceholderIntelligenceLabel(target) ? "" : target };
     }
 
     if (normalized.startsWith("Bowling vs ")) {
-      return { context: "bowling", target: normalized.replace("Bowling vs ", "") };
+      const target = normalized.replace("Bowling vs ", "");
+      return { context: "bowling", target: isPlaceholderIntelligenceLabel(target) ? "" : target };
     }
 
     if (normalized.startsWith("Dismissal pattern vs ")) {
-      return { context: "dismissal", target: normalized.replace("Dismissal pattern vs ", "") };
+      const target = normalized.replace("Dismissal pattern vs ", "");
+      return { context: "dismissal", target: isPlaceholderIntelligenceLabel(target) ? "" : target };
     }
 
     if (normalized.startsWith("Batting pressure vs ")) {
-      return { context: "batting-risk", target: normalized.replace("Batting pressure vs ", "") };
+      const target = normalized.replace("Batting pressure vs ", "");
+      return { context: "batting-risk", target: isPlaceholderIntelligenceLabel(target) ? "" : target };
     }
 
-    return { context: "unknown", target: normalized };
+    return { context: "unknown", target: isPlaceholderIntelligenceLabel(normalized) ? "" : normalized };
   }
 
   function buildThreatNarrative(signal) {
@@ -6503,7 +6541,10 @@ function renderPlayerIntelligenceReportPage(report) {
 
   const battingPhaseWindow = pickBestPhase(focusedLens?.batting?.byPhase, "batting");
   const bowlingPhaseWindow = pickBestPhase(focusedLens?.bowling?.byPhase, "bowling");
-  const leadingDismissalCluster = focusedLens?.dismissals?.[0] || null;
+  const leadingDismissalCluster = preferKnownIntelligenceItem(
+    focusedLens?.dismissals,
+    (row) => row?.bowlerStyleLabel
+  );
   const peakThreatPhaseCard = !pressureCard
     ? buildPeakThreatPhaseCard(roleLabel, battingPhaseWindow, bowlingPhaseWindow)
     : null;
@@ -6527,7 +6568,9 @@ function renderPlayerIntelligenceReportPage(report) {
     ),
     metricCard(
       "Dismissal Cluster",
-      normalizeText(leadingDismissalCluster?.bowlerStyleLabel) || "Unknown",
+      isPlaceholderIntelligenceLabel(leadingDismissalCluster?.bowlerStyleLabel)
+        ? "Style not yet classified"
+        : normalizeText(leadingDismissalCluster?.bowlerStyleLabel) || "Style not yet classified",
       leadingDismissalCluster
         ? `${normalizeText(leadingDismissalCluster.dismissalType) || "Dismissal events"} most often arrive around ${displayNumber(leadingDismissalCluster.averageBallsFacedAtDismissal, 1, "0")} balls and ${displayNumber(leadingDismissalCluster.averageRunsAtDismissal, 1, "0")} runs into the innings.`
         : "No dismissal cluster is available yet in the live sample.",

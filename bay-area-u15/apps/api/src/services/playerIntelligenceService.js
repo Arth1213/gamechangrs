@@ -165,6 +165,27 @@ function formatBattingStyle(row) {
   return hand || raw || bucket || "";
 }
 
+function isPlaceholderIntelligenceLabel(value) {
+  const normalized = normalizeText(value).toLowerCase();
+  return (
+    !normalized
+    || normalized === "unknown"
+    || normalized === "unknown style"
+    || normalized === "unknown setup"
+    || normalized === "unclassified"
+  );
+}
+
+function preferKnownRows(rows, getLabel) {
+  const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
+  if (!list.length) {
+    return [];
+  }
+
+  const known = list.filter((row) => !isPlaceholderIntelligenceLabel(getLabel(row)));
+  return known.length ? known : list;
+}
+
 function buildDivisionLabelMap(rows) {
   return rows.reduce((acc, row) => {
     const divisionId = toInteger(row.division_id);
@@ -790,15 +811,15 @@ function buildLens(input) {
 }
 
 function pickBestBattingSplit(rows) {
-  return sortSplitRows(
-    rows.filter((row) => (row.legalBalls || 0) >= MIN_SPLIT_SAMPLE_BALLS),
-    "batting"
-  )[0] || null;
+  const eligibleRows = rows.filter((row) => (row.legalBalls || 0) >= MIN_SPLIT_SAMPLE_BALLS);
+  return sortSplitRows(preferKnownRows(eligibleRows, (row) => row.splitLabel), "batting")[0] || null;
 }
 
 function pickRiskBattingSplit(rows) {
-  return [...rows]
-    .filter((row) => (row.legalBalls || 0) >= MIN_SPLIT_SAMPLE_BALLS)
+  return [...preferKnownRows(
+    rows.filter((row) => (row.legalBalls || 0) >= MIN_SPLIT_SAMPLE_BALLS),
+    (row) => row.splitLabel
+  )]
     .sort((left, right) => {
       const dismissalDiff = (right.dismissals || 0) - (left.dismissals || 0);
       if (dismissalDiff !== 0) {
@@ -818,8 +839,10 @@ function pickRiskBattingSplit(rows) {
 }
 
 function pickBestBowlingSplit(rows) {
-  return [...rows]
-    .filter((row) => (row.legalBalls || 0) >= MIN_SPLIT_SAMPLE_BALLS)
+  return [...preferKnownRows(
+    rows.filter((row) => (row.legalBalls || 0) >= MIN_SPLIT_SAMPLE_BALLS),
+    (row) => row.splitLabel
+  )]
     .sort((left, right) => {
       const wicketDiff = (right.wickets || 0) - (left.wickets || 0);
       if (wicketDiff !== 0) {
@@ -834,6 +857,10 @@ function pickBestBowlingSplit(rows) {
 
       return (right.legalBalls || 0) - (left.legalBalls || 0);
     })[0] || null;
+}
+
+function pickDismissalRisk(rows) {
+  return preferKnownRows(rows, (row) => row.bowlerStyleLabel)[0] || rows[0] || null;
 }
 
 function buildSignalCards(input) {
@@ -863,25 +890,35 @@ function buildSignalCards(input) {
     });
   }
 
-  const dismissalRisk = input.lens.dismissals[0] || null;
+  const dismissalRisk = pickDismissalRisk(input.lens.dismissals);
   if (dismissalRisk) {
+    const hasClassifiedDismissalLabel = !isPlaceholderIntelligenceLabel(dismissalRisk.bowlerStyleLabel);
     watchouts.push({
-      label: `Dismissal pattern vs ${dismissalRisk.bowlerStyleLabel}`,
+      label: hasClassifiedDismissalLabel
+        ? `Dismissal pattern vs ${dismissalRisk.bowlerStyleLabel}`
+        : "Dismissal pattern",
       tone: "watch",
       metricLabel: "Dismissals",
       metricValue: dismissalRisk.dismissalCount,
-      note: `Most wickets here have come through ${dismissalRisk.dismissalType || "this dismissal type"}, usually around ${dismissalRisk.averageRunsAtDismissal || 0} runs at dismissal.`,
+      note: hasClassifiedDismissalLabel
+        ? `Most wickets here have come through ${dismissalRisk.dismissalType || "this dismissal type"}, usually around ${dismissalRisk.averageRunsAtDismissal || 0} runs at dismissal.`
+        : `Most wickets in the current sample have come against bowling styles that are not yet classified, usually around ${dismissalRisk.averageRunsAtDismissal || 0} runs at dismissal.`,
     });
   }
 
   const battingRisk = pickRiskBattingSplit(input.lens.batting.byBowlerType);
   if (battingRisk && (!dismissalRisk || battingRisk.splitLabel !== dismissalRisk.bowlerStyleLabel)) {
+    const hasClassifiedBattingRiskLabel = !isPlaceholderIntelligenceLabel(battingRisk.splitLabel);
     watchouts.push({
-      label: `Batting pressure vs ${battingRisk.splitLabel}`,
+      label: hasClassifiedBattingRiskLabel
+        ? `Batting pressure vs ${battingRisk.splitLabel}`
+        : "Batting pressure",
       tone: "watch",
       metricLabel: "Balls per dismissal",
       metricValue: battingRisk.ballsPerDismissal,
-      note: `Dismissed ${battingRisk.dismissals} times in ${battingRisk.legalBalls} balls against this bowling type.`,
+      note: hasClassifiedBattingRiskLabel
+        ? `Dismissed ${battingRisk.dismissals} times in ${battingRisk.legalBalls} balls against this bowling type.`
+        : `Dismissed ${battingRisk.dismissals} times in ${battingRisk.legalBalls} balls against bowling styles that are not yet classified.`,
     });
   }
 
@@ -943,10 +980,13 @@ function buildTacticalPlan(lens) {
     );
   }
 
-  const dismissalRisk = lens.dismissals[0] || null;
+  const dismissalRisk = pickDismissalRisk(lens.dismissals);
   if (dismissalRisk) {
+    const hasClassifiedDismissalLabel = !isPlaceholderIntelligenceLabel(dismissalRisk.bowlerStyleLabel);
     battingPlan.push(
-      `${dismissalRisk.bowlerStyleLabel} has produced the most dismissals so far, especially by ${dismissalRisk.dismissalType || "wickets"}.`
+      hasClassifiedDismissalLabel
+        ? `${dismissalRisk.bowlerStyleLabel} has produced the most dismissals so far, especially by ${dismissalRisk.dismissalType || "wickets"}.`
+        : `The largest dismissal cluster so far comes against bowling styles that are not yet classified, especially by ${dismissalRisk.dismissalType || "wickets"}.`
     );
   }
 

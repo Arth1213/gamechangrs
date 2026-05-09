@@ -154,6 +154,28 @@ function sanitizeIntelligenceCopy(value: unknown) {
     .trim();
 }
 
+function isPlaceholderIntelligenceLabel(value: unknown) {
+  const normalized = normalizeTextValue(value).toLowerCase();
+  return (
+    !normalized
+    || normalized === "unknown"
+    || normalized === "unknown style"
+    || normalized === "unknown setup"
+    || normalized === "unclassified"
+  );
+}
+
+function preferKnownIntelligenceItem<T>(
+  rows: T[] | null | undefined,
+  getLabel: (row: T) => unknown,
+) {
+  if (!rows?.length) {
+    return null;
+  }
+
+  return rows.find((row) => !isPlaceholderIntelligenceLabel(getLabel(row))) || rows[0] || null;
+}
+
 function getPhaseLabel(key: string) {
   switch (key) {
     case "powerplay":
@@ -291,19 +313,23 @@ function parseSignalLabel(label: unknown) {
   }
 
   if (normalized.startsWith("Batting vs ")) {
-    return { context: "batting", target: normalized.replace("Batting vs ", "") };
+    const target = normalized.replace("Batting vs ", "");
+    return { context: "batting", target: isPlaceholderIntelligenceLabel(target) ? "" : target };
   }
   if (normalized.startsWith("Bowling vs ")) {
-    return { context: "bowling", target: normalized.replace("Bowling vs ", "") };
+    const target = normalized.replace("Bowling vs ", "");
+    return { context: "bowling", target: isPlaceholderIntelligenceLabel(target) ? "" : target };
   }
   if (normalized.startsWith("Dismissal pattern vs ")) {
-    return { context: "dismissal", target: normalized.replace("Dismissal pattern vs ", "") };
+    const target = normalized.replace("Dismissal pattern vs ", "");
+    return { context: "dismissal", target: isPlaceholderIntelligenceLabel(target) ? "" : target };
   }
   if (normalized.startsWith("Batting pressure vs ")) {
-    return { context: "batting-risk", target: normalized.replace("Batting pressure vs ", "") };
+    const target = normalized.replace("Batting pressure vs ", "");
+    return { context: "batting-risk", target: isPlaceholderIntelligenceLabel(target) ? "" : target };
   }
 
-  return { context: "unknown", target: normalized };
+  return { context: "unknown", target: isPlaceholderIntelligenceLabel(normalized) ? "" : normalized };
 }
 
 function buildThreatNarrative(signal: { label?: string; note?: string } | null | undefined) {
@@ -406,12 +432,16 @@ function summarizeMatchupSection(rows: CricketPlayerIntelligenceMatchupRow[] | u
       : "No bowling matchup sample is available yet.";
   }
 
-  const top = rows[0];
+  const top = preferKnownIntelligenceItem(rows, (row) => row.splitLabel) || rows[0];
   if (mode === "batting") {
-    return `Best scoring so far has come against ${top.splitLabel}.`;
+    return isPlaceholderIntelligenceLabel(top.splitLabel)
+      ? "Best scoring so far has come against bowling types that are not yet classified."
+      : `Best scoring so far has come against ${top.splitLabel}.`;
   }
 
-  return `Best bowling control so far has come against ${top.splitLabel}.`;
+  return isPlaceholderIntelligenceLabel(top.splitLabel)
+    ? "Best bowling control so far has come against batting types that are not yet classified."
+    : `Best bowling control so far has come against ${top.splitLabel}.`;
 }
 
 function summarizeDismissalSection(rows: CricketPlayerIntelligenceDismissalRow[] | undefined) {
@@ -419,8 +449,10 @@ function summarizeDismissalSection(rows: CricketPlayerIntelligenceDismissalRow[]
     return "No dismissal pattern is available yet.";
   }
 
-  const top = rows[0];
-  return `Most dismissals so far have come against ${top.bowlerStyleLabel}.`;
+  const top = preferKnownIntelligenceItem(rows, (row) => row.bowlerStyleLabel) || rows[0];
+  return isPlaceholderIntelligenceLabel(top.bowlerStyleLabel)
+    ? "Most dismissals so far have come against bowling styles that are not yet classified."
+    : `Most dismissals so far have come against ${top.bowlerStyleLabel}.`;
 }
 
 function buildPhaseLensNarrative(lens: CricketPlayerIntelligenceLens | null) {
@@ -1191,8 +1223,14 @@ const AnalyticsIntelligenceReport = () => {
   const recommendationLabel = normalizeTextValue(intelligenceReport?.header?.recommendationLabel) || null;
   const recommendationTone = getRecommendationTone(recommendationLabel);
   const threatProfile = getThreatProfile(intelligenceReport?.header?.percentileRank);
-  const leadingStrength = intelligenceReport?.tacticalSummary?.strengths?.[0] || null;
-  const leadingWatchout = intelligenceReport?.tacticalSummary?.watchouts?.[0] || null;
+  const leadingStrength = preferKnownIntelligenceItem(
+    intelligenceReport?.tacticalSummary?.strengths,
+    (signal) => parseSignalLabel(signal?.label).target
+  );
+  const leadingWatchout = preferKnownIntelligenceItem(
+    intelligenceReport?.tacticalSummary?.watchouts,
+    (signal) => parseSignalLabel(signal?.label).target
+  );
   const pressureProfile = focusedLens?.pressureProfile || null;
   const battingPlanItems = normalizeStringArray(intelligenceReport?.tacticalPlan?.battingPlan);
   const confidenceValue =

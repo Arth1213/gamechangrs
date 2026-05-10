@@ -1106,6 +1106,20 @@ function displayDataValue(value) {
   return normalizeText(String(value)) || "—";
 }
 
+function formatOvers(oversDecimal, legalBalls) {
+  const decimal = toNumber(oversDecimal, null);
+  if (decimal !== null) {
+    return decimal.toFixed(1);
+  }
+
+  const balls = toInteger(legalBalls);
+  if (balls === null || balls <= 0) {
+    return "0.0";
+  }
+
+  return `${Math.floor(balls / 6)}.${balls % 6}`;
+}
+
 function percentWidth(value) {
   const numeric = toNumber(value, 0);
   return Math.max(0, Math.min(100, numeric));

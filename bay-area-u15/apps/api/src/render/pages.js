@@ -5507,6 +5507,14 @@ function renderPlayerIntelligenceReportPage(report) {
       margin-bottom: 6px;
     }
 
+    .hero-summary {
+      margin: 12px 0 16px;
+      color: #dcebf2;
+      font-size: 14px;
+      line-height: 1.7;
+      max-width: 72ch;
+    }
+
     .hero-facts-grid {
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -6297,6 +6305,54 @@ function renderPlayerIntelligenceReportPage(report) {
     );
   }
 
+  function capitalizeFirstLetter(value) {
+    const text = normalizeText(value);
+    if (!text) {
+      return "";
+    }
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  function buildTacticalSummary(input) {
+    const roleText = normalizeText(input.roleLabel).toLowerCase();
+    const threat = parseSignalLabel(input.leadingStrength?.label);
+    const weakness = parseSignalLabel(input.leadingWatchout?.label);
+    const primaryRead = threat.context === "bowling" || roleText.includes("bowler")
+      ? "bowling-led opposition threat"
+      : threat.context === "batting" || roleText.includes("batter")
+        ? "batting-first opposition threat"
+        : "live opposition threat";
+
+    const threatLine = threat.target
+      ? `The main live danger is ${threat.context === "bowling" ? "with the ball" : "with the bat"}, especially against ${threat.target}.`
+      : "The main live danger is visible, but the clearest matchup label is still building.";
+
+    const phaseLine = input.battingPhaseWindow?.row
+      ? `Impact is strongest in the ${formatPhaseLabel(input.battingPhaseWindow.phaseKey).toLowerCase()} overs.`
+      : input.bowlingPhaseWindow?.row
+        ? `Bowling pressure peaks in the ${formatPhaseLabel(input.bowlingPhaseWindow.phaseKey).toLowerCase()} overs.`
+        : "Phase strength is still building from the live sample.";
+
+    const weaknessParts = [];
+    if (weakness.target) {
+      weaknessParts.push(`main watchout is ${weakness.target}`);
+    }
+    if (input.pressureCard?.value) {
+      weaknessParts.push(`dot-ball pressure starts to matter after about ${input.pressureCard.value.toLowerCase()}`);
+    }
+    const weaknessLine = weaknessParts.length
+      ? `${capitalizeFirstLetter(weaknessParts.join(", "))}.`
+      : "Main watchout is still building from the live sample.";
+
+    const netLine = primaryRead.includes("batting")
+      ? "Net: game-plan around containing the batting impact first, not around expecting secondary bowling value."
+      : primaryRead.includes("bowling")
+        ? "Net: game-plan around disrupting the bowling impact first and forcing the player into secondary disciplines."
+        : "Net: plan around the clearest live threat first and keep the rest of the profile secondary.";
+
+    return `${input.playerName} reads as a ${primaryRead}. ${threatLine} ${phaseLine} ${weaknessLine} ${netLine}`;
+  }
+
   function toneClassName(tone) {
     return tone === "good" ? "good" : tone === "risk" ? "risk" : "watch";
   }
@@ -6853,6 +6909,15 @@ function renderPlayerIntelligenceReportPage(report) {
     focusedLens?.dismissals,
     (row) => row?.bowlerStyleLabel
   );
+  const tacticalSummaryNarrative = buildTacticalSummary({
+    playerName,
+    roleLabel,
+    leadingStrength,
+    leadingWatchout,
+    pressureCard,
+    battingPhaseWindow,
+    bowlingPhaseWindow,
+  });
   const peakThreatPhaseCard = !pressureCard
     ? buildPeakThreatPhaseCard(roleLabel, battingPhaseWindow, bowlingPhaseWindow)
     : null;
@@ -6962,6 +7027,7 @@ function renderPlayerIntelligenceReportPage(report) {
                     <div class="hero-kicker">Game-Changrs Player Intelligence</div>
                     <h1>${escapeHtml(playerName)}</h1>
                   </div>
+                  <p class="hero-summary">${escapeHtml(tacticalSummaryNarrative)}</p>
                   <div class="hero-facts-grid">
                     ${heroFactCard("Team", teamName, "team")}
                     ${heroFactCard("Role", roleLabel, "role")}

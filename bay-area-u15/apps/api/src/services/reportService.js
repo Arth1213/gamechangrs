@@ -1400,6 +1400,10 @@ function deriveReportMetrics(input) {
     recentFormScore,
     confidenceScore,
     div1SplitScore,
+    seriesName: input.context?.seriesName,
+    targetAgeGroup: input.context?.targetAgeGroup,
+    currentSeriesStats: input.currentSeriesStats,
+    overallStats: input.overallStats,
   });
 
   const standardStats = {
@@ -2019,32 +2023,8 @@ function buildPeerNote(peerRow, selectedSeason) {
 }
 
 function buildSelectorTakeaway(input) {
-  const strengths = [];
   const cautions = [];
   const roleLabel = humanizeRole(input.roleType).toLowerCase();
-
-  if (input.bowlingScore >= 80) {
-    strengths.push("strong bowling impact");
-  }
-  if (input.battingScore >= 75) {
-    strengths.push("credible batting support");
-  }
-  if (input.strongOppositionScore >= 80) {
-    strengths.push("stronger-opposition readiness");
-  }
-  if (input.matchImpactScore >= 80) {
-    strengths.push("good match-impact value");
-  }
-  if (input.consistencyScore >= 75) {
-    strengths.push("a stable current sample");
-  }
-  if (input.recentFormScore >= 78) {
-    strengths.push("positive recent form");
-  }
-  if (input.div1SplitScore >= 75) {
-    strengths.push("a credible stronger-division read");
-  }
-
   if (input.confidenceScore < 65) {
     cautions.push("the evidence depth is still limited");
   }
@@ -2055,25 +2035,135 @@ function buildSelectorTakeaway(input) {
     cautions.push("recent form has softened");
   }
 
-  const strengthText = joinReadable(
-    strengths.length ? strengths.slice(0, 3) : ["a credible current sample"]
-  );
   const cautionText = cautions.length
     ? ` Main watchout: ${joinReadable(cautions.slice(0, 2))}.`
     : "";
 
-  let profileLead = roleLabel;
+  const profileLead = buildSelectorProfileLead(input);
+  const publicFootprint = buildSelectorPublicFootprint(input);
+  const currentSeriesRead = buildSelectorCurrentSeriesRead(input);
+  const netRead = buildSelectorNetRead(input);
+
+  return `${input.playerName} looks like a ${profileLead}${publicFootprint}.${currentSeriesRead} ${netRead}.${cautionText}`.trim();
+}
+
+function buildSelectorProfileLead(input) {
+  const roleLabel = humanizeRole(input.roleType).toLowerCase();
+
   if (roleLabel.includes("all-rounder")) {
     if (input.battingScore >= 75 && input.bowlingScore >= 80) {
-      profileLead = "genuine two-way all-rounder";
-    } else if (input.bowlingScore > input.battingScore) {
-      profileLead = "bowling all-rounder";
-    } else if (input.battingScore > input.bowlingScore) {
-      profileLead = "batting-led all-rounder";
+      return "genuine two-way all-rounder";
+    }
+    if (input.bowlingScore > input.battingScore) {
+      return "bowling all-rounder";
+    }
+    if (input.battingScore > input.bowlingScore) {
+      return "batting-led all-rounder";
     }
   }
 
-  return `${input.playerName} profiles as a ${profileLead} with ${strengthText}.${cautionText}`;
+  if (roleLabel.includes("batter") || roleLabel.includes("batting")) {
+    return input.bowlingScore >= 55 ? "batting-first player with secondary bowling value" : "batting-first player";
+  }
+
+  if (roleLabel.includes("bowler") || roleLabel.includes("bowling")) {
+    return input.battingScore >= 60 ? "bowling-first player with useful batting support" : "bowling-first player";
+  }
+
+  return roleLabel || "player";
+}
+
+function buildSelectorPublicFootprint(input) {
+  const overallBatting = input.overallStats?.batting || {};
+  const overallBowling = input.overallStats?.bowling || {};
+  const matches = toInteger(overallBatting.matches) || toInteger(overallBowling.matches) || 0;
+  const runs = toInteger(overallBatting.runs) || 0;
+  const wickets = toInteger(overallBowling.wickets) || 0;
+  const hasPublicProfile = matches > 0 || runs > 0 || wickets > 0;
+
+  if (!hasPublicProfile) {
+    return " whose current sample is the main usable evidence right now";
+  }
+
+  if (runs >= 300 && wickets >= 10) {
+    return matches >= 40
+      ? " whose public CricClubs footprint is already deep and credible, with both batting and bowling volume visible rather than a one-skill profile"
+      : " whose public CricClubs profile already shows both batting and bowling involvement";
+  }
+
+  if (runs >= Math.max(wickets * 25, 300)) {
+    return matches >= 40
+      ? " whose public CricClubs profile is driven much more by batting than bowling"
+      : " whose public record already leans clearly toward batting";
+  }
+
+  if (wickets >= Math.max(Math.round(runs / 30), 10)) {
+    return matches >= 40
+      ? " whose public CricClubs profile is driven much more by bowling than batting"
+      : " whose public record already leans clearly toward bowling";
+  }
+
+  return matches >= 40
+    ? " whose public CricClubs record already has enough depth to matter"
+    : " whose public record is still relatively light";
+}
+
+function buildSelectorCurrentSeriesRead(input) {
+  const contextLabel = [normalizeText(input.seriesName), normalizeText(input.targetAgeGroup)]
+    .filter(Boolean)
+    .join(" ");
+  const contextText = contextLabel ? `In the current ${contextLabel} view, ` : "In the current series view, ";
+  const confidenceText =
+    input.confidenceScore >= 80
+      ? "the profile reads as a high-confidence"
+      : input.confidenceScore >= 65
+        ? "the profile reads as a credible"
+        : "the profile still reads as more of a watchlist";
+
+  let roleRead = humanizeRole(input.roleType).toLowerCase();
+  if (roleRead.includes("all-rounder")) {
+    roleRead =
+      input.bowlingScore > input.battingScore
+        ? "bowling all-rounder with real batting support"
+        : input.battingScore > input.bowlingScore
+          ? "batting-led all-rounder with credible secondary value"
+          : "balanced all-rounder";
+  }
+
+  const strengths = [];
+  if (input.matchImpactScore >= 80) {
+    strengths.push("strong selector-grade scores");
+  }
+  if (input.strongOppositionScore >= 80) {
+    strengths.push("strong-vs-strong-opposition signal");
+  }
+  if (input.battingScore >= 75 && input.bowlingScore >= 80) {
+    strengths.push("enough output to help in both disciplines");
+  } else if (input.battingScore >= 75) {
+    strengths.push("enough batting output to matter beyond the primary role");
+  } else if (input.bowlingScore >= 80) {
+    strengths.push("enough bowling impact to carry the primary role");
+  }
+  if (input.consistencyScore >= 75) {
+    strengths.push("a stable current sample");
+  }
+
+  const strengthText = joinReadable(strengths.length ? strengths.slice(0, 3) : ["a usable live sample"]);
+  return `${contextText}${confidenceText} ${roleRead}: ${strengthText}.`;
+}
+
+function buildSelectorNetRead(input) {
+  const recommendation = normalizeText(input.recommendation).toLowerCase();
+
+  if (recommendation.includes("strong consideration")) {
+    return "Net: serious selection profile now, not just a development watch";
+  }
+
+  if (recommendation.includes("watch")) {
+    return "Net: development watch for now, but with clear traits worth tracking";
+  }
+
+  return "Net: credible selection case, with role fit and opposition context still mattering";
 }
 
 function buildTrendCards(matchRows) {

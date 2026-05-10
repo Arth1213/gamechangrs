@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game-Changrs Restore Guide</title>
+    <style>
+      :root {
+        --bg: #f4f1e8;
+        --paper: #fffaf0;
+        --ink: #172033;
+        --muted: #5c6473;
+        --line: #d8cdb8;
+        --accent: #0f766e;
+        --accent-soft: #d9f4ef;
+        --warn: #92400e;
+        --warn-soft: #fff2df;
+        --shadow: 0 18px 40px rgba(23, 32, 51, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        background:
+          radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 30%),
+          linear-gradient(180deg, #efe9dc 0%, var(--bg) 100%);
+        color: var(--ink);
+      }
+
+      .page {
+        width: min(1040px, calc(100vw - 40px));
+        margin: 24px auto 48px;
+      }
+
+      .hero {
+        background: linear-gradient(145deg, rgba(255, 250, 240, 0.98), rgba(250, 244, 230, 0.98));
+        border: 1px solid rgba(216, 205, 184, 0.95);
+        border-radius: 28px;
+        padding: 32px;
+        box-shadow: var(--shadow);
+      }
+
+      .eyebrow {
+        display: inline-block;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 18px 0 12px;
+        font-size: clamp(34px, 4vw, 54px);
+        line-height: 0.95;
+        letter-spacing: -0.03em;
+      }
+
+      .lead {
+        max-width: 720px;
+        font-size: 18px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .hero-grid,
+      .two-col,
+      .cards {
+        display: grid;
+        gap: 18px;
+      }
+
+      .hero-grid {
+        margin-top: 24px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .two-col {
+        margin-top: 20px;
+        grid-template-columns: 1.2fr 0.8fr;
+      }
+
+      .cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .card {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 20px;
+        box-shadow: 0 10px 24px rgba(23, 32, 51, 0.05);
+      }
+
+      .metric-label,
+      .card h2,
+      .card h3 {
+        margin: 0 0 10px;
+      }
+
+      .metric-label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .metric-value {
+        font-size: 30px;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .section {
+        margin-top: 22px;
+      }
+
+      .section-title {
+        margin: 0 0 14px;
+        font-size: 24px;
+        letter-spacing: -0.02em;
+      }
+
+      .step-list,
+      .check-list,
+      .doc-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .step,
+      .check,
+      .doc {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 14px;
+        align-items: start;
+        padding: 14px 0;
+        border-top: 1px solid rgba(216, 205, 184, 0.8);
+      }
+
+      .step:first-child,
+      .check:first-child,
+      .doc:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .step-no,
+      .check-mark {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        flex: 0 0 auto;
+      }
+
+      .step-no {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+
+      .check-mark {
+        background: #eef2ff;
+        color: #334155;
+      }
+
+      .note {
+        margin-top: 18px;
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: var(--warn-soft);
+        color: var(--warn);
+        border: 1px solid rgba(146, 64, 14, 0.18);
+      }
+
+      code,
+      .path {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+      }
+
+      .path {
+        display: block;
+        margin-top: 6px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: #f7f2e6;
+        border: 1px solid rgba(216, 205, 184, 0.9);
+        overflow-wrap: anywhere;
+      }
+
+      .prompt-box {
+        white-space: pre-wrap;
+        line-height: 1.55;
+        font-size: 14px;
+      }
+
+      .footer {
+        margin-top: 18px;
+        text-align: center;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      @media (max-width: 860px) {
+        .hero-grid,
+        .two-col,
+        .cards {
+          grid-template-columns: 1fr;
+        }
+
+        .hero {
+          padding: 22px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <span class="eyebrow">Current Restore Guide</span>
+        <h1>Restore Game-Changrs From Clean Slate</h1>
+        <p class="lead">
+          This is the canonical single-file restore guide for Game-Changrs. Each
+          <strong>backup everything for me</strong> run should generate a dated restore-point copy
+          based on this guide, with the exact folder path, commit, and backup artifact names filled in.
+        </p>
+
+        <div class="hero-grid">
+          <article class="card">
+            <div class="metric-label">Latest Restore Folder</div>
+            <div class="metric-value">OneDrive</div>
+            <p class="muted">Auto-filled with the current restore-point folder path.</p>
+          </article>
+          <article class="card">
+            <div class="metric-label">GitHub State</div>
+            <div class="metric-value">main</div>
+            <p class="muted">Shows the exact commit hash and whether the backup is clean.</p>
+          </article>
+          <article class="card">
+            <div class="metric-label">Database Backup</div>
+            <div class="metric-value">Included</div>
+            <p class="muted">Lists analytics exports and main app backup/export artifacts.</p>
+          </article>
+          <article class="card">
+            <div class="metric-label">Codex Option</div>
+            <div class="metric-value">Ready</div>
+            <p class="muted">A restore prompt is attached so Codex can do the rebuild for you.</p>
+          </article>
+        </div>
+
+        <div class="two-col">
+          <article class="card">
+            <h2 class="section-title">If You Are Restoring As A Layman</h2>
+            <div class="step-list">
+              <div class="step">
+                <div class="step-no">1</div>
+                <div>
+                  <strong>Put the backup files back on the machine.</strong>
+                  <span class="path">/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/YYYYMMDD/RESTORE-POINT</span>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-no">2</div>
+                <div>
+                  <strong>Restore the two env files into the repo locations.</strong>
+                  <span class="path">root .env -> gamechangrs-phase10-deploy/.env</span>
+                  <span class="path">analytics .env -> gamechangrs-phase10-deploy/bay-area-u15/.env</span>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-no">3</div>
+                <div>
+                  <strong>Complete the external platform setup checklist before starting services.</strong>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-no">4</div>
+                <div>
+                  <strong>Open the Codex prompt file if you want Codex to do the restore.</strong>
+                  <span class="path">CODEX_CLEAN_SLATE_RESTORE_PROMPT_CURRENT.txt</span>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-no">5</div>
+                <div>
+                  <strong>If doing it manually, follow the simple startup commands in this file.</strong>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-no">6</div>
+                <div>
+                  <strong>Verify the homepage, analytics pages, and local ops page.</strong>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <h2 class="section-title">What Must Be In The Backup Set</h2>
+            <div class="check-list">
+              <div class="check">
+                <div class="check-mark">✓</div>
+                <div>
+                  Git bundle, source archive, full worktree archive
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">✓</div>
+                <div>
+                  Root `.env` and `bay-area-u15/.env` restore copies
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">✓</div>
+                <div>
+                  Analytics DB schema + data backup
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">✓</div>
+                <div>
+                  Main app DB backup or logical export archive
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">✓</div>
+                <div>
+                  Layman restore guide and Codex restore prompt
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="section two-col">
+          <article class="card">
+            <h3 class="section-title">Set These Before Restore Startup</h3>
+            <div class="check-list">
+              <div class="check">
+                <div class="check-mark">1</div>
+                <div>
+                  <strong>Render</strong>
+                  <p class="muted">Confirm the cricket API service exists, points to the correct codebase, and has the required environment variables restored in the Render dashboard before you expect hosted analytics routes to work.</p>
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">2</div>
+                <div>
+                  <strong>Supabase Main App</strong>
+                  <p class="muted">Confirm the main app project is accessible, the site URL and redirect URLs are correct, and auth providers used by the app are configured before testing sign-in.</p>
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">3</div>
+                <div>
+                  <strong>Supabase Analytics / Local Ops</strong>
+                  <p class="muted">Confirm the analytics database target is reachable and that any required migrations, function deployments, and project-side secrets are in place before starting local ops or hosted report flows.</p>
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">4</div>
+                <div>
+                  <strong>Google OAuth</strong>
+                  <p class="muted">Confirm the OAuth client exists, redirect URIs match the live and local app URLs, and consent-screen settings are valid before testing Google sign-in.</p>
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">5</div>
+                <div>
+                  <strong>Resend</strong>
+                  <p class="muted">Confirm the sending domain, sender identity, and API key are active before testing report email delivery or other transactional email flows.</p>
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">6</div>
+                <div>
+                  <strong>Lovable and DNS</strong>
+                  <p class="muted">Confirm project access in Lovable and verify domain or DNS ownership/settings if any live publish or redirect path depends on them.</p>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3 class="section-title">What You Should Set In Each Platform</h3>
+            <div class="doc-list">
+              <div class="doc">
+                <div class="check-mark">A</div>
+                <div>
+                  <strong>Render</strong>
+                  <p class="muted">Restore environment variables, confirm service root/build/start settings, and verify the live API URL matches the frontend expectations.</p>
+                </div>
+              </div>
+              <div class="doc">
+                <div class="check-mark">B</div>
+                <div>
+                  <strong>Supabase</strong>
+                  <p class="muted">Restore project access, auth/provider settings, redirect URLs, edge-function secrets, storage settings, and database backup state as needed for the relevant project boundary.</p>
+                </div>
+              </div>
+              <div class="doc">
+                <div class="check-mark">C</div>
+                <div>
+                  <strong>Google</strong>
+                  <p class="muted">Restore OAuth client settings and allowed redirects. Do not start sign-in verification until these match the app URLs exactly.</p>
+                </div>
+              </div>
+              <div class="doc">
+                <div class="check-mark">D</div>
+                <div>
+                  <strong>Resend / Email</strong>
+                  <p class="muted">Restore API key ownership, sender identity, and domain verification so report delivery and other email flows can succeed.</p>
+                </div>
+              </div>
+              <div class="doc">
+                <div class="check-mark">E</div>
+                <div>
+                  <strong>Lovable / Publish Surface</strong>
+                  <p class="muted">Restore project access and any publish-linked settings that are not stored inside the repo.</p>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="section cards">
+          <article class="card">
+            <h3 class="section-title">Manual Start Commands</h3>
+            <p><strong>Frontend</strong></p>
+            <span class="path">cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy && npm install && npm run dev</span>
+            <p><strong>Analytics API + Local Ops</strong></p>
+            <span class="path">cd /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15</span>
+            <span class="path">set -a && source .env && set +a && PORT=4012 npm run ops:ui:start</span>
+          </article>
+
+          <article class="card">
+            <h3 class="section-title">Local Ops URLs</h3>
+            <span class="path">http://127.0.0.1:4012/local-ops</span>
+            <span class="path">http://127.0.0.1:4012/api/local-ops/overview</span>
+            <span class="path">http://127.0.0.1:4012/health</span>
+            <p class="muted">These will be included so new-series onboarding and series management are easy to reach after restore.</p>
+          </article>
+        </div>
+
+        <div class="section two-col">
+          <article class="card">
+            <h3 class="section-title">Configs Included In The Backup Set</h3>
+            <div class="check-list">
+              <div class="check">
+                <div class="check-mark">✓</div>
+                <div>
+                  <strong>Root app env restore copy</strong>
+                  <span class="path">gamechangrs-phase10-deploy/.env</span>
+                  <p class="muted">Includes the frontend-facing main app Supabase connection surface and related local app wiring.</p>
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">✓</div>
+                <div>
+                  <strong>Analytics/local-ops env restore copy</strong>
+                  <span class="path">gamechangrs-phase10-deploy/bay-area-u15/.env</span>
+                  <p class="muted">Includes the analytics API database connection surface, auth wiring, and local-ops runtime config.</p>
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">✓</div>
+                <div>
+                  <strong>Supabase repo config</strong>
+                  <span class="path">supabase/config.toml</span>
+                  <span class="path">supabase/migrations/</span>
+                  <span class="path">supabase/functions/</span>
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">✓</div>
+                <div>
+                  <strong>Database restore artifacts</strong>
+                  <span class="path">/Users/artharun/Downloads/GAME-CHANGRS/backups</span>
+                  <p class="muted">Includes analytics schema/data exports and the main app database backup or logical export archive.</p>
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">✓</div>
+                <div>
+                  <strong>Migration ownership references</strong>
+                  <span class="path">migration-manifests/main_app_supabase_migrations_2026_05_04.txt</span>
+                  <span class="path">migration-manifests/analytics_local_ops_owned_by_azgebbtasywunltdhdby_2026_05_04.txt</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3 class="section-title">Configs Documented But Still Externally Managed</h3>
+            <div class="check-list">
+              <div class="check">
+                <div class="check-mark">!</div>
+                <div>
+                  <strong>Render</strong>
+                  <p class="muted">Service settings, live environment variables, deploy hooks, and runtime controls still require Render dashboard access.</p>
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">!</div>
+                <div>
+                  <strong>Resend</strong>
+                  <p class="muted">API key, sender/domain verification, and outbound email status remain platform-managed.</p>
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">!</div>
+                <div>
+                  <strong>Lovable</strong>
+                  <p class="muted">Project workspace access and any platform-side settings are referenced in docs but not fully exportable from this repo.</p>
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">!</div>
+                <div>
+                  <strong>Google Auth</strong>
+                  <p class="muted">OAuth client, redirect URIs, consent-screen settings, and provider-side credentials still need Google console access.</p>
+                </div>
+              </div>
+              <div class="check">
+                <div class="check-mark">!</div>
+                <div>
+                  <strong>Supabase project dashboards</strong>
+                  <p class="muted">Project-level secrets, auth provider setup, redirect URLs, storage settings, and edge-function secret values still require Supabase dashboard or CLI access.</p>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="section cards">
+          <article class="card">
+            <h3 class="section-title">Current Database Boundaries</h3>
+            <div class="doc-list">
+              <div class="doc">
+                <div class="check-mark">1</div>
+                <div>
+                  <strong>Main app database boundary</strong>
+                  <p class="muted">Main app frontend/auth stack is wired to the primary Supabase app project.</p>
+                  <span class="path">Main app Supabase project ref: tpiegapsjeetvwsybjiu</span>
+                </div>
+              </div>
+              <div class="doc">
+                <div class="check-mark">2</div>
+                <div>
+                  <strong>Analytics and local-ops database boundary</strong>
+                  <p class="muted">Cricket analytics/local-ops runs against the separate Postgres boundary currently reached through the analytics pooler host.</p>
+                  <span class="path">Analytics database host boundary: azgebbtasywunltdhdby</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3 class="section-title">Platforms Called Out In Restore</h3>
+            <div class="doc-list">
+              <div class="doc">
+                <div class="check-mark">A</div>
+                <div>Supabase main app, Supabase analytics/local-ops, Render API service, Resend, Lovable, Google auth, and domain/DNS dependencies will each be listed as either <strong>included in backup</strong> or <strong>requires dashboard access</strong>.</div>
+              </div>
+              <div class="doc">
+                <div class="check-mark">B</div>
+                <div>Secret values themselves should not be printed in the layman guide or the email. The guide should describe where each config comes from and which file or platform owns it.</div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="section cards">
+          <article class="card">
+            <h3 class="section-title">Documents Included</h3>
+            <div class="doc-list">
+              <div class="doc">
+                <div class="check-mark">1</div>
+                <div>
+                  <strong>Single-file layman restore guide</strong>
+                  <span class="path">LATEST_RESTORE_GUIDE.html</span>
+                </div>
+              </div>
+              <div class="doc">
+                <div class="check-mark">2</div>
+                <div>
+                  <strong>Codex restore prompt</strong>
+                  <span class="path">CODEX_CLEAN_SLATE_RESTORE_PROMPT_CURRENT.txt</span>
+                </div>
+              </div>
+              <div class="doc">
+                <div class="check-mark">3</div>
+                <div>
+                  <strong>Operator local-ops and series management guide</strong>
+                  <span class="path">LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_CURRENT.md</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3 class="section-title">Codex Restore Prompt</h3>
+            <div class="prompt-box path">Restore Game-Changrs from the latest OneDrive restore-point folder. Recreate the repo, restore the env files, install dependencies, restore the database backups, start the frontend and analytics local-ops service, verify the main pages and local ops, and tell me exactly what external accounts are still required.</div>
+          </article>
+        </div>
+
+        <div class="note">
+          <strong>Operational note:</strong> each dated restore-point backup should carry a generated
+          copy of this guide with the current restore folder path, current commit hash, current database
+          artifact names, and current local-ops startup details filled in.
+        </div>
+      </section>
+
+      <p class="footer">
+        Canonical restore guide stored in Git. Dated backup runs should export a filled-in copy
+        so a layman can restore without jumping across multiple documents.
+      </p>
+    </main>
+  </body>
+</html>

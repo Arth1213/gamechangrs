@@ -1,0 +1,54 @@
+Restore Game-Changrs from the latest available OneDrive restore-point folder under:
+
+/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup
+
+Use this repo path as the restore target:
+
+/Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy
+
+Primary objective:
+
+Rebuild the app from a clean slate so the frontend, analytics/player reports, and local-ops flows work again with the current backup set.
+
+What to do:
+
+1. Identify the most recent dated restore-point folder under the OneDrive backup root and report which one you are using.
+2. Prefer restoring the repo from GitHub main if GitHub is reachable. If not, restore from the git bundle inside the latest restore-point folder.
+3. Read these canonical restore docs from the repo and use them as the source of truth:
+   - /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/docs/LATEST_RESTORE_GUIDE.html
+   - /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_CURRENT.md
+   - /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/BACKUP_EVERYTHING_PROTOCOL.md
+4. Restore the root env file into:
+   - /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/.env
+5. Restore the analytics/local-ops env file into:
+   - /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15/.env
+6. Before starting services, verify which external platform settings still need to be in place:
+   - Render service settings and env
+   - Supabase main app project settings
+   - Supabase analytics/local-ops project settings
+   - Google OAuth settings
+   - Resend/email settings
+   - Lovable and any required DNS/domain settings
+7. Install dependencies in the repo root and in bay-area-u15.
+8. Restore the latest database backup artifacts if the backup set includes fresher exports than the current local copies.
+9. Start the frontend locally.
+10. Start the analytics/local-ops service locally with:
+    - set -a && source .env && set +a && PORT=4012 npm run ops:ui:start
+11. Verify these flows:
+    - homepage loads
+    - sign-in surface loads
+    - analytics landing/report routes load
+    - player assessment route loads
+    - player intelligence route loads
+    - local ops page loads
+12. At the end, tell me:
+    - which restore-point folder you used
+    - what was restored from disk
+    - what still depends on external dashboard access
+    - any missing secret or config that blocks a complete restore
+
+Constraints:
+
+- Do not ask me to rediscover file paths that are already implied by the current restore docs.
+- Use the latest restore-point folder by default unless a newer explicit restore location is given.
+- Treat the canonical current restore docs in Git as the baseline instructions, and prefer any dated backup-generated copy when it provides newer exact artifact names or newer restore paths.

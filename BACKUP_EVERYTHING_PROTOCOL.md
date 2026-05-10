@@ -18,14 +18,42 @@ When asked to **backup everything**, perform all of the following unless the use
 9. Copy local env and secret restore files into the backup set when those files exist and the backup request includes secrets.
 10. Include or refresh restore instructions and backup-status documentation.
 11. Include checksums for the generated backup artifacts when practical.
-12. Confirm that GitHub contains the latest code and that the local OneDrive backup contains the corresponding restore artifacts.
-13. Send a restore-point summary email after the backup completes.
+12. Generate or refresh one single layman-friendly restore guide that can be followed from a clean slate without jumping across multiple documents.
+13. Confirm that GitHub contains the latest code and that the local OneDrive backup contains the corresponding restore artifacts.
+14. Remove superseded local Supabase dump / export artifacts from the local backup folder after the fresh backup is verified, unless the user explicitly asks to keep historical local copies.
+15. Send a restore-point summary email after the backup completes, attaching the layman-friendly restore guide and the Codex restore prompt.
+
+## Database backup shorthand
+
+When asked to **backup my database**, perform the database portion of the backup workflow even if the user did not ask for a full restore point.
+
+Minimum expected database backup action:
+
+1. Create a fresh analytics schema export.
+2. Create a fresh analytics data export.
+3. Create a fresh main app database backup using the best available path:
+   - prefer a direct Postgres dump when tooling and permissions allow
+   - otherwise create a logical table export for the live main app schemas
+4. Store the generated database artifacts under:
+   `/Users/artharun/Downloads/GAME-CHANGRS/backups`
+5. After the new database backup is verified, clear older local Supabase dump / export artifacts that have been superseded by the new backup set unless the user explicitly asks to retain them.
+6. Report back the exact artifact filenames, timestamps, and any caveats about format or completeness.
+
+Current preferred formats:
+
+- analytics database:
+  - schema SQL export
+  - data SQL export or full Postgres dump when available
+- main app database:
+  - full Postgres dump when available
+  - otherwise logical export archive covering the live application tables and a note about the fallback method
 
 ## Expected backup outputs
 
 A full backup should aim to include these categories:
 
 - GitHub `main` contains the latest intended code.
+- the local app/source state is pushed to GitHub and mirrored into the OneDrive restore-point backup set
 - OneDrive restore-point folder contains:
   - repo bundle
   - repo source archive
@@ -47,12 +75,50 @@ When "backup everything" is requested, the backup should either include or refer
 
 - a start-here restore document
 - a complete restore plan
+- a single layman-friendly restore guide in HTML or DOCX that can be followed from a clean slate
+- a Codex restore prompt that can drive the restore end to end once the files are placed on disk
+- a local-ops / series-management operator guide with startup steps and localhost URLs
 - current repo state / commit reference
 - exact OneDrive restore path
 - exact GitHub branch / commit to restore
 - exact bundle filename
 - env restore file locations
 - any known external dependencies still required after restore
+- a config coverage inventory that clearly splits:
+  - repo-local config files included in the backup set
+  - database backup artifacts included in the backup set
+  - platform-managed configs that are documented but still require dashboard access
+  - the current database boundaries used by the app stack
+
+The single-file layman restore guide should explicitly call out config coverage for at least:
+
+- Render
+- Resend
+- Lovable
+- Google auth / OAuth
+- Supabase
+- any additional live platform dependency currently used by the stack
+
+Important:
+
+- list config categories, file names, project refs, service URLs, and ownership boundaries
+- do not print raw secret values into the layman restore guide or notification email
+- if any platform-side setup must be completed before restore can succeed, include a plain-English "set this before restore" checklist for that platform
+- the layman guide should distinguish:
+  - what must be restored onto disk first
+  - what must be configured in external dashboards before startup
+  - what can be verified after services are running
+
+Minimum named docs to include or refresh when practical:
+
+- `docs/LATEST_RESTORE_GUIDE.html`
+- `CODEX_CLEAN_SLATE_RESTORE_PROMPT_CURRENT.txt`
+- `LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_CURRENT.md`
+- one single-file layman restore guide such as `LATEST_RESTORE_GUIDE.html` or newer equivalent
+- `START_HERE_FOR_RESTORE_2026_05_04.md` or newer equivalent
+- `COMPLETE_RESTORE_PLAN_2026_05_04.md` or newer equivalent
+- `CODEX_CLEAN_SLATE_RESTORE_PROMPT_2026_05_04.txt` or newer equivalent
+- `LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_2026_05_10.md` or newer equivalent
 
 ## What to report back
 
@@ -65,6 +131,9 @@ After completing a full backup, report:
 - artifact filenames created or updated
 - whether secrets/env files were included
 - whether database dumps were included
+- which single-file layman restore guide was generated or refreshed
+- which Codex restore prompt was attached for restore automation
+- whether old local Supabase dump / export artifacts were cleaned up
 - whether the notification email was sent
 - any missing pieces or external dependencies still not captured
 
@@ -87,6 +156,11 @@ The email should include:
 - main restore artifacts
 - restore order / instructions
 - any caveat about database dump freshness or external dependencies
+
+The email should attach:
+
+- one single-file layman restore guide in HTML or DOCX format
+- one Codex restore prompt file that can be pasted directly into Codex to restore from the backup set
 
 ## Current known backup location pattern
 

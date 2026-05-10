@@ -1276,8 +1276,8 @@ function renderKeyValueTable(items, options = {}) {
 function renderTable(columns, rows, options = {}) {
   const safeRows = Array.isArray(rows) ? rows : [];
   return `
-    <div class="table-wrap">
-      <table>
+    <div class="table-wrap ${escapeHtml(options.wrapClassName || "")}">
+      <table class="${escapeHtml(options.tableClassName || "")}">
         <thead>
           <tr>${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}</tr>
         </thead>
@@ -3115,6 +3115,15 @@ function renderPlayerReportPage(report) {
       table-layout: auto;
     }
 
+    .stats-table-shell .table-wrap.compact-stats-wrap {
+      overflow-x: visible;
+    }
+
+    .stats-table-shell table.compact-stats-table {
+      min-width: 0;
+      table-layout: fixed;
+    }
+
     .stats-table-shell th,
     .stats-table-shell td {
       white-space: nowrap;
@@ -3138,6 +3147,23 @@ function renderPlayerReportPage(report) {
     .stats-table-shell td.right,
     .stats-table-shell th.right {
       text-align: right;
+    }
+
+    .stats-table-shell table.compact-stats-table th,
+    .stats-table-shell table.compact-stats-table td {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      padding: 8px 6px;
+      font-size: 10px;
+      line-height: 1.35;
+      vertical-align: middle;
+    }
+
+    .stats-table-shell table.compact-stats-table th:first-child,
+    .stats-table-shell table.compact-stats-table td:first-child {
+      min-width: 0;
+      width: auto;
     }
 
     .stats-empty-note {
@@ -3214,6 +3240,24 @@ function renderPlayerReportPage(report) {
 
       .report-header-meta-strip {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .stats-table-shell .table-wrap.compact-stats-wrap {
+        overflow-x: auto;
+      }
+
+      .stats-table-shell table.compact-stats-table {
+        min-width: 720px;
+        table-layout: auto;
+      }
+
+      .stats-table-shell table.compact-stats-table th,
+      .stats-table-shell table.compact-stats-table td {
+        white-space: nowrap;
+        overflow-wrap: normal;
+        word-break: normal;
+        font-size: 11px;
+        padding: 8px 10px;
       }
     }
 
@@ -3421,9 +3465,9 @@ function renderPlayerReportPage(report) {
     </div>
   `;
 
-  const renderStatsTableShell = (columns, rows, emptyMessage) => `
+  const renderStatsTableShell = (columns, rows, emptyMessage, options = {}) => `
     <div class="stats-table-shell">
-      ${renderTable(columns, rows, { emptyMessage })}
+      ${renderTable(columns, rows, { emptyMessage, ...options })}
     </div>
   `;
 
@@ -3468,7 +3512,8 @@ function renderPlayerReportPage(report) {
                     { label: "6s", className: "right", render: (row) => escapeHtml(displayInteger(row.sixes, "—")) },
                   ],
                   battingRows,
-                  "No batting rows were found for this public profile."
+                  "No batting rows were found for this public profile.",
+                  { tableClassName: "compact-stats-table", wrapClassName: "compact-stats-wrap" }
                 )
               )
             : ""}
@@ -3493,7 +3538,8 @@ function renderPlayerReportPage(report) {
                     { label: "Ct", className: "right", render: (row) => escapeHtml(displayInteger(row.catches, "—")) },
                   ],
                   bowlingRows,
-                  "No bowling rows were found for this public profile."
+                  "No bowling rows were found for this public profile.",
+                  { tableClassName: "compact-stats-table", wrapClassName: "compact-stats-wrap" }
                 )
               )
             : ""}
@@ -3752,7 +3798,8 @@ function renderPlayerReportPage(report) {
               { label: "6s", className: "right", render: (row) => escapeHtml(displayInteger(row.sixes, "—")) },
             ],
             [currentSeriesRaw.batting],
-            "No current-series batting stats were returned."
+            "No current-series batting stats were returned.",
+            { tableClassName: "compact-stats-table", wrapClassName: "compact-stats-wrap" }
           )
         )
       : "",
@@ -3775,7 +3822,8 @@ function renderPlayerReportPage(report) {
               { label: "Wd", className: "right", render: (row) => escapeHtml(displayInteger(row.wides, "—")) },
             ],
             [currentSeriesRaw.bowling],
-            "No current-series bowling stats were returned."
+            "No current-series bowling stats were returned.",
+            { tableClassName: "compact-stats-table", wrapClassName: "compact-stats-wrap" }
           )
         )
       : "",
@@ -3793,7 +3841,8 @@ function renderPlayerReportPage(report) {
               { label: "Total", className: "right", render: (row) => escapeHtml(displayInteger(row.total_fielding, "—")) },
             ],
             [currentSeriesRaw.fielding],
-            "No current-series fielding stats were returned."
+            "No current-series fielding stats were returned.",
+            { tableClassName: "compact-stats-table", wrapClassName: "compact-stats-wrap" }
           )
         )
       : "",
@@ -3808,7 +3857,8 @@ function renderPlayerReportPage(report) {
               { label: "Total", className: "right", render: (row) => escapeHtml(displayInteger(row.total_fielding, "—")) },
             ],
             [currentSeriesRaw.wicketkeeping],
-            "No current-series wicketkeeping stats were returned."
+            "No current-series wicketkeeping stats were returned.",
+            { tableClassName: "compact-stats-table", wrapClassName: "compact-stats-wrap" }
           )
         )
       : "",

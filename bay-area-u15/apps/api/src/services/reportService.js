@@ -1392,7 +1392,10 @@ function deriveReportMetrics(input) {
     playerName,
     roleType,
     recommendation: header.recommendation,
+    battingScore,
+    bowlingScore,
     strongOppositionScore,
+    matchImpactScore,
     consistencyScore,
     recentFormScore,
     confidenceScore,
@@ -2018,18 +2021,29 @@ function buildPeerNote(peerRow, selectedSeason) {
 function buildSelectorTakeaway(input) {
   const strengths = [];
   const cautions = [];
+  const roleLabel = humanizeRole(input.roleType).toLowerCase();
+  const recommendation = normalizeText(input.recommendation).toLowerCase();
 
+  if (input.bowlingScore >= 80) {
+    strengths.push("strong bowling impact");
+  }
+  if (input.battingScore >= 75) {
+    strengths.push("credible batting support");
+  }
   if (input.strongOppositionScore >= 80) {
-    strengths.push("holds value when opposition quality rises");
+    strengths.push("stronger-opposition readiness");
+  }
+  if (input.matchImpactScore >= 80) {
+    strengths.push("good match-impact value");
   }
   if (input.consistencyScore >= 75) {
-    strengths.push("shows a stable current sample");
+    strengths.push("a stable current sample");
   }
   if (input.recentFormScore >= 78) {
-    strengths.push("is trending positively");
+    strengths.push("positive recent form");
   }
   if (input.div1SplitScore >= 75) {
-    strengths.push("carries a credible stronger-division read");
+    strengths.push("a credible stronger-division read");
   }
 
   if (input.confidenceScore < 65) {
@@ -2043,15 +2057,13 @@ function buildSelectorTakeaway(input) {
   }
 
   const strengthText = joinReadable(
-    strengths.length ? strengths.slice(0, 2) : ["the primary-role score is carrying the case"]
+    strengths.length ? strengths.slice(0, 3) : ["a credible current sample"]
   );
   const cautionText = cautions.length
-    ? ` The main watch point is that ${joinReadable(cautions.slice(0, 2))}.`
+    ? ` The main watch point is ${joinReadable(cautions.slice(0, 2))}.`
     : "";
 
-  return `${input.playerName} merits ${normalizeText(input.recommendation).toLowerCase()} as a ${humanizeRole(
-    input.roleType
-  ).toLowerCase()} because ${strengthText}.${cautionText}`;
+  return `${input.playerName} merits ${recommendation} as a ${roleLabel} with ${strengthText}.${cautionText}`;
 }
 
 function buildTrendCards(matchRows) {

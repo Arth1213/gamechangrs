@@ -3050,7 +3050,7 @@ function renderPlayerReportPage(report) {
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       gap: 18px;
     }
 
@@ -3095,7 +3095,7 @@ function renderPlayerReportPage(report) {
 
     .stats-profile-pair {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       gap: 16px;
     }
 
@@ -3110,8 +3110,9 @@ function renderPlayerReportPage(report) {
     }
 
     .stats-table-shell table {
-      min-width: 100%;
-      width: max-content;
+      width: 100%;
+      min-width: max-content;
+      table-layout: auto;
     }
 
     .stats-table-shell th,
@@ -3119,18 +3120,24 @@ function renderPlayerReportPage(report) {
       white-space: nowrap;
       overflow-wrap: normal;
       word-break: normal;
-      font-size: 12px;
-      padding: 10px 12px;
+      font-size: 11px;
+      padding: 8px 10px;
     }
 
     .stats-table-shell th:first-child,
     .stats-table-shell td:first-child {
       white-space: normal;
-      min-width: 112px;
+      min-width: 78px;
+      width: 1%;
     }
 
     .stats-table-shell th {
       letter-spacing: 0.12em;
+    }
+
+    .stats-table-shell td.right,
+    .stats-table-shell th.right {
+      text-align: right;
     }
 
     .stats-empty-note {
@@ -3172,7 +3179,6 @@ function renderPlayerReportPage(report) {
       .score-shell,
       .quick-read-shell,
       .stats-grid,
-      .stats-profile-pair,
       .pie-row,
       .trend-detail-grid,
       .match-evidence-grid {

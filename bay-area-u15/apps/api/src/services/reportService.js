@@ -308,6 +308,7 @@ async function getPlayerReport(input) {
             psa.*,
             p.display_name as player_name,
             p.canonical_name,
+            p.profile_url,
             t.display_name as team_name,
             d.source_label as division_label,
             pcs.composite_score,
@@ -545,6 +546,7 @@ async function getPlayerReport(input) {
       seriesId: context.seriesId,
       seriesConfigKey: context.configKey,
       divisionId: selectedDivisionId,
+      profileUrl: normalizeText(selectedSeason.profile_url),
       scope: "overall",
     });
     const contextPerformanceScores = await loadContextPerformanceScores(client, {
@@ -899,7 +901,7 @@ async function loadSeriesFactStats(client, input) {
   }, {});
 }
 
-function loadOverallProfileStats(input) {
+async function loadOverallProfileStats(input) {
   const profileDir = path.resolve(
     STORAGE_EXPORTS_DIR,
     normalizeText(input.seriesConfigKey),
@@ -908,12 +910,9 @@ function loadOverallProfileStats(input) {
     String(input.playerId)
   );
   const profileHtmlPath = path.join(profileDir, "profile.html");
-
-  if (!fs.existsSync(profileHtmlPath)) {
-    return {};
-  }
-
-  const html = normalizeText(fs.readFileSync(profileHtmlPath, "utf8"));
+  const liveHtml = await fetchPublicProfileHtml(normalizeText(input.profileUrl));
+  const cachedHtml = fs.existsSync(profileHtmlPath) ? normalizeText(fs.readFileSync(profileHtmlPath, "utf8")) : "";
+  const html = normalizeText(liveHtml) || cachedHtml;
   if (!html) {
     return {};
   }
@@ -960,6 +959,11 @@ function loadOverallProfileStats(input) {
     stats.profiles = profiles;
   }
 
+  if (normalizeText(input.profileUrl)) {
+    stats.sourceUrl = normalizeText(input.profileUrl);
+    stats.sourceMode = liveHtml ? "live_public_profile" : "cached_public_profile";
+  }
+
   return stats;
 }
 
@@ -993,7 +997,7 @@ function parseProfileSections(html) {
 
     sections.push({
       sourceName,
-      sourceUrl,
+      sourceUrl: sourceUrl || "",
       batting: battingRows,
       bowling: bowlingRows,
     });
@@ -2586,6 +2590,36 @@ function parseIntegerMatch(value, pattern) {
 
 function parseNumberMatch(value, pattern) {
   return toNumber(matchFirstGroup(value, pattern), null);
+}
+
+async function fetchPublicProfileHtml(profileUrl) {
+  const url = normalizeText(profileUrl);
+  if (!url) {
+    return "";
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    const response = await fetch(url, {
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      redirect: "follow",
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      return "";
+    }
+
+    return normalizeText(await response.text());
+  } catch (_) {
+    return "";
+  }
 }
 
 function stripHtml(value) {

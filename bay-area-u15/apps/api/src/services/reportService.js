@@ -665,6 +665,13 @@ async function getPlayerReport(input) {
 }
 
 async function loadStatPanels(client, input) {
+  if (input.scope === "overall") {
+    const overallProfileStats = await loadOverallProfileStats(input);
+    if (Object.keys(overallProfileStats).length) {
+      return overallProfileStats;
+    }
+  }
+
   const params = [input.playerId];
   let whereSql = "where player_id = $1";
 
@@ -727,10 +734,6 @@ async function loadStatPanels(client, input) {
 
   if (input.scope === "series") {
     return loadSeriesFactStats(client, input);
-  }
-
-  if (input.scope === "overall") {
-    return loadOverallProfileStats(input);
   }
 
   return snapshotStats;

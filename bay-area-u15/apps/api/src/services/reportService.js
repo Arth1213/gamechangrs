@@ -16,6 +16,7 @@ const SUPPLEMENTAL_PUBLIC_PROFILE_SOURCES = {
 const {
   average,
   clamp,
+  compact,
   confidenceLabel,
   formatDate,
   humanizeRole,
@@ -316,6 +317,7 @@ async function getPlayerReport(input) {
             psa.*,
             p.display_name as player_name,
             p.canonical_name,
+            p.source_player_id,
             p.profile_url,
             t.display_name as team_name,
             d.source_label as division_label,
@@ -554,6 +556,10 @@ async function getPlayerReport(input) {
       seriesId: context.seriesId,
       seriesConfigKey: context.configKey,
       divisionId: selectedDivisionId,
+      playerName: normalizeText(selectedSeason.player_name),
+      canonicalName: normalizeText(selectedSeason.canonical_name),
+      sourcePlayerId: normalizeText(selectedSeason.source_player_id),
+      teamName: normalizeText(selectedSeason.team_name),
       profileUrl: normalizeText(selectedSeason.profile_url),
       scope: "overall",
     });
@@ -918,9 +924,12 @@ async function loadOverallProfileStats(input) {
     String(input.playerId)
   );
   const profileHtmlPath = path.join(profileDir, "profile.html");
-  const liveHtml = await fetchPublicProfileHtml(normalizeText(input.profileUrl));
+  const profileJsonPath = path.join(profileDir, "profile.json");
+  const profileRecord = readStoredPublicProfileRecord(profileJsonPath);
+  const primaryIdentity = validatePrimaryPublicProfileIdentity(input, profileRecord);
+  const liveHtml = primaryIdentity.ok ? await fetchPublicProfileHtml(normalizeText(input.profileUrl)) : "";
   const cachedHtml = fs.existsSync(profileHtmlPath) ? normalizeText(fs.readFileSync(profileHtmlPath, "utf8")) : "";
-  const html = normalizeText(liveHtml) || cachedHtml;
+  const html = primaryIdentity.ok ? normalizeText(liveHtml) || cachedHtml : "";
   const primaryProfiles = html ? parseProfileSections(html) : [];
   const supplementalProfiles = await loadSupplementalPublicProfileSections(input);
   const profiles = mergePublicProfileSections(primaryProfiles, supplementalProfiles);
@@ -970,12 +979,63 @@ async function loadOverallProfileStats(input) {
     stats.profiles = profiles;
   }
 
-  if (normalizeText(input.profileUrl)) {
+  if (primaryIdentity.ok && normalizeText(input.profileUrl)) {
     stats.sourceUrl = normalizeText(input.profileUrl);
     stats.sourceMode = liveHtml ? "live_public_profile" : "cached_public_profile";
   }
 
+  if (!primaryIdentity.ok && primaryIdentity.reason) {
+    stats.sourceMode = "rejected_public_profile";
+  }
+
   return stats;
+}
+
+function readStoredPublicProfileRecord(profileJsonPath) {
+  if (!fs.existsSync(profileJsonPath)) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(profileJsonPath, "utf8"));
+  } catch (_) {
+    return null;
+  }
+}
+
+function validatePrimaryPublicProfileIdentity(input, profileRecord) {
+  const expectedSourcePlayerId = normalizeText(input?.sourcePlayerId);
+  const expectedNames = compact([
+    normalizeText(input?.playerName),
+    normalizeText(input?.canonicalName),
+  ]);
+  const profileUrl = normalizeText(profileRecord?.profileUrl || input?.profileUrl);
+  const urlSourcePlayerId = parsePlayerIdFromProfileUrl(profileUrl);
+  const recordSourcePlayerId = normalizeText(profileRecord?.sourcePlayerId || profileRecord?.fields?.ccPlayerId);
+  const recordDisplayName = normalizeText(profileRecord?.displayName);
+  const pageTitle = normalizeText(profileRecord?.pageTitle);
+
+  if (expectedSourcePlayerId && urlSourcePlayerId && expectedSourcePlayerId !== urlSourcePlayerId) {
+    return { ok: false, reason: "profile_url_source_player_id_mismatch" };
+  }
+
+  if (expectedSourcePlayerId && recordSourcePlayerId && expectedSourcePlayerId !== recordSourcePlayerId) {
+    return { ok: false, reason: "stored_profile_source_player_id_mismatch" };
+  }
+
+  if (expectedNames.length && recordDisplayName && !expectedNames.some((name) => isLikelySamePlayerName(name, recordDisplayName))) {
+    return { ok: false, reason: "stored_profile_display_name_mismatch" };
+  }
+
+  if (expectedNames.length && pageTitle && !expectedNames.some((name) => titleContainsPlayerName(pageTitle, name))) {
+    return { ok: false, reason: "stored_profile_title_mismatch" };
+  }
+
+  if (!expectedSourcePlayerId && !expectedNames.length) {
+    return { ok: true, reason: "no_identity_fields_available" };
+  }
+
+  return { ok: true, reason: "validated" };
 }
 
 function getSupplementalPublicProfileSources(input) {
@@ -2955,6 +3015,19 @@ function sanitizePublicNumber(value) {
   return normalizeText(value).replace(/[~]/g, "");
 }
 
+function parsePlayerIdFromProfileUrl(profileUrl) {
+  const url = normalizeText(profileUrl);
+  if (!url) {
+    return "";
+  }
+
+  try {
+    return normalizeText(new URL(url, "https://cricclubs.com").searchParams.get("playerId"));
+  } catch (_) {
+    return "";
+  }
+}
+
 async function fetchPublicProfileHtml(profileUrl) {
   const url = normalizeText(profileUrl);
   if (!url) {
@@ -3005,6 +3078,41 @@ function decodeHtmlEntities(value) {
 
 function escapeRegExp(value) {
   return String(value ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizePersonName(value) {
+  return normalizeLabel(value)
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isLikelySamePlayerName(expectedName, actualName) {
+  const expected = normalizePersonName(expectedName);
+  const actual = normalizePersonName(actualName);
+  if (!expected || !actual) {
+    return false;
+  }
+  if (expected === actual) {
+    return true;
+  }
+
+  const expectedTokens = expected.split(" ").filter(Boolean);
+  const actualTokens = actual.split(" ").filter(Boolean);
+  if (expectedTokens.length >= 2) {
+    return expectedTokens.every((token) => actualTokens.includes(token));
+  }
+  return actual.includes(expected) || expected.includes(actual);
+}
+
+function titleContainsPlayerName(title, expectedName) {
+  const normalizedTitle = normalizePersonName(title);
+  const normalizedName = normalizePersonName(expectedName);
+  if (!normalizedTitle || !normalizedName) {
+    return false;
+  }
+  const nameTokens = normalizedName.split(" ").filter(Boolean);
+  return nameTokens.every((token) => normalizedTitle.includes(token));
 }
 
 module.exports = {

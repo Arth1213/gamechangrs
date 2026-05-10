@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PACK_DIR="$REPO_ROOT/docs/RESTORE_PACK_CURRENT"
+
+mkdir -p "$PACK_DIR"
+
+copy_into_pack() {
+  local source_path="$1"
+  local target_name="$2"
+  cp "$REPO_ROOT/$source_path" "$PACK_DIR/$target_name"
+}
+
+copy_into_pack "docs/LATEST_RESTORE_GUIDE.html" "LATEST_RESTORE_GUIDE.html"
+copy_into_pack "CODEX_CLEAN_SLATE_RESTORE_PROMPT_CURRENT.txt" "CODEX_CLEAN_SLATE_RESTORE_PROMPT_CURRENT.txt"
+copy_into_pack "LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_CURRENT.md" "LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_CURRENT.md"
+copy_into_pack "docs/GAMECHANGRS_SYSTEM_MAP_CURRENT.html" "GAMECHANGRS_SYSTEM_MAP_CURRENT.html"
+copy_into_pack "docs/GAMECHANGRS_SYSTEM_MAP_CURRENT.pdf" "GAMECHANGRS_SYSTEM_MAP_CURRENT.pdf"
+copy_into_pack "docs/GAMECHANGRS_PLATFORM_INVENTORY_DETAIL_CURRENT.html" "GAMECHANGRS_PLATFORM_INVENTORY_DETAIL_CURRENT.html"
+copy_into_pack "docs/GAMECHANGRS_PLATFORM_INVENTORY_DETAIL_CURRENT.pdf" "GAMECHANGRS_PLATFORM_INVENTORY_DETAIL_CURRENT.pdf"
+
+printf '%s\n' "$PACK_DIR"

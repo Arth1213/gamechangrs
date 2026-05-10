@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game-Changrs System Map</title>
+    <style>
+      @page {
+        size: 13in 8.5in;
+        margin: 0.34in;
+      }
+
+      :root {
+        --bg: #f4efe6;
+        --paper: #fffaf2;
+        --ink: #18212f;
+        --muted: #5d6777;
+        --line: #d9cdb7;
+        --brand: #0f766e;
+        --brand-soft: #dff4f1;
+        --blue-soft: #e8f0ff;
+        --gold-soft: #fff2d8;
+        --rose-soft: #fde9e7;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Inter", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top right, rgba(15, 118, 110, 0.1), transparent 28%),
+          linear-gradient(180deg, #f6f1e8 0%, var(--bg) 100%);
+      }
+
+      .page {
+        width: 100%;
+        min-height: 100vh;
+        padding: 14px;
+      }
+
+      .sheet {
+        background: linear-gradient(180deg, rgba(255, 250, 242, 0.98), rgba(255, 247, 237, 0.98));
+        border: 1px solid rgba(217, 205, 183, 0.95);
+        border-radius: 24px;
+        padding: 16px;
+        box-shadow: 0 16px 40px rgba(24, 33, 47, 0.08);
+      }
+
+      .topbar {
+        display: grid;
+        grid-template-columns: 1.25fr 0.75fr;
+        gap: 12px;
+        align-items: start;
+      }
+
+      .eyebrow {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: var(--brand);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 10px 0 8px;
+        font-size: 30px;
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+      }
+
+      .lead {
+        margin: 0;
+        max-width: 760px;
+        font-size: 12px;
+        line-height: 1.38;
+        color: var(--muted);
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 10px;
+        background: var(--paper);
+      }
+
+      .metric-label {
+        margin: 0 0 6px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .metric-value {
+        margin: 0;
+        font-size: 20px;
+        line-height: 1;
+        font-weight: 800;
+      }
+
+      .metric-copy {
+        margin: 6px 0 0;
+        font-size: 10px;
+        line-height: 1.35;
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 11px;
+        background: var(--paper);
+      }
+
+      .span-6 { grid-column: span 6; }
+      .span-4 { grid-column: span 4; }
+      .span-8 { grid-column: span 8; }
+      .span-12 { grid-column: span 12; }
+
+      .card-teal { background: linear-gradient(180deg, #fffaf2 0%, #eefaf8 100%); }
+      .card-blue { background: linear-gradient(180deg, #fffaf2 0%, #eff4ff 100%); }
+      .card-gold { background: linear-gradient(180deg, #fffaf2 0%, #fff7e6 100%); }
+      .card-rose { background: linear-gradient(180deg, #fffaf2 0%, #fff0ee 100%); }
+
+      h2 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+      }
+
+      .section-copy {
+        margin: 0 0 10px;
+        font-size: 10px;
+        line-height: 1.32;
+        color: var(--muted);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9.8px;
+      }
+
+      th, td {
+        padding: 4px 5px;
+        border-top: 1px solid rgba(217, 205, 183, 0.85);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        border-top: 0;
+        padding-top: 0;
+        color: var(--muted);
+        font-size: 8.8px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      td strong {
+        font-size: 10px;
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 6px;
+      }
+
+      .pill {
+        padding: 5px 9px;
+        border-radius: 999px;
+        border: 1px solid rgba(24, 33, 47, 0.08);
+        background: #fff;
+        font-size: 9px;
+        font-weight: 700;
+      }
+
+      .foot {
+        margin-top: 8px;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 9px;
+        color: var(--muted);
+      }
+
+      .mini-list {
+        display: grid;
+        gap: 7px;
+        margin: 0;
+      }
+
+      .mini-item {
+        padding-top: 7px;
+        border-top: 1px solid rgba(217, 205, 183, 0.85);
+        font-size: 9.8px;
+        line-height: 1.28;
+      }
+
+      .mini-item:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      .mono {
+        font-family: "SFMono-Regular", Consolas, monospace;
+      }
+
+      @media print {
+        body {
+          background: #fff;
+        }
+
+        .page {
+          padding: 0;
+        }
+
+        .sheet {
+          box-shadow: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="sheet">
+        <div class="topbar">
+          <div>
+            <span class="eyebrow">Current System Map</span>
+            <h1>Game-Changrs Simplified System Map</h1>
+            <p class="lead">
+              One useful simplification: you do not have many unrelated apps. You have <strong>one main web app</strong>,
+              <strong>one analytics backend</strong>, <strong>one local operator console</strong>, <strong>one worker pipeline</strong>,
+              and <strong>two data domains</strong> behind them. This page shows where each one is and what it connects to.
+            </p>
+            <div class="pill-row">
+              <span class="pill">Public Domain: game-changrs.com</span>
+              <span class="pill">Hosted API: gamechangrs-cricket-api.onrender.com</span>
+              <span class="pill">Primary Branch: main</span>
+            </div>
+          </div>
+
+          <div class="metrics">
+            <article class="metric">
+              <p class="metric-label">Core Shape</p>
+              <p class="metric-value">1 + 3</p>
+              <p class="metric-copy">1 main web app and 3 supporting service layers behind it.</p>
+            </article>
+            <article class="metric">
+              <p class="metric-label">Data Domains</p>
+              <p class="metric-value">2</p>
+              <p class="metric-copy">Main app data and separate analytics/local-ops data.</p>
+            </article>
+            <article class="metric">
+              <p class="metric-label">Connected Platforms</p>
+              <p class="metric-value">6+</p>
+              <p class="metric-copy">Supabase, Render, Resend, Google SSO, Lovable, IONOS DNS, GitHub.</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="grid">
+          <article class="card card-teal span-8">
+            <h2>Core System</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Core Part</th>
+                  <th>What It Is</th>
+                  <th>Where It Is</th>
+                  <th>Connected Services</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Main Web App</strong></td>
+                  <td>Main Game-Changrs site and signed-in app. It includes Analytics, Coaching Marketplace, Gear Marketplace, and Technique AI.</td>
+                  <td>Repo root frontend, live at <span class="mono">game-changrs.com</span></td>
+                  <td>Supabase main app, Render analytics API, Lovable publish, Google sign-in</td>
+                </tr>
+                <tr>
+                  <td><strong>Analytics Backend</strong></td>
+                  <td>Serves analytics pages, player reports, and report HTML/data.</td>
+                  <td><span class="mono">bay-area-u15/apps/api</span>, hosted on Render</td>
+                  <td>Analytics DB, main app Supabase auth, Render</td>
+                </tr>
+                <tr>
+                  <td><strong>Local Operator Console</strong></td>
+                  <td>Internal admin/operator tool to add series, refresh data, validate, and publish.</td>
+                  <td><span class="mono">bay-area-u15/apps/api</span>, local only</td>
+                  <td>Analytics DB, local env, worker pipeline</td>
+                </tr>
+                <tr>
+                  <td><strong>Worker Pipeline</strong></td>
+                  <td>Background jobs for discovery, ingest, compute, scoring, and intelligence generation.</td>
+                  <td><span class="mono">bay-area-u15/apps/worker</span></td>
+                  <td>Analytics DB, local-ops flows</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="card card-gold span-4">
+            <h2>Two Data Domains</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Data Domain</th>
+                  <th>Where</th>
+                  <th>Main Use</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Main App Data</strong></td>
+                  <td><span class="mono">tpiegapsjeetvwsybjiu</span></td>
+                  <td>Auth, coaching, gear, Technique AI, storage, edge functions</td>
+                </tr>
+                <tr>
+                  <td><strong>Analytics Data</strong></td>
+                  <td><span class="mono">azgebbtasywunltdhdby</span></td>
+                  <td>Series data, reports, player intelligence, local-ops workflow state</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="section-copy">
+              Layman view: the app uses <strong>two separate back-end data homes</strong> so the business app and the cricket analytics engine stay separated.
+            </p>
+          </article>
+
+          <article class="card card-rose span-8">
+            <h2>Connected Services</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Platform</th>
+                  <th>Why You Use It</th>
+                  <th>Where It Connects</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Supabase</strong></td>
+                  <td>Auth, app tables, storage, edge functions, and analytics Postgres.</td>
+                  <td>Main web app + analytics data layer</td>
+                </tr>
+                <tr>
+                  <td><strong>Render</strong></td>
+                  <td>Hosts the analytics backend.</td>
+                  <td>Analytics backend</td>
+                </tr>
+                <tr>
+                  <td><strong>Google SSO</strong></td>
+                  <td>Lets users sign in with Google.</td>
+                  <td>Main web app auth</td>
+                </tr>
+                <tr>
+                  <td><strong>Resend</strong></td>
+                  <td>Sends report and transactional emails.</td>
+                  <td>Edge functions + report delivery flows</td>
+                </tr>
+                <tr>
+                  <td><strong>Lovable</strong></td>
+                  <td>Frontend publish/project surface.</td>
+                  <td>Main web app delivery</td>
+                </tr>
+                <tr>
+                  <td><strong>IONOS DNS</strong></td>
+                  <td>Owns domain and DNS records.</td>
+                  <td><span class="mono">game-changrs.com</span> routing and verification</td>
+                </tr>
+                <tr>
+                  <td><strong>GitHub</strong></td>
+                  <td>Stores code history and restore anchor branches.</td>
+                  <td>All code and backup history</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="card span-4">
+            <h2>Git And Recovery</h2>
+            <div class="mini-list">
+              <div class="mini-item"><strong>main</strong> is the branch to think of as your current source of truth.</div>
+              <div class="mini-item"><strong>17 local branches</strong> and <strong>15 remote branches</strong> are present right now.</div>
+              <div class="mini-item">Major historical work sits in <strong>phase9-analytics-clean</strong>, <strong>phase10-entity-series-deploy</strong>, and <strong>cutover-main-push</strong>.</div>
+              <div class="mini-item">The <strong>backup/*</strong> branches are checkpoint and restore-point branches.</div>
+              <div class="mini-item">For restore, the key docs are the restore guide, Codex restore prompt, local-ops guide, and this system map.</div>
+            </div>
+          </article>
+        </div>
+
+        <div class="foot">
+          <div>Canonical simplified map for backup, restore, and operator understanding.</div>
+          <div>Backup email should attach: restore guide, Codex prompt, and system map.</div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

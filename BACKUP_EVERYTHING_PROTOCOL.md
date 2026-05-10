@@ -19,9 +19,13 @@ When asked to **backup everything**, perform all of the following unless the use
 10. Include or refresh restore instructions and backup-status documentation.
 11. Include checksums for the generated backup artifacts when practical.
 12. Generate or refresh one single layman-friendly restore guide that can be followed from a clean slate without jumping across multiple documents.
-13. Confirm that GitHub contains the latest code and that the local OneDrive backup contains the corresponding restore artifacts.
-14. Remove superseded local Supabase dump / export artifacts from the local backup folder after the fresh backup is verified, unless the user explicitly asks to keep historical local copies.
-15. Send a restore-point summary email after the backup completes, attaching the layman-friendly restore guide and the Codex restore prompt.
+13. Generate or refresh the current simplified Game-Changrs system map in both HTML and PDF form.
+14. Generate or refresh the current detailed platform inventory in both HTML and PDF form.
+15. Refresh the canonical restore handoff folder:
+   `/Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/docs/RESTORE_PACK_CURRENT`
+16. Confirm that GitHub contains the latest code and that the local OneDrive backup contains the corresponding restore artifacts.
+17. Remove superseded local Supabase dump / export artifacts from the local backup folder after the fresh backup is verified, unless the user explicitly asks to keep historical local copies.
+18. Send a restore-point summary email after the backup completes, attaching the layman-friendly restore guide, the Codex restore prompt, the simplified system map, and the detailed platform inventory.
 
 ## Database backup shorthand
 
@@ -68,6 +72,9 @@ A full backup should aim to include these categories:
   - `bay-area-u15/.env` restore copy
   - any local config restore copies already part of the established backup convention
 - Database exports or dumps when available and requested.
+- current simplified system map in HTML and PDF when available
+- current detailed platform inventory in HTML and PDF when available
+- current `docs/RESTORE_PACK_CURRENT` handoff pack
 
 ## Restore documentation minimum
 
@@ -78,6 +85,9 @@ When "backup everything" is requested, the backup should either include or refer
 - a single layman-friendly restore guide in HTML or DOCX that can be followed from a clean slate
 - a Codex restore prompt that can drive the restore end to end once the files are placed on disk
 - a local-ops / series-management operator guide with startup steps and localhost URLs
+- a single-page system map that explains the full app footprint in layman terms
+- a more detailed platform inventory that expands configs, public values, storage locations, and platform usage
+- one canonical current handoff folder that a new operator can open first without hunting through old docs
 - current repo state / commit reference
 - exact OneDrive restore path
 - exact GitHub branch / commit to restore
@@ -111,14 +121,34 @@ Important:
 
 Minimum named docs to include or refresh when practical:
 
+- `docs/RESTORE_PACK_CURRENT/START_HERE.md`
 - `docs/LATEST_RESTORE_GUIDE.html`
 - `CODEX_CLEAN_SLATE_RESTORE_PROMPT_CURRENT.txt`
 - `LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_CURRENT.md`
+- `docs/GAMECHANGRS_SYSTEM_MAP_CURRENT.html`
+- `docs/GAMECHANGRS_SYSTEM_MAP_CURRENT.pdf`
+- `docs/GAMECHANGRS_PLATFORM_INVENTORY_DETAIL_CURRENT.html`
+- `docs/GAMECHANGRS_PLATFORM_INVENTORY_DETAIL_CURRENT.pdf`
 - one single-file layman restore guide such as `LATEST_RESTORE_GUIDE.html` or newer equivalent
 - `START_HERE_FOR_RESTORE_2026_05_04.md` or newer equivalent
 - `COMPLETE_RESTORE_PLAN_2026_05_04.md` or newer equivalent
 - `CODEX_CLEAN_SLATE_RESTORE_PROMPT_2026_05_04.txt` or newer equivalent
 - `LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_2026_05_10.md` or newer equivalent
+
+Current refresh helper:
+
+- `scripts/sync_restore_pack_current.sh`
+
+Expected contents of `docs/RESTORE_PACK_CURRENT`:
+
+- `START_HERE.md`
+- `LATEST_RESTORE_GUIDE.html`
+- `CODEX_CLEAN_SLATE_RESTORE_PROMPT_CURRENT.txt`
+- `LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_CURRENT.md`
+- `GAMECHANGRS_SYSTEM_MAP_CURRENT.html`
+- `GAMECHANGRS_SYSTEM_MAP_CURRENT.pdf`
+- `GAMECHANGRS_PLATFORM_INVENTORY_DETAIL_CURRENT.html`
+- `GAMECHANGRS_PLATFORM_INVENTORY_DETAIL_CURRENT.pdf`
 
 ## What to report back
 
@@ -133,6 +163,9 @@ After completing a full backup, report:
 - whether database dumps were included
 - which single-file layman restore guide was generated or refreshed
 - which Codex restore prompt was attached for restore automation
+- which system map files were generated or refreshed
+- which detailed platform inventory files were generated or refreshed
+- whether `docs/RESTORE_PACK_CURRENT` was refreshed
 - whether old local Supabase dump / export artifacts were cleaned up
 - whether the notification email was sent
 - any missing pieces or external dependencies still not captured
@@ -161,6 +194,9 @@ The email should attach:
 
 - one single-file layman restore guide in HTML or DOCX format
 - one Codex restore prompt file that can be pasted directly into Codex to restore from the backup set
+- one single-page Game-Changrs simplified system map in HTML or PDF form, preferably both when practical
+- one detailed platform inventory in HTML or PDF form, preferably both when practical
+- the email body should also point the reader to `docs/RESTORE_PACK_CURRENT/START_HERE.md` as the first file to open
 
 ## Current known backup location pattern
 

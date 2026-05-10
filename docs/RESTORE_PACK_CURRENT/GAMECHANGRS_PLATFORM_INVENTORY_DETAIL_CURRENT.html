@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game-Changrs Platform Inventory Detail</title>
+    <style>
+      @page {
+        size: 13in 8.5in;
+        margin: 0.36in;
+      }
+
+      :root {
+        --bg: #f4efe6;
+        --paper: #fffaf2;
+        --ink: #18212f;
+        --muted: #5d6777;
+        --line: #d9cdb7;
+        --teal: #0f766e;
+        --teal-soft: #e2f5f1;
+        --blue-soft: #ecf3ff;
+        --gold-soft: #fff3dd;
+        --rose-soft: #fff0eb;
+        --shadow: 0 14px 36px rgba(24, 33, 47, 0.08);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: "Inter", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 28%),
+          linear-gradient(180deg, #f6f1e8 0%, var(--bg) 100%);
+      }
+
+      .page {
+        width: 100%;
+        min-height: 100vh;
+        padding: 16px;
+      }
+
+      .sheet {
+        background: linear-gradient(180deg, rgba(255, 250, 242, 0.98), rgba(255, 247, 237, 0.98));
+        border: 1px solid rgba(217, 205, 183, 0.95);
+        border-radius: 24px;
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 14px;
+        align-items: start;
+      }
+
+      .eyebrow {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--teal-soft);
+        color: var(--teal);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 10px 0 8px;
+        font-size: 30px;
+        line-height: 0.96;
+        letter-spacing: -0.04em;
+      }
+
+      .lead {
+        margin: 0;
+        max-width: 760px;
+        font-size: 12px;
+        line-height: 1.42;
+        color: var(--muted);
+      }
+
+      .note {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(15, 118, 110, 0.16);
+        background: #f3fbf9;
+        font-size: 10px;
+        line-height: 1.36;
+        color: var(--muted);
+      }
+
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 11px;
+      }
+
+      .metric-label {
+        margin: 0 0 6px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .metric-value {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .metric-copy {
+        margin: 6px 0 0;
+        font-size: 10px;
+        line-height: 1.35;
+        color: var(--muted);
+      }
+
+      .section {
+        margin-top: 14px;
+      }
+
+      .section-title {
+        margin: 0 0 8px;
+        font-size: 17px;
+        letter-spacing: -0.02em;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 12px;
+        background: var(--paper);
+      }
+
+      .card-blue { background: linear-gradient(180deg, #fffaf2 0%, var(--blue-soft) 100%); }
+      .card-gold { background: linear-gradient(180deg, #fffaf2 0%, var(--gold-soft) 100%); }
+      .card-rose { background: linear-gradient(180deg, #fffaf2 0%, var(--rose-soft) 100%); }
+      .card-teal { background: linear-gradient(180deg, #fffaf2 0%, var(--teal-soft) 100%); }
+
+      .span-12 { grid-column: span 12; }
+      .span-6 { grid-column: span 6; }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10px;
+      }
+
+      th, td {
+        padding: 5px 6px;
+        border-top: 1px solid rgba(217, 205, 183, 0.85);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        border-top: 0;
+        padding-top: 0;
+        color: var(--muted);
+        font-size: 8.8px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      td strong {
+        font-size: 10.2px;
+      }
+
+      .subcopy {
+        margin: 0 0 8px;
+        font-size: 10px;
+        line-height: 1.35;
+        color: var(--muted);
+      }
+
+      .mono {
+        font-family: "SFMono-Regular", Consolas, monospace;
+      }
+
+      .footer {
+        margin-top: 10px;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 9px;
+        color: var(--muted);
+      }
+
+      @media print {
+        body { background: #fff; }
+        .page { padding: 0; }
+        .sheet { box-shadow: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="sheet">
+        <div class="hero">
+          <div>
+            <span class="eyebrow">Current Detail Inventory</span>
+            <h1>Game-Changrs Platform Inventory Detail</h1>
+            <p class="lead">
+              This is the more detailed companion to the simplified system map. It keeps the same core model,
+              but expands where each platform is configured, which exact config names exist, which public values
+              are known, and where secret values are stored outside Git.
+            </p>
+            <div class="note">
+              Secret values are intentionally not written into this Git-tracked file. Exact public values are included
+              where safe, and secret-bearing items are marked as <strong>local-only</strong> or <strong>dashboard-only</strong>.
+            </div>
+          </div>
+          <div class="summary">
+            <article class="metric">
+              <p class="metric-label">Core Model</p>
+              <p class="metric-value">1 + 3</p>
+              <p class="metric-copy">1 main web app plus analytics backend, operator console, and worker pipeline.</p>
+            </article>
+            <article class="metric">
+              <p class="metric-label">Data Domains</p>
+              <p class="metric-value">2</p>
+              <p class="metric-copy">Main app data domain and separate analytics/local-ops data domain.</p>
+            </article>
+            <article class="metric">
+              <p class="metric-label">External Platforms</p>
+              <p class="metric-value">7</p>
+              <p class="metric-copy">Supabase, Render, Resend, Google SSO, Lovable, IONOS DNS, GitHub.</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2 class="section-title">Core Components</h2>
+          <div class="card card-teal">
+            <table>
+              <thead>
+                <tr>
+                  <th>Core Part</th>
+                  <th>What It Is</th>
+                  <th>Where It Is</th>
+                  <th>Connected Services</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Main Web App</strong></td>
+                  <td>Main Game-Changrs website and signed-in app. Includes Analytics, Coaching Marketplace, Gear Marketplace, and Technique AI.</td>
+                  <td>Repo root frontend, live at <span class="mono">game-changrs.com</span></td>
+                  <td>Supabase main app, Render analytics API, Lovable publish, Google SSO</td>
+                </tr>
+                <tr>
+                  <td><strong>Analytics Backend</strong></td>
+                  <td>Serves analytics pages, player reports, report HTML, and analytics data routes.</td>
+                  <td><span class="mono">bay-area-u15/apps/api</span>, hosted on Render</td>
+                  <td>Analytics DB, main app Supabase auth validation, Render</td>
+                </tr>
+                <tr>
+                  <td><strong>Local Operator Console</strong></td>
+                  <td>Local admin/operator tool for adding series, refreshing, validating, and publishing.</td>
+                  <td><span class="mono">bay-area-u15/apps/api</span>, local startup on port <span class="mono">4012</span></td>
+                  <td>Analytics DB, worker pipeline, local env</td>
+                </tr>
+                <tr>
+                  <td><strong>Worker Pipeline</strong></td>
+                  <td>Discovery, ingest, compute, scoring, profile-enrichment, and intelligence generation jobs.</td>
+                  <td><span class="mono">bay-area-u15/apps/worker</span></td>
+                  <td>Analytics DB, local-ops workflow</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2 class="section-title">External Platform Detail</h2>
+          <div class="grid">
+            <article class="card card-blue span-6">
+              <h3 class="section-title">Supabase Main App</h3>
+              <p class="subcopy">This is the business-app side: auth, app tables, storage, and edge functions.</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Config Item</th>
+                    <th>Current Value</th>
+                    <th>Stored Where</th>
+                    <th>Used By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Project Ref</strong></td>
+                    <td class="mono">tpiegapsjeetvwsybjiu</td>
+                    <td><span class="mono">.env</span>, <span class="mono">supabase/config.toml</span>, restore docs</td>
+                    <td>Frontend app and Supabase CLI config</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Project URL</strong></td>
+                    <td class="mono">https://tpiegapsjeetvwsybjiu.supabase.co</td>
+                    <td><span class="mono">.env</span>, restore/config docs</td>
+                    <td>Frontend client and auth-linked flows</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Frontend Env Names</strong></td>
+                    <td class="mono">VITE_SUPABASE_PROJECT_ID, VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY</td>
+                    <td>Root <span class="mono">.env</span></td>
+                    <td>Main web app</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Publishable Key Value</strong></td>
+                    <td>Present locally, not written into Git-tracked detail docs</td>
+                    <td>Local root <span class="mono">.env</span> restore copy</td>
+                    <td>Frontend Supabase client</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Config File Linkage</strong></td>
+                    <td class="mono">project_id = "tpiegapsjeetvwsybjiu"</td>
+                    <td><span class="mono">supabase/config.toml</span></td>
+                    <td>Supabase CLI/project linkage</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Edge Functions Path</strong></td>
+                    <td class="mono">supabase/functions</td>
+                    <td>Repo</td>
+                    <td>Contact, email, AI helpers, report delivery helpers</td>
+                  </tr>
+                </tbody>
+              </table>
+            </article>
+
+            <article class="card card-gold span-6">
+              <h3 class="section-title">Analytics DB And Local-Ops Runtime</h3>
+              <p class="subcopy">This is the separate analytics and operator data boundary, even though auth validation points back to the main app Supabase project.</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Config Item</th>
+                    <th>Current Value</th>
+                    <th>Stored Where</th>
+                    <th>Used By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Analytics DB Boundary</strong></td>
+                    <td class="mono">azgebbtasywunltdhdby</td>
+                    <td>Restore docs and architecture docs</td>
+                    <td>Analytics API, local-ops console, worker pipeline</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Database URL</strong></td>
+                    <td>Present locally, not written into Git-tracked detail docs</td>
+                    <td><span class="mono">bay-area-u15/.env</span> restore copy</td>
+                    <td>Analytics API and worker runtime</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Database SSL Mode</strong></td>
+                    <td class="mono">require</td>
+                    <td><span class="mono">bay-area-u15/.env</span></td>
+                    <td>Analytics API and worker runtime</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Schema File</strong></td>
+                    <td class="mono">bay_area_u15_schema.sql</td>
+                    <td><span class="mono">bay-area-u15/.env</span></td>
+                    <td>Schema/bootstrap reference</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Auth Validation URL</strong></td>
+                    <td class="mono">https://tpiegapsjeetvwsybjiu.supabase.co</td>
+                    <td><span class="mono">bay-area-u15/.env</span></td>
+                    <td>Analytics API token validation against main app auth</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Auth Validation Env Names</strong></td>
+                    <td class="mono">SUPABASE_URL, SUPABASE_ANON_KEY</td>
+                    <td><span class="mono">bay-area-u15/.env</span></td>
+                    <td><span class="mono">bay-area-u15/apps/api/src/lib/auth.js</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Local Ops Port</strong></td>
+                    <td class="mono">4012</td>
+                    <td>Runbooks and start commands</td>
+                    <td>Local operator console</td>
+                  </tr>
+                </tbody>
+              </table>
+            </article>
+
+            <article class="card card-rose span-6">
+              <h3 class="section-title">Render</h3>
+              <p class="subcopy">Render hosts the analytics backend, not the main frontend.</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Config Item</th>
+                    <th>Current Value</th>
+                    <th>Stored Where</th>
+                    <th>Used By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Service Name</strong></td>
+                    <td class="mono">gamechangrs-cricket-api</td>
+                    <td>Render dashboard / preservation docs</td>
+                    <td>Hosted analytics backend</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Service URL</strong></td>
+                    <td class="mono">https://gamechangrs-cricket-api.onrender.com</td>
+                    <td>Render / docs</td>
+                    <td>Frontend analytics calls and report routes</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Working Directory</strong></td>
+                    <td class="mono">bay-area-u15</td>
+                    <td>Preservation record</td>
+                    <td>Render deploy layout</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Build / Start</strong></td>
+                    <td class="mono">npm install / npm run api:start</td>
+                    <td>Preservation record</td>
+                    <td>Render service boot</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Known Env Names Present</strong></td>
+                    <td class="mono">DATABASE_URL, DATABASE_SSL_MODE=require, OPENAI_API_KEY, PORT=10000</td>
+                    <td>Render dashboard snapshot from preservation docs</td>
+                    <td>Analytics backend runtime</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Known Env Names Not Set In Snapshot</strong></td>
+                    <td class="mono">SUPABASE_URL, SUPABASE_ANON_KEY, LOVABLE_API_KEY, CORS_ALLOW_ORIGIN</td>
+                    <td>Render dashboard snapshot from preservation docs</td>
+                    <td>Configuration review only</td>
+                  </tr>
+                </tbody>
+              </table>
+            </article>
+
+            <article class="card card-blue span-6">
+              <h3 class="section-title">Resend</h3>
+              <p class="subcopy">Resend is the email transport layer. The app logic lives in Supabase functions and the analytics report export service.</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Config Item</th>
+                    <th>Current Value</th>
+                    <th>Stored Where</th>
+                    <th>Used By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Primary Env Name</strong></td>
+                    <td class="mono">RESEND_API_KEY</td>
+                    <td>Dashboard-only secret, not stored in Git</td>
+                    <td>Supabase functions and analytics report export</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Known DNS Record</strong></td>
+                    <td class="mono">resend._domainkey</td>
+                    <td>IONOS DNS</td>
+                    <td>Domain verification / email trust</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Repo Usage Points</strong></td>
+                    <td class="mono">send-report-pdf, send-connection-email, send-session-notification, request-series-onboarding, contact-seller, reportExportService.js</td>
+                    <td>Repo code</td>
+                    <td>Email flows</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Exact Secret Value</strong></td>
+                    <td>Not written into Git-tracked detail docs</td>
+                    <td>Dashboard-only / local secret source of truth</td>
+                    <td>Email transport authentication</td>
+                  </tr>
+                </tbody>
+              </table>
+            </article>
+
+            <article class="card card-gold span-6">
+              <h3 class="section-title">Google SSO</h3>
+              <p class="subcopy">Google is used as a sign-in provider, but the Google Cloud client details are not yet captured in repo docs.</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Config Item</th>
+                    <th>Current Value</th>
+                    <th>Stored Where</th>
+                    <th>Used By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Provider In Code</strong></td>
+                    <td class="mono">google</td>
+                    <td><span class="mono">src/contexts/AuthContext.tsx</span></td>
+                    <td>Main app sign-in flow</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Client ID / Secret</strong></td>
+                    <td>Not verified in repo docs</td>
+                    <td>Google Cloud console</td>
+                    <td>OAuth login</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Redirect Settings</strong></td>
+                    <td>Must match live and local app URLs</td>
+                    <td>Google Cloud console + Supabase auth settings</td>
+                    <td>Successful Google sign-in</td>
+                  </tr>
+                </tbody>
+              </table>
+            </article>
+
+            <article class="card card-rose span-6">
+              <h3 class="section-title">Lovable</h3>
+              <p class="subcopy">Lovable is the publish/project surface for the frontend.</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Config Item</th>
+                    <th>Current Value</th>
+                    <th>Stored Where</th>
+                    <th>Used By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Project Name</strong></td>
+                    <td>Game Changer Hub</td>
+                    <td>Preservation docs</td>
+                    <td>Project identification</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Project URL</strong></td>
+                    <td class="mono">https://lovable.dev/projects/e14399ba-fbf2-42cf-bf82-4c38048ee762</td>
+                    <td>Preservation docs</td>
+                    <td>Lovable workspace</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Linked Repo / Branch</strong></td>
+                    <td class="mono">Arth1213/gamechangrs / main</td>
+                    <td>Preservation docs</td>
+                    <td>Frontend publish sync</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Custom Domain</strong></td>
+                    <td class="mono">game-changrs.com</td>
+                    <td>Lovable project settings</td>
+                    <td>Live frontend domain</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Publish URL</strong></td>
+                    <td class="mono">https://gamechangrs.lovable.app</td>
+                    <td>Preservation docs</td>
+                    <td>Lovable-hosted frontend publish</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Env Vars Visible In Lovable</strong></td>
+                    <td>None visible in captured docs</td>
+                    <td>Lovable settings review</td>
+                    <td>Configuration review only</td>
+                  </tr>
+                </tbody>
+              </table>
+            </article>
+
+            <article class="card card-blue span-6">
+              <h3 class="section-title">IONOS DNS</h3>
+              <p class="subcopy">These are public-facing DNS values and are safe to record.</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Config Item</th>
+                    <th>Current Value</th>
+                    <th>Stored Where</th>
+                    <th>Used By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Registrar / DNS Provider</strong></td>
+                    <td>IONOS</td>
+                    <td>Preservation docs</td>
+                    <td>Domain control</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Nameservers</strong></td>
+                    <td class="mono">ns1028.ui-dns.com, ns1068.ui-dns.org, ns1077.ui-dns.de, ns1052.ui-dns.biz</td>
+                    <td>Preservation docs</td>
+                    <td>Domain DNS resolution</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Apex Record</strong></td>
+                    <td class="mono">A @ -> 185.158.133.1</td>
+                    <td>Preservation docs</td>
+                    <td>Domain routing</td>
+                  </tr>
+                  <tr>
+                    <td><strong>WWW Record</strong></td>
+                    <td>No <span class="mono">www</span> record configured in captured snapshot</td>
+                    <td>Preservation docs</td>
+                    <td>Subdomain routing</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Mail / Verification Records</strong></td>
+                    <td class="mono">_lovable, _dmarc, resend._domainkey, send SPF, IONOS MX records</td>
+                    <td>IONOS DNS</td>
+                    <td>Publish verification and email trust</td>
+                  </tr>
+                </tbody>
+              </table>
+            </article>
+
+            <article class="card card-gold span-6">
+              <h3 class="section-title">GitHub</h3>
+              <p class="subcopy">GitHub is the code source of truth and the anchor for backup/restore history.</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Config Item</th>
+                    <th>Current Value</th>
+                    <th>Stored Where</th>
+                    <th>Used By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Repo</strong></td>
+                    <td class="mono">Arth1213/gamechangrs</td>
+                    <td>Git remote</td>
+                    <td>Source control and restore</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Primary Branch</strong></td>
+                    <td class="mono">main</td>
+                    <td>Git</td>
+                    <td>Current source of truth</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Local / Remote Branch Count</strong></td>
+                    <td class="mono">17 local / 15 remote</td>
+                    <td>Git branch state snapshot</td>
+                    <td>Recovery and feature history</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Important Branch Families</strong></td>
+                    <td class="mono">main, phase*, cutover*, backup/*</td>
+                    <td>Git</td>
+                    <td>Mainline, feature history, restore checkpoints</td>
+                  </tr>
+                </tbody>
+              </table>
+            </article>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div>Detailed inventory companion to the simplified system map.</div>
+          <div>Recommended backup attachments: restore guide, Codex prompt, simplified map, detail inventory.</div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

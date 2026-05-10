@@ -2145,7 +2145,7 @@ function renderPlayerReportPage(report) {
   const trends = Array.isArray(report.trends) ? report.trends : [];
   const matchEvidence = Array.isArray(report.matchEvidence) ? report.matchEvidence : [];
   const selectorInterpretation = Array.isArray(report.selectorInterpretation) ? report.selectorInterpretation : [];
-  const standardStats = report.standardStats || {};
+  const detailedStandardStats = report.detailedStandardStats || {};
   const drilldowns = report.drilldowns || {};
   const reportPayload = report.reportPayload || {};
   const payloadPlayerIdentity = reportPayload.playerIdentity || {};
@@ -3028,66 +3028,104 @@ function renderPlayerReportPage(report) {
       font-weight: 700;
     }
 
-    .stats-panel {
+    .stats-stack {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 18px;
       margin-top: 14px;
     }
 
-    .stats-box {
-      border-radius: 20px;
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .stats-card {
+      border-radius: 22px;
       padding: 18px;
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(145, 192, 215, 0.12);
+      min-width: 0;
     }
 
-    .stats-box-title {
+    .stats-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .stats-card-title {
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.14em;
       color: var(--teal);
-      margin-bottom: 14px;
       font-weight: 700;
     }
 
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .stats-tile {
-      border-radius: 16px;
-      padding: 14px 12px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(145, 192, 215, 0.10);
-      min-height: 110px;
-    }
-
-    .stats-tile-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      margin-bottom: 8px;
-      font-weight: 700;
-    }
-
-    .stats-tile-value {
-      font-size: 24px;
+    .stats-source-name {
+      color: #eef8fc;
+      font-size: 20px;
+      line-height: 1.15;
       font-weight: 800;
-      color: var(--sky);
-      line-height: 1.1;
-      margin-bottom: 6px;
       font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
     }
 
-    .stats-tile-copy {
-      color: #d5e7f1;
+    .stats-profile-copy {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+      margin-top: 6px;
+    }
+
+    .stats-profile-pair {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .stats-table-shell {
+      min-width: 0;
+    }
+
+    .stats-table-shell .table-wrap {
+      overflow-x: auto;
+      border-radius: 18px;
+      margin-top: 0;
+    }
+
+    .stats-table-shell table {
+      min-width: 100%;
+      width: max-content;
+    }
+
+    .stats-table-shell th,
+    .stats-table-shell td {
+      white-space: nowrap;
+      overflow-wrap: normal;
+      word-break: normal;
+      font-size: 12px;
+      padding: 10px 12px;
+    }
+
+    .stats-table-shell th:first-child,
+    .stats-table-shell td:first-child {
+      white-space: normal;
+      min-width: 112px;
+    }
+
+    .stats-table-shell th {
+      letter-spacing: 0.12em;
+    }
+
+    .stats-empty-note {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px dashed rgba(145, 192, 215, 0.22);
+      color: var(--muted);
       font-size: 13px;
-      line-height: 1.45;
-      overflow-wrap: anywhere;
+      line-height: 1.55;
     }
 
     .details-shell {
@@ -3119,7 +3157,8 @@ function renderPlayerReportPage(report) {
     @media (max-width: 1100px) {
       .score-shell,
       .quick-read-shell,
-      .stats-panel,
+      .stats-grid,
+      .stats-profile-pair,
       .pie-row,
       .trend-detail-grid,
       .match-evidence-grid {
@@ -3129,7 +3168,6 @@ function renderPlayerReportPage(report) {
       .radar-like,
       .peer-grid,
       .interpret-grid,
-      .stats-grid,
       .meter-grid,
       .title-mini-grid {
         grid-template-columns: 1fr;
@@ -3236,11 +3274,6 @@ function renderPlayerReportPage(report) {
     return "badge-watch";
   };
 
-  const detailWithBreaks = (value, fallback) => {
-    const text = normalizeText(value) || fallback;
-    return escapeHtml(text).replace(/ • /g, "<br>");
-  };
-
   const renderBarRow = (label, value) => `
     <div class="bar-row">
       <div class="bar-label">${escapeHtml(label)}</div>
@@ -3334,14 +3367,6 @@ function renderPlayerReportPage(report) {
     </div>
   `;
 
-  const renderStatTile = (label, stat, fallbackDetail) => `
-    <div class="stats-tile">
-      <div class="stats-tile-label">${escapeHtml(label)}</div>
-      <div class="stats-tile-value">${escapeHtml(stat ? displayDataValue(stat.value) : "—")}</div>
-      <div class="stats-tile-copy">${detailWithBreaks(stat?.detail, fallbackDetail)}</div>
-    </div>
-  `;
-
   const renderTitleMiniCard = (item) => `
     <div class="title-mini-card">
       <div class="title-mini-label">${escapeHtml(item.label)}</div>
@@ -3375,6 +3400,87 @@ function renderPlayerReportPage(report) {
       <div class="evidence-note">${escapeHtml(normalizeText(item.note) || "No live match evidence note is available.")}</div>
     </div>
   `;
+
+  const renderStatsTableShell = (columns, rows, emptyMessage) => `
+    <div class="stats-table-shell">
+      ${renderTable(columns, rows, { emptyMessage })}
+    </div>
+  `;
+
+  const renderStatsCard = (title, tableHtml) => `
+    <article class="stats-card">
+      <div class="stats-card-head">
+        <div class="stats-card-title">${escapeHtml(title)}</div>
+      </div>
+      ${tableHtml}
+    </article>
+  `;
+
+  const renderOverallProfileCard = (profile) => {
+    const battingRows = Array.isArray(profile?.batting) ? profile.batting : [];
+    const bowlingRows = Array.isArray(profile?.bowling) ? profile.bowling : [];
+    return `
+      <article class="stats-card">
+        <div class="stats-card-head">
+          <div>
+            <div class="stats-card-title">Profile Source</div>
+            <div class="stats-source-name">${escapeHtml(normalizeText(profile?.sourceName) || "Public CricClubs Profile")}</div>
+          </div>
+        </div>
+        <div class="stats-profile-pair">
+          ${battingRows.length
+            ? renderStatsCard(
+                "Batting",
+                renderStatsTableShell(
+                  [
+                    { label: "Format", render: (row) => escapeHtml(normalizeText(row.format) || "Overall") },
+                    { label: "Mat", className: "right", render: (row) => escapeHtml(displayInteger(row.matches, "—")) },
+                    { label: "Inns", className: "right", render: (row) => escapeHtml(displayInteger(row.innings, "—")) },
+                    { label: "NO", className: "right", render: (row) => escapeHtml(displayInteger(row.notOuts, "—")) },
+                    { label: "Runs", className: "right", render: (row) => escapeHtml(displayInteger(row.runs, "—")) },
+                    { label: "Balls", className: "right", render: (row) => escapeHtml(displayInteger(row.balls, "—")) },
+                    { label: "Ave", className: "right", render: (row) => escapeHtml(displayNumber(row.average, 2, "—")) },
+                    { label: "SR", className: "right", render: (row) => escapeHtml(displayNumber(row.strikeRate, 2, "—")) },
+                    { label: "HS", className: "right", render: (row) => escapeHtml(normalizeText(row.highestScore) || "—") },
+                    { label: "100s", className: "right", render: (row) => escapeHtml(displayInteger(row.hundreds, "—")) },
+                    { label: "50s", className: "right", render: (row) => escapeHtml(displayInteger(row.fifties, "—")) },
+                    { label: "4s", className: "right", render: (row) => escapeHtml(displayInteger(row.fours, "—")) },
+                    { label: "6s", className: "right", render: (row) => escapeHtml(displayInteger(row.sixes, "—")) },
+                  ],
+                  battingRows,
+                  "No batting rows were found for this public profile."
+                )
+              )
+            : ""}
+          ${bowlingRows.length
+            ? renderStatsCard(
+                "Bowling",
+                renderStatsTableShell(
+                  [
+                    { label: "Format", render: (row) => escapeHtml(normalizeText(row.format) || "Overall") },
+                    { label: "Mat", className: "right", render: (row) => escapeHtml(displayInteger(row.matches, "—")) },
+                    { label: "Inns", className: "right", render: (row) => escapeHtml(displayInteger(row.innings, "—")) },
+                    { label: "Overs", className: "right", render: (row) => escapeHtml(normalizeText(row.overs) || "—") },
+                    { label: "Runs", className: "right", render: (row) => escapeHtml(displayInteger(row.runs, "—")) },
+                    { label: "Wkts", className: "right", render: (row) => escapeHtml(displayInteger(row.wickets, "—")) },
+                    { label: "BBF", className: "right", render: (row) => escapeHtml(normalizeText(row.bestBowling) || "—") },
+                    { label: "Ave", className: "right", render: (row) => escapeHtml(displayNumber(row.average, 2, "—")) },
+                    { label: "Econ", className: "right", render: (row) => escapeHtml(displayNumber(row.economy, 2, "—")) },
+                    { label: "SR", className: "right", render: (row) => escapeHtml(displayNumber(row.strikeRate, 2, "—")) },
+                    { label: "4W", className: "right", render: (row) => escapeHtml(displayInteger(row.fourWickets, "—")) },
+                    { label: "5W", className: "right", render: (row) => escapeHtml(displayInteger(row.fiveWickets, "—")) },
+                    { label: "Wd", className: "right", render: (row) => escapeHtml(displayInteger(row.wides, "—")) },
+                    { label: "Ct", className: "right", render: (row) => escapeHtml(displayInteger(row.catches, "—")) },
+                  ],
+                  bowlingRows,
+                  "No bowling rows were found for this public profile."
+                )
+              )
+            : ""}
+        </div>
+      </article>
+    `;
+  };
 
   const battingAssessment = assessmentCard("batting", "Batting");
   const bowlingAssessment = assessmentCard("bowling", "Bowling");
@@ -3446,8 +3552,8 @@ function renderPlayerReportPage(report) {
   ].slice(0, 3);
   const matchRows = matchEvidence.slice(0, 3);
   const interpretationRows = selectorInterpretation.slice(0, 6).map(interpretationCard);
-  const currentSeriesStats = standardStats.currentSeries || {};
-  const overallStats = standardStats.overall || {};
+  const currentSeriesRaw = detailedStandardStats.currentSeries || {};
+  const overallRaw = detailedStandardStats.overall || {};
   const recommendationLabel = normalizeText(payloadRecommendation.label) || normalizeText(header.recommendation) || "Recommendation Pending";
   const recommendationTone = normalizeText(payloadRecommendation.tone) || toneFromLabel(recommendationLabel);
   const playerName = normalizeText(header.playerName) || normalizeText(payloadPlayerIdentity.playerName) || "Player";
@@ -3606,6 +3712,135 @@ function renderPlayerReportPage(report) {
       copy: normalizeText(div1Readiness.note),
     },
   ];
+  const currentSeriesStatCards = [
+    currentSeriesRaw.batting
+      ? renderStatsCard(
+          "Batting",
+          renderStatsTableShell(
+            [
+              { label: "Mat", className: "right", render: (row) => escapeHtml(displayInteger(row.matches, "—")) },
+              { label: "Inns", className: "right", render: (row) => escapeHtml(displayInteger(row.innings, "—")) },
+              { label: "NO", className: "right", render: (row) => escapeHtml(displayInteger(row.notOuts, "—")) },
+              { label: "Runs", className: "right", render: (row) => escapeHtml(displayInteger(row.runs, "—")) },
+              { label: "Balls", className: "right", render: (row) => escapeHtml(displayInteger(row.balls_faced, "—")) },
+              { label: "Ave", className: "right", render: (row) => escapeHtml(displayNumber(row.batting_average, 2, "—")) },
+              { label: "SR", className: "right", render: (row) => escapeHtml(displayNumber(row.strike_rate, 2, "—")) },
+              { label: "HS", className: "right", render: (row) => escapeHtml(normalizeText(row.highest_score) || "—") },
+              { label: "100s", className: "right", render: (row) => escapeHtml(displayInteger(row.hundreds, "—")) },
+              { label: "50s", className: "right", render: (row) => escapeHtml(displayInteger(row.fifties, "—")) },
+              { label: "4s", className: "right", render: (row) => escapeHtml(displayInteger(row.fours, "—")) },
+              { label: "6s", className: "right", render: (row) => escapeHtml(displayInteger(row.sixes, "—")) },
+            ],
+            [currentSeriesRaw.batting],
+            "No current-series batting stats were returned."
+          )
+        )
+      : "",
+    currentSeriesRaw.bowling
+      ? renderStatsCard(
+          "Bowling",
+          renderStatsTableShell(
+            [
+              { label: "Mat", className: "right", render: (row) => escapeHtml(displayInteger(row.matches, "—")) },
+              { label: "Inns", className: "right", render: (row) => escapeHtml(displayInteger(row.innings, "—")) },
+              { label: "Overs", className: "right", render: (row) => escapeHtml(displayDataValue(row.overs_decimal || row.legal_balls ? formatOvers(row.overs_decimal, row.legal_balls) : null)) },
+              { label: "Runs", className: "right", render: (row) => escapeHtml(displayInteger(row.runs_conceded, "—")) },
+              { label: "Wkts", className: "right", render: (row) => escapeHtml(displayInteger(row.wickets, "—")) },
+              { label: "BBF", className: "right", render: (row) => escapeHtml(normalizeText(row.best_bowling) || "—") },
+              { label: "Ave", className: "right", render: (row) => escapeHtml(displayNumber(row.bowling_average, 2, "—")) },
+              { label: "Econ", className: "right", render: (row) => escapeHtml(displayNumber(row.economy, 2, "—")) },
+              { label: "SR", className: "right", render: (row) => escapeHtml(displayNumber(row.bowling_strike_rate, 2, "—")) },
+              { label: "Mdns", className: "right", render: (row) => escapeHtml(displayInteger(row.maidens, "—")) },
+              { label: "Dots", className: "right", render: (row) => escapeHtml(displayInteger(row.dots, "—")) },
+              { label: "Wd", className: "right", render: (row) => escapeHtml(displayInteger(row.wides, "—")) },
+            ],
+            [currentSeriesRaw.bowling],
+            "No current-series bowling stats were returned."
+          )
+        )
+      : "",
+    currentSeriesRaw.fielding
+      ? renderStatsCard(
+          "Fielding",
+          renderStatsTableShell(
+            [
+              { label: "Mat", className: "right", render: (row) => escapeHtml(displayInteger(row.matches, "—")) },
+              { label: "Catches", className: "right", render: (row) => escapeHtml(displayInteger(row.catches, "—")) },
+              { label: "WK Catches", className: "right", render: (row) => escapeHtml(displayInteger(row.wk_catches, "—")) },
+              { label: "Direct RO", className: "right", render: (row) => escapeHtml(displayInteger(row.direct_run_outs, "—")) },
+              { label: "Indirect RO", className: "right", render: (row) => escapeHtml(displayInteger(row.indirect_run_outs, "—")) },
+              { label: "Stumpings", className: "right", render: (row) => escapeHtml(displayInteger(row.stumpings, "—")) },
+              { label: "Total", className: "right", render: (row) => escapeHtml(displayInteger(row.total_fielding, "—")) },
+            ],
+            [currentSeriesRaw.fielding],
+            "No current-series fielding stats were returned."
+          )
+        )
+      : "",
+    currentSeriesRaw.wicketkeeping
+      ? renderStatsCard(
+          "Wicketkeeping",
+          renderStatsTableShell(
+            [
+              { label: "Mat", className: "right", render: (row) => escapeHtml(displayInteger(row.matches, "—")) },
+              { label: "WK Catches", className: "right", render: (row) => escapeHtml(displayInteger(row.wk_catches, "—")) },
+              { label: "Stumpings", className: "right", render: (row) => escapeHtml(displayInteger(row.stumpings, "—")) },
+              { label: "Total", className: "right", render: (row) => escapeHtml(displayInteger(row.total_fielding, "—")) },
+            ],
+            [currentSeriesRaw.wicketkeeping],
+            "No current-series wicketkeeping stats were returned."
+          )
+        )
+      : "",
+  ].filter(Boolean);
+  const overallProfileSections = Array.isArray(overallRaw.profiles) && overallRaw.profiles.length
+    ? overallRaw.profiles
+    : [
+        {
+          sourceName: "Public CricClubs Profile",
+          batting:
+            overallRaw.batting && (toInteger(overallRaw.batting.matches) || toInteger(overallRaw.batting.runs))
+              ? [
+                  {
+                    format: "Overall",
+                    matches: overallRaw.batting.matches,
+                    innings: null,
+                    notOuts: null,
+                    runs: overallRaw.batting.runs,
+                    balls: null,
+                    average: null,
+                    strikeRate: overallRaw.batting.strike_rate,
+                    highestScore: "",
+                    hundreds: null,
+                    fifties: null,
+                    fours: null,
+                    sixes: null,
+                  },
+                ]
+              : [],
+          bowling:
+            overallRaw.bowling && (toInteger(overallRaw.bowling.matches) || toInteger(overallRaw.bowling.wickets))
+              ? [
+                  {
+                    format: "Overall",
+                    matches: overallRaw.bowling.matches,
+                    innings: null,
+                    overs: "",
+                    runs: null,
+                    wickets: overallRaw.bowling.wickets,
+                    bestBowling: "",
+                    average: null,
+                    economy: overallRaw.bowling.economy,
+                    strikeRate: null,
+                    fourWickets: null,
+                    fiveWickets: null,
+                    wides: null,
+                    catches: null,
+                  },
+                ]
+              : [],
+        },
+      ].filter((profile) => (profile.batting && profile.batting.length) || (profile.bowling && profile.bowling.length));
   const detailCards = [
     renderDetailsCard(
       "Trend Graphics",
@@ -3915,29 +4150,32 @@ function renderPlayerReportPage(report) {
           <div class="card section-card">
             <div class="section-head">
               <div>
-                <h3>Series And Overall CricClubs Snapshot</h3>
+                <h3>Current Series Data</h3>
               </div>
-              <div class="section-head-copy">Current-series and overall profile numbers kept visible in the same visual system as the selector summary.</div>
+              <div class="section-head-copy">Current-series production shown as compact tables instead of summary tiles.</div>
             </div>
-            <div class="stats-panel">
-              <div class="stats-box">
-                <div class="stats-box-title">Current Series</div>
-                <div class="stats-grid">
-                  ${renderStatTile("Batting", currentSeriesStats.batting, "No current-series batting stats returned.")}
-                  ${renderStatTile("Bowling", currentSeriesStats.bowling, "No current-series bowling stats returned.")}
-                  ${renderStatTile("Fielding", currentSeriesStats.fielding, "No current-series fielding stats returned.")}
-                  ${renderStatTile("Wicketkeeping", currentSeriesStats.wicketkeeping, "No current-series wicketkeeping stats returned.")}
-                </div>
+            <div class="stats-stack">
+              ${
+                currentSeriesStatCards.length
+                  ? `<div class="stats-grid">${currentSeriesStatCards.join("")}</div>`
+                  : `<div class="stats-empty-note">No current-series stat rows were returned for this player.</div>`
+              }
+            </div>
+          </div>
+
+          <div class="card section-card">
+            <div class="section-head">
+              <div>
+                <h3>Overall CricClubs</h3>
               </div>
-              <div class="stats-box">
-                <div class="stats-box-title">Overall CricClubs</div>
-                <div class="stats-grid">
-                  ${renderStatTile("Batting", overallStats.batting, "No overall batting stats returned.")}
-                  ${renderStatTile("Bowling", overallStats.bowling, "No overall bowling stats returned.")}
-                  ${renderStatTile("Fielding", overallStats.fielding, "No overall fielding stats returned.")}
-                  ${renderStatTile("Wicketkeeping", overallStats.wicketkeeping, "No overall wicketkeeping stats returned.")}
-                </div>
-              </div>
+              <div class="section-head-copy">Public CricClubs profile rows split by source and format whenever that history exists.</div>
+            </div>
+            <div class="stats-stack">
+              ${
+                overallProfileSections.length
+                  ? overallProfileSections.map((profile) => renderOverallProfileCard(profile)).join("")
+                  : `<div class="stats-empty-note">No overall CricClubs profile rows were available for this player.</div>`
+              }
             </div>
           </div>
 

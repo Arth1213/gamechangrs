@@ -626,6 +626,10 @@ async function getPlayerReport(input) {
       selectorInterpretation: derived.selectorInterpretation,
       selectorTakeaway: derived.selectorTakeaway,
       standardStats: derived.standardStats,
+      detailedStandardStats: {
+        currentSeries: currentSeriesStats,
+        overall: overallStats,
+      },
       reportPayload: buildExecutiveReportPayload({
         meta,
         header: derived.header,
@@ -928,6 +932,7 @@ function loadOverallProfileStats(input) {
     parseIntegerMatch(html, /Wickets<br>\s*<span>\s*([\d,]+)\s*<\/span>/i);
   const strikeRate = parseNumberMatch(description, /\bSR:\s*([\d.]+)/i);
   const economy = parseNumberMatch(description, /\bEcon:\s*([\d.]+)/i);
+  const profiles = parseProfileSections(html);
 
   const stats = {};
 
@@ -951,7 +956,150 @@ function loadOverallProfileStats(input) {
     };
   }
 
+  if (profiles.length) {
+    stats.profiles = profiles;
+  }
+
   return stats;
+}
+
+function parseProfileSections(html) {
+  const sectionPattern =
+    /<h2 class="resp-accordion hor_1[\s\S]*?<span class="resp-arrow"><\/span>([\s\S]*?)<\/h2>\s*<div class="profile-players[\s\S]*?<div class="match-summary-tab sp">([\s\S]*?)(?=<div class="stat-row">|Please visit\s*<a|<h2 class="resp-accordion hor_1|$)/gi;
+  const sections = [];
+
+  for (const match of html.matchAll(sectionPattern)) {
+    const sourceName = stripHtml(match[1]);
+    const sectionHtml = normalizeText(match[2]);
+    const sourceUrl = decodeHtmlEntities(matchFirstGroup(sectionHtml, /Please visit\s*<a[^>]*href=["']([^"']+)["']/i));
+    const battingRows = parseProfileStatTable(
+      matchFirstGroup(
+        sectionHtml,
+        /BATTING STATISTICS<\/h2><div class="about-table[\s\S]*?<table class="table">([\s\S]*?)<\/table>/i
+      ),
+      "batting"
+    );
+    const bowlingRows = parseProfileStatTable(
+      matchFirstGroup(
+        sectionHtml,
+        /Bowling STATISTICS<\/h2><div class="about-table[\s\S]*?<table class="table">([\s\S]*?)<\/table>/i
+      ),
+      "bowling"
+    );
+
+    if (!sourceName || (!battingRows.length && !bowlingRows.length)) {
+      continue;
+    }
+
+    sections.push({
+      sourceName,
+      sourceUrl,
+      batting: battingRows,
+      bowling: bowlingRows,
+    });
+  }
+
+  return sections;
+}
+
+function parseProfileStatTable(tableHtml, statType) {
+  const tbody = matchFirstGroup(tableHtml, /<tbody>([\s\S]*?)<\/tbody>/i);
+  if (!tbody) {
+    return [];
+  }
+
+  const rows = [];
+  const rowPattern = /<tr([^>]*)>([\s\S]*?)<\/tr>/gi;
+
+  for (const match of tbody.matchAll(rowPattern)) {
+    const attributes = normalizeText(match[1]);
+    const rowHtml = normalizeText(match[2]);
+    if (attributes.includes("display: none")) {
+      continue;
+    }
+
+    const cells = [...rowHtml.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((cell) => stripHtml(cell[1]));
+    if (!cells.length) {
+      continue;
+    }
+
+    const formatLabel = normalizeText(cells[0]);
+    if (
+      !formatLabel ||
+      normalizeLabel(formatLabel) === "practice" ||
+      normalizeLabel(formatLabel).includes("view statistics by") ||
+      normalizeLabel(formatLabel) === "loading"
+    ) {
+      continue;
+    }
+
+    const row = statType === "batting" ? mapBattingProfileRow(cells) : mapBowlingProfileRow(cells);
+    if (!row) {
+      continue;
+    }
+
+    const meaningfulValue =
+      toInteger(row.matches) ||
+      toInteger(row.runs) ||
+      toInteger(row.wickets) ||
+      toInteger(row.catches) ||
+      toNumber(row.strikeRate ?? row.economy ?? row.average, null);
+    if (!meaningfulValue) {
+      continue;
+    }
+
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function mapBattingProfileRow(cells) {
+  if (cells.length < 15) {
+    return null;
+  }
+
+  return {
+    format: normalizeText(cells[0]),
+    matches: toInteger(cells[1]),
+    innings: toInteger(cells[2]),
+    notOuts: toInteger(cells[3]),
+    runs: toInteger(cells[4]),
+    balls: toInteger(cells[5]),
+    average: toNumber(cells[6], null),
+    strikeRate: toNumber(cells[7], null),
+    highestScore: normalizeText(cells[8]),
+    hundreds: toInteger(cells[9]),
+    fifties: toInteger(cells[10]),
+    twentiesFives: toInteger(cells[11]),
+    ducks: toInteger(cells[12]),
+    fours: toInteger(cells[13]),
+    sixes: toInteger(cells[14]),
+  };
+}
+
+function mapBowlingProfileRow(cells) {
+  if (cells.length < 15) {
+    return null;
+  }
+
+  return {
+    format: normalizeText(cells[0]),
+    matches: toInteger(cells[1]),
+    innings: toInteger(cells[2]),
+    overs: normalizeText(cells[3]),
+    runs: toInteger(cells[4]),
+    wickets: toInteger(cells[5]),
+    bestBowling: normalizeText(cells[6]),
+    maidens: toInteger(cells[7]),
+    average: toNumber(cells[8], null),
+    economy: toNumber(cells[9], null),
+    strikeRate: toNumber(cells[10], null),
+    fourWickets: toInteger(cells[11]),
+    fiveWickets: toInteger(cells[12]),
+    wides: toInteger(cells[13]),
+    catches: toInteger(cells[14]),
+  };
 }
 
 async function loadContextPerformanceScores(client, input) {
@@ -2438,6 +2586,24 @@ function parseIntegerMatch(value, pattern) {
 
 function parseNumberMatch(value, pattern) {
   return toNumber(matchFirstGroup(value, pattern), null);
+}
+
+function stripHtml(value) {
+  return normalizeText(
+    decodeHtmlEntities(normalizeText(value).replace(/<br\s*\/?>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " "))
+  );
+}
+
+function decodeHtmlEntities(value) {
+  return normalizeText(value)
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)))
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&apos;|&#39;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
 }
 
 module.exports = {

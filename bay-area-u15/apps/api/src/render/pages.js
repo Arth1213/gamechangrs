@@ -3900,11 +3900,11 @@ function renderPlayerReportPage(report) {
         )
       : "",
   ].filter(Boolean);
-  const overallProfileSections = Array.isArray(overallRaw.profiles) && overallRaw.profiles.length
-    ? overallRaw.profiles
-    : [
-        {
-          sourceName: "Public CricClubs Profile",
+  const overallSummaryProfile =
+    (overallRaw.batting && (toInteger(overallRaw.batting.matches) || toInteger(overallRaw.batting.runs))) ||
+    (overallRaw.bowling && (toInteger(overallRaw.bowling.matches) || toInteger(overallRaw.bowling.wickets)))
+      ? {
+          sourceName: "Overall Public Profile Summary",
           batting:
             overallRaw.batting && (toInteger(overallRaw.batting.matches) || toInteger(overallRaw.batting.runs))
               ? [
@@ -3946,8 +3946,13 @@ function renderPlayerReportPage(report) {
                   },
                 ]
               : [],
-        },
-      ].filter((profile) => (profile.batting && profile.batting.length) || (profile.bowling && profile.bowling.length));
+        }
+      : null;
+  const detailedOverallProfileSections = Array.isArray(overallRaw.profiles) ? overallRaw.profiles : [];
+  const overallProfileSections = [
+    ...(overallSummaryProfile ? [overallSummaryProfile] : []),
+    ...detailedOverallProfileSections,
+  ].filter((profile) => (profile.batting && profile.batting.length) || (profile.bowling && profile.bowling.length));
   const detailCards = [
     renderDetailsCard(
       "Trend Graphics",

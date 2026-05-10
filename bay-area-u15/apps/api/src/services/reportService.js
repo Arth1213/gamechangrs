@@ -942,14 +942,14 @@ async function loadOverallProfileStats(input) {
     matchFirstGroup(html, /<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i) ||
     matchFirstGroup(html, /<meta\s+content=["']([^"']+)["']\s+name=["']description["']/i);
   const matches =
-    parseIntegerMatch(description, /\bM:\s*([\d,]+)/i) ||
-    parseIntegerMatch(html, /Matches<br>\s*<span>\s*([\d,]+)\s*<\/span>/i);
+    parseIntegerMatch(html, /Matches<br>\s*<span>\s*([\d,]+)\s*<\/span>/i) ||
+    parseIntegerMatch(description, /\bM:\s*([\d,]+)/i);
   const runs =
-    parseIntegerMatch(description, /\bR:\s*([\d,]+)/i) ||
-    parseIntegerMatch(html, /Runs<br>\s*<span>\s*([\d,]+)\s*<\/span>/i);
+    parseIntegerMatch(html, /Runs<br>\s*<span>\s*([\d,]+)\s*<\/span>/i) ||
+    parseIntegerMatch(description, /\bR:\s*([\d,]+)/i);
   const wickets =
-    parseIntegerMatch(description, /\bW:\s*([\d,]+)/i) ||
-    parseIntegerMatch(html, /Wickets<br>\s*<span>\s*([\d,]+)\s*<\/span>/i);
+    parseIntegerMatch(html, /Wickets<br>\s*<span>\s*([\d,]+)\s*<\/span>/i) ||
+    parseIntegerMatch(description, /\bW:\s*([\d,]+)/i);
   const strikeRate = parseNumberMatch(description, /\bSR:\s*([\d.]+)/i);
   const economy = parseNumberMatch(description, /\bEcon:\s*([\d.]+)/i);
 

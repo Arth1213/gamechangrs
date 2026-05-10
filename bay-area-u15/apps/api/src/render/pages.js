@@ -3158,12 +3158,18 @@ function renderPlayerReportPage(report) {
       font-size: 10px;
       line-height: 1.35;
       vertical-align: middle;
+      text-align: center;
     }
 
     .stats-table-shell table.compact-stats-table th:first-child,
     .stats-table-shell table.compact-stats-table td:first-child {
       min-width: 0;
       width: auto;
+    }
+
+    .stats-table-shell table.compact-stats-table td.right,
+    .stats-table-shell table.compact-stats-table th.right {
+      text-align: center;
     }
 
     .stats-empty-note {
@@ -3258,6 +3264,7 @@ function renderPlayerReportPage(report) {
         word-break: normal;
         font-size: 11px;
         padding: 8px 10px;
+        text-align: center;
       }
     }
 
@@ -3480,9 +3487,68 @@ function renderPlayerReportPage(report) {
     </article>
   `;
 
+  const profileColumnValue = (column, row) => {
+    if (typeof column.value === "function") {
+      return column.value(row);
+    }
+    if (column.key) {
+      return row?.[column.key];
+    }
+    return "";
+  };
+
+  const hasProfileColumnValue = (value) => {
+    const numeric = toNumber(value, null);
+    if (numeric !== null) {
+      return numeric !== 0;
+    }
+    const text = normalizeText(value);
+    return Boolean(text && text !== "-");
+  };
+
+  const compactProfileColumns = (columns, rows) =>
+    columns.filter((column, index) => index === 0 || rows.some((row) => hasProfileColumnValue(profileColumnValue(column, row))));
+
   const renderOverallProfileCard = (profile) => {
     const battingRows = Array.isArray(profile?.batting) ? profile.batting : [];
     const bowlingRows = Array.isArray(profile?.bowling) ? profile.bowling : [];
+    const battingColumns = compactProfileColumns(
+      [
+        { label: "Format", key: "format", render: (row) => escapeHtml(normalizeText(row.format) || "Overall") },
+        { label: "Mat", key: "matches", className: "right", render: (row) => escapeHtml(displayInteger(row.matches, "—")) },
+        { label: "Inns", key: "innings", className: "right", render: (row) => escapeHtml(displayInteger(row.innings, "—")) },
+        { label: "NO", key: "notOuts", className: "right", render: (row) => escapeHtml(displayInteger(row.notOuts, "—")) },
+        { label: "Runs", key: "runs", className: "right", render: (row) => escapeHtml(displayInteger(row.runs, "—")) },
+        { label: "Balls", key: "balls", className: "right", render: (row) => escapeHtml(displayInteger(row.balls, "—")) },
+        { label: "Ave", key: "average", className: "right", render: (row) => escapeHtml(displayNumber(row.average, 2, "—")) },
+        { label: "SR", key: "strikeRate", className: "right", render: (row) => escapeHtml(displayNumber(row.strikeRate, 2, "—")) },
+        { label: "HS", key: "highestScore", className: "right", render: (row) => escapeHtml(normalizeText(row.highestScore) || "—") },
+        { label: "100s", key: "hundreds", className: "right", render: (row) => escapeHtml(displayInteger(row.hundreds, "—")) },
+        { label: "50s", key: "fifties", className: "right", render: (row) => escapeHtml(displayInteger(row.fifties, "—")) },
+        { label: "4s", key: "fours", className: "right", render: (row) => escapeHtml(displayInteger(row.fours, "—")) },
+        { label: "6s", key: "sixes", className: "right", render: (row) => escapeHtml(displayInteger(row.sixes, "—")) },
+      ],
+      battingRows
+    );
+    const bowlingColumns = compactProfileColumns(
+      [
+        { label: "Format", key: "format", render: (row) => escapeHtml(normalizeText(row.format) || "Overall") },
+        { label: "Mat", key: "matches", className: "right", render: (row) => escapeHtml(displayInteger(row.matches, "—")) },
+        { label: "Inns", key: "innings", className: "right", render: (row) => escapeHtml(displayInteger(row.innings, "—")) },
+        { label: "Overs", key: "overs", className: "right", render: (row) => escapeHtml(normalizeText(row.overs) || "—") },
+        { label: "Runs", key: "runs", className: "right", render: (row) => escapeHtml(displayInteger(row.runs, "—")) },
+        { label: "Wkts", key: "wickets", className: "right", render: (row) => escapeHtml(displayInteger(row.wickets, "—")) },
+        { label: "BBF", key: "bestBowling", className: "right", render: (row) => escapeHtml(normalizeText(row.bestBowling) || "—") },
+        { label: "Ave", key: "average", className: "right", render: (row) => escapeHtml(displayNumber(row.average, 2, "—")) },
+        { label: "Econ", key: "economy", className: "right", render: (row) => escapeHtml(displayNumber(row.economy, 2, "—")) },
+        { label: "SR", key: "strikeRate", className: "right", render: (row) => escapeHtml(displayNumber(row.strikeRate, 2, "—")) },
+        { label: "4W", key: "fourWickets", className: "right", render: (row) => escapeHtml(displayInteger(row.fourWickets, "—")) },
+        { label: "5W", key: "fiveWickets", className: "right", render: (row) => escapeHtml(displayInteger(row.fiveWickets, "—")) },
+        { label: "Wd", key: "wides", className: "right", render: (row) => escapeHtml(displayInteger(row.wides, "—")) },
+        { label: "Ct", key: "catches", className: "right", render: (row) => escapeHtml(displayInteger(row.catches, "—")) },
+      ],
+      bowlingRows
+    );
     return `
       <article class="stats-card">
         <div class="stats-card-head">
@@ -3496,21 +3562,7 @@ function renderPlayerReportPage(report) {
             ? renderStatsCard(
                 "Batting",
                 renderStatsTableShell(
-                  [
-                    { label: "Format", render: (row) => escapeHtml(normalizeText(row.format) || "Overall") },
-                    { label: "Mat", className: "right", render: (row) => escapeHtml(displayInteger(row.matches, "—")) },
-                    { label: "Inns", className: "right", render: (row) => escapeHtml(displayInteger(row.innings, "—")) },
-                    { label: "NO", className: "right", render: (row) => escapeHtml(displayInteger(row.notOuts, "—")) },
-                    { label: "Runs", className: "right", render: (row) => escapeHtml(displayInteger(row.runs, "—")) },
-                    { label: "Balls", className: "right", render: (row) => escapeHtml(displayInteger(row.balls, "—")) },
-                    { label: "Ave", className: "right", render: (row) => escapeHtml(displayNumber(row.average, 2, "—")) },
-                    { label: "SR", className: "right", render: (row) => escapeHtml(displayNumber(row.strikeRate, 2, "—")) },
-                    { label: "HS", className: "right", render: (row) => escapeHtml(normalizeText(row.highestScore) || "—") },
-                    { label: "100s", className: "right", render: (row) => escapeHtml(displayInteger(row.hundreds, "—")) },
-                    { label: "50s", className: "right", render: (row) => escapeHtml(displayInteger(row.fifties, "—")) },
-                    { label: "4s", className: "right", render: (row) => escapeHtml(displayInteger(row.fours, "—")) },
-                    { label: "6s", className: "right", render: (row) => escapeHtml(displayInteger(row.sixes, "—")) },
-                  ],
+                  battingColumns,
                   battingRows,
                   "No batting rows were found for this public profile.",
                   { tableClassName: "compact-stats-table", wrapClassName: "compact-stats-wrap" }
@@ -3521,22 +3573,7 @@ function renderPlayerReportPage(report) {
             ? renderStatsCard(
                 "Bowling",
                 renderStatsTableShell(
-                  [
-                    { label: "Format", render: (row) => escapeHtml(normalizeText(row.format) || "Overall") },
-                    { label: "Mat", className: "right", render: (row) => escapeHtml(displayInteger(row.matches, "—")) },
-                    { label: "Inns", className: "right", render: (row) => escapeHtml(displayInteger(row.innings, "—")) },
-                    { label: "Overs", className: "right", render: (row) => escapeHtml(normalizeText(row.overs) || "—") },
-                    { label: "Runs", className: "right", render: (row) => escapeHtml(displayInteger(row.runs, "—")) },
-                    { label: "Wkts", className: "right", render: (row) => escapeHtml(displayInteger(row.wickets, "—")) },
-                    { label: "BBF", className: "right", render: (row) => escapeHtml(normalizeText(row.bestBowling) || "—") },
-                    { label: "Ave", className: "right", render: (row) => escapeHtml(displayNumber(row.average, 2, "—")) },
-                    { label: "Econ", className: "right", render: (row) => escapeHtml(displayNumber(row.economy, 2, "—")) },
-                    { label: "SR", className: "right", render: (row) => escapeHtml(displayNumber(row.strikeRate, 2, "—")) },
-                    { label: "4W", className: "right", render: (row) => escapeHtml(displayInteger(row.fourWickets, "—")) },
-                    { label: "5W", className: "right", render: (row) => escapeHtml(displayInteger(row.fiveWickets, "—")) },
-                    { label: "Wd", className: "right", render: (row) => escapeHtml(displayInteger(row.wides, "—")) },
-                    { label: "Ct", className: "right", render: (row) => escapeHtml(displayInteger(row.catches, "—")) },
-                  ],
+                  bowlingColumns,
                   bowlingRows,
                   "No bowling rows were found for this public profile.",
                   { tableClassName: "compact-stats-table", wrapClassName: "compact-stats-wrap" }

@@ -4,6 +4,14 @@ const fs = require("fs");
 const path = require("path");
 
 const STORAGE_EXPORTS_DIR = path.resolve(__dirname, "../../../../storage/exports");
+const SUPPLEMENTAL_PUBLIC_PROFILE_SOURCES = {
+  732: [
+    {
+      type: "ipl",
+      url: "https://www.ipl.com/cricket/series/unmukt-chand/",
+    },
+  ],
+};
 
 const {
   average,
@@ -913,7 +921,11 @@ async function loadOverallProfileStats(input) {
   const liveHtml = await fetchPublicProfileHtml(normalizeText(input.profileUrl));
   const cachedHtml = fs.existsSync(profileHtmlPath) ? normalizeText(fs.readFileSync(profileHtmlPath, "utf8")) : "";
   const html = normalizeText(liveHtml) || cachedHtml;
-  if (!html) {
+  const primaryProfiles = html ? parseProfileSections(html) : [];
+  const supplementalProfiles = await loadSupplementalPublicProfileSections(input);
+  const profiles = mergePublicProfileSections(primaryProfiles, supplementalProfiles);
+
+  if (!html && !profiles.length) {
     return {};
   }
 
@@ -931,7 +943,6 @@ async function loadOverallProfileStats(input) {
     parseIntegerMatch(html, /Wickets<br>\s*<span>\s*([\d,]+)\s*<\/span>/i);
   const strikeRate = parseNumberMatch(description, /\bSR:\s*([\d.]+)/i);
   const economy = parseNumberMatch(description, /\bEcon:\s*([\d.]+)/i);
-  const profiles = parseProfileSections(html);
 
   const stats = {};
 
@@ -965,6 +976,72 @@ async function loadOverallProfileStats(input) {
   }
 
   return stats;
+}
+
+function getSupplementalPublicProfileSources(input) {
+  const playerId = toInteger(input?.playerId);
+  if (playerId === null) {
+    return [];
+  }
+  return Array.isArray(SUPPLEMENTAL_PUBLIC_PROFILE_SOURCES[playerId])
+    ? SUPPLEMENTAL_PUBLIC_PROFILE_SOURCES[playerId]
+    : [];
+}
+
+async function loadSupplementalPublicProfileSections(input) {
+  const sections = [];
+  const sources = getSupplementalPublicProfileSources(input);
+
+  for (const source of sources) {
+    const sourceType = normalizeLabel(source?.type);
+    const sourceUrl = normalizeText(source?.url);
+    if (!sourceType || !sourceUrl) {
+      continue;
+    }
+
+    const html = await fetchPublicProfileHtml(sourceUrl);
+    if (!html) {
+      continue;
+    }
+
+    if (sourceType === "ipl") {
+      sections.push(...parseIplPublicProfileSections(html, sourceUrl));
+    }
+  }
+
+  return sections;
+}
+
+function mergePublicProfileSections(...sectionLists) {
+  const seen = new Set();
+  const merged = [];
+
+  for (const list of sectionLists) {
+    for (const section of Array.isArray(list) ? list : []) {
+      const sourceName = normalizeText(section?.sourceName);
+      const sourceUrl = normalizeText(section?.sourceUrl);
+      const batting = Array.isArray(section?.batting) ? section.batting : [];
+      const bowling = Array.isArray(section?.bowling) ? section.bowling : [];
+      if (!sourceName || (!batting.length && !bowling.length)) {
+        continue;
+      }
+
+      const dedupeKey = `${normalizeLabel(sourceName)}::${sourceUrl}`;
+      if (seen.has(dedupeKey)) {
+        continue;
+      }
+
+      seen.add(dedupeKey);
+      merged.push({
+        sourceName,
+        sourceUrl,
+        batting,
+        bowling,
+      });
+    }
+  }
+
+  return merged;
 }
 
 function parseProfileSections(html) {
@@ -1004,6 +1081,82 @@ function parseProfileSections(html) {
   }
 
   return sections;
+}
+
+function parseIplPublicProfileSections(html, sourceUrl) {
+  const careerBatting = parseNamedProfileTable(html, "STATS_CAREER_SUMMARY_Batting", mapIplCareerBattingRow);
+  const careerBowling = parseNamedProfileTable(html, "STATS_CAREER_SUMMARY_Bowling", mapIplCareerBowlingRow);
+  const seriesBatting = parseNamedProfileTable(html, "STATS_SERIES_DATA_Batting", mapIplSeriesBattingRow);
+  const seriesBowling = parseNamedProfileTable(html, "STATS_SERIES_DATA_Bowling", mapIplSeriesBowlingRow);
+  const sections = [];
+
+  if (careerBatting.length || careerBowling.length) {
+    sections.push({
+      sourceName: "IPL.com Career Summary",
+      sourceUrl,
+      batting: careerBatting,
+      bowling: careerBowling,
+    });
+  }
+
+  if (seriesBatting.length || seriesBowling.length) {
+    sections.push({
+      sourceName: "IPL.com Series Data",
+      sourceUrl,
+      batting: seriesBatting,
+      bowling: seriesBowling,
+    });
+  }
+
+  return sections;
+}
+
+function parseNamedProfileTable(html, tableId, mapper) {
+  const tableHtml = matchFirstGroup(
+    html,
+    new RegExp(`<table[^>]*id=["']${escapeRegExp(tableId)}["'][^>]*>([\\s\\S]*?)<\\/table>`, "i")
+  );
+  const tbody = matchFirstGroup(tableHtml, /<tbody>([\s\S]*?)<\/tbody>/i);
+  if (!tbody) {
+    return [];
+  }
+
+  const rows = [];
+  const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+
+  for (const match of tbody.matchAll(rowPattern)) {
+    const rowHtml = normalizeText(match[1]);
+    const cells = [...rowHtml.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((cell) => stripHtml(cell[1]));
+    if (!cells.length) {
+      continue;
+    }
+
+    const row = mapper(cells);
+    if (!row || !hasMeaningfulProfileRow(row)) {
+      continue;
+    }
+
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function hasMeaningfulProfileRow(row) {
+  if (!row || typeof row !== "object") {
+    return false;
+  }
+
+  return Object.entries(row).some(([key, value]) => {
+    if (key === "format") {
+      return Boolean(normalizeText(value));
+    }
+    const normalized = normalizeText(value);
+    if (!normalized || normalized === "-" || normalized === "0" || normalized === "0.00" || normalized === "0.0000") {
+      return false;
+    }
+    return true;
+  });
 }
 
 function parseProfileStatTable(tableHtml, statType) {
@@ -1056,6 +1209,92 @@ function parseProfileStatTable(tableHtml, statType) {
   }
 
   return rows;
+}
+
+function mapIplCareerBattingRow(cells) {
+  if (cells.length < 13) {
+    return null;
+  }
+
+  return {
+    format: normalizeText(cells[0]),
+    matches: toPublicInteger(cells[1]),
+    innings: toPublicInteger(cells[2]),
+    runs: toPublicInteger(cells[3]),
+    balls: toPublicInteger(cells[4]),
+    highestScore: normalizeText(cells[5]),
+    average: toPublicNumber(cells[6]),
+    strikeRate: toPublicNumber(cells[7]),
+    notOuts: toPublicInteger(cells[8]),
+    fours: toPublicInteger(cells[9]),
+    sixes: toPublicInteger(cells[10]),
+    fifties: toPublicInteger(cells[11]),
+    hundreds: toPublicInteger(cells[12]),
+  };
+}
+
+function mapIplCareerBowlingRow(cells) {
+  if (cells.length < 15) {
+    return null;
+  }
+
+  return {
+    format: normalizeText(cells[0]),
+    matches: toPublicInteger(cells[1]),
+    innings: toPublicInteger(cells[2]),
+    overs: normalizeText(cells[3]),
+    runs: toPublicInteger(cells[5]),
+    wickets: toPublicInteger(cells[6]),
+    average: toPublicNumber(cells[7]),
+    economy: toPublicNumber(cells[8]),
+    strikeRate: toPublicNumber(cells[9]),
+    bestBowling: normalizeText(cells[10]),
+    fourWickets: toPublicInteger(cells[12]),
+    fiveWickets: toPublicInteger(cells[13]),
+  };
+}
+
+function mapIplSeriesBattingRow(cells) {
+  if (cells.length < 8) {
+    return null;
+  }
+
+  const seriesName = normalizeText(cells[0]);
+  const formatLabel = normalizeText(cells[1]);
+  if (!seriesName && !formatLabel) {
+    return null;
+  }
+
+  return {
+    format: [seriesName, formatLabel ? `(${formatLabel})` : ""].filter(Boolean).join(" "),
+    runs: toPublicInteger(cells[3]),
+    balls: toPublicInteger(cells[4]),
+    fours: toPublicInteger(cells[5]),
+    sixes: toPublicInteger(cells[6]),
+    strikeRate: toPublicNumber(cells[7]),
+  };
+}
+
+function mapIplSeriesBowlingRow(cells) {
+  if (cells.length < 9) {
+    return null;
+  }
+
+  const seriesName = normalizeText(cells[0]);
+  const formatLabel = normalizeText(cells[1]);
+  if (!seriesName && !formatLabel) {
+    return null;
+  }
+
+  return {
+    format: [seriesName, formatLabel ? `(${formatLabel})` : ""].filter(Boolean).join(" "),
+    overs: normalizeText(cells[3]),
+    maidens: toPublicInteger(cells[4]),
+    runs: toPublicInteger(cells[5]),
+    wickets: toPublicInteger(cells[6]),
+    bestBowling: normalizeText(cells[7]),
+    economy: toPublicNumber(cells[8]),
+  };
 }
 
 function mapBattingProfileRow(cells) {
@@ -2704,6 +2943,18 @@ function parseNumberMatch(value, pattern) {
   return toNumber(matchFirstGroup(value, pattern), null);
 }
 
+function toPublicInteger(value) {
+  return toInteger(sanitizePublicNumber(value));
+}
+
+function toPublicNumber(value) {
+  return toNumber(sanitizePublicNumber(value), null);
+}
+
+function sanitizePublicNumber(value) {
+  return normalizeText(value).replace(/[~]/g, "");
+}
+
 async function fetchPublicProfileHtml(profileUrl) {
   const url = normalizeText(profileUrl);
   if (!url) {
@@ -2750,6 +3001,10 @@ function decodeHtmlEntities(value) {
     .replace(/&apos;|&#39;/gi, "'")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">");
+}
+
+function escapeRegExp(value) {
+  return String(value ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 module.exports = {

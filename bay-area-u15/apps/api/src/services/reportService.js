@@ -35,6 +35,8 @@ const {
   withClient,
 } = require("./seriesService");
 
+let ensurePlayerPublicProfileCacheColumnsPromise = null;
+
 async function getDashboardOverview(input) {
   return withClient(async (client) => {
     const context = await resolveSeriesContext(client, input.seriesConfigKey);
@@ -666,7 +668,7 @@ async function getPlayerReport(input) {
 
 async function loadStatPanels(client, input) {
   if (input.scope === "overall") {
-    const overallProfileStats = await loadOverallProfileStats(input);
+    const overallProfileStats = await loadOverallProfileStats(client, input);
     if (Object.keys(overallProfileStats).length) {
       return overallProfileStats;
     }
@@ -918,7 +920,95 @@ async function loadSeriesFactStats(client, input) {
   }, {});
 }
 
-async function loadOverallProfileStats(input) {
+async function ensurePlayerPublicProfileCacheColumns(client) {
+  if (!ensurePlayerPublicProfileCacheColumnsPromise) {
+    ensurePlayerPublicProfileCacheColumnsPromise = (async () => {
+      await client.query(`
+        alter table public.player
+        add column if not exists public_profile_snapshot jsonb
+      `);
+      await client.query(`
+        alter table public.player
+        add column if not exists public_profile_html text
+      `);
+      await client.query(`
+        alter table public.player
+        add column if not exists public_profile_cached_at timestamptz
+      `);
+    })().catch((error) => {
+      ensurePlayerPublicProfileCacheColumnsPromise = null;
+      throw error;
+    });
+  }
+
+  await ensurePlayerPublicProfileCacheColumnsPromise;
+}
+
+async function loadStoredPublicProfileCache(client, playerId) {
+  await ensurePlayerPublicProfileCacheColumns(client);
+
+  const row = await fetchOne(
+    client,
+    `
+      select
+        public_profile_snapshot,
+        public_profile_html,
+        public_profile_cached_at
+      from public.player
+      where id = $1
+      limit 1
+    `,
+    [playerId]
+  );
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    snapshot: row.public_profile_snapshot || null,
+    html: normalizeText(row.public_profile_html),
+    cachedAt: row.public_profile_cached_at || null,
+  };
+}
+
+async function persistPublicProfileCache(client, input = {}) {
+  const playerId = toInteger(input.playerId);
+  if (!playerId) {
+    return;
+  }
+
+  await ensurePlayerPublicProfileCacheColumns(client);
+
+  const profileRecord = input.profileRecord && typeof input.profileRecord === "object"
+    ? input.profileRecord
+    : null;
+  const payload = profileRecord
+    ? JSON.stringify({
+        ...profileRecord,
+        html: undefined,
+      })
+    : null;
+  const html = normalizeText(input.html);
+  if (!payload && !html) {
+    return;
+  }
+
+  await client.query(
+    `
+      update public.player
+      set
+        public_profile_snapshot = coalesce($2::jsonb, public_profile_snapshot),
+        public_profile_html = coalesce(nullif($3, ''), public_profile_html),
+        public_profile_cached_at = now(),
+        last_seen_at = now()
+      where id = $1
+    `,
+    [playerId, payload, html || null]
+  );
+}
+
+async function loadOverallProfileStats(client, input) {
   const profileDir = path.resolve(
     STORAGE_EXPORTS_DIR,
     normalizeText(input.seriesConfigKey),
@@ -928,11 +1018,31 @@ async function loadOverallProfileStats(input) {
   );
   const profileHtmlPath = path.join(profileDir, "profile.html");
   const profileJsonPath = path.join(profileDir, "profile.json");
-  const profileRecord = readStoredPublicProfileRecord(profileJsonPath);
+  const storedCache = await loadStoredPublicProfileCache(client, input.playerId);
+  const fileProfileRecord = readStoredPublicProfileRecord(profileJsonPath);
+  const profileRecord = storedCache?.snapshot || fileProfileRecord;
   const primaryIdentity = validatePrimaryPublicProfileIdentity(input, profileRecord);
   const liveHtml = primaryIdentity.ok ? await fetchPublicProfileHtml(normalizeText(input.profileUrl)) : "";
-  const cachedHtml = fs.existsSync(profileHtmlPath) ? normalizeText(fs.readFileSync(profileHtmlPath, "utf8")) : "";
+  const cachedHtml =
+    storedCache?.html ||
+    (fs.existsSync(profileHtmlPath) ? normalizeText(fs.readFileSync(profileHtmlPath, "utf8")) : "");
   const html = primaryIdentity.ok ? normalizeText(liveHtml) || cachedHtml : "";
+  if (html) {
+    await persistPublicProfileCache(client, {
+      playerId: input.playerId,
+      profileRecord:
+        profileRecord ||
+        {
+          playerId: input.playerId,
+          sourcePlayerId: normalizeText(input.sourcePlayerId),
+          displayName: normalizeText(input.playerName),
+          profileUrl: normalizeText(input.profileUrl),
+          pageTitle: matchFirstGroup(html, /<title>([\s\S]*?)<\/title>/i),
+          found: true,
+        },
+      html,
+    });
+  }
   const primaryProfiles = html ? parseProfileSections(html) : [];
   const supplementalProfiles = await loadSupplementalPublicProfileSections(input);
   const profiles = mergePublicProfileSections(primaryProfiles, supplementalProfiles);
@@ -984,7 +1094,11 @@ async function loadOverallProfileStats(input) {
 
   if (primaryIdentity.ok && normalizeText(input.profileUrl)) {
     stats.sourceUrl = normalizeText(input.profileUrl);
-    stats.sourceMode = liveHtml ? "live_public_profile" : "cached_public_profile";
+    stats.sourceMode = liveHtml
+      ? "live_public_profile"
+      : storedCache?.html
+        ? "database_public_profile"
+        : "cached_public_profile";
   }
 
   if (!primaryIdentity.ok && primaryIdentity.reason) {

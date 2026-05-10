@@ -1,5 +1,7 @@
 const { withClient, withTransaction } = require("../lib/db");
 
+let ensurePlayerPublicProfileCacheColumnsPromise = null;
+
 function normalizeText(value) {
   if (value === undefined || value === null) {
     return "";
@@ -86,6 +88,30 @@ function buildResultsUrl(namespace, leagueId, clubId) {
 
 function getSeriesConfigKey(options, fallback) {
   return normalizeText(options?.seriesConfigKey) || normalizeText(fallback);
+}
+
+async function ensurePlayerPublicProfileCacheColumns(client) {
+  if (!ensurePlayerPublicProfileCacheColumnsPromise) {
+    ensurePlayerPublicProfileCacheColumnsPromise = (async () => {
+      await client.query(`
+        alter table public.player
+        add column if not exists public_profile_snapshot jsonb
+      `);
+      await client.query(`
+        alter table public.player
+        add column if not exists public_profile_html text
+      `);
+      await client.query(`
+        alter table public.player
+        add column if not exists public_profile_cached_at timestamptz
+      `);
+    })().catch((error) => {
+      ensurePlayerPublicProfileCacheColumnsPromise = null;
+      throw error;
+    });
+  }
+
+  await ensurePlayerPublicProfileCacheColumnsPromise;
 }
 
 async function fetchOne(client, query, params = []) {
@@ -900,6 +926,12 @@ async function persistPlayerProfileEnrichment(input = {}) {
   }
 
   return withClient(async (client) => {
+    await ensurePlayerPublicProfileCacheColumns(client);
+    const publicProfileSnapshot = JSON.stringify({
+      ...profile,
+      html: undefined,
+    });
+    const publicProfileHtml = normalizeText(profile.html);
     const result = await client.query(
       `
         update public.player
@@ -913,6 +945,12 @@ async function persistPlayerProfileEnrichment(input = {}) {
           bowling_arm = coalesce($8, bowling_arm),
           bowling_style_bucket = coalesce($9, bowling_style_bucket),
           bowling_style_detail = coalesce($10, bowling_style_detail),
+          public_profile_snapshot = coalesce($11::jsonb, public_profile_snapshot),
+          public_profile_html = coalesce(nullif($12, ''), public_profile_html),
+          public_profile_cached_at = case
+            when $11::jsonb is not null or nullif($12, '') is not null then now()
+            else public_profile_cached_at
+          end,
           profile_last_enriched_at = now(),
           last_seen_at = now()
         where id = $1
@@ -929,6 +967,8 @@ async function persistPlayerProfileEnrichment(input = {}) {
         normalizeText(profile.normalized?.bowlingArm) || null,
         normalizeText(profile.normalized?.bowlingStyleBucket) || null,
         normalizeText(profile.normalized?.bowlingStyleDetail) || null,
+        publicProfileSnapshot,
+        publicProfileHtml || null,
       ]
     );
 

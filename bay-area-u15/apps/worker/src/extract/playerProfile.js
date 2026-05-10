@@ -109,6 +109,7 @@ async function fetchPlayerProfileWithContext(context, player, options = {}) {
       sourcePlayerId: normalizeText(player?.sourcePlayerId),
       displayName: normalizeText(player?.displayName),
       profileUrl,
+      html,
       pageTitle: captured.title,
       found: !notFound,
       fields: {

@@ -121,6 +121,7 @@ Important:
 
 Minimum named docs to include or refresh when practical:
 
+- `docs/RESTORE_PACK_CURRENT/START_HERE.html`
 - `docs/RESTORE_PACK_CURRENT/START_HERE.md`
 - `docs/LATEST_RESTORE_GUIDE.html`
 - `CODEX_CLEAN_SLATE_RESTORE_PROMPT_CURRENT.txt`
@@ -141,6 +142,7 @@ Current refresh helper:
 
 Expected contents of `docs/RESTORE_PACK_CURRENT`:
 
+- `START_HERE.html`
 - `START_HERE.md`
 - `LATEST_RESTORE_GUIDE.html`
 - `CODEX_CLEAN_SLATE_RESTORE_PROMPT_CURRENT.txt`
@@ -192,11 +194,13 @@ The email should include:
 
 The email should attach:
 
+- `START_HERE.html` as the first human entry file when practical
 - one single-file layman restore guide in HTML or DOCX format
 - one Codex restore prompt file that can be pasted directly into Codex to restore from the backup set
 - one single-page Game-Changrs simplified system map in HTML or PDF form, preferably both when practical
 - one detailed platform inventory in HTML or PDF form, preferably both when practical
-- the email body should also point the reader to `docs/RESTORE_PACK_CURRENT/START_HERE.md` as the first file to open
+- the email body should point the reader to `docs/RESTORE_PACK_CURRENT/START_HERE.html` as the first file to open
+- `START_HERE.md` may also be included as the markdown companion inside the OneDrive restore pack
 
 ## Current known backup location pattern
 

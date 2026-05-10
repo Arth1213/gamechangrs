@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game-Changrs Restore Pack Start Here</title>
+    <style>
+      :root {
+        --bg: #f4efe6;
+        --paper: #fffaf2;
+        --ink: #18212f;
+        --muted: #5d6777;
+        --line: #d9cdb7;
+        --brand: #0f766e;
+        --brand-soft: #e1f5f0;
+        --warn: #92400e;
+        --warn-soft: #fff2df;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Inter", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 28%),
+          linear-gradient(180deg, #f6f1e8 0%, var(--bg) 100%);
+      }
+
+      .page {
+        width: min(960px, calc(100vw - 32px));
+        margin: 20px auto 40px;
+      }
+
+      .sheet {
+        background: linear-gradient(180deg, rgba(255, 250, 242, 0.98), rgba(255, 247, 237, 0.98));
+        border: 1px solid rgba(217, 205, 183, 0.95);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: 0 18px 42px rgba(24, 33, 47, 0.08);
+      }
+
+      .eyebrow {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: var(--brand);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 12px 0 10px;
+        font-size: clamp(30px, 4vw, 44px);
+        line-height: 0.96;
+        letter-spacing: -0.04em;
+      }
+
+      .lead {
+        margin: 0;
+        max-width: 720px;
+        font-size: 16px;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+
+      .section {
+        margin-top: 22px;
+      }
+
+      h2 {
+        margin: 0 0 10px;
+        font-size: 20px;
+        letter-spacing: -0.02em;
+      }
+
+      .grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .card {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 16px;
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 12px;
+        align-items: start;
+        padding-top: 12px;
+        border-top: 1px solid rgba(217, 205, 183, 0.8);
+      }
+
+      .step:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      .step-no {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--brand-soft);
+        color: var(--brand);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .step p,
+      .card p,
+      li {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+
+      .path {
+        display: block;
+        margin-top: 6px;
+        padding: 9px 10px;
+        border-radius: 12px;
+        background: #f7f2e6;
+        border: 1px solid rgba(217, 205, 183, 0.9);
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 12px;
+        overflow-wrap: anywhere;
+        color: var(--ink);
+      }
+
+      .warn {
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: var(--warn-soft);
+        border: 1px solid rgba(146, 64, 14, 0.18);
+      }
+
+      .warn p {
+        color: var(--warn);
+      }
+
+      @media (max-width: 760px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .sheet {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="sheet">
+        <span class="eyebrow">Open This First</span>
+        <h1>Game-Changrs Restore Pack</h1>
+        <p class="lead">
+          If a new person is restoring Game-Changrs on a laptop, this is the first file to open.
+          It tells them which file to read next, where code comes from, where env files come from,
+          and which supporting docs explain local ops and platform setup.
+        </p>
+
+        <div class="section grid">
+          <article class="card">
+            <h2>Use This Order</h2>
+            <div class="step">
+              <div class="step-no">1</div>
+              <div>
+                <p>Open the main restore guide.</p>
+                <span class="path">LATEST_RESTORE_GUIDE.html</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">2</div>
+              <div>
+                <p>If using Codex to do the restore, open the Codex prompt.</p>
+                <span class="path">CODEX_CLEAN_SLATE_RESTORE_PROMPT_CURRENT.txt</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">3</div>
+              <div>
+                <p>If local operator work is needed after restore, open the local-ops guide.</p>
+                <span class="path">LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_CURRENT.md</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">4</div>
+              <div>
+                <p>Use the simplified system map for context.</p>
+                <span class="path">GAMECHANGRS_SYSTEM_MAP_CURRENT.html</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">5</div>
+              <div>
+                <p>Use the detailed platform inventory only when exact platform/config ownership is needed.</p>
+                <span class="path">GAMECHANGRS_PLATFORM_INVENTORY_DETAIL_CURRENT.html</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <h2>Very Important Distinction</h2>
+            <ul>
+              <li>The repo code comes from GitHub or from the git bundle in the restore-point backup.</li>
+              <li>The env files do <strong>not</strong> come from Git.</li>
+              <li>The env files come from the OneDrive restore-point backup.</li>
+            </ul>
+            <span class="path">Copy backed-up root env file -> gamechangrs-phase10-deploy/.env</span>
+            <span class="path">Copy backed-up analytics env file -> gamechangrs-phase10-deploy/bay-area-u15/.env</span>
+          </article>
+        </div>
+
+        <div class="warn">
+          <p>
+            When <strong>backup everything for me</strong> is requested, this handoff pack should be refreshed
+            before the OneDrive restore point and backup email are created.
+          </p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

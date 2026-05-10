@@ -18,9 +18,9 @@ What to do:
    - /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/docs/LATEST_RESTORE_GUIDE.html
    - /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_CURRENT.md
    - /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/BACKUP_EVERYTHING_PROTOCOL.md
-4. Restore the root env file into:
+4. From the latest OneDrive restore-point folder, locate the backed-up root env restore copy and place it into:
    - /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/.env
-5. Restore the analytics/local-ops env file into:
+5. From the latest OneDrive restore-point folder, locate the backed-up analytics/local-ops env restore copy and place it into:
    - /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15/.env
 6. Before starting services, verify which external platform settings still need to be in place:
    - Render service settings and env

@@ -2022,7 +2022,6 @@ function buildSelectorTakeaway(input) {
   const strengths = [];
   const cautions = [];
   const roleLabel = humanizeRole(input.roleType).toLowerCase();
-  const recommendation = normalizeText(input.recommendation).toLowerCase();
 
   if (input.bowlingScore >= 80) {
     strengths.push("strong bowling impact");
@@ -2060,10 +2059,21 @@ function buildSelectorTakeaway(input) {
     strengths.length ? strengths.slice(0, 3) : ["a credible current sample"]
   );
   const cautionText = cautions.length
-    ? ` The main watch point is ${joinReadable(cautions.slice(0, 2))}.`
+    ? ` Main watchout: ${joinReadable(cautions.slice(0, 2))}.`
     : "";
 
-  return `${input.playerName} merits ${recommendation} as a ${roleLabel} with ${strengthText}.${cautionText}`;
+  let profileLead = roleLabel;
+  if (roleLabel.includes("all-rounder")) {
+    if (input.battingScore >= 75 && input.bowlingScore >= 80) {
+      profileLead = "genuine two-way all-rounder";
+    } else if (input.bowlingScore > input.battingScore) {
+      profileLead = "bowling all-rounder";
+    } else if (input.battingScore > input.bowlingScore) {
+      profileLead = "batting-led all-rounder";
+    }
+  }
+
+  return `${input.playerName} profiles as a ${profileLead} with ${strengthText}.${cautionText}`;
 }
 
 function buildTrendCards(matchRows) {

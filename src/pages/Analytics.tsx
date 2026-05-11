@@ -3,6 +3,7 @@ import {
   Activity,
   AlertCircle,
   ArrowRight,
+  BarChart3,
   CalendarDays,
   Layers3,
   Loader2,
@@ -2537,103 +2538,133 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <section className="bg-gradient-hero pt-32 pb-20">
+      <section className="bg-gradient-hero pt-28 pb-16">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-6xl space-y-8">
-            <Card className="border-border/80 bg-card/85 shadow-xl">
-              <CardContent className="space-y-8 p-8 lg:p-10">
-                <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="space-y-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Analytics Home</p>
-                    <div className="space-y-2">
-                      <h1 className="font-display text-4xl font-bold leading-[0.96] text-foreground md:text-5xl lg:text-6xl">
-                        Welcome back, {userDisplayName}
-                      </h1>
-                      <p className="max-w-3xl text-base leading-7 text-muted-foreground">
-                        {accessibleSeriesCount > 0
-                          ? selectedSeries
-                            ? `${accessibleSeriesCount} accessible series. Preferred workspace: ${selectedSeries.seriesName}.`
-                            : `${accessibleSeriesCount} accessible series. Choose one below to open its workspace.`
-                          : `Signed in as ${user?.email || "this account"}.`}
-                      </p>
-                    </div>
+            <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
+              <div className="rounded-[32px] border border-border/80 bg-card/85 p-5 shadow-xl lg:p-6">
+                <div className="flex h-full flex-col justify-center gap-3">
+                  <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
+                    <BarChart3 className="h-4 w-4" />
+                    Your Analytics Workspace
                   </div>
 
-                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row lg:flex-col">
-                    <Button asChild variant="outline" className="w-full sm:w-auto">
+                  <div className="space-y-2.5">
+                    <h1 className="max-w-xl text-5xl font-bold leading-[0.96] tracking-[-0.03em] text-foreground md:text-6xl">
+                      Welcome back, {userDisplayName}
+                    </h1>
+                    <p className="max-w-3xl text-[15px] leading-7 text-muted-foreground md:text-base">
+                      {accessibleSeriesCount > 0
+                        ? selectedSeries
+                          ? `Search players, open reports, and move through analytics with ${selectedSeries.seriesName} as your current preferred series.`
+                          : `Search players, open reports, and move through analytics across ${formatNumber(accessibleSeriesCount)} accessible series.`
+                        : "Your analytics workspace is ready. Activate series access or move into the right analytics surface below."}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <Button asChild variant="hero">
                       <Link to={workspaceRoute}>
                         Series Workspace
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Link>
                     </Button>
+                    {(isPlatformAdminViewer || manageableSeriesCount > 0) ? (
+                      <Button asChild variant="outline">
+                        <Link to={adminRoute}>
+                          Series Console
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
+              </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="rounded-2xl border border-border/80 bg-background/40 p-5">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Accessible series</p>
-                    <p className="mt-3 font-display text-3xl text-foreground">{formatNumber(accessibleSeriesCount)}</p>
+              <div className="flex h-full flex-col rounded-[32px] border border-border/80 bg-card/85 p-5 shadow-xl lg:p-6">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Workspace snapshot</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Your current analytics access and preferred workspace state.</p>
                   </div>
-                  <div className="rounded-2xl border border-border/80 bg-background/40 p-5">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Admin scope</p>
-                    <p className="mt-3 font-display text-3xl text-foreground">
+                </div>
+                <div className="grid h-full gap-3 md:grid-cols-3">
+                  <div className="flex min-h-[118px] flex-col justify-between rounded-[24px] border border-primary/20 bg-primary/10 p-4">
+                    <p className="gc-type-metric text-3xl md:text-3xl">{formatNumber(accessibleSeriesCount)}</p>
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Accessible series</p>
+                  </div>
+                  <div className="flex min-h-[118px] flex-col justify-between rounded-[24px] border border-border bg-background/70 p-4">
+                    <p className="gc-type-card-title text-lg md:text-xl">
                       {isPlatformAdminViewer ? "Global" : formatNumber(manageableSeriesCount)}
                     </p>
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Admin scope</p>
                   </div>
-                  <div className="rounded-2xl border border-border/80 bg-background/40 p-5">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Preferred series</p>
-                    <p className="mt-3 font-display text-xl text-foreground">
+                  <div className="flex min-h-[118px] flex-col justify-between rounded-[24px] border border-border bg-background/70 p-4">
+                    <p className="gc-type-card-title text-lg md:text-xl">
                       {selectedSeries?.seriesName || (hasMultipleSeries ? "Choose in workspace" : "Analytics")}
                     </p>
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Preferred series</p>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {analyticsProfiles.map((profile) => {
-                    const tone = getAnalyticsProfileTone(profile.key);
-                    const icon =
-                      profile.key === "platform"
-                        ? <ShieldCheck className={`h-5 w-5 ${tone.icon}`} />
-                        : profile.key === "series-admin"
-                          ? <Layers3 className={`h-5 w-5 ${tone.icon}`} />
-                          : <Users className={`h-5 w-5 ${tone.icon}`} />;
-
-                    return (
-                      <div
-                        key={profile.key}
-                        className={`rounded-2xl border ${tone.border} ${tone.panel} p-5`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-background/60">
-                              {icon}
-                            </div>
-                            <div>
-                              <p className="font-display text-2xl text-foreground">{profile.title}</p>
-                              <p className="mt-1 text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                                {profile.meta}
-                              </p>
-                            </div>
-                          </div>
-                          <Badge variant="outline" className={tone.badge}>
-                            Active
-                          </Badge>
-                        </div>
-                        <p className="mt-4 text-sm leading-7 text-muted-foreground">{profile.summary}</p>
-                        <div className="mt-5">
-                          <Button asChild variant="outline">
-                            <Link to={profile.href}>
-                              {profile.actionLabel}
-                              <ArrowRight className="ml-2 h-4 w-4" />
-                            </Link>
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
+            <div className="rounded-[32px] border border-border/80 bg-card/85 p-5 shadow-xl lg:p-6">
+              <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Your analytics surfaces</p>
+                  <h2 className="mt-2 font-display text-2xl font-bold text-foreground md:text-3xl">Open the right analytics view</h2>
+                  <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+                    Move into the workspace, series operations, or platform-level analytics surface based on the job you want to do.
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {analyticsProfiles.map((profile) => {
+                  const tone = getAnalyticsProfileTone(profile.key);
+                  const icon =
+                    profile.key === "platform"
+                      ? <ShieldCheck className={`h-5 w-5 ${tone.icon}`} />
+                      : profile.key === "series-admin"
+                        ? <Layers3 className={`h-5 w-5 ${tone.icon}`} />
+                        : <Users className={`h-5 w-5 ${tone.icon}`} />;
+
+                  return (
+                    <div
+                      key={profile.key}
+                      className={`rounded-2xl border ${tone.border} ${tone.panel} p-5`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-background/60">
+                            {icon}
+                          </div>
+                          <div>
+                            <p className="font-display text-2xl text-foreground">{profile.title}</p>
+                            <p className="mt-1 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              {profile.meta}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className={tone.badge}>
+                          Active
+                        </Badge>
+                      </div>
+                      <p className="mt-4 text-sm leading-7 text-muted-foreground">{profile.summary}</p>
+                      <div className="mt-5">
+                        <Button asChild variant="outline">
+                          <Link to={profile.href}>
+                            {profile.actionLabel}
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
             <AnalyticsSeriesPortfolio
               seriesCards={seriesCards}

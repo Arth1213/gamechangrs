@@ -168,9 +168,9 @@ function MarketplaceMetricTile({
         : "border-border/80 bg-background/60";
 
   return (
-    <div className={`rounded-[24px] border px-5 py-5 ${toneClass}`}>
+    <div className={`rounded-[24px] border px-5 py-4 ${toneClass}`}>
       <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{label}</p>
-      <p className="gc-type-metric mt-4">{value}</p>
+      <p className="gc-type-metric mt-3">{value}</p>
     </div>
   );
 }
@@ -295,14 +295,14 @@ function MarketplaceGuestLanding({
   categoryCount: number;
 }) {
   return (
-    <section className="border-b border-border/80 bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.08),transparent_28%),linear-gradient(180deg,rgba(15,23,42,0.18),rgba(15,23,42,0))] pb-10 pt-28">
+    <section className="border-b border-border/80 bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.08),transparent_28%),linear-gradient(180deg,rgba(15,23,42,0.18),rgba(15,23,42,0))] pb-8 pt-24">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-6xl">
-          <div className="rounded-[34px] border border-border/80 bg-card/80 p-5 shadow-xl lg:p-7">
-            <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr] xl:items-stretch">
+          <div className="rounded-[34px] border border-border/80 bg-card/80 p-5 shadow-xl lg:p-6">
+            <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr] xl:items-stretch">
               <div className="flex h-full flex-col rounded-[30px] border border-border/80 bg-background/35 p-5 text-center xl:pr-4 xl:text-left">
-                <div className="flex h-full flex-col justify-between gap-5">
-                  <div className="space-y-4">
+                <div className="flex h-full flex-col justify-start gap-4">
+                  <div className="space-y-3">
                     <p className="text-[11px] uppercase tracking-[0.24em] text-primary/80">Community marketplace</p>
                     <h1 className="gc-type-hero leading-[0.94]">
                       Move cricket gear through the community.
@@ -312,7 +312,7 @@ function MarketplaceGuestLanding({
                     </p>
                   </div>
 
-                  <div className="space-y-5">
+                  <div className="space-y-4">
                     <div className="flex flex-wrap justify-center gap-3 xl:justify-start">
                       <Button variant="hero" size="default" asChild>
                         <Link to="/auth">
@@ -325,7 +325,7 @@ function MarketplaceGuestLanding({
                       </Button>
                     </div>
 
-                    <div className="rounded-[24px] border border-border/80 bg-background/50 px-5 py-4 text-left text-sm leading-6 text-muted-foreground">
+                    <div className="rounded-[24px] border border-border/80 bg-background/50 px-5 py-3 text-left text-sm leading-6 text-muted-foreground">
                       Game-Changrs is the connection layer. Buyer and seller continue by email and complete the exchange offline.
                     </div>
                   </div>
@@ -333,43 +333,43 @@ function MarketplaceGuestLanding({
               </div>
 
               <div className="flex h-full flex-col rounded-[30px] border border-border/80 bg-background/35 p-5">
-                <div className="grid gap-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <MarketplaceMetricTile label="Community listings" value={publicListingCount} tone="accent" />
                     <MarketplaceMetricTile label="Donation listings" value={donationCount} tone="warm" />
                     <MarketplaceMetricTile label="Gear categories" value={categoryCount} />
-                    <div className="rounded-[24px] border border-border/80 bg-background/60 px-5 py-5">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                    <div className="rounded-[24px] border border-border/80 bg-background/60 px-5 py-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
                         <Mail className="h-5 w-5 text-primary" />
                       </div>
-                      <p className="mt-4 text-[11px] uppercase tracking-[0.22em] text-primary/80">Email intro</p>
+                      <p className="mt-3 text-[11px] uppercase tracking-[0.22em] text-primary/80">Email intro</p>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">
                         Game-Changrs opens the conversation, then buyer and seller handle the exchange directly.
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex-1 rounded-[26px] border border-border/80 bg-background/45 p-5">
+                  <div className="flex-1 rounded-[26px] border border-border/80 bg-background/45 p-4">
                     <p className="text-[11px] uppercase tracking-[0.22em] text-primary/80">Marketplace motion</p>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
                       Keep usable gear moving through the community, whether the right next step is donation or a direct sale.
                     </p>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div className="rounded-[22px] border border-border/70 bg-card/60 p-4">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
                           <HeartHandshake className="h-5 w-5 text-primary" />
                         </div>
-                        <h2 className="gc-type-card-title mt-4 leading-none">Donate gear</h2>
+                        <h2 className="gc-type-card-title mt-3 leading-none">Donate gear</h2>
                         <p className="mt-2 text-sm leading-6 text-muted-foreground">
                           Publish free listings for useful gear that should stay in circulation across the cricket community.
                         </p>
                       </div>
 
                       <div className="rounded-[22px] border border-border/70 bg-card/60 p-4">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
                           <Tag className="h-5 w-5 text-primary" />
                         </div>
-                        <h2 className="gc-type-card-title mt-4 leading-none">Sell gear</h2>
+                        <h2 className="gc-type-card-title mt-3 leading-none">Sell gear</h2>
                         <p className="mt-2 text-sm leading-6 text-muted-foreground">
                           Add price, condition, and location, then move the conversation to direct email once there is interest.
                         </p>
@@ -400,40 +400,36 @@ function MarketplaceWorkspaceHero({
   onCreateListing: (mode: ListingMode) => void;
 }) {
   return (
-    <section className="border-b border-border bg-card/50 pb-12 pt-32">
+    <section className="border-b border-border bg-card/50 pb-8 pt-28">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-6xl">
-          <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
-            <div className="rounded-[32px] border border-border/80 bg-card/85 p-6 shadow-xl lg:p-8">
-              <div className="flex h-full flex-col justify-between gap-5">
+          <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
+            <div className="rounded-[32px] border border-border/80 bg-card/85 p-5 shadow-xl lg:p-6">
+              <div className="flex h-full flex-col justify-center gap-3">
                 <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
                   <ShoppingBag className="h-4 w-4" />
                   Your Gear Workspace
                 </div>
 
-                <div className="space-y-3">
-                  <h1 className="gc-type-hero max-w-xl">
+                <div className="space-y-2.5">
+                  <h1 className="max-w-xl text-5xl font-bold leading-[0.96] tracking-[-0.03em] text-foreground md:text-6xl">
                     {userName}, move cricket gear.
                   </h1>
-                  <p className="max-w-xl text-base leading-7 text-muted-foreground">
+                  <p className="max-w-xl text-[15px] leading-7 text-muted-foreground md:text-base">
                     Keep listings live and let Game-Changrs connect buyer and seller by email.
                   </p>
-                </div>
-
-                <div className="rounded-2xl border border-border/70 bg-background/50 px-4 py-3 text-sm text-muted-foreground">
-                  Manage your active listings and monitor community marketplace activity from one workspace.
                 </div>
               </div>
             </div>
 
             <div className="flex h-full flex-col rounded-[32px] border border-border/80 bg-card/85 p-5 shadow-xl lg:p-6">
-              <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Workspace snapshot</p>
-                  <p className="mt-2 text-sm text-muted-foreground">Your live listing position across the marketplace.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Your live listing position across the marketplace.</p>
                 </div>
               </div>
-              <div className="grid h-full gap-4 md:grid-cols-3">
+              <div className="grid h-full gap-3 md:grid-cols-3">
                 <MarketplaceHeroCard label="Your active listings" value={ownerListingCount} tone="accent" />
                 <MarketplaceHeroCard label="Community feed" value={publicListingCount} />
                 <MarketplaceHeroCard label="Donation opportunities" value={donationCount} tone="warm" />

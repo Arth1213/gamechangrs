@@ -463,49 +463,45 @@ function TechniqueAIWorkspace({
 
   return (
     <>
-      <section className="border-b border-border bg-card/50 pb-12 pt-32">
+      <section className="border-b border-border bg-card/50 pb-8 pt-28">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-6xl">
-            <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
-              <div className="rounded-[32px] border border-border/80 bg-card/85 p-6 shadow-xl lg:p-8">
-                <div className="flex h-full flex-col justify-between gap-5">
+            <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
+              <div className="rounded-[32px] border border-border/80 bg-card/85 p-5 shadow-xl lg:p-6">
+                <div className="flex h-full flex-col justify-center gap-3">
                   <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
                     <Sparkles className="h-4 w-4" />
                     Your Technique AI Workspace
                   </div>
 
-                  <div className="space-y-3">
-                    <h1 className="gc-type-hero max-w-xl">
+                  <div className="space-y-2.5">
+                    <h1 className="max-w-xl text-5xl font-bold leading-[0.96] tracking-[-0.03em] text-foreground md:text-6xl">
                       Welcome back, {userName}.
                     </h1>
-                    <p className="max-w-2xl text-base leading-7 text-muted-foreground">
+                    <p className="max-w-2xl text-[15px] leading-7 text-muted-foreground md:text-base">
                       Upload batting clips, track saved analyses, and keep your latest scoring feedback in one place.
                     </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-border/70 bg-background/50 px-4 py-3 text-sm text-muted-foreground">
-                    This workspace keeps your video-based batting reviews, report history, and next analysis flow together.
                   </div>
                 </div>
               </div>
 
               <div className="flex h-full flex-col rounded-[32px] border border-border/80 bg-card/85 p-5 shadow-xl lg:p-6">
-                <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Workspace snapshot</p>
-                    <p className="mt-2 text-sm text-muted-foreground">Your recent Technique AI activity at a glance.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Your recent Technique AI activity at a glance.</p>
                   </div>
                 </div>
-                <div className="grid h-full gap-4 md:grid-cols-3">
-                  <div className="flex min-h-[170px] flex-col justify-between rounded-[24px] border border-primary/20 bg-primary/10 px-5 py-5">
+                <div className="grid h-full gap-3 md:grid-cols-3">
+                  <div className="flex min-h-[118px] flex-col justify-between rounded-[24px] border border-primary/20 bg-primary/10 px-5 py-3.5">
                     <p className="gc-type-metric">{historyLoading ? "-" : analyses.length}</p>
                     <p className="text-xs uppercase leading-[1.45] tracking-[0.18em] text-muted-foreground">Saved analyses</p>
                   </div>
-                  <div className="flex min-h-[170px] flex-col justify-between rounded-[24px] border border-border bg-background/70 px-5 py-5">
+                  <div className="flex min-h-[118px] flex-col justify-between rounded-[24px] border border-border bg-background/70 px-5 py-3.5">
                     <p className="gc-type-metric">{historyLoading ? "-" : latestAnalysis?.overall_score ?? "--"}</p>
                     <p className="text-xs uppercase leading-[1.45] tracking-[0.18em] text-muted-foreground">Latest score</p>
                   </div>
-                  <div className="flex min-h-[170px] flex-col justify-between rounded-[24px] border border-border bg-background/70 px-5 py-5">
+                  <div className="flex min-h-[118px] flex-col justify-between rounded-[24px] border border-border bg-background/70 px-5 py-3.5">
                     <p className="gc-type-card-title text-lg md:text-xl">
                       {historyLoading
                         ? "-"
@@ -526,7 +522,7 @@ function TechniqueAIWorkspace({
 
       <section className="border-b border-border bg-card/60 py-8">
         <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-6xl space-y-10">
+          <div className="mx-auto max-w-6xl space-y-8">
             <div className="space-y-6">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div>
@@ -586,24 +582,7 @@ function TechniqueAIWorkspace({
                   </div>
                 </div>
               ) : (
-                <div className="space-y-5">
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="rounded-2xl border border-primary/20 bg-primary/10 p-5">
-                      <p className="gc-type-metric text-3xl md:text-3xl">{analyses.length}</p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Reports shown</p>
-                    </div>
-                    <div className="rounded-2xl border border-border bg-gradient-card p-5">
-                      <p className="gc-type-metric text-3xl md:text-3xl">{latestAnalysis?.overall_score ?? "--"}</p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Latest score</p>
-                    </div>
-                    <div className="rounded-2xl border border-border bg-gradient-card p-5">
-                      <p className="gc-type-card-title text-lg md:text-xl">
-                        {latestAnalysis ? format(new Date(latestAnalysis.created_at), "MMM d, yyyy") : "--"}
-                      </p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">Latest upload</p>
-                    </div>
-                  </div>
-
+                <div className="space-y-4">
                   <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
                     {analyses.map((analysis) => (
                       <div
@@ -650,8 +629,12 @@ function TechniqueAIWorkspace({
                           </div>
                         </div>
 
-                        <div className="mt-6 flex flex-wrap gap-3">
-                          <Button className="min-w-0 flex-1" asChild>
+                        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                          <Button
+                            variant="hero"
+                            className="h-14 rounded-2xl px-5 text-base font-semibold shadow-none"
+                            asChild
+                          >
                             <Link to={`/analysis/${analysis.id}`}>
                               View Report
                               <ArrowRight className="h-4 w-4" />
@@ -659,7 +642,7 @@ function TechniqueAIWorkspace({
                           </Button>
                           <Button
                             variant="outline"
-                            className="min-w-0 flex-1"
+                            className="h-14 rounded-2xl px-5 text-base"
                             onClick={() => handleExportPdf(analysis.id)}
                             disabled={exportingId === analysis.id}
                           >
@@ -667,7 +650,7 @@ function TechniqueAIWorkspace({
                             {exportingId === analysis.id ? "Exporting..." : "Export PDF"}
                           </Button>
                           {analysis.video_url ? (
-                            <Button variant="outline" className="w-full sm:w-auto" asChild>
+                            <Button variant="outline" className="h-14 rounded-2xl px-5 text-base sm:col-span-2" asChild>
                               <a href={analysis.video_url} target="_blank" rel="noreferrer">
                                 Open Video
                               </a>

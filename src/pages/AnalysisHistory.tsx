@@ -6,8 +6,12 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Loader2, TrendingUp, Clock, Video, Calendar, BarChart3 } from "lucide-react";
+import { ArrowLeft, FileDown, Loader2, TrendingUp, Clock, Video, Calendar, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
+
+import { downloadBlob } from "@/lib/reportPdf";
+import { exportStoredTechniqueReportPdf, type StoredTechniqueAnalysis } from "@/lib/techniqueReportExport";
 
 interface AnalysisResult {
   id: string;
@@ -23,6 +27,7 @@ export default function AnalysisHistory() {
   const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAnalyses = async () => {
@@ -52,6 +57,38 @@ export default function AnalysisHistory() {
     if (score >= 80) return 'text-green-500 bg-green-500/20';
     if (score >= 60) return 'text-yellow-500 bg-yellow-500/20';
     return 'text-red-500 bg-red-500/20';
+  };
+
+  const handleExportPdf = async (analysisId: string) => {
+    if (!user) {
+      return;
+    }
+
+    setExportingId(analysisId);
+    try {
+      const { data, error } = await supabase
+        .from("analysis_results")
+        .select("*")
+        .eq("id", analysisId)
+        .maybeSingle();
+
+      if (error || !data) {
+        throw error ?? new Error("Saved report not found.");
+      }
+
+      const playerName =
+        user.user_metadata?.full_name
+        || user.email?.split("@")[0]
+        || "Athlete";
+      const pdf = await exportStoredTechniqueReportPdf(data as StoredTechniqueAnalysis, playerName);
+      downloadBlob(pdf.blob, pdf.filename);
+      toast.success("Saved report exported as PDF.");
+    } catch (exportError) {
+      console.error("Error exporting saved analysis:", exportError);
+      toast.error("The saved report could not be exported as a PDF.");
+    } finally {
+      setExportingId(null);
+    }
   };
 
   if (authLoading || loading) {
@@ -109,10 +146,9 @@ export default function AnalysisHistory() {
           ) : (
             <div className="space-y-4">
               {analyses.map((analysis) => (
-                <Link
+                <div
                   key={analysis.id}
-                  to={`/analysis/${analysis.id}`}
-                  className="block rounded-2xl bg-gradient-card border border-border p-6 hover:border-primary/30 transition-colors"
+                  className="rounded-2xl bg-gradient-card border border-border p-6 transition-colors hover:border-primary/30"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -147,11 +183,26 @@ export default function AnalysisHistory() {
                       </div>
                     </div>
                     <div className="hidden sm:flex items-center gap-2 text-muted-foreground">
-                      <span className="text-sm">View Details</span>
-                      <ArrowLeft className="w-4 h-4 rotate-180" />
+                      <span className="text-sm">Saved Technique AI report</span>
                     </div>
                   </div>
-                </Link>
+
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <Button asChild>
+                      <Link to={`/analysis/${analysis.id}`}>
+                        View Report
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleExportPdf(analysis.id)}
+                      disabled={exportingId === analysis.id}
+                    >
+                      <FileDown className="w-4 h-4" />
+                      {exportingId === analysis.id ? "Exporting..." : "Export PDF"}
+                    </Button>
+                  </div>
+                </div>
               ))}
             </div>
           )}

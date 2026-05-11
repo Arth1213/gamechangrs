@@ -9,12 +9,14 @@ import {
   Clock,
   Dumbbell,
   Eye,
+  FileDown,
   Sparkles,
   Target,
   Upload,
   Video,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
@@ -24,6 +26,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { downloadBlob } from "@/lib/reportPdf";
+import { exportStoredTechniqueReportPdf, type StoredTechniqueAnalysis } from "@/lib/techniqueReportExport";
 
 interface AnalysisResult {
   id: string;
@@ -425,10 +429,36 @@ function TechniqueAIWorkspace({
   historyError: string | null;
   onReportSaved: (report?: AnalysisResult) => Promise<void> | void;
 }) {
+  const [exportingId, setExportingId] = useState<string | null>(null);
+
   const getScoreTone = (score: number) => {
     if (score >= 80) return "text-emerald-300 bg-emerald-500/15 border-emerald-500/20";
     if (score >= 60) return "text-amber-300 bg-amber-500/15 border-amber-500/20";
     return "text-rose-300 bg-rose-500/15 border-rose-500/20";
+  };
+
+  const handleExportPdf = async (analysisId: string) => {
+    setExportingId(analysisId);
+    try {
+      const { data, error } = await supabase
+        .from("analysis_results")
+        .select("*")
+        .eq("id", analysisId)
+        .maybeSingle();
+
+      if (error || !data) {
+        throw error ?? new Error("Saved report not found.");
+      }
+
+      const pdf = await exportStoredTechniqueReportPdf(data as StoredTechniqueAnalysis, userName);
+      downloadBlob(pdf.blob, pdf.filename);
+      toast.success("Saved report exported as PDF.");
+    } catch (exportError) {
+      console.error("Error exporting saved analysis:", exportError);
+      toast.error("The saved report could not be exported as a PDF.");
+    } finally {
+      setExportingId(null);
+    }
   };
 
   return (
@@ -626,6 +656,14 @@ function TechniqueAIWorkspace({
                               View Report
                               <ArrowRight className="h-4 w-4" />
                             </Link>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => handleExportPdf(analysis.id)}
+                            disabled={exportingId === analysis.id}
+                          >
+                            <FileDown className="h-4 w-4" />
+                            {exportingId === analysis.id ? "Exporting..." : "Export PDF"}
                           </Button>
                           {analysis.video_url ? (
                             <Button variant="outline" asChild>

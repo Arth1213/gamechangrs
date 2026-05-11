@@ -6,9 +6,11 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { AnalysisResults } from "@/components/coaching/AnalysisResults";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Video, Play, Trash2 } from "lucide-react";
+import { ArrowLeft, FileDown, Loader2, Video, Play, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { downloadBlob } from "@/lib/reportPdf";
+import { exportStoredTechniqueReportPdf, type StoredTechniqueAnalysis } from "@/lib/techniqueReportExport";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +45,7 @@ export default function AnalysisDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Only show delete for owner of the analysis
   const isOwner = Boolean(analysis && user && analysis.user_id === user.id);
@@ -99,6 +102,28 @@ export default function AnalysisDetail() {
       fetchAnalysis();
     }
   }, [id, user, authLoading]);
+
+  const handleExportPdf = async () => {
+    if (!analysis) {
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const playerName =
+        user?.user_metadata?.full_name
+        || user?.email?.split("@")[0]
+        || "Athlete";
+      const pdf = await exportStoredTechniqueReportPdf(analysis as StoredTechniqueAnalysis, playerName);
+      downloadBlob(pdf.blob, pdf.filename);
+      toast.success("Saved report exported as PDF.");
+    } catch (exportError) {
+      console.error("Error exporting saved analysis:", exportError);
+      toast.error("The saved report could not be exported as a PDF.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Transform stored data to AnalysisResults format
   const transformToAnalysisFormat = (stored: StoredAnalysis) => {
@@ -206,35 +231,44 @@ export default function AnalysisDetail() {
                 Back to Dashboard
               </Link>
             </Button>
-            
-            {isOwner && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive gap-2">
-                    <Trash2 className="w-4 h-4" />
-                    Delete Analysis
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Analysis?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete this analysis and its associated video. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      {isDeleting ? 'Deleting...' : 'Delete'}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
+
+            <div className="flex items-center gap-3">
+              {analysis ? (
+                <Button variant="outline" size="sm" className="gap-2" onClick={handleExportPdf} disabled={isExporting}>
+                  <FileDown className="w-4 h-4" />
+                  {isExporting ? "Exporting..." : "Export PDF"}
+                </Button>
+              ) : null}
+
+              {isOwner && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive gap-2">
+                      <Trash2 className="w-4 h-4" />
+                      Delete Analysis
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Analysis?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete this analysis and its associated video. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {isDeleting ? 'Deleting...' : 'Delete'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </div>
 
           {error ? (

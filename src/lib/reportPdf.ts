@@ -44,6 +44,15 @@ function waitForImage(image: HTMLImageElement) {
   });
 }
 
+async function waitForDocumentContent(document: Document) {
+  if (document.fonts?.ready) {
+    await document.fonts.ready.catch(() => undefined);
+  }
+
+  await Promise.all(Array.from(document.images).map((image) => waitForImage(image)));
+  await new Promise((resolve) => window.setTimeout(resolve, 120));
+}
+
 async function waitForFrameContent(frame: HTMLIFrameElement) {
   const reportDocument = frame.contentDocument;
   const reportWindow = frame.contentWindow;
@@ -51,12 +60,7 @@ async function waitForFrameContent(frame: HTMLIFrameElement) {
     throw new Error("The report is not ready yet.");
   }
 
-  if (reportDocument.fonts?.ready) {
-    await reportDocument.fonts.ready.catch(() => undefined);
-  }
-
-  await Promise.all(Array.from(reportDocument.images).map((image) => waitForImage(image)));
-  await new Promise((resolve) => window.setTimeout(resolve, 120));
+  await waitForDocumentContent(reportDocument);
 
   return { reportDocument, reportWindow };
 }
@@ -356,6 +360,59 @@ export async function renderReportFramePdf(frame: HTMLIFrameElement, fileNameBas
       hasWrittenPdfPage,
     );
   }
+
+  const blob = pdf.output("blob");
+
+  return {
+    blob,
+    base64: await blobToBase64(blob),
+    filename: `${sanitizeDownloadFilename(fileNameBase)}.pdf`,
+  };
+}
+
+export async function renderElementPdf(element: HTMLElement, fileNameBase: string) {
+  const ownerDocument = element.ownerDocument;
+  if (!ownerDocument?.body) {
+    throw new Error("The report content is not available yet.");
+  }
+
+  await waitForDocumentContent(ownerDocument);
+
+  const rect = element.getBoundingClientRect();
+  const captureWidth = Math.max(
+    Math.ceil(rect.width),
+    Math.ceil(element.scrollWidth),
+    Math.ceil(element.offsetWidth),
+    Math.ceil(element.clientWidth),
+  );
+
+  if (captureWidth <= 0) {
+    throw new Error("The report dimensions are not ready yet.");
+  }
+
+  const pdf = new jsPDF({
+    orientation: "p",
+    unit: "pt",
+    format: "a4",
+    compress: true,
+  });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const innerWidth = pageWidth - (PDF_MARGIN_PT * 2);
+  const innerHeight = pageHeight - (PDF_MARGIN_PT * 2);
+
+  await new Promise((resolve) => window.setTimeout(resolve, 80));
+
+  const canvas = await renderElementCanvas(element, captureWidth);
+  addCanvasToPdf(
+    pdf,
+    canvas,
+    pageWidth,
+    pageHeight,
+    innerWidth,
+    innerHeight,
+    false,
+  );
 
   const blob = pdf.output("blob");
 

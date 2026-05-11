@@ -22,6 +22,7 @@ import { Progress } from "@/components/ui/progress";
 import { PoseOverlay } from "@/components/coaching/PoseOverlay";
 import { usePoseDetection, type Joint, type PoseFrame } from "@/hooks/usePoseDetection";
 import { supabase } from "@/integrations/supabase/client";
+import { downloadBlob, renderElementPdf } from "@/lib/reportPdf";
 
 type Handedness = "right" | "left";
 type CameraAngle = "side-on" | "front-on" | "three-quarter";
@@ -1193,6 +1194,334 @@ function getErrorMessage(error: unknown) {
   return "The report could not be saved.";
 }
 
+function formatTechniqueTimestamp(value: string | null) {
+  if (!value) {
+    return "Ready after analysis";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Ready after analysis";
+  }
+
+  return parsed.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function getTechniqueDurationLabel(video: HTMLVideoElement | null) {
+  if (!video || !Number.isFinite(video.duration) || video.duration <= 0) {
+    return "Duration unavailable";
+  }
+
+  return `${video.duration.toFixed(1)}s`;
+}
+
+function getTechniqueStrengths(analysis: TrackerReport) {
+  return [...analysis.phaseScores]
+    .filter((phase) => phase.score >= 78)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+}
+
+interface TechniqueAiPdfSheetProps {
+  analysis: TrackerReport;
+  selectedFile: File | null;
+  handedness: Handedness;
+  cameraAngle: CameraAngle;
+  bowlingType: BowlingType;
+  shotType: ShotType;
+  playerName: string;
+  analyzedAt: string | null;
+  durationLabel: string;
+  videoFrameDataUrl: string | null;
+}
+
+function TechniqueAiPdfSheet({
+  analysis,
+  selectedFile,
+  handedness,
+  cameraAngle,
+  bowlingType,
+  shotType,
+  playerName,
+  analyzedAt,
+  durationLabel,
+  videoFrameDataUrl,
+}: TechniqueAiPdfSheetProps) {
+  const strongestPhases = getTechniqueStrengths(analysis);
+  const displayedFindings = analysis.findings.slice(0, 3);
+  const displayedDrills = analysis.drills.slice(0, 3);
+  const clipReadSnapshot = analysis.snapshots.find((item) => item.title === "Clip read");
+  const batControlSnapshot = analysis.snapshots.find((item) => item.title === "Bat-control read");
+  const readQualitySnapshot = analysis.snapshots.find((item) => item.title === "Read quality");
+  const topStrengthsSnapshot = analysis.snapshots.find((item) => item.title === "Top strengths");
+  const metadataCards = [
+    { label: "Shot", value: SHOT_PROFILES[shotType].label },
+    { label: "Handedness", value: `${handedness}-handed batter` },
+    { label: "Camera angle", value: cameraAngle },
+    { label: "Bowling type", value: bowlingType },
+    { label: "Clip file", value: selectedFile?.name ?? "Uploaded batting clip" },
+    { label: "Duration", value: durationLabel },
+  ];
+  const whatItChecked = [
+    "Setup balance",
+    "Backlift shape",
+    "Trigger timing",
+    "Downswing path",
+    "Contact quality",
+    "Shot match",
+  ];
+
+  return (
+    <div className="w-[960px] bg-[#090f1a] p-8 text-slate-100">
+      <div className="space-y-6 rounded-[28px] border border-slate-800 bg-[#0b1220] p-8 shadow-2xl">
+        <div className="flex items-start justify-between gap-6">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-300/80">
+              Game Changrs Technique AI
+            </p>
+            <h2 className="mt-3 text-[34px] font-semibold leading-tight text-white">
+              Batting Analysis Results
+            </h2>
+            <p className="mt-2 text-sm text-slate-400">
+              Analyzed on {formatTechniqueTimestamp(analyzedAt)} • Duration: {durationLabel}
+            </p>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
+              {analysis.summary}
+            </p>
+          </div>
+          <div className="min-w-[220px] rounded-3xl border border-emerald-500/20 bg-emerald-500/8 p-5 text-right">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-200/80">
+              Overall Score
+            </p>
+            <p className="mt-3 text-5xl font-semibold text-white">{analysis.score}</p>
+            <p className="mt-2 text-sm font-medium text-emerald-200">{analysis.band}</p>
+            <p className="mt-1 text-xs text-slate-400">Prepared for {playerName}</p>
+          </div>
+        </div>
+
+        <section className="rounded-[24px] border border-slate-800 bg-[#111827] p-5">
+          <div className="flex items-center gap-2 text-sm font-medium text-slate-100">
+            <Video className="h-4 w-4 text-emerald-300" />
+            <span>Analyzed Video</span>
+          </div>
+          <div className="mt-4 grid gap-5 [grid-template-columns:340px_minmax(0,1fr)]">
+            <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#0b1220]">
+              {videoFrameDataUrl ? (
+                <img
+                  src={videoFrameDataUrl}
+                  alt="Captured batting frame used for the Technique AI report"
+                  className="h-[320px] w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-[320px] items-center justify-center px-8 text-center text-sm text-slate-400">
+                  The clip preview was not available for capture, but the report below reflects the full batting analysis.
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                {metadataCards.map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-slate-700 bg-[#0b1220] p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                      {item.label}
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-slate-100">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/6 p-4">
+                <p className="text-sm font-medium text-white">What the tracker checked</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {whatItChecked.map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full border border-emerald-400/20 bg-[#0b1220] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-emerald-200"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-4 text-sm leading-6 text-slate-300">
+                  Model cues: {analysis.snapshots.find((item) => item.title === "Model cues")?.copy ?? SHOT_PROFILES[shotType].cues.join(" | ")}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[24px] border border-slate-800 bg-[#111827] p-5">
+          <div className="flex items-center gap-2 text-sm font-medium text-slate-100">
+            <Sparkles className="h-4 w-4 text-emerald-300" />
+            <span>Batting Technique Analysis</span>
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+            <div className="rounded-2xl border border-slate-700 bg-[#0b1220] p-5 text-center">
+              <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full border-[10px] border-slate-700 bg-[#111827]">
+                <div>
+                  <p className="text-4xl font-semibold text-rose-400">{analysis.score}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">out of 100</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-700 bg-[#0b1220] p-5">
+              <p className="text-2xl font-semibold text-white">{analysis.heading}</p>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                Your batting technique analysis for {playerName}. Overall score: {analysis.score}/100.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-slate-100">
+            <Info className="h-4 w-4 text-emerald-300" />
+            <span>Technical Breakdown</span>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {analysis.phaseScores.map((phase) => (
+              <div key={phase.key} className="rounded-2xl border border-slate-800 bg-[#111827] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-white">{phase.label}</p>
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${phaseTone(phase.score)}`}>
+                    {scoreLabel(phase.score)}
+                  </span>
+                </div>
+                <div className="mt-4 flex items-end justify-between gap-3">
+                  <p className="text-3xl font-semibold text-white">{phase.score}</p>
+                  <p className="text-xs text-slate-500">/100</p>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-cyan-300"
+                    style={{ width: `${phase.score}%` }}
+                  />
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-400">
+                  {phase.score >= 75
+                    ? `Your ${phase.label.toLowerCase()} shows good fundamentals.`
+                    : `Your ${phase.label.toLowerCase()} shows good fundamentals but still needs tightening.`}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <section className="rounded-2xl border border-emerald-500/20 bg-emerald-500/6 p-5">
+            <p className="text-sm font-medium text-white">Strengths</p>
+            <div className="mt-4 space-y-3">
+              {strongestPhases.length ? strongestPhases.map((phase) => (
+                <div key={phase.key} className="rounded-xl border border-emerald-400/10 bg-[#0b1220] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium text-slate-100">{phase.label}</span>
+                    <span className="text-sm font-semibold text-emerald-200">{phase.score}/100</span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                    This phase is currently one of the most stable parts of the batting sequence.
+                  </p>
+                </div>
+              )) : (
+                <p className="text-sm leading-6 text-slate-300">
+                  No single phase separated strongly enough to be called out as a major current strength.
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-rose-500/20 bg-rose-500/6 p-5">
+            <p className="text-sm font-medium text-white">Areas for Improvement</p>
+            <div className="mt-4 space-y-3">
+              {displayedFindings.length ? displayedFindings.map((finding) => (
+                <div key={finding.id} className="rounded-xl border border-rose-400/10 bg-[#0b1220] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium text-slate-100">{finding.title}</span>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${severityTone(finding.severity)}`}>
+                      {finding.severity}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">{finding.fix}</p>
+                  <p className="mt-2 text-sm text-amber-200">Tip: {finding.tip}</p>
+                </div>
+              )) : (
+                <p className="text-sm leading-6 text-slate-300">
+                  No issue crossed the intervention threshold strongly enough to justify a correction call on this clip.
+                </p>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <section className="rounded-2xl border border-slate-800 bg-[#111827] p-5">
+          <div className="flex items-center gap-2 text-sm font-medium text-slate-100">
+            <Activity className="h-4 w-4 text-emerald-300" />
+            <span>Joint Angle Analysis</span>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {[
+              clipReadSnapshot,
+              batControlSnapshot,
+              readQualitySnapshot,
+              topStrengthsSnapshot,
+            ].filter(Boolean).map((item) => (
+              <div key={item.title} className="rounded-xl border border-slate-700 bg-[#0b1220] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-slate-100">{item.title}</span>
+                  <span className="rounded-full border border-slate-600 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                    {item.tag}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-300">{item.copy}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-[#111827] p-5">
+          <p className="text-sm font-medium text-white">Comparison to Elite Players</p>
+          <p className="mt-4 text-sm leading-7 text-slate-300">
+            {analysis.summary}
+          </p>
+        </section>
+
+        <section className="rounded-2xl border border-amber-400/20 bg-amber-400/8 p-5">
+          <p className="text-sm font-medium text-white">Recommended Next Steps</p>
+          <div className="mt-4 space-y-3">
+            {displayedDrills.length ? displayedDrills.map((drill) => (
+              <div key={drill.title} className="rounded-xl border border-amber-300/10 bg-[#0b1220] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-slate-100">{drill.title}</span>
+                  <span className="rounded-full border border-amber-200/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-amber-100">
+                    {drill.focus}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{drill.description}</p>
+              </div>
+            )) : (
+              <p className="text-sm leading-6 text-slate-300">
+                No drill was triggered from this clip because the model did not see a large enough corrective signal.
+              </p>
+            )}
+          </div>
+        </section>
+
+        <footer className="border-t border-slate-800 pt-5 text-xs leading-6 text-slate-400">
+          <div>Copyright © 2026 game-changrs.com and Arth Arun.</div>
+          <div>Concept, design direction, analytics framework, and associated code/materials are proprietary.</div>
+          <div>All rights reserved.</div>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 interface TechniqueAIProps {
   onReportSaved?: (report?: {
     id: string;
@@ -1217,8 +1546,12 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
   const [videoDimensions, setVideoDimensions] = useState({ width: 960, height: 540 });
   const [isSavingReport, setIsSavingReport] = useState(false);
   const [savedReportId, setSavedReportId] = useState<string | null>(null);
+  const [analysisGeneratedAt, setAnalysisGeneratedAt] = useState<string | null>(null);
+  const [exportVideoFrameDataUrl, setExportVideoFrameDataUrl] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const exportReportRef = useRef<HTMLDivElement>(null);
   const analysisCacheRef = useRef(new Map<string, TrackerReport>());
   const containerRef = useRef<HTMLDivElement>(null);
   const { isProcessing, isModelReady, progress, currentFrame, processVideo, reset, error } = usePoseDetection();
@@ -1263,8 +1596,15 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
     };
   }, [videoUrl]);
 
+  const resetFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    event.target.value = "";
     if (!file) return;
 
     if (!file.type.startsWith("video/")) {
@@ -1281,6 +1621,8 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
     setVideoUrl(nextUrl);
     setAnalysis(null);
     setSavedReportId(null);
+    setAnalysisGeneratedAt(null);
+    setExportVideoFrameDataUrl(null);
     setStage("idle");
     reset();
   };
@@ -1294,6 +1636,17 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
       width,
       height: width / aspectRatio,
     });
+
+    if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext("2d");
+      if (context) {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        setExportVideoFrameDataUrl(canvas.toDataURL("image/jpeg", 0.92));
+      }
+    }
   };
 
   const clearVideo = () => {
@@ -1304,8 +1657,19 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
     setVideoUrl(null);
     setAnalysis(null);
     setSavedReportId(null);
+    setAnalysisGeneratedAt(null);
+    setExportVideoFrameDataUrl(null);
     setStage("idle");
     reset();
+    resetFileInput();
+  };
+
+  const uploadAnotherVideo = () => {
+    clearVideo();
+    window.requestAnimationFrame(() => {
+      resetFileInput();
+      fileInputRef.current?.click();
+    });
   };
 
   const runAnalysis = async () => {
@@ -1320,6 +1684,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
       const cachedAnalysis = analysisCacheRef.current.get(analysisCacheKey);
       if (cachedAnalysis) {
         setAnalysis(cachedAnalysis);
+        setAnalysisGeneratedAt(new Date().toISOString());
         setStage("complete");
         toast.success("Batting analysis loaded from the saved clip read.");
         return;
@@ -1329,6 +1694,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
       if (persistedAnalysis) {
         analysisCacheRef.current.set(analysisCacheKey, persistedAnalysis);
         setAnalysis(persistedAnalysis);
+        setAnalysisGeneratedAt(new Date().toISOString());
         setStage("complete");
         toast.success("Batting analysis loaded from the saved clip read.");
         return;
@@ -1363,6 +1729,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
       analysisCacheRef.current.set(analysisCacheKey, nextReport);
       persistAnalysis(analysisCacheKey, nextReport);
       setAnalysis(nextReport);
+      setAnalysisGeneratedAt(new Date().toISOString());
       setStage("complete");
       toast.success("Batting analysis complete.");
     } catch (analysisError) {
@@ -1466,23 +1833,32 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
     }
   };
 
-  const exportPdfReport = () => {
+  const exportPdfReport = async () => {
     if (!analysis) return;
 
     try {
-      const pdfLines = buildTechniquePdfLines({
-        analysis,
-        selectedFile,
-        handedness,
-        cameraAngle,
-        bowlingType,
-        shotType,
-        playerName,
-      });
-      const pdfBytes = buildPdfBytes(pdfLines);
-      const blob = new Blob([pdfBytes], { type: "application/pdf" });
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
+      const video = videoRef.current;
+      if (video && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext("2d");
+        if (context) {
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const nextFrame = canvas.toDataURL("image/jpeg", 0.92);
+          if (nextFrame !== exportVideoFrameDataUrl) {
+            setExportVideoFrameDataUrl(nextFrame);
+            await new Promise<void>((resolve) => {
+              window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+            });
+          }
+        }
+      }
+
+      if (!exportReportRef.current) {
+        throw new Error("The export layout is not ready yet.");
+      }
+
       const safePlayerName = playerName
         .replace(/[^a-z0-9-_]+/gi, "-")
         .replace(/-+/g, "-")
@@ -1495,12 +1871,11 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
         .replace(/^-|-$/g, "")
         .toLowerCase();
 
-      link.href = blobUrl;
-      link.download = `${safePlayerName || "athlete"}-${safeFileName || "batting-report"}-technique-report.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(blobUrl);
+      const pdf = await renderElementPdf(
+        exportReportRef.current,
+        `${safePlayerName || "athlete"}-${safeFileName || "batting-report"}-technique-report`,
+      );
+      downloadBlob(pdf.blob, pdf.filename);
       toast.success("Technique report exported as PDF.");
     } catch (error) {
       console.error(error);
@@ -1593,6 +1968,13 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
           </div>
 
           <div className="mt-5">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
             <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
               <div className="flex items-start gap-3">
                 <div className="mt-0.5 rounded-xl bg-primary/10 p-2">
@@ -1612,13 +1994,11 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
             </div>
 
             {!selectedFile ? (
-              <label className="relative block cursor-pointer rounded-3xl border border-dashed border-primary/30 bg-primary/5 p-10 text-center transition-colors hover:border-primary/60 hover:bg-primary/10">
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={handleFileSelect}
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="relative block w-full rounded-3xl border border-dashed border-primary/30 bg-primary/5 p-10 text-center transition-colors hover:border-primary/60 hover:bg-primary/10"
+              >
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
                   <Upload className="h-8 w-8 text-primary" />
                 </div>
@@ -1628,7 +2008,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
                 <p className="mt-2 text-sm text-muted-foreground">
                   MP4, MOV, AVI. Front-on clips around 15-20 seconds give the cleanest batting read.
                 </p>
-              </label>
+              </button>
             ) : (
               <div ref={containerRef} className="space-y-4">
                 <div className="relative overflow-hidden rounded-3xl border border-border bg-black">
@@ -1677,6 +2057,14 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
                     {isProcessing ? "Reading pose..." : isModelReady ? "Analyze batting clip" : "Loading pose model..."}
                   </Button>
                   <Button
+                    onClick={uploadAnotherVideo}
+                    disabled={isProcessing || isSavingReport}
+                    variant="outline"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload another video
+                  </Button>
+                  <Button
                     onClick={saveReport}
                     disabled={!analysis || isSavingReport || Boolean(savedReportId)}
                     variant="outline"
@@ -1710,7 +2098,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
                   ) : null}
                   <Button onClick={clearVideo} variant="destructive" className="sm:col-span-2">
                     <Trash2 className="h-4 w-4" />
-                    Remove video
+                    Remove current video
                   </Button>
                 </div>
 
@@ -1751,7 +2139,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
         </section>
 
         <section className="space-y-4 rounded-3xl border border-border bg-gradient-card p-6 md:p-8">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="mb-2 text-xs uppercase tracking-[0.28em] text-muted-foreground">
                 analysis output
@@ -1760,7 +2148,19 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
                 Score, feedback, drills
               </h3>
             </div>
-            <Sparkles className="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-3">
+              {analysis ? (
+                <Button
+                  onClick={uploadAnotherVideo}
+                  disabled={isProcessing || isSavingReport}
+                  variant="outline"
+                >
+                  <Upload className="h-4 w-4" />
+                  Upload another video
+                </Button>
+              ) : null}
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
           </div>
 
           <div className="rounded-2xl border border-border bg-background/40 p-5">
@@ -1903,6 +2303,24 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
           </div>
         </section>
       </div>
+      {analysis ? (
+        <div className="pointer-events-none fixed left-[-20000px] top-0 z-[-1]">
+          <div ref={exportReportRef}>
+            <TechniqueAiPdfSheet
+              analysis={analysis}
+              selectedFile={selectedFile}
+              handedness={handedness}
+              cameraAngle={cameraAngle}
+              bowlingType={bowlingType}
+              shotType={shotType}
+              playerName={playerName}
+              analyzedAt={analysisGeneratedAt}
+              durationLabel={getTechniqueDurationLabel(videoRef.current)}
+              videoFrameDataUrl={exportVideoFrameDataUrl}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

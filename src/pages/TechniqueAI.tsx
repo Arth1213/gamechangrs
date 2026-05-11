@@ -650,8 +650,8 @@ function TechniqueAIWorkspace({
                           </div>
                         </div>
 
-                        <div className="mt-6 flex gap-3">
-                          <Button className="flex-1" asChild>
+                        <div className="mt-6 flex flex-wrap gap-3">
+                          <Button className="min-w-0 flex-1" asChild>
                             <Link to={`/analysis/${analysis.id}`}>
                               View Report
                               <ArrowRight className="h-4 w-4" />
@@ -659,6 +659,7 @@ function TechniqueAIWorkspace({
                           </Button>
                           <Button
                             variant="outline"
+                            className="min-w-0 flex-1"
                             onClick={() => handleExportPdf(analysis.id)}
                             disabled={exportingId === analysis.id}
                           >
@@ -666,7 +667,7 @@ function TechniqueAIWorkspace({
                             {exportingId === analysis.id ? "Exporting..." : "Export PDF"}
                           </Button>
                           {analysis.video_url ? (
-                            <Button variant="outline" asChild>
+                            <Button variant="outline" className="w-full sm:w-auto" asChild>
                               <a href={analysis.video_url} target="_blank" rel="noreferrer">
                                 Open Video
                               </a>

@@ -1186,6 +1186,15 @@ function sanitizeFileNameSegment(value: string) {
     .toLowerCase();
 }
 
+function buildTechniqueDateStamp(value?: string | null) {
+  const parsed = value ? new Date(value) : new Date();
+  if (Number.isNaN(parsed.getTime())) {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  return parsed.toISOString().slice(0, 10);
+}
+
 function getErrorMessage(error: unknown) {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
     return error.message;
@@ -1535,6 +1544,7 @@ interface TechniqueAIProps {
 
 export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
   const { user } = useAuth();
+  const accountDisplayName = getDisplayName(user);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<TrackerReport | null>(null);
@@ -1548,6 +1558,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
   const [savedReportId, setSavedReportId] = useState<string | null>(null);
   const [analysisGeneratedAt, setAnalysisGeneratedAt] = useState<string | null>(null);
   const [exportVideoFrameDataUrl, setExportVideoFrameDataUrl] = useState<string | null>(null);
+  const [analysisPlayerName, setAnalysisPlayerName] = useState(accountDisplayName);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1555,11 +1566,12 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
   const analysisCacheRef = useRef(new Map<string, TrackerReport>());
   const containerRef = useRef<HTMLDivElement>(null);
   const { isProcessing, isModelReady, progress, currentFrame, processVideo, reset, error } = usePoseDetection();
-  const playerName = getDisplayName(user);
+  const reportPlayerName = analysisPlayerName.trim() || accountDisplayName;
 
   const getAnalysisCacheKey = () =>
     [
       "technique-ai-v2",
+      reportPlayerName,
       selectedFile?.name ?? "no-file",
       selectedFile?.size ?? 0,
       selectedFile?.lastModified ?? 0,
@@ -1595,6 +1607,10 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
       }
     };
   }, [videoUrl]);
+
+  useEffect(() => {
+    setAnalysisPlayerName((current) => (current.trim() ? current : accountDisplayName));
+  }, [accountDisplayName]);
 
   const resetFileInput = () => {
     if (fileInputRef.current) {
@@ -1675,6 +1691,11 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
   const runAnalysis = async () => {
     if (!selectedFile) {
       toast.error("Upload a batting video first.");
+      return;
+    }
+
+    if (!reportPlayerName) {
+      toast.error("Enter the player name before running analysis.");
       return;
     }
 
@@ -1765,9 +1786,15 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
       return;
     }
 
+    if (!reportPlayerName) {
+      toast.error("Enter the player name before saving.");
+      return;
+    }
+
     setIsSavingReport(true);
     let uploadedVideoPath: string | null = null;
     try {
+      const reportDateStamp = buildTechniqueDateStamp(analysisGeneratedAt);
       const durationLabel =
         videoRef.current && Number.isFinite(videoRef.current.duration)
           ? `${videoRef.current.duration.toFixed(1)}s`
@@ -1777,8 +1804,9 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
       if (selectedFile) {
         const extensionMatch = /\.[^.]+$/.exec(selectedFile.name);
         const safeBaseName = sanitizeFileNameSegment(selectedFile.name.replace(/\.[^.]+$/, "")) || "analysis-video";
+        const safePlayerSegment = sanitizeFileNameSegment(reportPlayerName) || "athlete";
         const safeExtension = extensionMatch ? extensionMatch[0].toLowerCase() : ".mp4";
-        uploadedVideoPath = `${user.id}/${Date.now()}-${safeBaseName}${safeExtension}`;
+        uploadedVideoPath = `${user.id}/${safePlayerSegment}_${reportDateStamp}_${safeBaseName}${safeExtension}`;
 
         const { error: uploadError } = await supabase.storage
           .from("analysis-videos")
@@ -1806,7 +1834,13 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
           overall_score: analysis.score,
           scores: buildStoredPhaseScores(analysis),
           angles: {},
-          feedback: buildStoredFeedback(analysis),
+          feedback: {
+            ...buildStoredFeedback(analysis),
+            playerName: reportPlayerName,
+            accountName: accountDisplayName,
+            reportDate: reportDateStamp,
+            sourceVideoName: selectedFile?.name ?? null,
+          },
           drills: analysis.drills,
           video_duration: durationLabel,
           video_url: publicVideoUrl,
@@ -1836,6 +1870,11 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
   const exportPdfReport = async () => {
     if (!analysis) return;
 
+    if (!reportPlayerName) {
+      toast.error("Enter the player name before exporting.");
+      return;
+    }
+
     try {
       const video = videoRef.current;
       if (video && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
@@ -1859,7 +1898,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
         throw new Error("The export layout is not ready yet.");
       }
 
-      const safePlayerName = playerName
+      const safePlayerName = reportPlayerName
         .replace(/[^a-z0-9-_]+/gi, "-")
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "")
@@ -1870,10 +1909,11 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "")
         .toLowerCase();
+      const reportDateStamp = buildTechniqueDateStamp(analysisGeneratedAt);
 
       const pdf = await renderElementPdf(
         exportReportRef.current,
-        `${safePlayerName || "athlete"}-${safeFileName || "batting-report"}-technique-report`,
+        `${safePlayerName || "athlete"}_${reportDateStamp}_${safeFileName || "batting-report"}_technique-report`,
       );
       downloadBlob(pdf.blob, pdf.filename);
       toast.success("Technique report exported as PDF.");
@@ -1896,7 +1936,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
                 AI batting analysis tracker
               </h2>
               <p className="mt-2 inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                Reporting for {playerName}
+                Reporting for {accountDisplayName}
               </p>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
                 Replace the old analysis flow with a cleaner batting tracker that reads uploaded
@@ -1913,6 +1953,17 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-2 text-sm md:col-span-2">
+              <span className="text-muted-foreground">Player name</span>
+              <input
+                type="text"
+                value={analysisPlayerName}
+                onChange={(event) => setAnalysisPlayerName(event.target.value)}
+                placeholder="Enter player name"
+                className="h-11 w-full rounded-xl border border-border bg-background px-3 text-foreground"
+              />
+            </label>
+
             <label className="space-y-2 text-sm">
               <span className="text-muted-foreground">Handedness</span>
               <select
@@ -2313,7 +2364,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
               cameraAngle={cameraAngle}
               bowlingType={bowlingType}
               shotType={shotType}
-              playerName={playerName}
+              playerName={reportPlayerName}
               analyzedAt={analysisGeneratedAt}
               durationLabel={getTechniqueDurationLabel(videoRef.current)}
               videoFrameDataUrl={exportVideoFrameDataUrl}

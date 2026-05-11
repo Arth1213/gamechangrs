@@ -32,6 +32,7 @@ type StoredPhaseScore = {
 };
 
 type StoredSheetModel = {
+  playerName: string;
   overallScore: number;
   analyzedAtLabel: string;
   summary: string;
@@ -112,6 +113,24 @@ function sanitizeFileNameSegment(value: string) {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .toLowerCase();
+}
+
+function buildTechniqueDateStamp(value?: string | null) {
+  const parsed = value ? new Date(value) : new Date();
+  if (Number.isNaN(parsed.getTime())) {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  return parsed.toISOString().slice(0, 10);
+}
+
+export function getStoredTechniquePlayerName(
+  report: Pick<StoredTechniqueAnalysis, "feedback">,
+  fallbackPlayerName: string,
+) {
+  const feedback = isRecord(report.feedback) ? report.feedback : {};
+  const storedPlayerName = typeof feedback.playerName === "string" ? feedback.playerName.trim() : "";
+  return storedPlayerName || fallbackPlayerName;
 }
 
 function toPhaseScores(scores: Json): StoredPhaseScore[] {
@@ -238,6 +257,11 @@ function toSnapshots(value: Json | null | undefined): StoredSnapshot[] {
 
 function buildStoredSheetModel(report: StoredTechniqueAnalysis, playerName: string): StoredSheetModel {
   const feedback = isRecord(report.feedback) ? report.feedback : {};
+  const resolvedPlayerName = getStoredTechniquePlayerName(report, playerName);
+  const reportDate =
+    typeof feedback.reportDate === "string" && feedback.reportDate.trim()
+      ? feedback.reportDate.trim()
+      : buildTechniqueDateStamp(report.created_at);
   const phaseScores = toPhaseScores(report.scores);
   const findings = toFindings(feedback.findings);
   const drills = toDrills(report.drills);
@@ -253,7 +277,7 @@ function buildStoredSheetModel(report: StoredTechniqueAnalysis, playerName: stri
   const summary =
     typeof feedback.summary === "string"
       ? feedback.summary
-      : `Saved ${report.mode} analysis for ${playerName}. Overall score: ${report.overall_score}/100.`;
+      : `Saved ${report.mode} analysis for ${resolvedPlayerName}. Overall score: ${report.overall_score}/100.`;
   const heading =
     typeof feedback.heading === "string"
       ? feedback.heading
@@ -264,6 +288,7 @@ function buildStoredSheetModel(report: StoredTechniqueAnalysis, playerName: stri
       : scoreBand(report.overall_score);
 
   return {
+    playerName: resolvedPlayerName,
     overallScore: report.overall_score,
     analyzedAtLabel,
     summary,
@@ -282,7 +307,7 @@ function buildStoredSheetModel(report: StoredTechniqueAnalysis, playerName: stri
       { label: "Report id", value: report.id.slice(0, 8).toUpperCase() },
       { label: "Export source", value: "Saved Technique AI report" },
     ],
-    fileNameBase: `${sanitizeFileNameSegment(playerName || "athlete")}-${sanitizeFileNameSegment(report.mode || "analysis")}-${report.id.slice(0, 8)}-technique-report`,
+    fileNameBase: `${sanitizeFileNameSegment(resolvedPlayerName || "athlete")}_${reportDate}_${sanitizeFileNameSegment(report.mode || "analysis")}_${report.id.slice(0, 8)}_technique-report`,
   };
 }
 
@@ -351,11 +376,9 @@ async function captureVideoFrameFromUrl(videoUrl: string | null) {
 
 function TechniqueStoredPdfSheet({
   model,
-  playerName,
   videoFrameDataUrl,
 }: {
   model: StoredSheetModel;
-  playerName: string;
   videoFrameDataUrl: string | null;
 }) {
   const whatItChecked = [
@@ -394,7 +417,7 @@ function TechniqueStoredPdfSheet({
             </p>
             <p className="mt-3 text-5xl font-semibold text-white">{model.overallScore}</p>
             <p className="mt-2 text-sm font-medium text-emerald-200">{model.band}</p>
-            <p className="mt-1 text-xs text-slate-400">Prepared for {playerName}</p>
+            <p className="mt-1 text-xs text-slate-400">Prepared for {model.playerName}</p>
           </div>
         </div>
 
@@ -468,7 +491,7 @@ function TechniqueStoredPdfSheet({
             <div className="rounded-2xl border border-slate-700 bg-[#0b1220] p-5">
               <p className="text-2xl font-semibold text-white">{model.heading}</p>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Your batting technique analysis for {playerName}. Overall score: {model.overallScore}/100.
+                Your batting technique analysis for {model.playerName}. Overall score: {model.overallScore}/100.
               </p>
             </div>
           </div>
@@ -623,7 +646,6 @@ export async function exportStoredTechniqueReportPdf(
     root.render(
       <TechniqueStoredPdfSheet
         model={model}
-        playerName={playerName}
         videoFrameDataUrl={videoFrameDataUrl}
       />,
     );

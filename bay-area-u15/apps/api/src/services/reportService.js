@@ -1044,8 +1044,9 @@ async function loadOverallProfileStats(client, input) {
     });
   }
   const primaryProfiles = html ? parseProfileSections(html) : [];
+  const modernProfiles = html ? parseModernProfileSections(html, normalizeText(input.profileUrl)) : [];
   const supplementalProfiles = await loadSupplementalPublicProfileSections(input);
-  const profiles = mergePublicProfileSections(primaryProfiles, supplementalProfiles);
+  const profiles = mergePublicProfileSections(primaryProfiles, modernProfiles, supplementalProfiles);
 
   if (!html && !profiles.length) {
     return {};
@@ -1056,13 +1057,16 @@ async function loadOverallProfileStats(client, input) {
     matchFirstGroup(html, /<meta\s+content=["']([^"']+)["']\s+name=["']description["']/i);
   const matches =
     parseIntegerMatch(html, /Matches<br>\s*<span>\s*([\d,]+)\s*<\/span>/i) ||
-    parseIntegerMatch(description, /\bM:\s*([\d,]+)/i);
+    parseIntegerMatch(description, /\bM:\s*([\d,]+)/i) ||
+    toPublicInteger(parseVisiblePublicProfileMetricCard(html, "Matches"));
   const runs =
     parseIntegerMatch(html, /Runs<br>\s*<span>\s*([\d,]+)\s*<\/span>/i) ||
-    parseIntegerMatch(description, /\bR:\s*([\d,]+)/i);
+    parseIntegerMatch(description, /\bR:\s*([\d,]+)/i) ||
+    toPublicInteger(parseVisiblePublicProfileMetricCard(html, "Runs"));
   const wickets =
     parseIntegerMatch(html, /Wickets<br>\s*<span>\s*([\d,]+)\s*<\/span>/i) ||
-    parseIntegerMatch(description, /\bW:\s*([\d,]+)/i);
+    parseIntegerMatch(description, /\bW:\s*([\d,]+)/i) ||
+    toPublicInteger(parseVisiblePublicProfileMetricCard(html, "Wickets"));
   const strikeRate = parseNumberMatch(description, /\bSR:\s*([\d.]+)/i);
   const economy = parseNumberMatch(description, /\bEcon:\s*([\d.]+)/i);
 
@@ -1260,6 +1264,70 @@ function parseProfileSections(html) {
   return sections;
 }
 
+function parseModernProfileSections(html, sourceUrl = "") {
+  const battingRows = parseModernProfileStatSection(html, "Batting Statistics", mapBattingProfileRow);
+  const bowlingRows = parseModernProfileStatSection(html, "Bowling Statistics", mapModernBowlingProfileRow);
+
+  if (!battingRows.length && !bowlingRows.length) {
+    return [];
+  }
+
+  return [
+    {
+      sourceName: "Public CricClubs Profile",
+      sourceUrl: normalizeText(sourceUrl),
+      batting: battingRows,
+      bowling: bowlingRows,
+    },
+  ];
+}
+
+function parseModernProfileStatSection(html, heading, mapper) {
+  const tableHtml = matchFirstGroup(
+    html,
+    new RegExp(`<h3[^>]*>\\s*${escapeRegExp(heading)}\\s*<\\/h3>[\\s\\S]*?<table[^>]*>([\\s\\S]*?)<\\/table>`, "i")
+  );
+
+  if (!tableHtml) {
+    return [];
+  }
+
+  const tbody = matchFirstGroup(tableHtml, /<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
+  if (!tbody) {
+    return [];
+  }
+
+  const rows = [];
+  const rowPattern = /<tr([^>]*)>([\s\S]*?)<\/tr>/gi;
+
+  for (const match of tbody.matchAll(rowPattern)) {
+    const attributes = normalizeText(match[1]);
+    if (
+      attributes.includes("measure-row") ||
+      attributes.includes("expanded-row") ||
+      attributes.includes("row-level-1") ||
+      attributes.includes('aria-hidden="true"')
+    ) {
+      continue;
+    }
+
+    const rowHtml = normalizeText(match[2]);
+    const cells = [...rowHtml.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((cell) => stripHtml(cell[1]));
+    if (!cells.length) {
+      continue;
+    }
+
+    const row = mapper(cells);
+    if (!row || !hasMeaningfulProfileRow(row)) {
+      continue;
+    }
+
+    rows.push(row);
+  }
+
+  return rows;
+}
+
 function parseIplPublicProfileSections(html, sourceUrl) {
   const careerBatting = parseNamedProfileTable(html, "STATS_CAREER_SUMMARY_Batting", mapIplCareerBattingRow);
   const careerBowling = parseNamedProfileTable(html, "STATS_CAREER_SUMMARY_Bowling", mapIplCareerBowlingRow);
@@ -1293,7 +1361,7 @@ function parseNamedProfileTable(html, tableId, mapper) {
     html,
     new RegExp(`<table[^>]*id=["']${escapeRegExp(tableId)}["'][^>]*>([\\s\\S]*?)<\\/table>`, "i")
   );
-  const tbody = matchFirstGroup(tableHtml, /<tbody>([\s\S]*?)<\/tbody>/i);
+  const tbody = matchFirstGroup(tableHtml, /<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
   if (!tbody) {
     return [];
   }
@@ -1337,7 +1405,7 @@ function hasMeaningfulProfileRow(row) {
 }
 
 function parseProfileStatTable(tableHtml, statType) {
-  const tbody = matchFirstGroup(tableHtml, /<tbody>([\s\S]*?)<\/tbody>/i);
+  const tbody = matchFirstGroup(tableHtml, /<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
   if (!tbody) {
     return [];
   }
@@ -1519,6 +1587,30 @@ function mapBowlingProfileRow(cells) {
     fiveWickets: toInteger(cells[12]),
     wides: toInteger(cells[13]),
     catches: toInteger(cells[14]),
+  };
+}
+
+function mapModernBowlingProfileRow(cells) {
+  if (cells.length < 14) {
+    return null;
+  }
+
+  return {
+    format: normalizeText(cells[0]),
+    matches: toPublicInteger(cells[1]),
+    innings: toPublicInteger(cells[2]),
+    overs: normalizeText(cells[3]),
+    runs: toPublicInteger(cells[4]),
+    wickets: toPublicInteger(cells[5]),
+    bestBowling: normalizeText(cells[6]),
+    maidens: toPublicInteger(cells[7]),
+    average: toPublicNumber(cells[8]),
+    economy: toPublicNumber(cells[9]),
+    strikeRate: toPublicNumber(cells[10]),
+    fourWickets: toPublicInteger(cells[11]),
+    fiveWickets: toPublicInteger(cells[12]),
+    wides: toPublicInteger(cells[13]),
+    catches: null,
   };
 }
 
@@ -3118,6 +3210,13 @@ function parseIntegerMatch(value, pattern) {
 
 function parseNumberMatch(value, pattern) {
   return toNumber(matchFirstGroup(value, pattern), null);
+}
+
+function parseVisiblePublicProfileMetricCard(html, label) {
+  return matchFirstGroup(
+    html,
+    new RegExp(`<p[^>]*>\\s*${escapeRegExp(label)}\\s*<\\/p>\\s*<p[^>]*>\\s*([^<]+?)\\s*<\\/p>`, "i")
+  );
 }
 
 function toPublicInteger(value) {

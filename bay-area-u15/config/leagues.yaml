@@ -52,7 +52,7 @@ series:
       enable_pdf_reports: true
       enable_dashboard_views: true
   - slug: bay-area-youth-cricket-hub-2025-milc-2025-27
-    label: MilC 2025
+    label: 2025 MiLC
     enabled: true
     source_system: cricclubs
     league_name: MiLC
@@ -65,6 +65,65 @@ series:
     targeting:
       age_group: Open
       divisions: []
+    validation_players: []
+    outputs:
+      enable_raw_snapshots: true
+      enable_json_exports: true
+      enable_pdf_reports: false
+      enable_dashboard_views: true
+  - slug: bay-area-youth-cricket-hub-2026-ncca-2026-summer-6e89aakq-kwupu80epy0a
+    label: 2026 NCCA Summer
+    enabled: true
+    source_system: cricclubs
+    league_name: NCCA
+    season_year: 2026
+    series_url: https://cricclubs.com/NCCA/series-list/-6e89Aakq-KwUpu80ePY0A?seriesName=2026%2520Premier&clubId=1191
+    source_hints:
+      namespace: NCCA
+      league_id: 1vA9NJoJxkKD3HlEj8Am9g
+      club_id: "1191"
+      legacy_club_id: "1191"
+      legacy_league_id: "208"
+      series_id: -6e89Aakq-KwUpu80ePY0A
+    targeting:
+      age_group: Adults
+      divisions: []
+    validation_players: []
+    outputs:
+      enable_raw_snapshots: true
+      enable_json_exports: true
+      enable_pdf_reports: false
+      enable_dashboard_views: true
+  - slug: bay-area-youth-cricket-hub-2026-usa-hub-seattle-u15-2026-523
+    label: 2026 Seattle USAC Hub
+    enabled: true
+    source_system: cricclubs
+    league_name: USACricketJunior
+    season_year: 2026
+    series_url: https://cricclubs.com/USACricketJunior/viewLeague.do?league=523&clubId=40319
+    source_hints:
+      namespace: USACricketJunior
+      club_id: "40319"
+      series_id: "523"
+      primary_label: USAC 2026 - Seattle HUB - Phase1 - U15
+      additional_sources:
+        - label: USAC 2026 - Seattle HUB - Phase2 - U15
+          series_url: https://cricclubs.com/USACricketJunior/viewLeague.do?league=545&clubId=40319
+          source_hints:
+            series_id: "545"
+    targeting:
+      age_group: U15
+      divisions:
+        - label: USAC 2026 - Seattle HUB - Phase1 - U15
+          enabled: true
+          phase: 1
+          division_no: 1
+          strength_tier: strong
+        - label: USAC 2026 - Seattle HUB - Phase2 - U15
+          enabled: true
+          phase: 2
+          division_no: 1
+          strength_tier: strongest
     validation_players: []
     outputs:
       enable_raw_snapshots: true

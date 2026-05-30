@@ -2,6 +2,7 @@
 
 const { fetchOne, withClient, withTransaction } = require("./seriesService");
 const { assertSubscriptionActionAllowed } = require("./subscriptionService");
+const { sendSeriesViewerGuideEmail } = require("./seriesViewerGuideService");
 const { normalizeText, toInteger } = require("../lib/utils");
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -9,6 +10,10 @@ const ADMIN_ACCESS_ROLES = new Set(["admin"]);
 const VIEWER_ACCESS_ROLES = new Set(["viewer", "analyst"]);
 const ACCESS_REQUEST_TYPES = new Set(["self_request", "admin_invite"]);
 const ACCESS_REQUEST_STATUSES = new Set(["pending", "approved", "declined", "canceled"]);
+const AUTH_LOOKUP_PAGE_SIZE = 200;
+const AUTH_LOOKUP_MAX_PAGES = 10;
+const supabaseUserByEmailCache = new Map();
+const supabaseUserByIdCache = new Map();
 
 function normalizeUuid(value) {
   const normalized = normalizeText(value).toLowerCase();
@@ -38,6 +43,212 @@ function normalizeAccessRequestType(value) {
 function normalizeAccessRequestStatus(value) {
   const normalized = normalizeText(value).toLowerCase();
   return ACCESS_REQUEST_STATUSES.has(normalized) ? normalized : "";
+}
+
+function isValidHttpUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch (_) {
+    return false;
+  }
+}
+
+function getSupabaseAuthAdminConfig() {
+  const supabaseUrl = [
+    normalizeText(process.env.SUPABASE_URL),
+    normalizeText(process.env.VITE_SUPABASE_URL),
+  ].find((value) => isValidHttpUrl(value));
+  const serviceRoleKey = normalizeText(
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+    || process.env.SUPABASE_AUTH_SERVICE_ROLE_KEY
+  );
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return null;
+  }
+
+  return {
+    supabaseUrl: supabaseUrl.replace(/\/+$/, ""),
+    serviceRoleKey,
+    timeoutMs: toInteger(process.env.SUPABASE_AUTH_TIMEOUT_MS) || 5000,
+  };
+}
+
+async function lookupSupabaseUserByEmail(email) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    return null;
+  }
+
+  const cached = supabaseUserByEmailCache.get(normalizedEmail);
+  if (cached) {
+    return cached;
+  }
+
+  const lookupPromise = (async () => {
+    const config = getSupabaseAuthAdminConfig();
+    if (!config) {
+      return null;
+    }
+
+    let page = 1;
+    let pageLimit = AUTH_LOOKUP_MAX_PAGES;
+
+    while (page <= pageLimit) {
+      const url = new URL(`${config.supabaseUrl}/auth/v1/admin/users`);
+      url.searchParams.set("page", String(page));
+      url.searchParams.set("per_page", String(AUTH_LOOKUP_PAGE_SIZE));
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          apikey: config.serviceRoleKey,
+          Authorization: `Bearer ${config.serviceRoleKey}`,
+        },
+        signal: AbortSignal.timeout(config.timeoutMs),
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        return null;
+      }
+
+      if (!response.ok) {
+        const error = new Error(`Supabase admin user lookup failed with status ${response.status}.`);
+        error.statusCode = 502;
+        throw error;
+      }
+
+      const payload = await response.json();
+      const users = Array.isArray(payload?.users) ? payload.users : [];
+      const matchedUser = users.find((user) => normalizeEmail(user?.email) === normalizedEmail);
+      if (matchedUser?.id) {
+        return {
+          id: normalizeText(matchedUser.id),
+          email: normalizedEmail,
+        };
+      }
+
+      const totalCount = Number.parseInt(response.headers.get("x-total-count") || "", 10);
+      if (Number.isFinite(totalCount) && totalCount > 0) {
+        pageLimit = Math.min(Math.ceil(totalCount / AUTH_LOOKUP_PAGE_SIZE), AUTH_LOOKUP_MAX_PAGES);
+      } else if (users.length < AUTH_LOOKUP_PAGE_SIZE) {
+        break;
+      }
+
+      page += 1;
+    }
+
+    return null;
+  })();
+
+  supabaseUserByEmailCache.set(normalizedEmail, lookupPromise);
+
+  try {
+    return await lookupPromise;
+  } catch (error) {
+    supabaseUserByEmailCache.delete(normalizedEmail);
+    throw error;
+  }
+}
+
+async function lookupSupabaseUserById(userId) {
+  const normalizedUserId = normalizeUuid(userId);
+  if (!normalizedUserId) {
+    return null;
+  }
+
+  const cached = supabaseUserByIdCache.get(normalizedUserId);
+  if (cached) {
+    return cached;
+  }
+
+  const lookupPromise = (async () => {
+    const config = getSupabaseAuthAdminConfig();
+    if (!config) {
+      return null;
+    }
+
+    const response = await fetch(`${config.supabaseUrl}/auth/v1/admin/users/${normalizedUserId}`, {
+      method: "GET",
+      headers: {
+        apikey: config.serviceRoleKey,
+        Authorization: `Bearer ${config.serviceRoleKey}`,
+      },
+      signal: AbortSignal.timeout(config.timeoutMs),
+    });
+
+    if (response.status === 401 || response.status === 403 || response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      const error = new Error(`Supabase admin user lookup failed with status ${response.status}.`);
+      error.statusCode = 502;
+      throw error;
+    }
+
+    const payload = await response.json().catch(() => null);
+    const user = payload?.user && typeof payload.user === "object" ? payload.user : payload;
+    const resolvedEmail = normalizeEmail(user?.email);
+    if (!resolvedEmail) {
+      return null;
+    }
+
+    return {
+      id: normalizedUserId,
+      email: resolvedEmail,
+    };
+  })();
+
+  supabaseUserByIdCache.set(normalizedUserId, lookupPromise);
+
+  try {
+    return await lookupPromise;
+  } catch (error) {
+    supabaseUserByIdCache.delete(normalizedUserId);
+    throw error;
+  }
+}
+
+async function resolveKnownUserIdByEmail(email) {
+  try {
+    const user = await lookupSupabaseUserByEmail(email);
+    return normalizeUuid(user?.id);
+  } catch (_) {
+    return "";
+  }
+}
+
+async function resolveKnownUserEmailByUserId(userId) {
+  try {
+    const user = await lookupSupabaseUserById(userId);
+    return normalizeEmail(user?.email);
+  } catch (_) {
+    return "";
+  }
+}
+
+async function trySendSeriesViewerGuideNotification(input) {
+  const recipientEmail =
+    normalizeEmail(input?.email)
+    || await resolveKnownUserEmailByUserId(input?.userId)
+    || "";
+
+  if (!recipientEmail) {
+    return null;
+  }
+
+  try {
+    return await sendSeriesViewerGuideEmail({
+      to: recipientEmail,
+      seriesName: normalizeText(input?.seriesName),
+      accessRole: normalizeViewerAccessRole(input?.accessRole) || "viewer",
+    });
+  } catch (error) {
+    console.error("Series viewer guide email failed:", error);
+    return null;
+  }
 }
 
 function parseOptionalIsoTimestamp(value) {
@@ -487,7 +698,8 @@ async function listManagedEntityAdminRequests(client, input) {
         [input.userId]
       );
 
-  return result.rows.map(mapEntityAdminRequestRow);
+  const rows = await hydratePendingEntityAdminRequestUserIds(client, result.rows);
+  return rows.map(mapEntityAdminRequestRow);
 }
 
 async function loadEntityManagementSnapshot(client, input) {
@@ -828,13 +1040,16 @@ async function loadSeriesAccessRequests(client, seriesSourceConfigId) {
     [seriesSourceConfigId]
   );
 
-  return result.rows.map(mapAccessRequestRow);
+  const rows = await hydratePendingSeriesAccessRequestUserIds(client, result.rows);
+  return rows.map(mapAccessRequestRow);
 }
 
 async function upsertPendingSeriesAccessRequestRow(client, input) {
   const requestType = normalizeAccessRequestType(input.requestType) || "self_request";
   const requestedEmail = normalizeEmail(input.requestedEmail);
   const requestedAccessRole = normalizeViewerAccessRole(input.requestedAccessRole) || "viewer";
+  const resolvedRequestedUserId =
+    normalizeUuid(input.requestedUserId) || await resolveKnownUserIdByEmail(requestedEmail) || null;
 
   if (!requestedEmail) {
     const error = new Error("A valid email address is required for series access requests.");
@@ -900,7 +1115,7 @@ async function upsertPendingSeriesAccessRequestRow(client, input) {
       [
         existing.id,
         requestedEmail,
-        input.requestedUserId || null,
+        resolvedRequestedUserId,
         normalizeText(input.requestNote) || null,
         input.requestedByUserId || null,
         input.requestedExpiresAt || null,
@@ -932,7 +1147,7 @@ async function upsertPendingSeriesAccessRequestRow(client, input) {
       input.entityId,
       input.seriesSourceConfigId,
       requestedEmail,
-      input.requestedUserId || null,
+      resolvedRequestedUserId,
       requestedAccessRole,
       requestType,
       normalizeText(input.requestNote) || null,
@@ -1021,6 +1236,83 @@ async function autoActivatePendingSeriesInvites(client, input) {
         [
           row.id,
           normalizeText(error?.message) || "Invite auto-activation failed. Review entity limits and series access rules.",
+        ]
+      );
+    }
+  }
+
+  return {
+    activatedCount,
+  };
+}
+
+async function autoActivatePendingEntityAdminInvites(client, input) {
+  const actorUserId = normalizeUuid(input.userId);
+  const actorEmail = normalizeEmail(input.email);
+
+  if (!actorUserId || !actorEmail) {
+    return {
+      activatedCount: 0,
+    };
+  }
+
+  const result = await client.query(
+    `
+      select *
+      from public.entity_admin_access_request ear
+      where lower(ear.requested_email) = lower($1)
+        and ear.request_type = 'admin_invite'
+        and ear.request_status = 'pending'
+        and (ear.requested_user_id is null or ear.requested_user_id = $2)
+      order by ear.created_at, ear.id
+    `,
+    [actorEmail, actorUserId]
+  );
+
+  let activatedCount = 0;
+
+  for (const row of result.rows) {
+    try {
+      const granted = await grantEntityAdminMembership(client, {
+        entityId: normalizeText(row.entity_id),
+        targetUserId: actorUserId,
+        invitedByUserId: normalizeUuid(row.requested_by_user_id) || null,
+        reviewedByUserId: normalizeUuid(row.requested_by_user_id) || null,
+        adminResponseNote: "Series-admin access auto-activated on first login from an approved email invite.",
+      });
+
+      await client.query(
+        `
+          update public.entity_admin_access_request
+          set
+            requested_user_id = $2,
+            request_status = 'approved',
+            reviewed_by_user_id = coalesce(reviewed_by_user_id, requested_by_user_id),
+            admin_response_note = coalesce(
+              nullif(admin_response_note, ''),
+              'Series-admin access auto-activated on first login from an approved email invite.'
+            ),
+            resolved_membership_id = $3,
+            resolved_at = coalesce(resolved_at, now()),
+            updated_at = now()
+          where id = $1
+        `,
+        [row.id, actorUserId, granted.membership?.membershipId || null]
+      );
+
+      activatedCount += 1;
+    } catch (error) {
+      await client.query(
+        `
+          update public.entity_admin_access_request
+          set
+            admin_response_note = $2,
+            updated_at = now()
+          where id = $1
+        `,
+        [
+          row.id,
+          normalizeText(error?.message) || "Invite auto-activation failed. Review entity limits and admin access rules.",
         ]
       );
     }
@@ -1268,6 +1560,8 @@ async function upsertPendingEntityAdminRequestRow(client, input) {
   const requestType = normalizeAccessRequestType(input.requestType) || "self_request";
   const requestedEmail = normalizeEmail(input.requestedEmail);
   const requestedRole = normalizeAdminAccessRole(input.requestedRole) || "admin";
+  const resolvedRequestedUserId =
+    normalizeUuid(input.requestedUserId) || await resolveKnownUserIdByEmail(requestedEmail) || null;
 
   if (!requestedEmail) {
     const error = new Error("A valid email address is required for series-admin access requests.");
@@ -1348,7 +1642,7 @@ async function upsertPendingEntityAdminRequestRow(client, input) {
       [
         existing.id,
         requestedEmail,
-        normalizeUuid(input.requestedUserId) || null,
+        resolvedRequestedUserId,
         normalizeText(input.requestNote),
         normalizeUuid(input.requestedByUserId) || null,
       ]
@@ -1376,7 +1670,7 @@ async function upsertPendingEntityAdminRequestRow(client, input) {
     [
       input.entityId,
       requestedEmail,
-      normalizeUuid(input.requestedUserId) || null,
+      resolvedRequestedUserId,
       requestedRole,
       requestType,
       normalizeText(input.requestNote),
@@ -1385,6 +1679,82 @@ async function upsertPendingEntityAdminRequestRow(client, input) {
   );
 
   return mapEntityAdminRequestRow(inserted);
+}
+
+async function hydratePendingEntityAdminRequestUserIds(client, rows) {
+  for (const row of rows) {
+    if (
+      normalizeAccessRequestStatus(row?.request_status) !== "pending"
+      || normalizeUuid(row?.requested_user_id)
+      || !normalizeEmail(row?.requested_email)
+    ) {
+      continue;
+    }
+
+    const resolvedUserId = await resolveKnownUserIdByEmail(row.requested_email);
+    if (!resolvedUserId) {
+      continue;
+    }
+
+    const updated = await fetchOne(
+      client,
+      `
+        update public.entity_admin_access_request
+        set
+          requested_user_id = $2,
+          updated_at = now()
+        where id = $1
+          and requested_user_id is null
+        returning requested_user_id, updated_at
+      `,
+      [row.id, resolvedUserId]
+    );
+
+    if (updated?.requested_user_id) {
+      row.requested_user_id = updated.requested_user_id;
+      row.updated_at = updated.updated_at || row.updated_at;
+    }
+  }
+
+  return rows;
+}
+
+async function hydratePendingSeriesAccessRequestUserIds(client, rows) {
+  for (const row of rows) {
+    if (
+      normalizeAccessRequestStatus(row?.request_status) !== "pending"
+      || normalizeUuid(row?.requested_user_id)
+      || !normalizeEmail(row?.requested_email)
+    ) {
+      continue;
+    }
+
+    const resolvedUserId = await resolveKnownUserIdByEmail(row.requested_email);
+    if (!resolvedUserId) {
+      continue;
+    }
+
+    const updated = await fetchOne(
+      client,
+      `
+        update public.series_access_request
+        set
+          requested_user_id = $2,
+          updated_at = now()
+        where id = $1
+          and requested_user_id is null
+        returning requested_user_id, updated_at
+      `,
+      [row.id, resolvedUserId]
+    );
+
+    if (updated?.requested_user_id) {
+      row.requested_user_id = updated.requested_user_id;
+      row.updated_at = updated.updated_at || row.updated_at;
+    }
+  }
+
+  return rows;
 }
 
 async function loadManagedEntityAdminContext(client, input) {
@@ -1514,14 +1884,14 @@ async function upsertEntityAdminMembership(input) {
           requestedRole: "admin",
           requestType: "admin_invite",
           requestNote:
-            "Pre-approved by a series admin. Access will activate automatically the first time this email signs in to request series-admin access.",
+            "Pre-approved by a series admin. Access will activate automatically the first time this email signs in to Game-Changrs.",
           requestedByUserId: context.actorUserId,
         });
 
         return {
           message: input.dryRun === true
             ? "Dry-run series-admin email invite validated."
-            : "Series-admin email invite saved. Access will activate the first time this email signs in and requests it.",
+            : "Series-admin email invite saved. Access will activate the first time this email signs in.",
           entity: {
             entityId: context.entityId,
             entityName: context.entityName,
@@ -1782,7 +2152,7 @@ async function applyEntityAdminAccessRequestDecision(input) {
       const targetUserId = normalizeUuid(request.requested_user_id);
       if (!targetUserId) {
         const error = new Error(
-          "This request is waiting for the invited email to sign in. It will auto-activate once the invited user signs in and requests access."
+          "This request is waiting for the invited email to sign in. It will auto-activate on first login from the approved email."
         );
         error.statusCode = 409;
         throw error;
@@ -1966,6 +2336,11 @@ async function getAdminSeriesCatalog(input) {
       };
     }
 
+    await autoActivatePendingEntityAdminInvites(client, {
+      userId: input.userId,
+      email: input.email,
+    });
+
     const entities = await listManagedEntities(client, {
       userId: input.userId,
       isPlatformAdmin,
@@ -2045,6 +2420,11 @@ async function getViewerSeriesCatalog(input) {
         series: [],
       };
     }
+
+    await autoActivatePendingEntityAdminInvites(client, {
+      userId: input.userId,
+      email: input.email,
+    });
 
     await autoActivatePendingSeriesInvites(client, {
       userId: input.userId,
@@ -2183,6 +2563,7 @@ async function upsertSeriesViewerGrant(input) {
   const targetEmail = normalizeEmail(input.body?.email);
   const accessRole = normalizeViewerAccessRole(input.body?.accessRole) || "viewer";
   const expiresAt = parseOptionalIsoTimestamp(input.body?.expiresAt);
+  let resolvedSeriesName = "";
 
   if (!actorUserId) {
     const error = new Error("A valid actor user id is required to grant viewer access.");
@@ -2196,12 +2577,13 @@ async function upsertSeriesViewerGrant(input) {
     throw error;
   }
 
-  return withTransaction(
+  const outcome = await withTransaction(
     async (client) => {
       const access = await loadSeriesAccessSnapshot(client, {
         userId: actorUserId,
         seriesConfigKey: input.seriesConfigKey,
       });
+      resolvedSeriesName = access.seriesName;
 
       if (!access.authFoundationReady) {
         const error = new Error(
@@ -2269,6 +2651,24 @@ async function upsertSeriesViewerGrant(input) {
     },
     { dryRun: input.dryRun === true }
   );
+
+  if (input.dryRun === true) {
+    return outcome;
+  }
+
+  const guideDelivery = await trySendSeriesViewerGuideNotification({
+    email: outcome?.request?.requestedEmail || targetEmail,
+    userId: outcome?.grant?.userId || targetUserId,
+    seriesName: resolvedSeriesName,
+    accessRole: outcome?.grant?.accessRole || outcome?.request?.requestedAccessRole || accessRole,
+  });
+
+  if (guideDelivery?.email) {
+    outcome.message = `${outcome.message} Quick-start guide emailed to ${guideDelivery.email}.`;
+    outcome.guideDelivery = guideDelivery;
+  }
+
+  return outcome;
 }
 
 async function createSeriesAccessRequest(input) {
@@ -2415,6 +2815,7 @@ async function applySeriesAccessRequestDecision(input) {
   const requestId = normalizeUuid(input.requestId);
   const action = normalizeText(input.body?.action).toLowerCase();
   const adminResponseNote = normalizeText(input.body?.responseNote);
+  let resolvedSeriesName = "";
 
   if (!actorUserId) {
     const error = new Error("A valid actor user id is required to review an access request.");
@@ -2434,12 +2835,13 @@ async function applySeriesAccessRequestDecision(input) {
     throw error;
   }
 
-  return withTransaction(
+  const outcome = await withTransaction(
     async (client) => {
       const access = await loadSeriesAccessSnapshot(client, {
         userId: actorUserId,
         seriesConfigKey: input.seriesConfigKey,
       });
+      resolvedSeriesName = access.seriesName;
 
       if (!access.authFoundationReady) {
         const error = new Error(
@@ -2559,6 +2961,24 @@ async function applySeriesAccessRequestDecision(input) {
     },
     { dryRun: input.dryRun === true }
   );
+
+  if (input.dryRun === true || action !== "approve") {
+    return outcome;
+  }
+
+  const guideDelivery = await trySendSeriesViewerGuideNotification({
+    email: outcome?.request?.requestedEmail,
+    userId: outcome?.grant?.userId || outcome?.request?.requestedUserId,
+    seriesName: resolvedSeriesName,
+    accessRole: outcome?.request?.requestedAccessRole,
+  });
+
+  if (guideDelivery?.email) {
+    outcome.message = `${outcome.message} Quick-start guide emailed to ${guideDelivery.email}.`;
+    outcome.guideDelivery = guideDelivery;
+  }
+
+  return outcome;
 }
 
 async function revokeSeriesViewerGrant(input) {

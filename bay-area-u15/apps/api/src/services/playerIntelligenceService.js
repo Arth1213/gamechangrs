@@ -16,6 +16,7 @@ const {
 } = require("./seriesService");
 
 const MIN_SPLIT_SAMPLE_BALLS = 12;
+const MIN_PRESSURE_DOT_THRESHOLD = 2;
 const MAX_MATCHUP_ROWS = 8;
 const MAX_DISMISSAL_ROWS = 6;
 const MAX_SIGNAL_ROWS = 3;
@@ -39,6 +40,14 @@ function safeDivide(numerator, denominator) {
   }
 
   return left / right;
+}
+
+function sanitizePressureDotThreshold(value) {
+  const numeric = roundMetric(value, 2);
+  if (numeric === null || numeric < MIN_PRESSURE_DOT_THRESHOLD) {
+    return null;
+  }
+  return numeric;
 }
 
 function normalizeBucketLabel(value, fallback = "") {
@@ -145,24 +154,41 @@ function mostCommonValue(values) {
   return bestValue || "";
 }
 
+function isMalformedProfileDisplayValue(value) {
+  return /^[a-z ]+:/i.test(normalizeText(value));
+}
+
 function formatBowlingStyle(row) {
-  return normalizeText(row?.bowling_style_detail)
-    || normalizeBucketLabel(row?.bowling_style_bucket, row?.bowling_style)
-    || "";
+  const detail = normalizeText(row?.bowling_style_detail);
+  if (detail && !isPlaceholderIntelligenceLabel(detail) && !isMalformedProfileDisplayValue(detail)) {
+    return detail;
+  }
+
+  const fallback = normalizeText(row?.bowling_style);
+  if (fallback && !isPlaceholderIntelligenceLabel(fallback) && !isMalformedProfileDisplayValue(fallback)) {
+    return normalizeBucketLabel(row?.bowling_style_bucket, fallback);
+  }
+
+  const bucketLabel = normalizeBucketLabel(row?.bowling_style_bucket, "");
+  return isPlaceholderIntelligenceLabel(bucketLabel) ? "" : bucketLabel;
 }
 
 function formatBattingStyle(row) {
   const hand = normalizeText(row?.batting_hand);
   const bucket = normalizeText(row?.batting_style_bucket);
   const raw = normalizeText(row?.batting_style);
+  const safeRaw = !isPlaceholderIntelligenceLabel(raw) && !isMalformedProfileDisplayValue(raw)
+    ? raw
+    : "";
+  const safeBucket = !isPlaceholderIntelligenceLabel(bucket) ? bucket : "";
 
-  if (hand && raw) {
-    return `${hand} ${raw}`;
+  if (hand && safeRaw) {
+    return `${hand} ${safeRaw}`;
   }
-  if (hand && bucket) {
-    return `${hand} ${bucket}`;
+  if (hand && safeBucket) {
+    return `${hand} ${safeBucket}`;
   }
-  return hand || raw || bucket || "";
+  return hand || safeRaw || safeBucket || "";
 }
 
 function isPlaceholderIntelligenceLabel(value) {
@@ -374,28 +400,32 @@ function buildPhaseSummary(rows, perspective) {
 }
 
 function buildSplitRows(rows, perspective, splitGroup) {
+  const eligibleRows = rows.filter(
+    (row) =>
+      row.perspective === perspective
+      && row.splitGroup === splitGroup
+      && row.phaseBucket === "overall"
+      && row.splitValue !== "overall"
+  );
+
   return sortSplitRows(
-    rows.filter(
-      (row) =>
-        row.perspective === perspective
-        && row.splitGroup === splitGroup
-        && row.phaseBucket === "overall"
-        && row.splitValue !== "overall"
-    ),
+    preferKnownRows(eligibleRows, (row) => row.splitLabel),
     perspective
   ).slice(0, MAX_MATCHUP_ROWS);
 }
 
 function buildSplitRowsByPhase(rows, perspective, splitGroup) {
   return ["powerplay", "middle", "death"].reduce((acc, phaseBucket) => {
+    const eligibleRows = rows.filter(
+      (row) =>
+        row.perspective === perspective
+        && row.splitGroup === splitGroup
+        && row.phaseBucket === phaseBucket
+        && row.splitValue !== "overall"
+    );
+
     acc[phaseBucket] = sortSplitRows(
-      rows.filter(
-        (row) =>
-          row.perspective === perspective
-          && row.splitGroup === splitGroup
-          && row.phaseBucket === phaseBucket
-          && row.splitValue !== "overall"
-      ),
+      preferKnownRows(eligibleRows, (row) => row.splitLabel),
       perspective
     ).slice(0, MAX_MATCHUP_ROWS);
     return acc;
@@ -412,8 +442,8 @@ function buildPressureProfile(profileRow) {
     battingHighLeverageStrikeRate: profileRow.battingHighLeverageStrikeRate,
     bowlingHighLeverageEconomy: profileRow.bowlingHighLeverageEconomy,
     bowlingPressureControlErrorPct: profileRow.bowlingPressureControlErrorPct,
-    boundaryDotThreshold: profileRow.boundaryDotThreshold,
-    dismissalDotThreshold: profileRow.dismissalDotThreshold,
+    boundaryDotThreshold: sanitizePressureDotThreshold(profileRow.boundaryDotThreshold),
+    dismissalDotThreshold: sanitizePressureDotThreshold(profileRow.dismissalDotThreshold),
     boundaryAfterThreeDotsPct: profileRow.boundaryAfterThreeDotsPct,
     dismissalAfterThreeDotsPct: profileRow.dismissalAfterThreeDotsPct,
   };

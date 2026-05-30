@@ -7,7 +7,7 @@ function normalizeText(value) {
 }
 
 function normalizeLabel(value) {
-  return normalizeText(value).toLowerCase();
+  return normalizeText(value).toLowerCase().replace(/[-_]+/g, " ");
 }
 
 function classifyPrimaryRole(primaryRole, options = {}) {

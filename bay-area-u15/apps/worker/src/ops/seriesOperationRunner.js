@@ -2,6 +2,7 @@ const path = require("path");
 
 const { discoverSeries } = require("../discovery/seriesDiscovery");
 const { enumerateMatches } = require("../extract/matchInventory");
+const { loadYamlConfig, resolveSeriesConfig } = require("../lib/config");
 const { withClient, withTransaction } = require("../lib/db");
 const { ensureDir, writeJsonFile } = require("../lib/fs");
 const { upsertDiscovery, upsertMatchInventory } = require("../load/repository");
@@ -47,6 +48,51 @@ function parseClubIdFromUrl(value) {
   } catch (_) {
     return "";
   }
+}
+
+function loadLocalSeriesOverlay(seriesConfigKey) {
+  try {
+    const config = loadYamlConfig(path.resolve(process.cwd(), "config/leagues.yaml"));
+    return resolveSeriesConfig(config, seriesConfigKey);
+  } catch (_) {
+    return null;
+  }
+}
+
+function mergeSourceHints(baseHints, overlayHints) {
+  const merged = {
+    ...(baseHints || {}),
+    ...(overlayHints || {}),
+  };
+
+  if (Array.isArray(baseHints?.additional_sources) || Array.isArray(overlayHints?.additional_sources)) {
+    merged.additional_sources = Array.isArray(overlayHints?.additional_sources)
+      ? overlayHints.additional_sources
+      : baseHints.additional_sources;
+  }
+
+  if (Array.isArray(baseHints?.additional_series_urls) || Array.isArray(overlayHints?.additional_series_urls)) {
+    merged.additional_series_urls = Array.isArray(overlayHints?.additional_series_urls)
+      ? overlayHints.additional_series_urls
+      : baseHints.additional_series_urls;
+  }
+
+  return merged;
+}
+
+function mergeTargeting(baseTargeting, overlayTargeting) {
+  const merged = {
+    ...(baseTargeting || {}),
+    ...(overlayTargeting || {}),
+  };
+
+  if (Array.isArray(overlayTargeting?.divisions) && overlayTargeting.divisions.length) {
+    merged.divisions = overlayTargeting.divisions;
+    return merged;
+  }
+
+  merged.divisions = Array.isArray(baseTargeting?.divisions) ? baseTargeting.divisions : [];
+  return merged;
 }
 
 function buildWorkerRef() {
@@ -289,10 +335,11 @@ async function buildWorkerSeriesConfig(claimedRequest) {
     divisions.map((division) => parseClubIdFromUrl(division.results_url) || parseClubIdFromUrl(division.stats_url)).find(Boolean) ||
     "";
 
-  return {
+  const baseSeriesConfig = {
     slug: claimedRequest.series.configKey,
     label: claimedRequest.series.label,
     enabled: true,
+    source_system: normalizeText(claimedRequest.series.sourceSystem) || "cricclubs",
     league_name: claimedRequest.series.expectedLeagueName,
     season_year: claimedRequest.series.seasonYear,
     series_url: claimedRequest.series.seriesUrl,
@@ -315,6 +362,30 @@ async function buildWorkerSeriesConfig(claimedRequest) {
       enable_json_exports: true,
       enable_pdf_reports: false,
       enable_dashboard_views: true,
+    },
+  };
+
+  const overlay = loadLocalSeriesOverlay(claimedRequest.series.configKey);
+  if (!overlay) {
+    return baseSeriesConfig;
+  }
+
+  return {
+    ...baseSeriesConfig,
+    ...overlay,
+    slug: baseSeriesConfig.slug,
+    label: normalizeText(overlay.label) || baseSeriesConfig.label,
+    enabled: overlay.enabled !== false,
+    source_system: normalizeText(overlay.source_system) || baseSeriesConfig.source_system,
+    league_name: normalizeText(overlay.league_name) || baseSeriesConfig.league_name,
+    season_year: toInteger(overlay.season_year) || baseSeriesConfig.season_year,
+    series_url: normalizeText(overlay.series_url) || baseSeriesConfig.series_url,
+    source_hints: mergeSourceHints(baseSeriesConfig.source_hints, overlay.source_hints),
+    targeting: mergeTargeting(baseSeriesConfig.targeting, overlay.targeting),
+    validation_players: Array.isArray(overlay.validation_players) ? overlay.validation_players : [],
+    outputs: {
+      ...baseSeriesConfig.outputs,
+      ...(overlay.outputs || {}),
     },
   };
 }

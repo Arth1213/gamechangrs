@@ -35,10 +35,34 @@ function parsePlayerIdFromUrl(url) {
   }
 
   try {
-    return normalizeText(new URL(raw, "https://cricclubs.com").searchParams.get("playerId"));
+    const parsed = new URL(raw, "https://cricclubs.com");
+    const queryPlayerId =
+      normalizeText(parsed.searchParams.get("playerId")) ||
+      normalizeText(parsed.searchParams.get("id"));
+    if (queryPlayerId) {
+      return queryPlayerId;
+    }
+
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    const userIndex = segments.findIndex((segment) => segment.toLowerCase() === "user");
+    if (userIndex >= 0 && segments[userIndex + 1]) {
+      return normalizeText(segments[userIndex + 1]);
+    }
+
+    const playerIndex = segments.findIndex((segment) => /^players?$/i.test(segment));
+    if (playerIndex >= 0 && segments[playerIndex + 1]) {
+      return normalizeText(segments[playerIndex + 1]);
+    }
+
+    return "";
   } catch (_) {
     return "";
   }
+}
+
+function buildSyntheticPlayerId(displayName) {
+  const normalized = normalizeAliasKey(displayName).replace(/\s+/g, "-");
+  return normalized ? `synthetic:${normalized}` : "";
 }
 
 function cleanPlayerDisplayName(value) {
@@ -73,12 +97,7 @@ function buildPlayerAliases(displayName, extras = []) {
 
   const tokens = base.split(" ").filter(Boolean);
   if (tokens.length >= 2) {
-    aliases.add(`${tokens[0][0]} ${tokens.slice(1).join(" ")}`);
-    aliases.add(`${tokens[0][0]} ${tokens[tokens.length - 1]}`);
-  }
-
-  if (tokens.length >= 3) {
-    aliases.add(`${tokens[0][0]} ${tokens.slice(-2).join(" ")}`);
+    aliases.add(`${tokens[0]} ${tokens[tokens.length - 1][0]}`);
   }
 
   return [...aliases].map((value) => normalizeText(value)).filter(Boolean);
@@ -157,7 +176,7 @@ function splitDidNotBatList(value) {
 function parseDismissalInfo(value, links = []) {
   const text = normalizeText(value);
   const normalized = normalizeLabel(text);
-  const playerLinks = Array.isArray(links) ? links.filter((link) => normalizeText(link?.name)) : [];
+  const playerLinks = Array.isArray(links) ? links.filter((link) => normalizeText(link?.text)) : [];
   const firstLink = playerLinks[0] || null;
   const lastLink = playerLinks[playerLinks.length - 1] || null;
 
@@ -333,6 +352,7 @@ function parseCommentaryOutcome(runToken, commentaryText) {
 module.exports = {
   ballsToOversDecimal,
   buildPlayerAliases,
+  buildSyntheticPlayerId,
   cleanPlayerDisplayName,
   normalizeAliasKey,
   normalizeLabel,

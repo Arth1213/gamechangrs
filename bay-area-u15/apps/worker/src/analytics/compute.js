@@ -62,6 +62,35 @@ function buildInningsLookup(scorecard) {
   return lookup;
 }
 
+function buildRepresentativePlayerRows(rows) {
+  const registry = new Map();
+
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const sourcePlayerId = normalizeText(row?.playerSourceId);
+    if (!sourcePlayerId) {
+      continue;
+    }
+
+    const existing = registry.get(sourcePlayerId) || {
+      playerName: normalizeText(row?.playerName),
+      sampleRow: row,
+      teamNames: new Set(),
+    };
+
+    if (!existing.playerName && normalizeText(row?.playerName)) {
+      existing.playerName = normalizeText(row.playerName);
+    }
+
+    if (normalizeText(row?.teamName)) {
+      existing.teamNames.add(normalizeText(row.teamName));
+    }
+
+    registry.set(sourcePlayerId, existing);
+  }
+
+  return registry;
+}
+
 function getWeight(weightsConfig, path, fallback = 1) {
   let cursor = weightsConfig;
   for (const key of path) {
@@ -77,6 +106,19 @@ function getPhaseWeight(weightsConfig, discipline, phase) {
   return getWeight(weightsConfig, ["phase_weighting", discipline, normalizeText(phase) || "middle"], 1);
 }
 
+function getDivisionWeight(weightsConfig, matchFacts) {
+  const divisionLabel =
+    normalizeText(matchFacts?.match?.division_label) ||
+    normalizeText(matchFacts?.raw?.match?.division_label) ||
+    normalizeText(matchFacts?.raw?.match?.divisionLabel);
+
+  return getWeight(
+    weightsConfig,
+    ["team_strength", "division_premium", divisionLabel],
+    getWeight(weightsConfig, ["team_strength", "division_premium", "default"], getWeight(weightsConfig, ["team_strength", "base_score"], 1))
+  );
+}
+
 function getDefaultParseConfidence(weightsConfig) {
   return getWeight(weightsConfig, ["parsing", "default_parse_confidence"], 0.9);
 }
@@ -89,7 +131,7 @@ function buildAnnotatedBallEvents(matchFacts, weightsConfig) {
   const collapseContext = getWeight(weightsConfig, ["leverage_weighting", "collapse_context"], 1.07);
   const highRateChase = getWeight(weightsConfig, ["leverage_weighting", "chasing_high_required_rate"], 1.1);
   const newBatterWindow = getWeight(weightsConfig, ["leverage_weighting", "new_batter_window"], 1.03);
-  const teamWeight = getWeight(weightsConfig, ["team_strength", "base_score"], 1);
+  const teamWeight = getDivisionWeight(weightsConfig, matchFacts);
   const playerWeight = 1;
   const defaultParseConfidence = getDefaultParseConfidence(weightsConfig);
 
@@ -235,7 +277,7 @@ function fieldingImpact(entry) {
   );
 }
 
-function buildPlayerMatchAdvanced(matchFacts, annotatedBallEvents) {
+function buildPlayerMatchAdvanced(matchFacts, annotatedBallEvents, weightsConfig) {
   const battingRows = (matchFacts?.scorecard?.battingInnings || []).filter(
     (entry) => entry.didNotBat !== true && normalizeText(entry.playerSourceId)
   );
@@ -246,6 +288,9 @@ function buildPlayerMatchAdvanced(matchFacts, annotatedBallEvents) {
   const battingAgg = new Map();
   const bowlingAgg = new Map();
   const fieldingAgg = new Map();
+  const battingRepresentatives = buildRepresentativePlayerRows(battingRows);
+  const bowlingRepresentatives = buildRepresentativePlayerRows(bowlingRows);
+  const divisionWeight = getDivisionWeight(weightsConfig, matchFacts);
 
   for (const event of annotatedBallEvents) {
     const strikerId = normalizeText(event?.strikerSourcePlayerId);
@@ -328,30 +373,37 @@ function buildPlayerMatchAdvanced(matchFacts, annotatedBallEvents) {
 
   const advancedRows = [];
 
-  for (const row of battingRows) {
-    const sourcePlayerId = normalizeText(row.playerSourceId);
+  for (const [sourcePlayerId, representative] of battingRepresentatives.entries()) {
+    const sampleRow = representative.sampleRow || {};
     const agg = battingAgg.get(sourcePlayerId) || {
-      ballsFaced: Number(row.ballsFaced || 0),
-      batterRuns: Number(row.runs || 0),
+      ballsFaced: Number(sampleRow.ballsFaced || 0),
+      batterRuns: Number(sampleRow.runs || 0),
       dots: 0,
-      boundaries: Number(row.fours || 0) + Number(row.sixes || 0),
+      boundaries: Number(sampleRow.fours || 0) + Number(sampleRow.sixes || 0),
       singles: 0,
-      dismissals: row.isNotOut ? 0 : 1,
-      weightedRuns: Number(row.runs || 0),
+      dismissals: sampleRow.isNotOut ? 0 : 1,
+      weightedRuns: Number(sampleRow.runs || 0),
     };
-    const balls = Math.max(Number(row.ballsFaced || agg.ballsFaced || 0), 1);
+    const safeRepresentative = representative || {
+      playerName: "",
+      teamNames: new Set(),
+    };
+    const teamName = safeRepresentative.teamNames.size === 1
+      ? [...safeRepresentative.teamNames][0]
+      : "";
+    const balls = Math.max(Number(agg.ballsFaced || 0), 1);
     const impact = battingImpact(agg);
     advancedRows.push({
       sourcePlayerId,
-      playerName: row.playerName,
-      teamName: row.teamName,
+      playerName: safeRepresentative.playerName || null,
+      teamName: teamName || null,
       roleType: "batting",
-      ballsFaced: Number(row.ballsFaced || agg.ballsFaced || 0),
-      batterRuns: Number(row.runs || agg.batterRuns || 0),
+      ballsFaced: Number(agg.ballsFaced || 0),
+      batterRuns: Number(agg.batterRuns || 0),
       dotBallPct: roundMetric(safeDivide(agg.dots, balls)),
       boundaryBallPct: roundMetric(safeDivide(agg.boundaries, balls)),
       singlesRotationPct: roundMetric(safeDivide(agg.singles, balls)),
-      dismissalRate: roundMetric(safeDivide(row.isNotOut ? 0 : 1, balls)),
+      dismissalRate: roundMetric(safeDivide(agg.dismissals, balls)),
       legalBallsBowled: 0,
       bowlerRunsConceded: 0,
       totalRunsConceded: 0,
@@ -359,31 +411,38 @@ function buildPlayerMatchAdvanced(matchFacts, annotatedBallEvents) {
       boundaryConcededPct: 0,
       pressureOvers: 0,
       fieldingImpactScore: 0,
-      teamStrengthAdjustedScore: roundMetric(impact),
+      teamStrengthAdjustedScore: roundMetric(impact * divisionWeight),
       playerStrengthAdjustedScore: roundMetric(impact),
       leverageAdjustedScore: roundMetric(safeDivide(agg.weightedRuns, balls)),
       matchImpactScore: roundMetric(impact + safeDivide(agg.weightedRuns, balls, 0) * 0.2),
     });
   }
 
-  for (const row of bowlingRows) {
-    const sourcePlayerId = normalizeText(row.playerSourceId);
+  for (const [sourcePlayerId, representative] of bowlingRepresentatives.entries()) {
+    const sampleRow = representative.sampleRow || {};
     const agg = bowlingAgg.get(sourcePlayerId) || {
-      legalBallsBowled: Number(row.legalBalls || 0),
-      bowlerRunsConceded: Number(row.runsConceded || 0),
-      totalRunsConceded: Number(row.runsConceded || 0),
-      dotBalls: Number(row.dotBalls || 0),
+      legalBallsBowled: Number(sampleRow.legalBalls || 0),
+      bowlerRunsConceded: Number(sampleRow.runsConceded || 0),
+      totalRunsConceded: Number(sampleRow.runsConceded || 0),
+      dotBalls: Number(sampleRow.dotBalls || 0),
       boundariesConceded: 0,
-      wickets: Number(row.wickets || 0),
+      wickets: Number(sampleRow.wickets || 0),
       pressureOvers: new Set(),
-      weightedImpact: Number(row.wickets || 0) * 12 - Number(row.runsConceded || 0) * 0.3,
+      weightedImpact: Number(sampleRow.wickets || 0) * 12 - Number(sampleRow.runsConceded || 0) * 0.3,
     };
-    const balls = Math.max(Number(row.legalBalls || agg.legalBallsBowled || 0), 1);
+    const safeRepresentative = representative || {
+      playerName: "",
+      teamNames: new Set(),
+    };
+    const teamName = safeRepresentative.teamNames.size === 1
+      ? [...safeRepresentative.teamNames][0]
+      : "";
+    const balls = Math.max(Number(agg.legalBallsBowled || 0), 1);
     const impact = bowlingImpact(agg);
     advancedRows.push({
       sourcePlayerId,
-      playerName: row.playerName,
-      teamName: row.teamName,
+      playerName: safeRepresentative.playerName || null,
+      teamName: teamName || null,
       roleType: "bowling",
       ballsFaced: 0,
       batterRuns: 0,
@@ -391,14 +450,14 @@ function buildPlayerMatchAdvanced(matchFacts, annotatedBallEvents) {
       boundaryBallPct: 0,
       singlesRotationPct: 0,
       dismissalRate: 0,
-      legalBallsBowled: Number(row.legalBalls || agg.legalBallsBowled || 0),
-      bowlerRunsConceded: Number(agg.bowlerRunsConceded || row.runsConceded || 0),
-      totalRunsConceded: Number(agg.totalRunsConceded || row.runsConceded || 0),
-      wicketBallPct: roundMetric(safeDivide(Number(row.wickets || agg.wickets || 0), balls)),
+      legalBallsBowled: Number(agg.legalBallsBowled || 0),
+      bowlerRunsConceded: Number(agg.bowlerRunsConceded || 0),
+      totalRunsConceded: Number(agg.totalRunsConceded || 0),
+      wicketBallPct: roundMetric(safeDivide(Number(agg.wickets || 0), balls)),
       boundaryConcededPct: roundMetric(safeDivide(agg.boundariesConceded, balls)),
       pressureOvers: agg.pressureOvers instanceof Set ? agg.pressureOvers.size : 0,
       fieldingImpactScore: 0,
-      teamStrengthAdjustedScore: roundMetric(impact),
+      teamStrengthAdjustedScore: roundMetric(impact * divisionWeight),
       playerStrengthAdjustedScore: roundMetric(impact),
       leverageAdjustedScore: roundMetric(safeDivide(agg.weightedImpact, balls)),
       matchImpactScore: roundMetric(impact + safeDivide(agg.weightedImpact, balls, 0) * 0.2),
@@ -425,7 +484,7 @@ function buildPlayerMatchAdvanced(matchFacts, annotatedBallEvents) {
       boundaryConcededPct: 0,
       pressureOvers: 0,
       fieldingImpactScore: roundMetric(impact),
-      teamStrengthAdjustedScore: roundMetric(impact),
+      teamStrengthAdjustedScore: roundMetric(impact * divisionWeight),
       playerStrengthAdjustedScore: roundMetric(impact),
       leverageAdjustedScore: roundMetric(impact),
       matchImpactScore: roundMetric(impact),
@@ -438,7 +497,7 @@ function buildPlayerMatchAdvanced(matchFacts, annotatedBallEvents) {
 function computeAdvancedMetrics(matchFacts, weightsConfig) {
   const annotatedBallEvents = buildAnnotatedBallEvents(matchFacts, weightsConfig);
   const playerMatchups = buildPlayerMatchups(annotatedBallEvents);
-  const playerMatchAdvanced = buildPlayerMatchAdvanced(matchFacts, annotatedBallEvents);
+  const playerMatchAdvanced = buildPlayerMatchAdvanced(matchFacts, annotatedBallEvents, weightsConfig);
 
   return {
     status: "computed_match_primitives",

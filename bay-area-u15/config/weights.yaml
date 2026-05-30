@@ -8,6 +8,8 @@ team_strength:
     U15 Phase 1 Div 2: 1.00
     U15 Phase 2 Div 1: 1.22
     U15 Phase 2 Div 2: 1.03
+    USAC 2026 - Seattle HUB - Phase1 - U15: 1.15
+    USAC 2026 - Seattle HUB - Phase2 - U15: 1.22
   points_table_inputs:
     wins_weight: 0.45
     nrr_weight: 0.30

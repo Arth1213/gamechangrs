@@ -1,5 +1,8 @@
 const { normalizeText, toInteger, toNumber } = require("../lib/cricket");
 
+const MIN_PRESSURE_DOT_STREAK = 2;
+const MIN_PRESSURE_THRESHOLD_SAMPLES = 2;
+
 function roundMetric(value, digits = 4) {
   if (value === undefined || value === null || value === "") {
     return null;
@@ -27,6 +30,15 @@ function average(values) {
   }
 
   return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
+}
+
+function averageWithMinimumSamples(values, minimumSamples = 1) {
+  const filtered = values.map((value) => Number(value)).filter((value) => Number.isFinite(value));
+  if (filtered.length < minimumSamples) {
+    return null;
+  }
+
+  return average(filtered);
 }
 
 function rateOrNull(numerator, denominator, multiplier = 1, digits = 2) {
@@ -337,8 +349,16 @@ function finalizeProfileBuckets(profileMap) {
       100,
       2
     ),
-    boundaryDotThreshold: roundMetric(average(bucket.boundaryDotSamples), 2),
-    dismissalDotThreshold: roundMetric(average(bucket.dismissalDotSamples), 2),
+    // A single dot does not represent meaningful pressure, and one isolated event should not
+    // promote a pressure trigger into the report.
+    boundaryDotThreshold: roundMetric(
+      averageWithMinimumSamples(bucket.boundaryDotSamples, MIN_PRESSURE_THRESHOLD_SAMPLES),
+      2
+    ),
+    dismissalDotThreshold: roundMetric(
+      averageWithMinimumSamples(bucket.dismissalDotSamples, MIN_PRESSURE_THRESHOLD_SAMPLES),
+      2
+    ),
     boundaryAfterThreeDotsPct: rateOrNull(
       bucket.boundaryAfterThreeDotsSuccesses,
       bucket.boundaryAfterThreeDotsOpportunities,
@@ -577,10 +597,10 @@ function buildPlayerIntelligenceRows(eventRows, dismissalRows) {
           }
         }
 
-        if (isBoundary && dotStreak > 0) {
+        if (isBoundary && dotStreak >= MIN_PRESSURE_DOT_STREAK) {
           profile.boundaryDotSamples.push(dotStreak);
         }
-        if (isDismissal && dotStreak > 0) {
+        if (isDismissal && dotStreak >= MIN_PRESSURE_DOT_STREAK) {
           profile.dismissalDotSamples.push(dotStreak);
         }
       }

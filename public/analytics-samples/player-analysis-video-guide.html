@@ -1,0 +1,2387 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Game-Changrs | Player Analysis Video Guide</title>
+    <meta
+      name="description"
+      content="Narrated walkthrough for Player Assessment and Player Intelligence inside Game-Changrs Analytics."
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+
+      :root {
+        --bg: #070a0d;
+        --bg-soft: #0b1015;
+        --panel: rgba(14, 18, 24, 0.94);
+        --panel-strong: rgba(16, 22, 28, 0.98);
+        --panel-soft: rgba(23, 30, 38, 0.92);
+        --line: rgba(128, 153, 141, 0.16);
+        --text: #eff5f3;
+        --muted: #9faea8;
+        --primary: #6ead86;
+        --primary-soft: rgba(110, 173, 134, 0.16);
+        --cyan: #7ac9dd;
+        --cyan-soft: rgba(122, 201, 221, 0.12);
+        --gold: #e3c47d;
+        --gold-soft: rgba(227, 196, 125, 0.14);
+        --danger: #e38f77;
+        --danger-soft: rgba(227, 143, 119, 0.12);
+        --shadow: 0 26px 54px rgba(0, 0, 0, 0.34);
+        --radius-xl: 28px;
+        --radius-lg: 22px;
+        --radius-md: 16px;
+        --max: 1240px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Manrope", "Segoe UI", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(110, 173, 134, 0.16), transparent 24%),
+          radial-gradient(circle at bottom right, rgba(122, 201, 221, 0.1), transparent 22%),
+          linear-gradient(180deg, #040608 0%, var(--bg) 46%, #091017 100%);
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .page {
+        padding: 24px 18px 30px;
+      }
+
+      .wrap {
+        width: min(var(--max), 100%);
+        margin: 0 auto;
+      }
+
+      .brand-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 18px;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--line);
+        background: rgba(9, 13, 17, 0.88);
+        backdrop-filter: blur(16px);
+        box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .brand-mark {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--primary);
+        border: 1px solid rgba(110, 173, 134, 0.24);
+        background: linear-gradient(180deg, rgba(110, 173, 134, 0.26), rgba(110, 173, 134, 0.1));
+      }
+
+      .brand-mark svg {
+        width: 22px;
+        height: 22px;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .brand-copy {
+        display: grid;
+        gap: 2px;
+      }
+
+      .brand-copy h1 {
+        margin: 0;
+        font-size: 1.22rem;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+      }
+
+      .brand-copy h1 strong {
+        color: var(--primary);
+      }
+
+      .brand-copy p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      .brand-note {
+        max-width: 44ch;
+        color: var(--muted);
+        font-size: 0.76rem;
+        line-height: 1.5;
+        text-align: right;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 16px;
+        margin-top: 18px;
+      }
+
+      .hero-panel,
+      .hero-side {
+        border-radius: var(--radius-xl);
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(12, 17, 22, 0.98), rgba(8, 12, 16, 0.98));
+        box-shadow: var(--shadow);
+      }
+
+      .hero-panel {
+        padding: 28px;
+      }
+
+      .hero-label,
+      .scene-tag,
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 14px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .hero-label {
+        color: var(--primary);
+        border: 1px solid rgba(110, 173, 134, 0.2);
+        background: rgba(110, 173, 134, 0.11);
+      }
+
+      .hero-panel h2 {
+        margin: 18px 0 0;
+        font-size: clamp(2.5rem, 4.7vw, 4rem);
+        line-height: 0.95;
+        letter-spacing: -0.06em;
+      }
+
+      .hero-panel p {
+        margin: 16px 0 0;
+        max-width: 56ch;
+        color: #d0dad6;
+        font-size: 0.98rem;
+        line-height: 1.7;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 14px 18px;
+        border-radius: 16px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+      }
+
+      .button-primary {
+        background: linear-gradient(180deg, #6ead86, #5b9d75);
+        color: #04110a;
+        font-weight: 800;
+      }
+
+      .button-secondary {
+        background: rgba(18, 24, 30, 0.9);
+        border-color: rgba(128, 153, 141, 0.18);
+        color: var(--text);
+      }
+
+      .hero-side {
+        display: grid;
+        gap: 12px;
+        padding: 16px;
+        align-content: start;
+      }
+
+      .use-card {
+        display: grid;
+        gap: 12px;
+        padding: 18px;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--line);
+        background: var(--panel-soft);
+      }
+
+      .use-card.assessment {
+        background:
+          linear-gradient(180deg, rgba(110, 173, 134, 0.12), rgba(15, 20, 26, 0.9)),
+          var(--panel-soft);
+      }
+
+      .use-card.intelligence {
+        background:
+          linear-gradient(180deg, rgba(122, 201, 221, 0.1), rgba(15, 20, 26, 0.9)),
+          var(--panel-soft);
+      }
+
+      .use-card h3 {
+        margin: 0;
+        font-size: 1.22rem;
+        letter-spacing: -0.04em;
+      }
+
+      .use-card p {
+        margin: 0;
+        color: #ced7d3;
+        font-size: 0.9rem;
+        line-height: 1.65;
+      }
+
+      .use-card ul {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+        font-size: 0.84rem;
+        line-height: 1.65;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 0.78fr 1.22fr;
+        gap: 16px;
+        margin-top: 18px;
+      }
+
+      .sidebar,
+      .stage {
+        border-radius: var(--radius-xl);
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(11, 15, 19, 0.98), rgba(8, 11, 15, 0.98));
+        box-shadow: var(--shadow);
+      }
+
+      .sidebar {
+        padding: 18px;
+      }
+
+      .sidebar-head {
+        display: grid;
+        gap: 8px;
+      }
+
+      .sidebar-head h3 {
+        margin: 0;
+        font-size: 1.55rem;
+        letter-spacing: -0.05em;
+      }
+
+      .sidebar-head p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.65;
+      }
+
+      .progress-wrap {
+        margin-top: 16px;
+        padding: 12px 14px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: rgba(18, 24, 30, 0.9);
+      }
+
+      .progress-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      .progress {
+        margin-top: 10px;
+        width: 100%;
+        height: 8px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .progress-fill {
+        width: 0%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #6ead86, #7ac9dd);
+        transition: width 0.35s ease;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .controls .button {
+        padding: 12px 14px;
+        border-radius: 14px;
+        font-size: 0.88rem;
+      }
+
+      .chapter-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .chapter {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 12px;
+        padding: 14px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: var(--panel-soft);
+        cursor: pointer;
+        transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+      }
+
+      .chapter:hover {
+        transform: translateY(-1px);
+        border-color: rgba(110, 173, 134, 0.28);
+      }
+
+      .chapter.active {
+        border-color: rgba(110, 173, 134, 0.3);
+        background:
+          linear-gradient(180deg, rgba(110, 173, 134, 0.13), rgba(18, 24, 30, 0.94)),
+          var(--panel-soft);
+      }
+
+      .chapter-index {
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(110, 173, 134, 0.22);
+        background: rgba(110, 173, 134, 0.12);
+        color: var(--primary);
+        font-weight: 800;
+        font-size: 0.88rem;
+        flex: none;
+      }
+
+      .chapter strong {
+        display: block;
+        font-size: 0.98rem;
+        letter-spacing: -0.03em;
+      }
+
+      .chapter span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.5;
+      }
+
+      .stage {
+        padding: 16px;
+        overflow: hidden;
+      }
+
+      .stage-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 8px 8px 14px;
+      }
+
+      .stage-head h4 {
+        margin: 0;
+        font-size: 0.86rem;
+        color: var(--muted);
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .scene-tag {
+        border: 1px solid rgba(128, 153, 141, 0.16);
+        background: rgba(18, 24, 30, 0.92);
+        color: var(--text);
+      }
+
+      .scene-shell {
+        position: relative;
+        min-height: 760px;
+        border-radius: 28px;
+        border: 1px solid var(--line);
+        background:
+          linear-gradient(180deg, rgba(9, 13, 18, 0.98), rgba(8, 11, 15, 0.98));
+        overflow: hidden;
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        padding: 18px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.35s ease;
+      }
+
+      .scene.active {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .browser {
+        height: 100%;
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        overflow: hidden;
+        border-radius: 24px;
+        border: 1px solid rgba(128, 153, 141, 0.15);
+        background: linear-gradient(180deg, #10151a, #0b0f13);
+      }
+
+      .browser-top {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        border-bottom: 1px solid rgba(128, 153, 141, 0.12);
+        background: rgba(20, 25, 30, 0.98);
+      }
+
+      .browser-dots {
+        display: flex;
+        gap: 7px;
+      }
+
+      .browser-dots span {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.18);
+      }
+
+      .browser-dots span:nth-child(1) {
+        background: #f27b70;
+      }
+
+      .browser-dots span:nth-child(2) {
+        background: #e2ba6d;
+      }
+
+      .browser-dots span:nth-child(3) {
+        background: #66c78a;
+      }
+
+      .browser-url {
+        flex: 1;
+        min-width: 0;
+        padding: 10px 16px;
+        border-radius: 999px;
+        background: rgba(9, 12, 16, 0.92);
+        color: var(--muted);
+        font-size: 0.86rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .site-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 22px;
+        border-bottom: 1px solid rgba(128, 153, 141, 0.12);
+        background: rgba(10, 14, 18, 0.92);
+      }
+
+      .site-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        font-size: 1.05rem;
+      }
+
+      .site-brand strong {
+        color: var(--primary);
+      }
+
+      .site-nav-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 22px;
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+
+      .site-nav-links .active {
+        color: var(--primary);
+      }
+
+      .site-nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .pill-button,
+      .ghost-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 16px;
+        border-radius: 16px;
+        font-size: 0.84rem;
+        font-weight: 700;
+      }
+
+      .pill-button {
+        background: linear-gradient(180deg, #6ead86, #5e9e76);
+        color: #07110a;
+      }
+
+      .ghost-button {
+        border: 1px solid rgba(128, 153, 141, 0.16);
+        color: var(--text);
+        background: rgba(18, 24, 30, 0.9);
+      }
+
+      .scene-body {
+        display: grid;
+        gap: 18px;
+        padding: 20px 22px 22px;
+        height: 100%;
+      }
+
+      .two-up {
+        display: grid;
+        grid-template-columns: 1.04fr 0.96fr;
+        gap: 16px;
+      }
+
+      .panel {
+        border-radius: 24px;
+        border: 1px solid rgba(128, 153, 141, 0.15);
+        background: linear-gradient(180deg, rgba(17, 22, 28, 0.98), rgba(12, 16, 20, 0.98));
+      }
+
+      .panel.heroish {
+        padding: 28px;
+      }
+
+      .panel.heroish h5 {
+        margin: 0;
+        font-size: clamp(2.15rem, 4vw, 3.45rem);
+        line-height: 0.96;
+        letter-spacing: -0.06em;
+      }
+
+      .panel.heroish p {
+        margin: 16px 0 0;
+        color: #c9d4cf;
+        font-size: 0.96rem;
+        line-height: 1.7;
+      }
+
+      .mini-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .metric,
+      .service-card,
+      .report-metric,
+      .signal-card {
+        border-radius: 20px;
+        border: 1px solid rgba(128, 153, 141, 0.14);
+        background: rgba(22, 28, 34, 0.92);
+      }
+
+      .metric {
+        min-height: 148px;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .metric span,
+      .eyebrow {
+        color: var(--muted);
+        font-size: 0.74rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 10px;
+        font-size: 1.18rem;
+        line-height: 1.12;
+        letter-spacing: -0.04em;
+      }
+
+      .metric p {
+        margin: 10px 0 0;
+        color: #c7d1cd;
+        font-size: 0.84rem;
+        line-height: 1.55;
+      }
+
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .service-card {
+        min-height: 276px;
+        padding: 18px;
+        display: grid;
+        gap: 14px;
+        align-content: start;
+      }
+
+      .service-card.featured {
+        border-color: rgba(110, 173, 134, 0.26);
+        background:
+          linear-gradient(180deg, rgba(110, 173, 134, 0.12), rgba(22, 28, 34, 0.94)),
+          rgba(22, 28, 34, 0.94);
+      }
+
+      .service-icon {
+        width: 58px;
+        height: 58px;
+        border-radius: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(110, 173, 134, 0.12);
+        color: var(--primary);
+        font-size: 1.1rem;
+        font-weight: 800;
+      }
+
+      .service-card h6 {
+        margin: 0;
+        font-size: 0.82rem;
+        color: var(--muted);
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      .service-card strong {
+        display: block;
+        font-size: 1.1rem;
+        line-height: 1.18;
+        letter-spacing: -0.04em;
+      }
+
+      .service-card p {
+        margin: 0;
+        color: #c8d1cd;
+        font-size: 0.88rem;
+        line-height: 1.6;
+      }
+
+      .home-cta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .split-panel {
+        display: grid;
+        grid-template-columns: 1fr 0.94fr;
+        gap: 0;
+        min-height: 610px;
+        border-radius: 24px;
+        overflow: hidden;
+        border: 1px solid rgba(128, 153, 141, 0.14);
+      }
+
+      .split-side {
+        padding: 28px;
+      }
+
+      .split-side.left {
+        background:
+          linear-gradient(135deg, rgba(110, 173, 134, 0.14), rgba(8, 12, 16, 0.96)),
+          #10161b;
+        display: grid;
+        align-content: center;
+        gap: 18px;
+      }
+
+      .split-side.left h5 {
+        margin: 0;
+        font-size: 2.75rem;
+        line-height: 0.96;
+        letter-spacing: -0.05em;
+      }
+
+      .split-side.left p,
+      .login-copy,
+      .analytics-copy,
+      .workspace-copy {
+        margin: 0;
+        color: #cbd5d0;
+        font-size: 0.96rem;
+        line-height: 1.7;
+      }
+
+      .bullet-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .bullet {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #d9e2de;
+        font-size: 0.92rem;
+      }
+
+      .bullet::before {
+        content: "→";
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(110, 173, 134, 0.12);
+        color: var(--primary);
+        flex: none;
+      }
+
+      .split-side.right {
+        background: rgba(12, 16, 21, 0.98);
+        display: grid;
+        align-content: center;
+      }
+
+      .form-shell {
+        width: min(620px, 100%);
+        margin: 0 auto;
+        display: grid;
+        gap: 16px;
+      }
+
+      .form-shell h5 {
+        margin: 0;
+        font-size: 2rem;
+        text-align: center;
+        letter-spacing: -0.05em;
+      }
+
+      .form-shell p {
+        margin: 0;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .form-group {
+        display: grid;
+        gap: 8px;
+      }
+
+      .input,
+      .search-input {
+        width: 100%;
+        padding: 16px 18px;
+        border-radius: 18px;
+        border: 1px solid rgba(128, 153, 141, 0.14);
+        background: rgba(27, 33, 39, 0.95);
+        color: var(--text);
+        font-size: 0.96rem;
+      }
+
+      .dashboard-top {
+        display: grid;
+        gap: 14px;
+      }
+
+      .welcome {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 18px;
+      }
+
+      .welcome h5 {
+        margin: 0;
+        font-size: clamp(2.3rem, 4vw, 3.6rem);
+        line-height: 0.94;
+        letter-spacing: -0.06em;
+      }
+
+      .welcome strong {
+        color: var(--primary);
+      }
+
+      .welcome p {
+        margin: 10px 0 0;
+        color: var(--muted);
+      }
+
+      .avatar-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 18px;
+        border: 1px solid rgba(128, 153, 141, 0.16);
+        background: rgba(18, 24, 30, 0.92);
+      }
+
+      .avatar-pill::before {
+        content: "";
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #6ead86, #7ac9dd);
+      }
+
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .analytics-hero {
+        display: grid;
+        grid-template-columns: 1fr 1.1fr;
+        gap: 16px;
+      }
+
+      .analytics-panel,
+      .snapshot-card,
+      .series-card,
+      .search-card,
+      .result-card {
+        border-radius: 24px;
+        border: 1px solid rgba(128, 153, 141, 0.14);
+        background: rgba(18, 24, 30, 0.94);
+      }
+
+      .analytics-panel {
+        padding: 24px;
+      }
+
+      .analytics-panel h5 {
+        margin: 0;
+        font-size: 3rem;
+        line-height: 0.94;
+        letter-spacing: -0.06em;
+      }
+
+      .analytics-panel p {
+        margin: 14px 0 0;
+        color: var(--muted);
+        font-size: 0.96rem;
+        line-height: 1.7;
+      }
+
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .snapshot-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .snapshot-card {
+        min-height: 184px;
+        padding: 18px;
+      }
+
+      .snapshot-card strong {
+        display: block;
+        margin-top: 10px;
+        font-size: 2rem;
+        line-height: 1;
+      }
+
+      .workspace-layout {
+        display: grid;
+        gap: 16px;
+      }
+
+      .series-card {
+        padding: 22px;
+      }
+
+      .series-head {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .series-head h5 {
+        margin: 8px 0 0;
+        font-size: 2.65rem;
+        line-height: 0.98;
+        letter-spacing: -0.05em;
+      }
+
+      .chip-row,
+      .info-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .chip {
+        background: rgba(18, 24, 30, 0.92);
+        border: 1px solid rgba(128, 153, 141, 0.16);
+        color: var(--muted);
+      }
+
+      .chip.primary {
+        color: var(--primary);
+        border-color: rgba(110, 173, 134, 0.22);
+        background: rgba(110, 173, 134, 0.1);
+      }
+
+      .chip.cyan {
+        color: var(--cyan);
+        border-color: rgba(122, 201, 221, 0.22);
+        background: rgba(122, 201, 221, 0.1);
+      }
+
+      .series-stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .series-stat {
+        padding: 18px;
+        border-radius: 22px;
+        border: 1px solid rgba(128, 153, 141, 0.14);
+        background: rgba(20, 27, 34, 0.94);
+      }
+
+      .series-stat strong {
+        display: block;
+        margin-top: 10px;
+        font-size: 2rem;
+        line-height: 1;
+      }
+
+      .coverage-grid {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .coverage-card {
+        padding: 20px;
+        border-radius: 24px;
+        border: 1px solid rgba(128, 153, 141, 0.14);
+        background: rgba(18, 24, 30, 0.94);
+      }
+
+      .coverage-card h6 {
+        margin: 0;
+        font-size: 0.78rem;
+        color: var(--muted);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .coverage-card p {
+        margin: 14px 0 0;
+        color: #dfe8e4;
+        font-size: 1rem;
+        line-height: 1.6;
+      }
+
+      .search-card,
+      .result-card {
+        padding: 22px;
+      }
+
+      .search-card h5,
+      .result-card h5 {
+        margin: 10px 0 0;
+        font-size: 2rem;
+        letter-spacing: -0.05em;
+      }
+
+      .search-toolbar {
+        display: grid;
+        grid-template-columns: 1fr 220px;
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .result-summary {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 18px;
+        margin-top: 16px;
+      }
+
+      .result-meta {
+        display: grid;
+        gap: 12px;
+      }
+
+      .result-meta h6 {
+        margin: 0;
+        font-size: 1.2rem;
+        letter-spacing: -0.04em;
+      }
+
+      .result-meta p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .result-actions {
+        display: grid;
+        gap: 12px;
+        min-width: 264px;
+      }
+
+      .button-outline {
+        border: 1px solid rgba(110, 173, 134, 0.28);
+        background: rgba(18, 24, 30, 0.92);
+        color: var(--text);
+        font-weight: 700;
+      }
+
+      .stats-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .report-layout {
+        display: grid;
+        grid-template-columns: 0.94fr 1.06fr;
+        gap: 16px;
+        height: 100%;
+      }
+
+      .report-panel {
+        border-radius: 26px;
+        border: 1px solid rgba(128, 153, 141, 0.14);
+        background: linear-gradient(180deg, rgba(9, 24, 30, 0.98), rgba(8, 16, 24, 0.98));
+        padding: 24px;
+      }
+
+      .report-panel h5 {
+        margin: 8px 0 0;
+        font-size: 3rem;
+        line-height: 0.94;
+        letter-spacing: -0.06em;
+      }
+
+      .report-panel p {
+        margin: 16px 0 0;
+        color: #d2dcda;
+        font-size: 0.98rem;
+        line-height: 1.72;
+      }
+
+      .report-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .report-metric {
+        padding: 16px;
+        min-height: 120px;
+      }
+
+      .report-metric strong {
+        display: block;
+        margin-top: 8px;
+        font-size: 1.85rem;
+        line-height: 0.98;
+        letter-spacing: -0.05em;
+      }
+
+      .signal-stack {
+        display: grid;
+        gap: 14px;
+      }
+
+      .signal-card {
+        padding: 20px;
+      }
+
+      .signal-card h6 {
+        margin: 0;
+        font-size: 0.84rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .signal-card strong {
+        display: block;
+        margin-top: 12px;
+        font-size: 1.8rem;
+        line-height: 1;
+        letter-spacing: -0.05em;
+      }
+
+      .signal-card p {
+        margin: 10px 0 0;
+        color: #d4ddda;
+        font-size: 0.98rem;
+        line-height: 1.65;
+      }
+
+      .signal-card.threat {
+        background: linear-gradient(180deg, rgba(110, 173, 134, 0.12), rgba(24, 33, 39, 0.92));
+      }
+
+      .signal-card.weakness {
+        background: linear-gradient(180deg, rgba(227, 143, 119, 0.12), rgba(24, 33, 39, 0.92));
+      }
+
+      .signal-card.phase {
+        background: linear-gradient(180deg, rgba(122, 201, 221, 0.12), rgba(24, 33, 39, 0.92));
+      }
+
+      .sample-card {
+        overflow: hidden;
+        border-radius: 24px;
+        border: 1px solid rgba(128, 153, 141, 0.14);
+        background: rgba(18, 24, 30, 0.94);
+      }
+
+      .sample-card img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .compare-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 18px;
+      }
+
+      .compare-card {
+        padding: 22px;
+        border-radius: 24px;
+        border: 1px solid rgba(128, 153, 141, 0.14);
+        background: rgba(18, 24, 30, 0.94);
+      }
+
+      .compare-card.assessment {
+        background:
+          linear-gradient(180deg, rgba(110, 173, 134, 0.12), rgba(18, 24, 30, 0.96)),
+          rgba(18, 24, 30, 0.96);
+      }
+
+      .compare-card.intelligence {
+        background:
+          linear-gradient(180deg, rgba(122, 201, 221, 0.12), rgba(18, 24, 30, 0.96)),
+          rgba(18, 24, 30, 0.96);
+      }
+
+      .compare-card h5 {
+        margin: 10px 0 0;
+        font-size: 1.9rem;
+        letter-spacing: -0.05em;
+      }
+
+      .compare-card p {
+        margin: 12px 0 0;
+        color: #ced7d3;
+        font-size: 0.96rem;
+        line-height: 1.7;
+      }
+
+      .compare-card ul {
+        margin: 16px 0 0;
+        padding-left: 18px;
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.7;
+      }
+
+      .transcript {
+        margin-top: 16px;
+        padding: 16px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: rgba(18, 24, 30, 0.92);
+      }
+
+      .transcript h4 {
+        margin: 0 0 8px;
+        color: var(--muted);
+        font-size: 0.74rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .transcript p {
+        margin: 0;
+        color: #d5dfdb;
+        font-size: 0.92rem;
+        line-height: 1.7;
+      }
+
+      audio {
+        display: none;
+      }
+
+      body.export-mode .brand-bar,
+      body.export-mode .hero,
+      body.export-mode .sidebar,
+      body.export-mode .stage-head {
+        display: none;
+      }
+
+      body.export-mode .page {
+        padding: 0;
+      }
+
+      body.export-mode .wrap {
+        width: 100%;
+        max-width: none;
+      }
+
+      body.export-mode .layout {
+        grid-template-columns: 1fr;
+        gap: 0;
+        margin-top: 0;
+      }
+
+      body.export-mode .stage {
+        padding: 0;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      body.export-mode .scene-shell {
+        min-height: 1000px;
+        border: none;
+        border-radius: 0;
+      }
+
+      @media (max-width: 1120px) {
+        .hero,
+        .layout,
+        .two-up,
+        .analytics-hero,
+        .report-layout,
+        .coverage-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .card-grid,
+        .dashboard-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .scene-shell {
+          min-height: 980px;
+        }
+
+        .result-summary,
+        .series-head,
+        .welcome {
+          flex-direction: column;
+          align-items: start;
+        }
+
+        .result-actions {
+          min-width: 0;
+          width: 100%;
+        }
+      }
+
+      @media (max-width: 780px) {
+        .brand-bar,
+        .site-nav,
+        .home-cta,
+        .button-row,
+        .controls {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .brand-note {
+          text-align: left;
+        }
+
+        .mini-grid,
+        .snapshot-grid,
+        .series-stats,
+        .stats-row,
+        .compare-grid,
+        .report-grid,
+        .search-toolbar,
+        .card-grid,
+        .dashboard-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .split-panel {
+          grid-template-columns: 1fr;
+        }
+
+        .site-nav-links {
+          display: none;
+        }
+
+        .scene-shell {
+          min-height: 1320px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="wrap">
+        <div class="brand-bar">
+          <div class="brand">
+            <div class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3l7 4v10l-7 4-7-4V7l7-4z" />
+                <path d="M8.5 9.5h7" />
+                <path d="M8.5 12h7" />
+                <path d="M8.5 14.5h5.5" />
+              </svg>
+            </div>
+            <div class="brand-copy">
+              <h1>Game<strong>Changrs</strong></h1>
+              <p>Player analysis walkthrough</p>
+            </div>
+          </div>
+          <div class="brand-note">
+            Narrated guide for logging in, entering Analytics, selecting a series, searching a player, and opening the
+            right report for selection or opposition planning.
+          </div>
+        </div>
+
+        <section class="hero">
+          <div class="hero-panel">
+            <div class="hero-label">Narrative Video Guide</div>
+            <h2>How to use Player Assessment and Player Intelligence</h2>
+            <p>
+              This guide walks a user from login to the exact analytics decision point. It shows when to use
+              <strong> Player Assessment </strong> as a selector or coach, and when to use
+              <strong> Player Intelligence </strong> as a captain or coach planning against an opponent player.
+            </p>
+            <div class="hero-actions">
+              <button class="button button-primary" id="play-guide">Play narrated guide</button>
+              <button class="button button-secondary" id="restart-guide">Restart from scene 1</button>
+            </div>
+          </div>
+
+          <div class="hero-side">
+            <article class="use-card assessment">
+              <div class="hero-label">Player Assessment</div>
+              <h3>Selector and coaching view</h3>
+              <p>
+                Use this when the question is: is this player ready, what role does the player fit, and how should the
+                player be backed or developed?
+              </p>
+              <ul>
+                <li>Selection support</li>
+                <li>Development framing</li>
+                <li>Role and readiness context</li>
+              </ul>
+            </article>
+            <article class="use-card intelligence">
+              <div class="hero-label">Player Intelligence</div>
+              <h3>Captain and opposition view</h3>
+              <p>
+                Use this when the question is: where is the danger, where is the weakness, and how should the team
+                plan against this player in a match?
+              </p>
+              <ul>
+                <li>Main threat and weakness</li>
+                <li>Pressure cues and matchups</li>
+                <li>Phase-based planning signals</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="layout">
+          <aside class="sidebar">
+            <div class="sidebar-head">
+              <div class="hero-label">Guide Controls</div>
+              <h3>Walk through the flow</h3>
+              <p>
+                Click play to hear the voiceover. The guide advances scene by scene and can also be navigated manually.
+              </p>
+            </div>
+
+            <div class="progress-wrap">
+              <div class="progress-label">
+                <span id="scene-counter">Scene 1 of 9</span>
+                <span id="scene-title">Start at Game-Changrs</span>
+              </div>
+              <div class="progress">
+                <div class="progress-fill" id="progress-fill"></div>
+              </div>
+            </div>
+
+            <div class="controls">
+              <button class="button button-primary" id="play-pause">Play voiceover</button>
+              <button class="button button-secondary" id="prev-scene">Previous</button>
+              <button class="button button-secondary" id="next-scene">Next</button>
+            </div>
+
+            <div class="chapter-list" id="chapter-list">
+              <button class="chapter active" data-scene="0">
+                <span class="chapter-index">1</span>
+                <span><strong>Start at Game-Changrs</strong><span>Landing page and sign-in entry point.</span></span>
+              </button>
+              <button class="chapter" data-scene="1">
+                <span class="chapter-index">2</span>
+                <span><strong>Sign in</strong><span>Use Google or email and password.</span></span>
+              </button>
+              <button class="chapter" data-scene="2">
+                <span class="chapter-index">3</span>
+                <span><strong>Open Analytics</strong><span>Enter the analytics surface from the dashboard.</span></span>
+              </button>
+              <button class="chapter" data-scene="3">
+                <span class="chapter-index">4</span>
+                <span><strong>Go to Series Workspace</strong><span>Choose the series workspace path.</span></span>
+              </button>
+              <button class="chapter" data-scene="4">
+                <span class="chapter-index">5</span>
+                <span><strong>Select a series</strong><span>Pick the live series you want to work in.</span></span>
+              </button>
+              <button class="chapter" data-scene="5">
+                <span class="chapter-index">6</span>
+                <span><strong>Search the player</strong><span>Find the player card inside the series.</span></span>
+              </button>
+              <button class="chapter" data-scene="6">
+                <span class="chapter-index">7</span>
+                <span><strong>Open Player Assessment</strong><span>Selection and development use case.</span></span>
+              </button>
+              <button class="chapter" data-scene="7">
+                <span class="chapter-index">8</span>
+                <span><strong>Open Player Intelligence</strong><span>Opponent planning use case.</span></span>
+              </button>
+              <button class="chapter" data-scene="8">
+                <span class="chapter-index">9</span>
+                <span><strong>Choose the right report</strong><span>Quick decision rule for each flow.</span></span>
+              </button>
+            </div>
+
+            <div class="transcript">
+              <h4>Current Voiceover</h4>
+              <p id="transcript-text">
+                Welcome to Game-Changrs Analytics. In this quick guide, I’ll show you how a selector or coach can use
+                Player Assessment, and how a captain or coach can use Player Intelligence to plan against an opponent.
+              </p>
+            </div>
+          </aside>
+
+          <section class="stage">
+            <div class="stage-head">
+              <h4>On-screen walkthrough</h4>
+              <div class="scene-tag" id="scene-tag">Landing and login path</div>
+            </div>
+
+            <div class="scene-shell">
+              <section class="scene active" data-scene="0" data-tag="Landing and login path">
+                <div class="browser">
+                  <div class="browser-top">
+                    <div class="browser-dots"><span></span><span></span><span></span></div>
+                    <div class="browser-url">game-changrs.com</div>
+                  </div>
+                  <div class="site-nav">
+                    <div class="site-brand">Game<strong>Changrs</strong></div>
+                    <div class="site-nav-links">
+                      <span>Technique AI</span>
+                      <span>Coaching Marketplace</span>
+                      <span>Analytics</span>
+                      <span>Gear Marketplace</span>
+                    </div>
+                    <div class="site-nav-actions">
+                      <span class="ghost-button">Sign In</span>
+                      <span class="pill-button">Get Started</span>
+                    </div>
+                  </div>
+                  <div class="scene-body">
+                    <div class="two-up">
+                      <div class="panel heroish">
+                        <div class="hero-label">Sports Analytics, AI</div>
+                        <h5>Smarter cricket decisions start here.</h5>
+                        <p>
+                          From AI-based technique feedback and coach matching to analytics-driven scouting, selection,
+                          and opposition planning, Game-Changrs turns cricket data into decisions.
+                        </p>
+                        <div class="home-cta">
+                          <span class="pill-button">Sign In</span>
+                          <span class="ghost-button">View analytics</span>
+                        </div>
+                      </div>
+                      <div class="panel heroish">
+                        <div class="mini-grid">
+                          <div class="metric">
+                            <span>Technique AI</span>
+                            <strong>Video scoring and feedback</strong>
+                            <p>Upload clips and turn them into actionable skill notes.</p>
+                          </div>
+                          <div class="metric">
+                            <span>Analytics</span>
+                            <strong>Series search and reports</strong>
+                            <p>Search players and open the right report for the decision you need.</p>
+                          </div>
+                          <div class="metric">
+                            <span>Coaching</span>
+                            <strong>Coach and player network</strong>
+                            <p>Move from insight into coaching action.</p>
+                          </div>
+                          <div class="metric">
+                            <span>Gear</span>
+                            <strong>Marketplace access</strong>
+                            <p>Keep the broader cricket workflow inside one platform.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="card-grid">
+                      <div class="service-card">
+                        <div class="service-icon">TA</div>
+                        <h6>Technique AI</h6>
+                        <strong>Video analysis and feedback</strong>
+                        <p>Technique scoring, feedback, and drill direction.</p>
+                      </div>
+                      <div class="service-card">
+                        <div class="service-icon">CM</div>
+                        <h6>Coaching</h6>
+                        <strong>Coach and player network</strong>
+                        <p>Compare fit and connect with the right coach.</p>
+                      </div>
+                      <div class="service-card featured">
+                        <div class="service-icon">AN</div>
+                        <h6>Analytics</h6>
+                        <strong>Player search and reports</strong>
+                        <p>Open Player Assessment or Player Intelligence from one search surface.</p>
+                      </div>
+                      <div class="service-card">
+                        <div class="service-icon">GM</div>
+                        <h6>Gear</h6>
+                        <strong>Buy, sell, donate</strong>
+                        <p>Keep more of the cricket workflow in one place.</p>
+                      </div>
+                      <div class="service-card">
+                        <div class="service-icon">GC</div>
+                        <h6>Game plan</h6>
+                        <strong>Selection and opposition planning</strong>
+                        <p>Make player-level calls with evidence and context.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="scene" data-scene="1" data-tag="Sign in to your account">
+                <div class="browser">
+                  <div class="browser-top">
+                    <div class="browser-dots"><span></span><span></span><span></span></div>
+                    <div class="browser-url">game-changrs.com/auth</div>
+                  </div>
+                  <div class="scene-body">
+                    <div class="split-panel">
+                      <div class="split-side left">
+                        <div class="site-brand">Game<strong>Changrs</strong></div>
+                        <h5>Elevate your game</h5>
+                        <p class="login-copy">
+                          AI-powered coaching, real-time analytics, and a community dedicated to making cricket more
+                          accessible and more actionable.
+                        </p>
+                        <div class="bullet-list">
+                          <div class="bullet">AI technique analysis for cricket</div>
+                          <div class="bullet">Real-time performance tracking</div>
+                          <div class="bullet">Connect with coaches worldwide</div>
+                        </div>
+                      </div>
+                      <div class="split-side right">
+                        <div class="form-shell">
+                          <h5>Welcome back</h5>
+                          <p>Enter your credentials to access your account.</p>
+                          <div class="pill-button">Continue with Google</div>
+                          <div class="form-group">
+                            <label>Email</label>
+                            <div class="input">you@example.com</div>
+                          </div>
+                          <div class="form-group">
+                            <label>Password</label>
+                            <div class="input">••••••••</div>
+                          </div>
+                          <div class="pill-button">Sign In</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="scene" data-scene="2" data-tag="Open Analytics from the dashboard">
+                <div class="browser">
+                  <div class="browser-top">
+                    <div class="browser-dots"><span></span><span></span><span></span></div>
+                    <div class="browser-url">game-changrs.com</div>
+                  </div>
+                  <div class="site-nav">
+                    <div class="site-brand">Game<strong>Changrs</strong></div>
+                    <div class="site-nav-links">
+                      <span>Technique AI</span>
+                      <span>Coaching Marketplace</span>
+                      <span class="active">Analytics</span>
+                      <span>Gear Marketplace</span>
+                    </div>
+                    <div class="site-nav-actions">
+                      <span class="avatar-pill">Arth Arun</span>
+                    </div>
+                  </div>
+                  <div class="scene-body">
+                    <div class="dashboard-top">
+                      <div class="welcome">
+                        <div>
+                          <h5>Welcome back, <strong>Arth Arun</strong></h5>
+                          <p>Choose a service.</p>
+                        </div>
+                        <div class="chip">Player</div>
+                      </div>
+                      <div class="dashboard-grid">
+                        <div class="service-card">
+                          <div class="service-icon">PC</div>
+                          <h6>Private operator surface</h6>
+                          <strong>Platform Console</strong>
+                          <p>Admin workflows, analytics control, and local-ops launch points.</p>
+                        </div>
+                        <div class="service-card">
+                          <div class="service-icon">VA</div>
+                          <h6>Video analysis</h6>
+                          <strong>Technique AI</strong>
+                          <p>Saved analyses and technique feedback.</p>
+                        </div>
+                        <div class="service-card featured">
+                          <div class="service-icon">SI</div>
+                          <h6>Selector intelligence</h6>
+                          <strong>Analytics</strong>
+                          <p>Search players, open reports, and move through analytics workspaces.</p>
+                        </div>
+                        <div class="service-card">
+                          <div class="service-icon">CP</div>
+                          <h6>Coach and player network</h6>
+                          <strong>Coaching Marketplace</strong>
+                          <p>Profile and connection management.</p>
+                        </div>
+                        <div class="service-card">
+                          <div class="service-icon">GM</div>
+                          <h6>Buy, sell, donate</h6>
+                          <strong>Gear Marketplace</strong>
+                          <p>Marketplace activity and listing access.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="scene" data-scene="3" data-tag="Open the Series Workspace">
+                <div class="browser">
+                  <div class="browser-top">
+                    <div class="browser-dots"><span></span><span></span><span></span></div>
+                    <div class="browser-url">game-changrs.com/analytics</div>
+                  </div>
+                  <div class="site-nav">
+                    <div class="site-brand">Game<strong>Changrs</strong></div>
+                    <div class="site-nav-links">
+                      <span>Technique AI</span>
+                      <span>Coaching Marketplace</span>
+                      <span class="active">Analytics</span>
+                      <span>Gear Marketplace</span>
+                    </div>
+                    <div class="site-nav-actions">
+                      <span class="avatar-pill">Arth Arun</span>
+                    </div>
+                  </div>
+                  <div class="scene-body">
+                    <div class="analytics-hero">
+                      <div class="analytics-panel">
+                        <h5>Welcome back, Arth Arun</h5>
+                        <p class="analytics-copy">
+                          Search players, open reports, and move through analytics across your accessible series.
+                        </p>
+                        <div class="button-row">
+                          <span class="pill-button">Series Workspace</span>
+                          <span class="ghost-button">Series Console</span>
+                        </div>
+                      </div>
+                      <div class="snapshot-grid">
+                        <div class="snapshot-card">
+                          <span class="eyebrow">Accessible series</span>
+                          <strong>5</strong>
+                        </div>
+                        <div class="snapshot-card">
+                          <span class="eyebrow">Scope</span>
+                          <strong>Global</strong>
+                        </div>
+                        <div class="snapshot-card">
+                          <span class="eyebrow">Workspace</span>
+                          <strong>Choose in workspace</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="compare-grid">
+                      <div class="compare-card assessment">
+                        <div class="hero-label">Series User</div>
+                        <h5>Open Series Workspace</h5>
+                        <p>Search players and open Player Assessment or Player Intelligence.</p>
+                      </div>
+                      <div class="compare-card intelligence">
+                        <div class="hero-label">Series Admin</div>
+                        <h5>Open Series Console</h5>
+                        <p>Manage setup, access, and operations if you are administering the series.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="scene" data-scene="4" data-tag="Select the active series">
+                <div class="browser">
+                  <div class="browser-top">
+                    <div class="browser-dots"><span></span><span></span><span></span></div>
+                    <div class="browser-url">game-changrs.com/analytics/workspace</div>
+                  </div>
+                  <div class="site-nav">
+                    <div class="site-brand">Game<strong>Changrs</strong></div>
+                    <div class="site-nav-links">
+                      <span>Technique AI</span>
+                      <span>Coaching Marketplace</span>
+                      <span class="active">Analytics</span>
+                      <span>Gear Marketplace</span>
+                    </div>
+                    <div class="site-nav-actions">
+                      <span class="avatar-pill">Arth Arun</span>
+                    </div>
+                  </div>
+                  <div class="scene-body workspace-layout">
+                    <div class="series-card">
+                      <div class="series-head">
+                        <div>
+                          <div class="chip-row">
+                            <span class="chip primary">Active series</span>
+                          </div>
+                          <h5>2026 Seattle USAC Hub</h5>
+                        </div>
+                        <span class="ghost-button">Use This Series</span>
+                      </div>
+
+                      <div class="series-stats">
+                        <div class="series-stat">
+                          <span class="eyebrow">Players</span>
+                          <strong>69</strong>
+                        </div>
+                        <div class="series-stat">
+                          <span class="eyebrow">Tracked matches</span>
+                          <strong>11</strong>
+                        </div>
+                        <div class="series-stat">
+                          <span class="eyebrow">Computed</span>
+                          <strong>11</strong>
+                        </div>
+                        <div class="series-stat">
+                          <span class="eyebrow">Divisions</span>
+                          <strong>1</strong>
+                        </div>
+                      </div>
+
+                      <div class="coverage-grid">
+                        <div class="coverage-card">
+                          <h6>Coverage boundary</h6>
+                          <div class="chip-row" style="margin-top: 16px">
+                            <span class="chip">USAC 2026 - Seattle HUB - Phase1 - U15</span>
+                          </div>
+                        </div>
+                        <div class="coverage-card">
+                          <h6>Latest tracked match</h6>
+                          <p>Team Blue v Team Red<br />May 16, 2026</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="scene" data-scene="5" data-tag="Search for the player">
+                <div class="browser">
+                  <div class="browser-top">
+                    <div class="browser-dots"><span></span><span></span><span></span></div>
+                    <div class="browser-url">
+                      game-changrs.com/analytics/workspace?series=2026-seattle-usac-hub
+                    </div>
+                  </div>
+                  <div class="site-nav">
+                    <div class="site-brand">Game<strong>Changrs</strong></div>
+                    <div class="site-nav-links">
+                      <span>Technique AI</span>
+                      <span>Coaching Marketplace</span>
+                      <span class="active">Analytics</span>
+                      <span>Gear Marketplace</span>
+                    </div>
+                    <div class="site-nav-actions">
+                      <span class="avatar-pill">Arth Arun</span>
+                    </div>
+                  </div>
+                  <div class="scene-body">
+                    <div class="series-card">
+                      <div class="chip-row">
+                        <span class="chip primary">Active series</span>
+                        <span class="chip cyan">Selected</span>
+                        <span class="chip primary">Live and Computed</span>
+                      </div>
+                      <h5 style="margin: 12px 0 0; font-size: 2.7rem; letter-spacing: -0.05em">
+                        2026 Seattle USAC Hub
+                      </h5>
+                      <div class="series-stats">
+                        <div class="series-stat"><span class="eyebrow">Players</span><strong>69</strong></div>
+                        <div class="series-stat"><span class="eyebrow">Tracked matches</span><strong>11</strong></div>
+                        <div class="series-stat"><span class="eyebrow">Computed</span><strong>11</strong></div>
+                        <div class="series-stat"><span class="eyebrow">Divisions</span><strong>1</strong></div>
+                      </div>
+                    </div>
+
+                    <div class="search-card">
+                      <div class="hero-label">Player Search</div>
+                      <h5>Search within 2026 Seattle USAC Hub</h5>
+                      <div class="search-toolbar">
+                        <div class="search-input">jayneal</div>
+                        <div class="pill-button">Search</div>
+                      </div>
+                      <div class="coverage-card" style="margin-top: 16px">
+                        <h6>Search state</h6>
+                        <p>Run the player name search inside the selected series to open the correct report paths.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="scene" data-scene="6" data-tag="Use Player Assessment for selection and coaching">
+                <div class="browser">
+                  <div class="browser-top">
+                    <div class="browser-dots"><span></span><span></span><span></span></div>
+                    <div class="browser-url">
+                      game-changrs.com/analytics/workspace?q=player-name&series=2026-seattle-usac-hub
+                    </div>
+                  </div>
+                  <div class="site-nav">
+                    <div class="site-brand">Game<strong>Changrs</strong></div>
+                    <div class="site-nav-links">
+                      <span>Technique AI</span>
+                      <span>Coaching Marketplace</span>
+                      <span class="active">Analytics</span>
+                      <span>Gear Marketplace</span>
+                    </div>
+                    <div class="site-nav-actions">
+                      <span class="avatar-pill">Arth Arun</span>
+                    </div>
+                  </div>
+                  <div class="scene-body">
+                    <div class="result-card">
+                      <div class="hero-label">Player Search</div>
+                      <h5>1 player found</h5>
+                      <div class="result-summary">
+                        <div class="result-meta">
+                          <h6>Player result card</h6>
+                          <p>Review the player summary, confidence tags, and quick context before opening a report.</p>
+                          <div class="badge-row">
+                            <span class="chip">Bowling All-Rounder</span>
+                            <span class="chip primary">High confidence</span>
+                            <span class="chip">Team Brown</span>
+                            <span class="chip">Top composite: 82.0</span>
+                          </div>
+                        </div>
+                        <div class="result-actions">
+                          <span class="pill-button">Player Assessment</span>
+                          <span class="button-outline button">Player Intelligence</span>
+                        </div>
+                      </div>
+                      <div class="stats-row">
+                        <div class="series-stat"><span class="eyebrow">Top composite</span><strong>82.0</strong></div>
+                        <div class="series-stat"><span class="eyebrow">Best percentile</span><strong>97.1</strong></div>
+                        <div class="series-stat"><span class="eyebrow">Best confidence</span><strong>100</strong></div>
+                      </div>
+                    </div>
+
+                    <div class="compare-grid">
+                      <div class="compare-card assessment">
+                        <div class="hero-label">Player Assessment</div>
+                        <h5>Selector and coach decision support</h5>
+                        <p>
+                          Open this when you need to understand player role fit, current series impact, selection
+                          readiness, and the player’s overall development profile.
+                        </p>
+                        <ul>
+                          <li>Role and recommendation summary</li>
+                          <li>Current series and overall context</li>
+                          <li>Selection and development framing</li>
+                        </ul>
+                      </div>
+                      <div class="sample-card">
+                        <img src="./player-assessment-sample.png" alt="Sample Player Assessment report" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="scene" data-scene="7" data-tag="Use Player Intelligence for opponent planning">
+                <div class="browser">
+                  <div class="browser-top">
+                    <div class="browser-dots"><span></span><span></span><span></span></div>
+                    <div class="browser-url">
+                      game-changrs.com/analytics/intelligence/player-id?q=player-name&series=2026-seattle-usac-hub
+                    </div>
+                  </div>
+                  <div class="site-nav">
+                    <div class="site-brand">Game<strong>Changrs</strong></div>
+                    <div class="site-nav-links">
+                      <span>Technique AI</span>
+                      <span>Coaching Marketplace</span>
+                      <span class="active">Analytics</span>
+                      <span>Gear Marketplace</span>
+                    </div>
+                    <div class="site-nav-actions">
+                      <span class="avatar-pill">Arth Arun</span>
+                    </div>
+                  </div>
+                  <div class="scene-body">
+                    <div class="report-layout">
+                      <div class="report-panel">
+                        <div class="hero-label">Game-Changrs Player Intelligence</div>
+                        <h5>Opponent planning view</h5>
+                        <p>
+                          This report is designed for captains and coaches planning against a player. It turns the
+                          analysis into practical match actions by showing the clearest danger areas and the clearest
+                          places to attack.
+                        </p>
+                        <div class="report-grid">
+                          <div class="report-metric">
+                            <span class="eyebrow">Main threat</span>
+                            <strong>Batting vs off-spin</strong>
+                          </div>
+                          <div class="report-metric">
+                            <span class="eyebrow">Main weakness</span>
+                            <strong>Vulnerable to right-arm pace</strong>
+                          </div>
+                          <div class="report-metric">
+                            <span class="eyebrow">Pressure cue</span>
+                            <strong>Dot-ball pressure builds dismissals</strong>
+                          </div>
+                          <div class="report-metric">
+                            <span class="eyebrow">Peak phase</span>
+                            <strong>Death overs</strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="signal-stack">
+                        <div class="signal-card threat">
+                          <h6>Main threat</h6>
+                          <p>The player is mainly a batting threat against off-spin.</p>
+                        </div>
+                        <div class="signal-card weakness">
+                          <h6>Main weakness</h6>
+                          <p>The player is most vulnerable against right-arm pace.</p>
+                        </div>
+                        <div class="signal-card phase">
+                          <h6>Peak threat phase</h6>
+                          <strong>Death</strong>
+                          <p>Primary bowling threat peaks late in the innings, helping the team shape the game plan.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="sample-card" style="min-height: 290px">
+                      <img src="./player-intelligence-sample.png" alt="Sample Player Intelligence report" />
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="scene" data-scene="8" data-tag="Choose the right report every time">
+                <div class="browser">
+                  <div class="browser-top">
+                    <div class="browser-dots"><span></span><span></span><span></span></div>
+                    <div class="browser-url">game-changrs.com/analytics/player-reports</div>
+                  </div>
+                  <div class="site-nav">
+                    <div class="site-brand">Game<strong>Changrs</strong></div>
+                    <div class="site-nav-links">
+                      <span>Technique AI</span>
+                      <span>Coaching Marketplace</span>
+                      <span class="active">Analytics</span>
+                      <span>Gear Marketplace</span>
+                    </div>
+                    <div class="site-nav-actions">
+                      <span class="avatar-pill">Arth Arun</span>
+                    </div>
+                  </div>
+                  <div class="scene-body">
+                    <div class="compare-grid">
+                      <div class="compare-card assessment">
+                        <div class="hero-label">Use Player Assessment</div>
+                        <h5>For selectors and coaches</h5>
+                        <p>
+                          Choose this report when you are evaluating your own player for selection, development,
+                          readiness, or role clarity.
+                        </p>
+                        <ul>
+                          <li>Should we select this player?</li>
+                          <li>How ready is the player right now?</li>
+                          <li>What should the development focus be?</li>
+                        </ul>
+                      </div>
+                      <div class="compare-card intelligence">
+                        <div class="hero-label">Use Player Intelligence</div>
+                        <h5>For captains and opposition coaches</h5>
+                        <p>
+                          Choose this report when the team needs a practical plan against an opposition player’s main
+                          strength and main weakness.
+                        </p>
+                        <ul>
+                          <li>How should we bowl to this batter?</li>
+                          <li>How should we bat against this bowler?</li>
+                          <li>What matchup and pressure plan gives us the edge?</li>
+                        </ul>
+                      </div>
+                    </div>
+                    <div class="panel heroish">
+                      <div class="hero-label">Decision rule</div>
+                      <h5>Assess your player. Plan against their player.</h5>
+                      <p>
+                        That is the cleanest split: <strong>Player Assessment</strong> is for backing, selecting, and
+                        developing your own player. <strong>Player Intelligence</strong> is for preparing against an
+                        opponent by understanding the player’s threat, weakness, and match-plan cues.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <audio id="voiceover"></audio>
+          </section>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      const scenes = [
+        {
+          id: 0,
+          title: "Start at Game-Changrs",
+          tag: "Landing and login path",
+          transcript:
+            "Welcome to Game-Changrs Analytics. In this quick guide, I’ll show you how a selector or coach can use Player Assessment, and how a captain or coach can use Player Intelligence to plan against an opponent player.",
+          audio: "./player-analysis-guide-audio/scene-01-intro.m4a",
+        },
+        {
+          id: 1,
+          title: "Sign in",
+          tag: "Sign in to your account",
+          transcript:
+            "Start on the Game-Changrs home page and click Sign In. You can log in with Google, or enter your email and password to access your account.",
+          audio: "./player-analysis-guide-audio/scene-02-sign-in.m4a",
+        },
+        {
+          id: 2,
+          title: "Open Analytics",
+          tag: "Open Analytics from the dashboard",
+          transcript:
+            "Once you’re signed in, open Analytics from your dashboard. This is your entry point into series search, reports, and player-level decision support.",
+          audio: "./player-analysis-guide-audio/scene-03-open-analytics.m4a",
+        },
+        {
+          id: 3,
+          title: "Go to Series Workspace",
+          tag: "Open the Series Workspace",
+          transcript:
+            "Inside Analytics, open the Series Workspace. This takes you into the series you have access to, so your search and reports stay tied to the right competition and player pool.",
+          audio: "./player-analysis-guide-audio/scene-04-series-workspace.m4a",
+        },
+        {
+          id: 4,
+          title: "Select a series",
+          tag: "Select the active series",
+          transcript:
+            "Choose the active series you want to work in, then click Use This Series. Once selected, Game-Changrs loads the tracked players, computed matches, and available coverage for that series.",
+          audio: "./player-analysis-guide-audio/scene-05-select-series.m4a",
+        },
+        {
+          id: 5,
+          title: "Search the player",
+          tag: "Search for the player",
+          transcript:
+            "Now search for the player you want to review. The search result card gives you the player name, team, role profile, and quick confidence signals before you open a report.",
+          audio: "./player-analysis-guide-audio/scene-06-search-player.m4a",
+        },
+        {
+          id: 6,
+          title: "Open Player Assessment",
+          tag: "Use Player Assessment for selection and coaching",
+          transcript:
+            "If you are a selector or coach assessing your own player, open Player Assessment. This view helps with selection and development by summarizing role fit, current series impact, readiness, and the player’s broader support profile.",
+          audio: "./player-analysis-guide-audio/scene-07-player-assessment.m4a",
+        },
+        {
+          id: 7,
+          title: "Open Player Intelligence",
+          tag: "Use Player Intelligence for opponent planning",
+          transcript:
+            "If you are a captain or coach planning against an opposition player, open Player Intelligence. This report translates the data into action: the player’s main threat, main weakness, pressure triggers, peak phase, and the practical matchups your team should plan for.",
+          audio: "./player-analysis-guide-audio/scene-08-player-intelligence.m4a",
+        },
+        {
+          id: 8,
+          title: "Choose the right report",
+          tag: "Choose the right report every time",
+          transcript:
+            "Use Player Assessment when the question is, should we back this player, develop this player, or select this player? Use Player Intelligence when the question is, how do we bowl to this batter, how do we bat against this bowler, and what is the clearest strength-and-weakness plan going into the game.",
+          audio: "./player-analysis-guide-audio/scene-09-close.m4a",
+        },
+      ];
+
+      const params = new URLSearchParams(window.location.search);
+      const exportMode = params.get("export") === "1";
+      if (exportMode) {
+        document.body.classList.add("export-mode");
+      }
+
+      const sceneNodes = Array.from(document.querySelectorAll(".scene"));
+      const chapterNodes = Array.from(document.querySelectorAll(".chapter"));
+      const audio = document.getElementById("voiceover");
+      const playPauseButton = document.getElementById("play-pause");
+      const playGuideButton = document.getElementById("play-guide");
+      const restartButton = document.getElementById("restart-guide");
+      const prevButton = document.getElementById("prev-scene");
+      const nextButton = document.getElementById("next-scene");
+      const transcriptText = document.getElementById("transcript-text");
+      const sceneCounter = document.getElementById("scene-counter");
+      const sceneTitle = document.getElementById("scene-title");
+      const sceneTag = document.getElementById("scene-tag");
+      const progressFill = document.getElementById("progress-fill");
+
+      let currentIndex = 0;
+      let isPlaying = false;
+
+      function updateScene(index, { autoplay = false, resetTime = true } = {}) {
+        currentIndex = Math.max(0, Math.min(index, scenes.length - 1));
+
+        sceneNodes.forEach((node) => {
+          const isActive = Number(node.dataset.scene) === currentIndex;
+          node.classList.toggle("active", isActive);
+        });
+
+        chapterNodes.forEach((node) => {
+          node.classList.toggle("active", Number(node.dataset.scene) === currentIndex);
+        });
+
+        const scene = scenes[currentIndex];
+        sceneCounter.textContent = `Scene ${currentIndex + 1} of ${scenes.length}`;
+        sceneTitle.textContent = scene.title;
+        sceneTag.textContent = scene.tag;
+        transcriptText.textContent = scene.transcript;
+        progressFill.style.width = `${((currentIndex + 1) / scenes.length) * 100}%`;
+
+        if (resetTime) {
+          audio.src = scene.audio;
+          audio.currentTime = 0;
+        }
+
+        if (autoplay) {
+          audio
+            .play()
+            .then(() => {
+              isPlaying = true;
+              playPauseButton.textContent = "Pause voiceover";
+            })
+            .catch(() => {
+              isPlaying = false;
+              playPauseButton.textContent = "Play voiceover";
+            });
+        } else {
+          isPlaying = false;
+          playPauseButton.textContent = "Play voiceover";
+        }
+      }
+
+      function playCurrentScene() {
+        audio.src = scenes[currentIndex].audio;
+        audio.currentTime = 0;
+        audio
+          .play()
+          .then(() => {
+            isPlaying = true;
+            playPauseButton.textContent = "Pause voiceover";
+          })
+          .catch(() => {
+            isPlaying = false;
+            playPauseButton.textContent = "Play voiceover";
+          });
+      }
+
+      chapterNodes.forEach((node) => {
+        node.addEventListener("click", () => {
+          audio.pause();
+          updateScene(Number(node.dataset.scene), { autoplay: false });
+        });
+      });
+
+      playPauseButton.addEventListener("click", () => {
+        if (!audio.src || !audio.src.endsWith(scenes[currentIndex].audio.replace("./", ""))) {
+          audio.src = scenes[currentIndex].audio;
+        }
+
+        if (isPlaying) {
+          audio.pause();
+          isPlaying = false;
+          playPauseButton.textContent = "Play voiceover";
+          return;
+        }
+
+        audio
+          .play()
+          .then(() => {
+            isPlaying = true;
+            playPauseButton.textContent = "Pause voiceover";
+          })
+          .catch(() => {
+            isPlaying = false;
+            playPauseButton.textContent = "Play voiceover";
+          });
+      });
+
+      playGuideButton.addEventListener("click", () => {
+        updateScene(0, { autoplay: true });
+      });
+
+      restartButton.addEventListener("click", () => {
+        audio.pause();
+        updateScene(0, { autoplay: false });
+      });
+
+      prevButton.addEventListener("click", () => {
+        audio.pause();
+        updateScene(currentIndex - 1, { autoplay: false });
+      });
+
+      nextButton.addEventListener("click", () => {
+        audio.pause();
+        updateScene(currentIndex + 1, { autoplay: false });
+      });
+
+      audio.addEventListener("ended", () => {
+        if (currentIndex >= scenes.length - 1) {
+          isPlaying = false;
+          playPauseButton.textContent = "Play voiceover";
+          return;
+        }
+
+        updateScene(currentIndex + 1, { autoplay: true });
+      });
+
+      audio.addEventListener("pause", () => {
+        if (!audio.ended) {
+          isPlaying = false;
+          playPauseButton.textContent = "Play voiceover";
+        }
+      });
+
+      audio.addEventListener("play", () => {
+        isPlaying = true;
+        playPauseButton.textContent = "Pause voiceover";
+      });
+
+      const initialScene = Number(params.get("scene"));
+      updateScene(Number.isFinite(initialScene) ? initialScene : 0, { autoplay: false });
+    </script>
+  </body>
+</html>

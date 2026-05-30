@@ -20,6 +20,290 @@ function normalizeText(value) {
   return String(value).replace(/\s+/g, " ").trim();
 }
 
+function decodeSeriesName(value) {
+  let decoded = normalizeText(value);
+
+  for (let index = 0; index < 2; index += 1) {
+    if (!decoded) {
+      return "";
+    }
+
+    try {
+      const next = decodeURIComponent(decoded);
+      if (next === decoded) {
+        break;
+      }
+      decoded = normalizeText(next);
+    } catch (_) {
+      break;
+    }
+  }
+
+  return decoded;
+}
+
+function extractSourceSeriesId(url) {
+  const parsed = parseUrlSafe(url);
+  if (!parsed) {
+    return "";
+  }
+
+  return (
+    normalizeText(parsed.searchParams.get("series")) ||
+    normalizeText(parsed.searchParams.get("seriesId")) ||
+    normalizeText(parsed.searchParams.get("league")) ||
+    normalizeText(parsed.searchParams.get("leagueId"))
+  );
+}
+
+function slugifyValue(value) {
+  return normalizeLabel(value).replace(/\s+/g, "-") || "source";
+}
+
+function buildTargetingOverride(seriesConfig, label) {
+  const targeting = seriesConfig?.targeting || {};
+  const targetDivisions = Array.isArray(targeting.divisions) ? targeting.divisions : [];
+  const normalizedLabel = normalizeLabel(label);
+
+  if (!normalizedLabel || !targetDivisions.length) {
+    return targeting;
+  }
+
+  const selectedDivisions = targetDivisions.filter(
+    (division) => normalizeLabel(division.label) === normalizedLabel
+  );
+
+  return {
+    ...targeting,
+    divisions: selectedDivisions.length ? selectedDivisions : targetDivisions,
+  };
+}
+
+function buildDiscoverySourceConfigs(seriesConfig) {
+  const sourceHints = seriesConfig?.source_hints || {};
+  const targetDivisions = Array.isArray(seriesConfig?.targeting?.divisions)
+    ? seriesConfig.targeting.divisions
+    : [];
+  const targetDivisionLabels = targetDivisions.map((division) => normalizeText(division.label)).filter(Boolean);
+  const additionalSources = [];
+
+  for (const entry of Array.isArray(sourceHints.additional_sources) ? sourceHints.additional_sources : []) {
+    if (typeof entry === "string") {
+      additionalSources.push({ series_url: entry });
+    } else if (entry && typeof entry === "object") {
+      additionalSources.push(entry);
+    }
+  }
+
+  for (const [index, entry] of (Array.isArray(sourceHints.additional_series_urls)
+    ? sourceHints.additional_series_urls
+    : []).entries()) {
+    if (typeof entry === "string") {
+      additionalSources.push({
+        label: targetDivisionLabels[index + 1] || "",
+        series_url: entry,
+      });
+      continue;
+    }
+
+    if (entry && typeof entry === "object") {
+      additionalSources.push(entry);
+    }
+  }
+
+  const rawSources = [
+    {
+      label: normalizeText(sourceHints.primary_label) || targetDivisionLabels[0] || normalizeText(seriesConfig.label),
+      series_url: normalizeText(seriesConfig.series_url),
+      source_hints: {
+        ...sourceHints,
+      },
+    },
+    ...additionalSources.map((entry) => ({
+      label:
+        normalizeText(entry.label) ||
+        normalizeText(entry.source_label) ||
+        normalizeText(entry.target_label),
+      series_url: normalizeText(entry.series_url || entry.url),
+      source_hints: {
+        ...sourceHints,
+        ...(entry.source_hints || {}),
+        series_id:
+          normalizeText(entry.series_id) ||
+          normalizeText(entry.source_hints?.series_id) ||
+          extractSourceSeriesId(entry.series_url || entry.url) ||
+          undefined,
+      },
+    })),
+  ];
+
+  const seenSeriesUrls = new Set();
+  const sourceConfigs = [];
+
+  for (const [index, entry] of rawSources.entries()) {
+    const seriesUrl = normalizeText(entry.series_url);
+    if (!seriesUrl || seenSeriesUrls.has(seriesUrl)) {
+      continue;
+    }
+
+    seenSeriesUrls.add(seriesUrl);
+    const label = normalizeText(entry.label) || normalizeText(seriesConfig.label);
+    sourceConfigs.push({
+      ...seriesConfig,
+      label,
+      series_url: seriesUrl,
+      source_hints: {
+        ...sourceHints,
+        ...(entry.source_hints || {}),
+        series_id:
+          normalizeText(entry.source_hints?.series_id) ||
+          extractSourceSeriesId(seriesUrl) ||
+          undefined,
+      },
+      targeting: buildTargetingOverride(seriesConfig, label),
+      _multiSourceIndex: index,
+    });
+  }
+
+  return sourceConfigs.length ? sourceConfigs : [seriesConfig];
+}
+
+function sortDiscoveredDivisions(divisions, seriesConfig) {
+  const targetOrder = new Map(
+    ((seriesConfig?.targeting && Array.isArray(seriesConfig.targeting.divisions))
+      ? seriesConfig.targeting.divisions
+      : []
+    ).map((division, index) => [normalizeLabel(division.label), index])
+  );
+
+  return [...divisions].sort((left, right) => {
+    const leftOrder = targetOrder.has(normalizeLabel(left.label))
+      ? targetOrder.get(normalizeLabel(left.label))
+      : Number.MAX_SAFE_INTEGER;
+    const rightOrder = targetOrder.has(normalizeLabel(right.label))
+      ? targetOrder.get(normalizeLabel(right.label))
+      : Number.MAX_SAFE_INTEGER;
+
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
+    }
+
+    return normalizeText(left.label).localeCompare(normalizeText(right.label));
+  });
+}
+
+function mergeDiscoveryResults(seriesConfig, sourceResults, outDir) {
+  const primary = sourceResults[0];
+  const divisionEntries = [];
+  const allDivisionOptions = [];
+  const seenDivisionKeys = new Set();
+  const seenOptionKeys = new Set();
+
+  for (const sourceResult of sourceResults) {
+    const sourceSeriesId =
+      normalizeText(sourceResult?.sourceHints?.configuredSourceSeriesId) ||
+      extractSourceSeriesId(sourceResult?.sourceHints?.configuredSeriesUrl) ||
+      normalizeText(sourceResult?.series?.leagueId);
+
+    for (const division of Array.isArray(sourceResult?.divisions) ? sourceResult.divisions : []) {
+      const enrichedDivision = {
+        ...division,
+        sourceSeriesId: sourceSeriesId || undefined,
+        sourceSeriesLabel: normalizeText(sourceResult?.series?.label) || undefined,
+        sourceSeriesUrl:
+          normalizeText(sourceResult?.sourceHints?.configuredSeriesUrl) ||
+          normalizeText(sourceResult?.series?.url) ||
+          undefined,
+      };
+      const divisionKey = [
+        normalizeLabel(enrichedDivision.label),
+        normalizeText(enrichedDivision.resultsUrl || enrichedDivision.href),
+        normalizeText(enrichedDivision.leagueId),
+        normalizeText(enrichedDivision.filterLabel),
+      ].join("|");
+
+      if (seenDivisionKeys.has(divisionKey)) {
+        continue;
+      }
+
+      seenDivisionKeys.add(divisionKey);
+      divisionEntries.push(enrichedDivision);
+    }
+
+    for (const option of Array.isArray(sourceResult?.allDivisionOptions)
+      ? sourceResult.allDivisionOptions
+      : []) {
+      const optionKey = [
+        normalizeLabel(option.label),
+        normalizeText(option.href),
+      ].join("|");
+
+      if (seenOptionKeys.has(optionKey)) {
+        continue;
+      }
+
+      seenOptionKeys.add(optionKey);
+      allDivisionOptions.push(option);
+    }
+  }
+
+  const merged = {
+    series: {
+      ...(primary?.series || {}),
+      slug: seriesConfig.slug,
+      label: seriesConfig.label,
+      sourceSeries: sourceResults.map((sourceResult) => ({
+        label: normalizeText(sourceResult?.series?.label),
+        configuredSeriesUrl: normalizeText(sourceResult?.sourceHints?.configuredSeriesUrl),
+        matchedSeriesUrl: normalizeText(sourceResult?.sourceHints?.matchedSeriesUrl),
+        leagueId: normalizeText(sourceResult?.series?.leagueId),
+        clubId: normalizeText(sourceResult?.series?.clubId),
+      })),
+    },
+    sourceHints: {
+      configuredSeriesUrl: normalizeText(seriesConfig.series_url),
+      configuredSeriesPageTitle: normalizeText(primary?.sourceHints?.configuredSeriesPageTitle),
+      matchedSeriesUrl: normalizeText(primary?.sourceHints?.matchedSeriesUrl),
+      configuredSourceSeriesId:
+        normalizeText(primary?.sourceHints?.configuredSourceSeriesId) ||
+        extractSourceSeriesId(seriesConfig.series_url),
+      additionalSeriesUrls: sourceResults
+        .slice(1)
+        .map((sourceResult) => normalizeText(sourceResult?.sourceHints?.configuredSeriesUrl))
+        .filter(Boolean),
+    },
+    meta: {
+      title: normalizeText(primary?.meta?.title),
+      pageTextSample: normalizeText(primary?.meta?.pageTextSample),
+      detailPairs: Array.isArray(primary?.meta?.detailPairs) ? primary.meta.detailPairs : [],
+      sourcePages: sourceResults.map((sourceResult) => ({
+        label: normalizeText(sourceResult?.series?.label),
+        title: normalizeText(sourceResult?.meta?.title),
+        leagueId: normalizeText(sourceResult?.series?.leagueId),
+        configuredSeriesUrl: normalizeText(sourceResult?.sourceHints?.configuredSeriesUrl),
+        matchedSeriesUrl: normalizeText(sourceResult?.sourceHints?.matchedSeriesUrl),
+      })),
+    },
+    statsPages: primary?.statsPages || {},
+    routes: {
+      ...(primary?.routes || {}),
+      additionalResultsUrls: sourceResults
+        .slice(1)
+        .map((sourceResult) => normalizeText(sourceResult?.routes?.resultsUrl))
+        .filter(Boolean),
+    },
+    divisions: sortDiscoveredDivisions(divisionEntries, seriesConfig),
+    allDivisionOptions,
+  };
+
+  writeJsonFile(path.join(outDir, "series_discovery_sources.json"), {
+    series: seriesConfig.slug,
+    sources: sourceResults,
+  });
+  writeJsonFile(path.join(outDir, "series_discovery_debug.json"), merged);
+  return merged;
+}
+
 function makeAbsoluteUrl(href) {
   return new URL(href, ROOT_URL).toString();
 }
@@ -82,6 +366,39 @@ function extractLeagueId(url) {
   } catch (_) {
     return null;
   }
+}
+
+function buildModernSeriesResultsUrl(seriesConfig) {
+  const explicitResultsUrl = normalizeText(seriesConfig.source_hints?.results_url);
+  if (explicitResultsUrl) {
+    return explicitResultsUrl;
+  }
+
+  const parsed = parseUrlSafe(seriesConfig.series_url);
+  const modernLeagueId = normalizeText(seriesConfig.source_hints?.league_id);
+  const modernSeriesId = normalizeText(seriesConfig.source_hints?.series_id);
+  if (!parsed || !parsed.pathname.includes("/series-list/") || !modernLeagueId || !modernSeriesId) {
+    return "";
+  }
+
+  const namespace = getNamespace(seriesConfig);
+  const scopedResultsUrl = new URL(`${ROOT_URL}/${namespace}/results`);
+  scopedResultsUrl.searchParams.set("leagueId", modernLeagueId);
+
+  const seasonYear = normalizeText(seriesConfig.season_year);
+  if (seasonYear) {
+    scopedResultsUrl.searchParams.set("year", seasonYear);
+  }
+
+  scopedResultsUrl.searchParams.set("series", modernSeriesId);
+  scopedResultsUrl.searchParams.set("division", "all");
+
+  const seriesName = decodeSeriesName(parsed.searchParams.get("seriesName"));
+  if (seriesName) {
+    scopedResultsUrl.searchParams.set("seriesName", seriesName);
+  }
+
+  return scopedResultsUrl.toString();
 }
 
 function hasScopedSeriesQuery(url) {
@@ -157,11 +474,12 @@ function pickLinkByHints(links, hints) {
   }) || null;
 }
 
-async function discoverSeries(seriesConfig, options = {}) {
+async function discoverSingleSeries(seriesConfig, options = {}) {
   const outDir = options.outDir || path.resolve(process.cwd(), "storage/exports/discovery");
   ensureDir(outDir);
   const clubId = getClubId(seriesConfig);
   const namespace = getNamespace(seriesConfig);
+  const modernResultsUrl = buildModernSeriesResultsUrl(seriesConfig);
 
   return withBrowser(async (context) => {
     const configuredSeriesPage = await context.newPage();
@@ -266,7 +584,9 @@ async function discoverSeries(seriesConfig, options = {}) {
       rankings: pickLinkByHints(configuredLinks, ["playerrankings.do", "/statistics/rankings-records"]),
       pointsTable: pickLinkByHints(configuredLinks, ["viewpointstable.do"]),
     };
-    if (configuredResultsLink?.href && hasScopedSeriesQuery(configuredResultsLink.href)) {
+    if (modernResultsUrl && hasScopedSeriesQuery(modernResultsUrl)) {
+      legacyRoutes.resultsUrl = modernResultsUrl;
+    } else if (configuredResultsLink?.href && hasScopedSeriesQuery(configuredResultsLink.href)) {
       legacyRoutes.resultsUrl = configuredResultsLink.href;
     }
     if (configuredStatsLinks.batting?.href && hasScopedSeriesQuery(configuredStatsLinks.batting.href)) {
@@ -341,7 +661,35 @@ async function discoverSeries(seriesConfig, options = {}) {
         group.options.some((entry) => normalizeLabel(entry.label) === "all divisions")
       ) ||
       null;
-    const divisionOptions = divisionDropdown?.options || [];
+    const legacyDivisionOptions = divisionDropdown?.options || [];
+
+    let modernDivisionOptions = [];
+    if (!legacyDivisionOptions.length) {
+      const selectEntries = await resultsPage.locator(".ant-select").evaluateAll((nodes) =>
+        nodes.map((node, index) => ({
+          index,
+          label: (node.textContent || "").replace(/\s+/g, " ").trim(),
+        }))
+      );
+      const divisionSelect = selectEntries.find((entry) => /division/i.test(entry.label));
+      if (divisionSelect) {
+        await resultsPage.locator(".ant-select").nth(divisionSelect.index).click();
+        await resultsPage.waitForTimeout(750);
+        modernDivisionOptions = await resultsPage
+          .locator(".ant-select-dropdown .ant-select-item-option")
+          .evaluateAll((nodes) =>
+            nodes
+              .map((node) => ({
+                label: (node.textContent || "").replace(/\s+/g, " ").trim(),
+                href: "",
+              }))
+              .filter((entry) => entry.label)
+          );
+        await resultsPage.keyboard.press("Escape").catch(() => {});
+      }
+    }
+
+    const divisionOptions = legacyDivisionOptions.length ? legacyDivisionOptions : modernDivisionOptions;
     writeTextFile(path.join(outDir, "raw", "results_page.html"), await resultsPage.content());
     writeJsonFile(path.join(outDir, "raw", "dropdown_groups.json"), dropdownGroups);
     writeJsonFile(path.join(outDir, "raw", "division_options.json"), divisionOptions);
@@ -352,35 +700,47 @@ async function discoverSeries(seriesConfig, options = {}) {
         .map((division) => normalizeLabel(division.label)),
     );
 
-    const filteredDivisionOptions = divisionOptions.filter((entry) => !isIgnorableDivisionOption(entry));
+    const filteredDivisionOptions = legacyDivisionOptions.length
+      ? divisionOptions.filter((entry) => !isIgnorableDivisionOption(entry))
+      : divisionOptions.filter((entry) => normalizeLabel(entry.label) !== "all divisions");
 
-    let discoveredTargetDivisions = filteredDivisionOptions
-      .filter((entry) =>
-        targetDivisionLabels.size
-          ? targetDivisionLabels.has(normalizeLabel(entry.label))
-          : true
-      )
-      .map((entry) => {
-        const divisionLeagueId = extractLeagueId(entry.href) || leagueId;
-        const absoluteHref = makeAbsoluteUrl(entry.href);
-        const hrefLower = absoluteHref.toLowerCase();
-        const resultsUrl =
-          hrefLower.includes("viewleagueresults.do") || hrefLower.includes("listmatches.do") || hrefLower.includes("/results")
-            ? absoluteHref
-            : buildDivisionResultsUrl(namespace, divisionLeagueId, clubId);
-        const statsUrl =
-          hrefLower.includes("viewleague.do")
-            ? absoluteHref
-            : buildDivisionStatsUrl(namespace, divisionLeagueId, clubId);
-        return {
+    const selectedDivisionOptions = filteredDivisionOptions.filter((entry) =>
+      targetDivisionLabels.size
+        ? targetDivisionLabels.has(normalizeLabel(entry.label))
+        : true
+    );
+
+    let discoveredTargetDivisions = legacyDivisionOptions.length
+      ? selectedDivisionOptions.map((entry) => {
+          const divisionLeagueId = extractLeagueId(entry.href) || leagueId;
+          const absoluteHref = makeAbsoluteUrl(entry.href);
+          const hrefLower = absoluteHref.toLowerCase();
+          const resultsUrl =
+            hrefLower.includes("viewleagueresults.do") || hrefLower.includes("listmatches.do") || hrefLower.includes("/results")
+              ? absoluteHref
+              : buildDivisionResultsUrl(namespace, divisionLeagueId, clubId);
+          const statsUrl =
+            hrefLower.includes("viewleague.do")
+              ? absoluteHref
+              : buildDivisionStatsUrl(namespace, divisionLeagueId, clubId);
+          return {
+            label: entry.label,
+            href: resultsUrl,
+            sourceHref: entry.href,
+            leagueId: divisionLeagueId,
+            resultsUrl,
+            statsUrl,
+          };
+        })
+      : selectedDivisionOptions.map((entry) => ({
           label: entry.label,
-          href: resultsUrl,
-          sourceHref: entry.href,
-          leagueId: divisionLeagueId,
-          resultsUrl,
-          statsUrl,
-        };
-      });
+          href: legacyRoutes.resultsUrl,
+          sourceHref: legacyRoutes.resultsUrl,
+          leagueId: "",
+          resultsUrl: legacyRoutes.resultsUrl,
+          statsUrl: legacyRoutes.leagueUrl,
+          filterLabel: entry.label,
+        }));
 
     if (!discoveredTargetDivisions.length) {
       discoveredTargetDivisions = [
@@ -409,6 +769,9 @@ async function discoverSeries(seriesConfig, options = {}) {
         configuredSeriesUrl: seriesConfig.series_url,
         configuredSeriesPageTitle: await configuredSeriesPage.title(),
         matchedSeriesUrl: matchedSeries.href,
+        configuredSourceSeriesId:
+          normalizeText(seriesConfig.source_hints?.series_id) ||
+          extractSourceSeriesId(seriesConfig.series_url),
       },
       meta: seriesMeta,
       statsPages: {
@@ -426,6 +789,28 @@ async function discoverSeries(seriesConfig, options = {}) {
     writeJsonFile(path.join(outDir, "series_discovery_debug.json"), result);
     return result;
   });
+}
+
+async function discoverSeries(seriesConfig, options = {}) {
+  const outDir = options.outDir || path.resolve(process.cwd(), "storage/exports/discovery");
+  ensureDir(outDir);
+
+  const sourceConfigs = buildDiscoverySourceConfigs(seriesConfig);
+  if (sourceConfigs.length <= 1) {
+    return discoverSingleSeries(sourceConfigs[0], options);
+  }
+
+  const sourceResults = [];
+  for (const [index, sourceConfig] of sourceConfigs.entries()) {
+    const sourceOutDir = path.join(
+      outDir,
+      "sources",
+      `${String(index + 1).padStart(2, "0")}-${slugifyValue(sourceConfig.label || sourceConfig.series_url)}`
+    );
+    sourceResults.push(await discoverSingleSeries(sourceConfig, { ...options, outDir: sourceOutDir }));
+  }
+
+  return mergeDiscoveryResults(seriesConfig, sourceResults, outDir);
 }
 
 module.exports = {

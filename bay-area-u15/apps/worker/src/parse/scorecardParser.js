@@ -1,6 +1,8 @@
 const {
   buildPlayerAliases,
+  buildSyntheticPlayerId,
   cleanPlayerDisplayName,
+  normalizeAliasKey,
   normalizeText,
   oversToBalls,
   parseDismissalInfo,
@@ -25,6 +27,79 @@ function resolveRawName(input) {
   return normalizeText(input?.rawName || input?.displayName);
 }
 
+function isSyntheticPlayerId(value) {
+  return normalizeText(value).startsWith("synthetic:");
+}
+
+function uniqueRegistryEntries(registry) {
+  const unique = [];
+  const seen = new Set();
+
+  for (const entry of registry.values()) {
+    if (seen.has(entry)) {
+      continue;
+    }
+
+    seen.add(entry);
+    unique.push(entry);
+  }
+
+  return unique;
+}
+
+function entryAliasKeys(entry) {
+  return new Set(
+    [entry?.displayName, entry?.canonicalName, ...(entry?.aliases || [])]
+      .map((value) => normalizeAliasKey(value))
+      .filter(Boolean)
+  );
+}
+
+function findMatchingRegistryEntry(registry, input = {}) {
+  const displayName = cleanPlayerDisplayName(input.displayName || input.rawName);
+  const sourcePlayerId = normalizeText(input.sourcePlayerId);
+  const candidateAliasKeys = new Set(
+    buildPlayerAliases(displayName, input.aliases)
+      .map((value) => normalizeAliasKey(value))
+      .filter(Boolean)
+  );
+
+  if (displayName) {
+    candidateAliasKeys.add(normalizeAliasKey(displayName));
+  }
+
+  for (const entry of uniqueRegistryEntries(registry)) {
+    if (sourcePlayerId && normalizeText(entry.sourcePlayerId) === sourcePlayerId) {
+      return entry;
+    }
+
+    const existingAliasKeys = entryAliasKeys(entry);
+    for (const aliasKey of candidateAliasKeys) {
+      if (existingAliasKeys.has(aliasKey)) {
+        return entry;
+      }
+    }
+  }
+
+  return null;
+}
+
+function syncRegistryEntry(registry, entry) {
+  const nextKey = registryKey({
+    sourcePlayerId: entry.sourcePlayerId,
+    displayName: entry.displayName,
+  });
+
+  for (const [key, current] of registry.entries()) {
+    if (current === entry && key !== nextKey) {
+      registry.delete(key);
+    }
+  }
+
+  registry.set(nextKey, entry);
+  return entry;
+}
+
 function registerPlayer(registry, input = {}) {
   const rawName = resolveRawName(input);
   const displayName = cleanPlayerDisplayName(input.displayName || rawName);
@@ -32,19 +107,35 @@ function registerPlayer(registry, input = {}) {
     return null;
   }
 
-  const sourcePlayerId = normalizeText(input.sourcePlayerId) || parsePlayerIdFromUrl(input.profileUrl);
-  const key = registryKey({ sourcePlayerId, displayName });
-  const existing = registry.get(key) || {
-    sourcePlayerId,
-    displayName,
-    canonicalName: displayName,
-    profileUrl: normalizeText(input.profileUrl),
-    isWicketkeeper: false,
-    isCaptain: false,
-    aliases: new Set(),
-  };
+  const explicitSourcePlayerId =
+    normalizeText(input.sourcePlayerId) || parsePlayerIdFromUrl(input.profileUrl);
+  const fallbackSourcePlayerId = buildSyntheticPlayerId(displayName);
+  const existing =
+    findMatchingRegistryEntry(registry, {
+      sourcePlayerId: explicitSourcePlayerId,
+      displayName,
+      aliases: input.aliases,
+    }) ||
+    findMatchingRegistryEntry(registry, {
+      sourcePlayerId: fallbackSourcePlayerId,
+      displayName,
+      aliases: input.aliases,
+    }) || {
+      sourcePlayerId: explicitSourcePlayerId || fallbackSourcePlayerId,
+      displayName,
+      canonicalName: displayName,
+      profileUrl: normalizeText(input.profileUrl),
+      isWicketkeeper: false,
+      isCaptain: false,
+      aliases: new Set(),
+    };
 
-  existing.sourcePlayerId = existing.sourcePlayerId || sourcePlayerId;
+  if (!existing.sourcePlayerId) {
+    existing.sourcePlayerId = explicitSourcePlayerId || fallbackSourcePlayerId;
+  } else if (explicitSourcePlayerId && isSyntheticPlayerId(existing.sourcePlayerId)) {
+    existing.sourcePlayerId = explicitSourcePlayerId;
+  }
+
   existing.displayName = existing.displayName || displayName;
   existing.canonicalName = existing.canonicalName || displayName;
   existing.profileUrl = existing.profileUrl || normalizeText(input.profileUrl);
@@ -58,8 +149,35 @@ function registerPlayer(registry, input = {}) {
     }
   }
 
-  registry.set(key, existing);
+  syncRegistryEntry(registry, existing);
   return existing;
+}
+
+function resolveRegistryPlayer(registry, candidate) {
+  const aliasKey = normalizeAliasKey(candidate);
+  if (!aliasKey) {
+    return null;
+  }
+
+  for (const entry of uniqueRegistryEntries(registry)) {
+    if (entryAliasKeys(entry).has(aliasKey)) {
+      return entry;
+    }
+  }
+
+  return null;
+}
+
+function resolveOrRegisterAlias(registry, candidate) {
+  const resolved = resolveRegistryPlayer(registry, candidate);
+  if (resolved) {
+    return resolved;
+  }
+
+  return registerPlayer(registry, {
+    rawName: candidate,
+    displayName: candidate,
+  });
 }
 
 function playerFromLink(registry, link, fallbackName) {
@@ -88,20 +206,35 @@ function parseTargetRuns(value) {
   return match ? Number(match[1]) : null;
 }
 
-function parseTotalRow(row) {
-  const header = normalizeText(row?.cells?.[0]?.text);
-  const totalRuns = toInteger(row?.cells?.[2]?.text);
-  const detailText = normalizeText(row?.cells?.[1]?.text) || header;
-  const wicketsMatch = detailText.match(/(\d+)\s+wickets?/i);
-  const oversMatch = detailText.match(/(\d+(?:\.\d+)?)\s+overs?/i);
-  const oversDecimal = toNumber(oversMatch?.[1]);
-  const legalBalls = oversMatch ? oversToBalls(oversMatch[1]) : null;
+function parseTotalRow(row, fallbackText = "") {
+  const cells = row?.cells || [];
+  const legacyTotalRuns = toInteger(cells?.[2]?.text);
+  const legacyDetailText =
+    normalizeText(cells?.[1]?.text) || normalizeText(cells?.[0]?.text) || normalizeText(fallbackText);
+
+  if (legacyTotalRuns !== null || cells.length >= 3) {
+    const wicketsMatch = legacyDetailText.match(/(\d+)\s+wickets?/i);
+    const oversMatch = legacyDetailText.match(/(\d+(?:\.\d+)?)\s+overs?/i);
+
+    return {
+      totalRuns: legacyTotalRuns,
+      wickets: wicketsMatch ? Number(wicketsMatch[1]) : null,
+      oversDecimal: toNumber(oversMatch?.[1]),
+      legalBalls: oversMatch ? oversToBalls(oversMatch[1]) : null,
+    };
+  }
+
+  const text = normalizeText(cells?.[0]?.text || fallbackText);
+  const totalRuns = toInteger(text.match(/^Total\s*(\d+)/i)?.[1]) || toInteger(text.match(/(\d+)-\d+/)?.[1]);
+  const wicketsMatch = text.match(/-(\d+)/);
+  const oversMatch = text.match(/\((\d+(?:\.\d+)?)\s*Ov\)/i);
+  const oversValue = oversMatch?.[1];
 
   return {
     totalRuns,
     wickets: wicketsMatch ? Number(wicketsMatch[1]) : null,
-    oversDecimal,
-    legalBalls,
+    oversDecimal: toNumber(oversValue),
+    legalBalls: oversValue ? oversToBalls(oversValue) : null,
   };
 }
 
@@ -122,7 +255,107 @@ function parseBowlingExtras(value) {
   };
 }
 
-function parseBattingRow(row, registry, teamName, battingPosition) {
+function splitModernBattingCell(value) {
+  const text = normalizeText(value);
+  if (!text) {
+    return {
+      playerName: "",
+      dismissalText: "",
+    };
+  }
+
+  for (const pattern of [
+    /^(.*?)(not out)$/i,
+    /^(.*?)(retired hurt)$/i,
+    /^(.*?)(run out(?:\s*\([^)]*\))?.*)$/i,
+    /^(.*?)(st\s+.*\s+b\s+.*)$/i,
+    /^(.*?)(c\s+.*\s+b\s+.*)$/i,
+    /^(.*?)(lbw\s+b\s+.*)$/i,
+    /^(.*?)(hit wicket.*)$/i,
+    /^(.*?)(b\s+.*)$/i,
+  ]) {
+    const match = text.match(pattern);
+    if (!match) {
+      continue;
+    }
+
+    return {
+      playerName: cleanPlayerDisplayName(match[1]),
+      dismissalText: normalizeText(match[2]),
+    };
+  }
+
+  return {
+    playerName: cleanPlayerDisplayName(text),
+    dismissalText: "",
+  };
+}
+
+function resolveDismissalParticipantsFromText(registry, dismissalText) {
+  const text = normalizeText(dismissalText);
+  if (!text) {
+    return {
+      bowler: null,
+      primaryFielder: null,
+    };
+  }
+
+  let match = text.match(/^c\s+(.+?)\s+b\s+(.+)$/i);
+  if (match) {
+    return {
+      primaryFielder: resolveOrRegisterAlias(registry, match[1]),
+      bowler: resolveOrRegisterAlias(registry, match[2]),
+    };
+  }
+
+  match = text.match(/^st\s+(.+?)\s+b\s+(.+)$/i);
+  if (match) {
+    return {
+      primaryFielder: resolveOrRegisterAlias(registry, match[1]),
+      bowler: resolveOrRegisterAlias(registry, match[2]),
+    };
+  }
+
+  match = text.match(/^lbw\s+b\s+(.+)$/i);
+  if (match) {
+    return {
+      primaryFielder: null,
+      bowler: resolveOrRegisterAlias(registry, match[1]),
+    };
+  }
+
+  match = text.match(/^b\s+(.+)$/i);
+  if (match) {
+    return {
+      primaryFielder: null,
+      bowler: resolveOrRegisterAlias(registry, match[1]),
+    };
+  }
+
+  match = text.match(/^run out(?:\s*\((.+)\))?$/i);
+  if (match) {
+    return {
+      primaryFielder: match[1] ? resolveOrRegisterAlias(registry, match[1]) : null,
+      bowler: null,
+    };
+  }
+
+  return {
+    bowler: null,
+    primaryFielder: null,
+  };
+}
+
+function enrichDismissalParticipants(registry, dismissalText, dismissal) {
+  const resolved = resolveDismissalParticipantsFromText(registry, dismissalText);
+  return {
+    ...dismissal,
+    bowler: dismissal?.bowler || resolved.bowler,
+    primaryFielder: dismissal?.primaryFielder || resolved.primaryFielder,
+  };
+}
+
+function parseLegacyBattingRow(row, registry, teamName, battingPosition) {
   const cells = row?.cells || [];
   if (cells.length < 7) {
     return null;
@@ -139,7 +372,11 @@ function parseBattingRow(row, registry, teamName, battingPosition) {
   dismissalLinks.forEach((link) => playerFromLink(registry, link, link.text));
 
   const dismissalText = normalizeText(cells[1]?.text);
-  const dismissal = parseDismissalInfo(dismissalText, dismissalLinks);
+  const dismissal = enrichDismissalParticipants(
+    registry,
+    dismissalText,
+    parseDismissalInfo(dismissalText, dismissalLinks)
+  );
 
   return {
     playerSourceId: batter.sourcePlayerId,
@@ -149,9 +386,9 @@ function parseBattingRow(row, registry, teamName, battingPosition) {
     isNotOut: dismissal.dismissalType === "not_out",
     dismissalType: dismissal.dismissalType,
     dismissalText,
-    dismissedBySourcePlayerId: dismissal.bowler?.playerId || parsePlayerIdFromUrl(dismissal.bowler?.href),
+    dismissedBySourcePlayerId: dismissal.bowler?.sourcePlayerId || parsePlayerIdFromUrl(dismissal.bowler?.href),
     primaryFielderSourcePlayerId:
-      dismissal.primaryFielder?.playerId || parsePlayerIdFromUrl(dismissal.primaryFielder?.href),
+      dismissal.primaryFielder?.sourcePlayerId || parsePlayerIdFromUrl(dismissal.primaryFielder?.href),
     runs: toInteger(cells[2]?.text) || 0,
     ballsFaced: toInteger(cells[3]?.text) || 0,
     fours: toInteger(cells[4]?.text) || 0,
@@ -160,6 +397,61 @@ function parseBattingRow(row, registry, teamName, battingPosition) {
     retiredHurt: dismissal.dismissalType === "retired_hurt",
     didNotBat: false,
   };
+}
+
+function parseModernBattingRow(row, registry, teamName, battingPosition) {
+  const cells = row?.cells || [];
+  if (cells.length < 6) {
+    return null;
+  }
+
+  const parts = splitModernBattingCell(cells[0]?.text);
+  const batter = registerPlayer(registry, {
+    rawName: parts.playerName,
+    displayName: parts.playerName,
+  });
+  if (!batter) {
+    return null;
+  }
+
+  const dismissalText = normalizeText(parts.dismissalText) || "not out";
+  const dismissal = enrichDismissalParticipants(
+    registry,
+    dismissalText,
+    parseDismissalInfo(dismissalText, [])
+  );
+
+  return {
+    playerSourceId: batter.sourcePlayerId,
+    playerName: batter.displayName,
+    teamName,
+    battingPosition,
+    isNotOut: dismissal.dismissalType === "not_out",
+    dismissalType: dismissal.dismissalType,
+    dismissalText,
+    dismissedBySourcePlayerId: dismissal.bowler?.sourcePlayerId || parsePlayerIdFromUrl(dismissal.bowler?.href),
+    primaryFielderSourcePlayerId:
+      dismissal.primaryFielder?.sourcePlayerId || parsePlayerIdFromUrl(dismissal.primaryFielder?.href),
+    runs: toInteger(cells[1]?.text) || 0,
+    ballsFaced: toInteger(cells[2]?.text) || 0,
+    fours: toInteger(cells[3]?.text) || 0,
+    sixes: toInteger(cells[4]?.text) || 0,
+    strikeRate: toNumber(cells[5]?.text),
+    retiredHurt: dismissal.dismissalType === "retired_hurt",
+    didNotBat: false,
+  };
+}
+
+function parseBattingRow(row, registry, teamName, battingPosition) {
+  const cells = row?.cells || [];
+  const label = normalizeText(cells?.[0]?.text);
+  if (!cells.length || !label || /^extras/i.test(label) || /^total/i.test(label) || /^did not bat/i.test(label)) {
+    return null;
+  }
+
+  return cells.length === 6
+    ? parseModernBattingRow(row, registry, teamName, battingPosition)
+    : parseLegacyBattingRow(row, registry, teamName, battingPosition);
 }
 
 function parseDidNotBatRows(row, registry, teamName, startingPosition) {
@@ -171,42 +463,81 @@ function parseDidNotBatRows(row, registry, teamName, startingPosition) {
   const links = extractPlayerLinks(entry.links);
   links.forEach((link) => playerFromLink(registry, link, link.text));
 
-  return splitDidNotBatList(entry.text).map((name, index) => {
-    const matchingLink =
-      links.find((link) => cleanPlayerDisplayName(link.text) === name) ||
-      links.find((link) => cleanPlayerDisplayName(link.text).endsWith(name));
-    const player = playerFromLink(registry, matchingLink, name);
-    if (!player) {
-      return null;
-    }
+  return splitDidNotBatList(entry.text)
+    .map((name, index) => {
+      const matchingLink =
+        links.find((link) => cleanPlayerDisplayName(link.text) === name) ||
+        links.find((link) => cleanPlayerDisplayName(link.text).endsWith(name));
+      const player = playerFromLink(registry, matchingLink, name);
+      if (!player) {
+        return null;
+      }
 
-    return {
-      playerSourceId: player.sourcePlayerId,
-      playerName: player.displayName,
-      teamName,
-      battingPosition: startingPosition + index,
-      isNotOut: null,
-      dismissalType: null,
-      dismissalText: null,
-      dismissedBySourcePlayerId: null,
-      primaryFielderSourcePlayerId: null,
-      runs: null,
-      ballsFaced: null,
-      fours: null,
-      sixes: null,
-      strikeRate: null,
-      retiredHurt: false,
-      didNotBat: true,
-    };
-  }).filter(Boolean);
+      return {
+        playerSourceId: player.sourcePlayerId,
+        playerName: player.displayName,
+        teamName,
+        battingPosition: startingPosition + index,
+        isNotOut: null,
+        dismissalType: null,
+        dismissalText: null,
+        dismissedBySourcePlayerId: null,
+        primaryFielderSourcePlayerId: null,
+        runs: null,
+        ballsFaced: null,
+        fours: null,
+        sixes: null,
+        strikeRate: null,
+        retiredHurt: false,
+        didNotBat: true,
+      };
+    })
+    .filter(Boolean);
 }
 
 function parseBowlingRows(table, registry, teamName) {
   const rows = table?.rows || [];
+  const modernLayout = normalizeText(rows?.[0]?.cells?.[0]?.text) === "Bowler";
+
   return rows
     .slice(1)
     .map((row, index) => {
       const cells = row.cells || [];
+
+      if (modernLayout) {
+        if (cells.length < 8) {
+          return null;
+        }
+
+        const bowler = registerPlayer(registry, {
+          rawName: cells[0]?.text,
+          displayName: cells[0]?.text,
+        });
+        if (!bowler) {
+          return null;
+        }
+
+        const oversText = normalizeText(cells[1]?.text);
+        const extras = parseBowlingExtras(cells[7]?.text);
+
+        return {
+          playerSourceId: bowler.sourcePlayerId,
+          playerName: bowler.displayName,
+          teamName,
+          oversDecimal: toNumber(oversText),
+          legalBalls: oversToBalls(oversText),
+          maidens: toInteger(cells[2]?.text) || 0,
+          dotBalls: toInteger(cells[3]?.text) || 0,
+          runsConceded: toInteger(cells[4]?.text) || 0,
+          wickets: toInteger(cells[5]?.text) || 0,
+          economy: toNumber(cells[6]?.text),
+          wides: extras.wides,
+          noBalls: extras.noBalls,
+          bestFigures: `${toInteger(cells[5]?.text) || 0}/${toInteger(cells[4]?.text) || 0}`,
+          spellSequence: index + 1,
+        };
+      }
+
       if (cells.length < 8) {
         return null;
       }
@@ -241,7 +572,27 @@ function parseBowlingRows(table, registry, teamName) {
     .filter(Boolean);
 }
 
-function findInningsGroups(tables = []) {
+function extractModernHeadingGroups(rawScorecard) {
+  const headings = rawScorecard?.headings || [];
+  const groups = [];
+
+  for (let index = 0; index < headings.length; index += 1) {
+    const headingText = normalizeText(headings[index]);
+    if (!/\sinnings\b/i.test(headingText)) {
+      continue;
+    }
+
+    groups.push({
+      headingText,
+      totalHeading: normalizeText(headings[index + 1]),
+      battingTeamName: parseBattingTeamName(headingText),
+    });
+  }
+
+  return groups;
+}
+
+function findInningsGroups(tables = [], rawScorecard = {}) {
   const groups = [];
 
   for (let index = 0; index < tables.length; index += 1) {
@@ -255,20 +606,123 @@ function findInningsGroups(tables = []) {
       battingTable: table,
       didNotBatTable: tables[index + 1] || null,
       bowlingTable: tables[index + 2] || null,
+      fallOfWicketsTable: null,
+      headingText: headerText,
+      totalHeading: "",
+      battingTeamName: parseBattingTeamName(headerText),
     });
     index += 2;
+  }
+
+  if (groups.length) {
+    return groups;
+  }
+
+  const headingGroups = extractModernHeadingGroups(rawScorecard);
+  let tableIndex = 0;
+
+  for (const headingGroup of headingGroups) {
+    while (tableIndex < tables.length) {
+      const header = normalizeText(tables[tableIndex]?.rows?.[0]?.cells?.[0]?.text);
+      if (header === "Batter") {
+        break;
+      }
+      tableIndex += 1;
+    }
+
+    const battingTable = tables[tableIndex] || null;
+    const bowlingTable = tables[tableIndex + 1] || null;
+    const battingHeader = normalizeText(battingTable?.rows?.[0]?.cells?.[0]?.text);
+    const bowlingHeader = normalizeText(bowlingTable?.rows?.[0]?.cells?.[0]?.text);
+
+    if (battingHeader !== "Batter" || bowlingHeader !== "Bowler") {
+      continue;
+    }
+
+    let fallOfWicketsTable = null;
+    const wicketsHeader = normalizeText(tables[tableIndex + 2]?.rows?.[0]?.cells?.[0]?.text);
+    if (wicketsHeader === "Fall of Wickets") {
+      fallOfWicketsTable = tables[tableIndex + 2];
+      tableIndex += 3;
+    } else {
+      tableIndex += 2;
+    }
+
+    groups.push({
+      battingTable,
+      didNotBatTable: null,
+      bowlingTable,
+      fallOfWicketsTable,
+      headingText: headingGroup.headingText || "",
+      totalHeading: headingGroup.totalHeading || "",
+      battingTeamName: headingGroup.battingTeamName || "",
+    });
   }
 
   return groups;
 }
 
+function registerFallOfWicketPlayers(table, registry) {
+  for (const row of (table?.rows || []).slice(1)) {
+    const entryCell = row?.cells?.[0];
+    if (!entryCell) {
+      continue;
+    }
+
+    const links = extractPlayerLinks(entryCell.links);
+    if (links.length) {
+      links.forEach((link) => playerFromLink(registry, link, link.text));
+      continue;
+    }
+
+    const text = normalizeText(entryCell.text);
+    if (text) {
+      registerPlayer(registry, {
+        rawName: text,
+        displayName: text,
+      });
+    }
+  }
+}
+
+function buildPlayerRegistryPayload(registry) {
+  return uniqueRegistryEntries(registry).map((entry) => ({
+    sourcePlayerId: entry.sourcePlayerId,
+    displayName: entry.displayName,
+    canonicalName: entry.canonicalName,
+    profileUrl: entry.profileUrl,
+    isWicketkeeper: entry.isWicketkeeper,
+    isCaptain: entry.isCaptain,
+    aliases: [...entry.aliases],
+  }));
+}
+
 function parseScorecard(rawScorecard) {
   const registry = createRegistry();
-  const groups = findInningsGroups(rawScorecard?.tables || []);
+  if (rawScorecard?.scorecardUnavailable === true) {
+    return {
+      match: {
+        title: normalizeText(rawScorecard?.title),
+        headings: rawScorecard?.headings || [],
+      },
+      innings: [],
+      battingInnings: [],
+      bowlingSpells: [],
+      fieldingEvents: [],
+      playerRegistry: [],
+      notes: [
+        normalizeText(rawScorecard?.unavailableReason) || "Scorecard not available on CricClubs for this match.",
+      ],
+    };
+  }
 
+  const groups = findInningsGroups(rawScorecard?.tables || [], rawScorecard);
   if (!groups.length) {
     return {
-      match: null,
+      match: {
+        title: normalizeText(rawScorecard?.title),
+        headings: rawScorecard?.headings || [],
+      },
       innings: [],
       battingInnings: [],
       bowlingSpells: [],
@@ -278,8 +732,12 @@ function parseScorecard(rawScorecard) {
     };
   }
 
-  const battingTeamNames = groups.map((group) =>
-    parseBattingTeamName(group.battingTable?.rows?.[0]?.cells?.[0]?.text)
+  groups.forEach((group) => registerFallOfWicketPlayers(group.fallOfWicketsTable, registry));
+
+  const battingTeamNames = groups.map((group, index) =>
+    group.battingTeamName ||
+    parseBattingTeamName(group.headingText || group.battingTable?.rows?.[0]?.cells?.[0]?.text) ||
+    `Innings ${index + 1}`
   );
 
   const innings = [];
@@ -289,25 +747,34 @@ function parseScorecard(rawScorecard) {
   groups.forEach((group, index) => {
     const inningsNo = index + 1;
     const battingTable = group.battingTable;
-    const dnbTable = group.didNotBatTable;
-    const bowlingTable = group.bowlingTable;
-    const headerText = normalizeText(battingTable?.rows?.[0]?.cells?.[0]?.text);
+    const headerText = normalizeText(group.headingText || battingTable?.rows?.[0]?.cells?.[0]?.text);
     const battingTeamName = battingTeamNames[index];
     const bowlingTeamName = battingTeamNames.find((_, entryIndex) => entryIndex !== index) || "";
     const battingRows = (battingTable?.rows || []).slice(1);
-    const extrasRow = battingRows.find((row) =>
-      normalizeText(row?.cells?.[0]?.text).startsWith("Extras")
+    const extrasRow = battingRows.find((row) => normalizeText(row?.cells?.[0]?.text).startsWith("Extras"));
+    const totalRow = battingRows.find((row) => normalizeText(row?.cells?.[0]?.text).startsWith("Total"));
+    const inlineDidNotBatRows = battingRows.filter((row) =>
+      normalizeText(row?.cells?.[0]?.text).startsWith("Did not bat")
     );
-    const totalRow = battingRows.find((row) =>
-      normalizeText(row?.cells?.[0]?.text).startsWith("Total")
-    );
+    const didNotBatRows = inlineDidNotBatRows.length
+      ? inlineDidNotBatRows
+      : (group.didNotBatTable?.rows || []).filter((row) =>
+          normalizeText(row?.cells?.[0]?.text).startsWith("Did not bat")
+        );
     const actualBattingRows = battingRows.filter((row) => {
       const label = normalizeText(row?.cells?.[0]?.text);
-      return label && !label.startsWith("Extras") && !label.startsWith("Total");
+      return label && !/^extras/i.test(label) && !/^total/i.test(label) && !/^did not bat/i.test(label);
     });
+    const extrasText = normalizeText(extrasRow?.cells?.[0]?.text || extrasRow?.cells?.[1]?.text);
+    const extras = parseExtrasBreakdown(extrasText);
+    const totals = parseTotalRow(totalRow, group.totalHeading);
+    const extrasTotal =
+      toInteger(extrasText.match(/^Extras\s*(\d+)/i)?.[1]) ||
+      toInteger(extrasRow?.cells?.[2]?.text) ||
+      extras.extrasTotal ||
+      0;
 
-    const extras = parseExtrasBreakdown(extrasRow?.cells?.[0]?.text || extrasRow?.cells?.[1]?.text);
-    const totals = parseTotalRow(totalRow);
+    const parsedBowlingRows = parseBowlingRows(group.bowlingTable, registry, bowlingTeamName);
     const targetRuns = parseTargetRuns(headerText);
 
     innings.push({
@@ -318,7 +785,7 @@ function parseScorecard(rawScorecard) {
       wickets: totals.wickets,
       oversDecimal: totals.oversDecimal,
       legalBalls: totals.legalBalls,
-      extrasTotal: toInteger(extrasRow?.cells?.[2]?.text) || extras.extrasTotal || 0,
+      extrasTotal,
       byes: extras.byes,
       legByes: extras.legByes,
       wides: extras.wides,
@@ -337,22 +804,33 @@ function parseScorecard(rawScorecard) {
       }
     });
 
-    parseDidNotBatRows(dnbTable?.rows?.[0], registry, battingTeamName, actualBattingRows.length + 1).forEach(
-      (parsed) => {
+    let didNotBatPosition = actualBattingRows.length + 1;
+    didNotBatRows.forEach((row) => {
+      const parsedRows = parseDidNotBatRows(row, registry, battingTeamName, didNotBatPosition);
+      didNotBatPosition += parsedRows.length;
+      parsedRows.forEach((parsed) => {
         battingInnings.push({
           inningsNo,
           ...parsed,
         });
-      }
-    );
+      });
+    });
 
-    parseBowlingRows(bowlingTable, registry, bowlingTeamName).forEach((parsed) => {
+    parsedBowlingRows.forEach((parsed) => {
       bowlingSpells.push({
         inningsNo,
         ...parsed,
       });
     });
   });
+
+  if (
+    innings.length >= 2 &&
+    !Number.isFinite(innings[1]?.targetRuns) &&
+    Number.isFinite(innings[0]?.totalRuns)
+  ) {
+    innings[1].targetRuns = Number(innings[0].totalRuns) + 1;
+  }
 
   return {
     match: {
@@ -363,15 +841,7 @@ function parseScorecard(rawScorecard) {
     battingInnings,
     bowlingSpells,
     fieldingEvents: [],
-    playerRegistry: [...registry.values()].map((entry) => ({
-      sourcePlayerId: entry.sourcePlayerId,
-      displayName: entry.displayName,
-      canonicalName: entry.canonicalName,
-      profileUrl: entry.profileUrl,
-      isWicketkeeper: entry.isWicketkeeper,
-      isCaptain: entry.isCaptain,
-      aliases: [...entry.aliases],
-    })),
+    playerRegistry: buildPlayerRegistryPayload(registry),
     notes: [],
   };
 }

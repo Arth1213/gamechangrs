@@ -1,4 +1,5 @@
 const { withClient, withTransaction } = require("../lib/db");
+const { normalizePlayerProfile } = require("../lib/playerProfile");
 
 let ensurePlayerPublicProfileCacheColumnsPromise = null;
 
@@ -12,6 +13,164 @@ function normalizeText(value) {
 
 function normalizeLabel(value) {
   return normalizeText(value).toLowerCase();
+}
+
+function isSyntheticPlayerSourceId(value) {
+  return normalizeText(value).startsWith("synthetic:");
+}
+
+function isProfilePlaceholder(value) {
+  const normalized = normalizeLabel(value);
+  return (
+    !normalized ||
+    normalized === "-" ||
+    normalized === "--" ||
+    normalized === "na" ||
+    normalized === "n/a" ||
+    normalized === "none" ||
+    normalized === "unknown" ||
+    normalized === "not available" ||
+    normalized === "unavailable"
+  );
+}
+
+function sanitizeProfileValue(value) {
+  const normalized = normalizeText(value);
+  return isProfilePlaceholder(normalized) ? "" : normalized;
+}
+
+function buildMalformedProfileFieldSql(fieldName, labels) {
+  const variants = (Array.isArray(labels) ? labels : [])
+    .map((label) => normalizeLabel(label).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .filter(Boolean)
+    .join("|");
+
+  if (!variants) {
+    throw new Error(`Malformed profile SQL labels missing for ${fieldName}`);
+  }
+
+  return `${fieldName} ~* '^(?:${variants})[[:space:]]*:'`;
+}
+
+const MALFORMED_PRIMARY_ROLE_SQL = buildMalformedProfileFieldSql("p.primary_role", [
+  "batting style",
+  "bowling style",
+  "jersey number",
+  "current team",
+  "current year teams",
+  "teams",
+  "cc player id",
+]);
+
+const MALFORMED_BATTING_STYLE_SQL = buildMalformedProfileFieldSql("p.batting_style", [
+  "playing role",
+  "bowling style",
+  "jersey number",
+  "current team",
+  "current year teams",
+  "teams",
+  "cc player id",
+]);
+
+const MALFORMED_BOWLING_STYLE_SQL = buildMalformedProfileFieldSql("p.bowling_style", [
+  "playing role",
+  "batting style",
+  "jersey number",
+  "current team",
+  "current year teams",
+  "teams",
+  "cc player id",
+]);
+
+function roleLabelFromBucket(value) {
+  switch (normalizeLabel(value)) {
+    case "wicketkeeper_all_rounder":
+      return "Wicket Keeper All Rounder";
+    case "wicketkeeper_batter":
+      return "Wicket Keeper Batter";
+    case "wicketkeeper":
+      return "Wicket Keeper";
+    case "all_rounder":
+      return "All Rounder";
+    case "bowler":
+      return "Bowler";
+    case "batter":
+      return "Batter";
+    default:
+      return "";
+  }
+}
+
+function battingStyleLabelFromBucket(value) {
+  switch (normalizeLabel(value)) {
+    case "left hand batter":
+      return "Left Handed Batter";
+    case "right hand batter":
+      return "Right Handed Batter";
+    default:
+      return "";
+  }
+}
+
+function bowlingStyleLabelFromBucket(value) {
+  switch (normalizeLabel(value)) {
+    case "left arm pace":
+      return "Left Arm Pace";
+    case "right arm pace":
+      return "Right Arm Pace";
+    case "off spinner":
+      return "Right Arm Off Spin";
+    case "leg spinner":
+      return "Right Arm Leg Spin";
+    case "left arm spinner":
+      return "Left Arm Spin";
+    case "spinner":
+      return "Spin";
+    case "pace":
+      return "Pace";
+    default:
+      return "";
+  }
+}
+
+function deriveBackfillProfile(candidate = {}) {
+  const normalizedCandidate = normalizePlayerProfile(
+    {
+      primaryRole: sanitizeProfileValue(candidate.primary_role),
+      battingStyle: sanitizeProfileValue(candidate.batting_style),
+      bowlingStyle: sanitizeProfileValue(candidate.bowling_style),
+    },
+    {
+      isWicketkeeper: candidate.is_wicketkeeper === true,
+    }
+  );
+
+  const primaryRoleBucket =
+    sanitizeProfileValue(candidate.primary_role_bucket) || normalizedCandidate.primaryRoleBucket;
+  const battingHand = sanitizeProfileValue(candidate.batting_hand) || normalizedCandidate.battingHand;
+  const battingStyleBucket =
+    sanitizeProfileValue(candidate.batting_style_bucket) || normalizedCandidate.battingStyleBucket;
+  const bowlingArm = sanitizeProfileValue(candidate.bowling_arm) || normalizedCandidate.bowlingArm;
+  const bowlingStyleBucket =
+    sanitizeProfileValue(candidate.bowling_style_bucket) || normalizedCandidate.bowlingStyleBucket;
+  const bowlingStyleDetail =
+    sanitizeProfileValue(candidate.bowling_style_detail) || normalizedCandidate.bowlingStyleDetail;
+
+  return {
+    primaryRole:
+      sanitizeProfileValue(candidate.primary_role) || roleLabelFromBucket(primaryRoleBucket),
+    battingStyle:
+      sanitizeProfileValue(candidate.batting_style) || battingStyleLabelFromBucket(battingStyleBucket),
+    bowlingStyle:
+      sanitizeProfileValue(candidate.bowling_style) || bowlingStyleLabelFromBucket(bowlingStyleBucket),
+    primaryRoleBucket,
+    battingHand,
+    battingStyleBucket,
+    bowlingArm,
+    bowlingStyleBucket,
+    bowlingStyleDetail,
+    profileUrl: sanitizeProfileValue(candidate.profile_url),
+  };
 }
 
 function toInteger(value) {
@@ -708,6 +867,92 @@ async function upsertPlayerRow(client, context, player) {
   }
 
   if (sourcePlayerId) {
+    const existingBySourceId = await fetchOne(
+      client,
+      `
+        select id, source_player_id, display_name
+        from public.player
+        where source_system = $1
+          and league_name = $2
+          and source_player_id = $3
+        limit 1
+      `,
+      [context.sourceSystem, context.leagueName, sourcePlayerId]
+    );
+
+    if (existingBySourceId) {
+      await client.query(
+        `
+          update public.player
+          set
+            canonical_name = $2,
+            display_name = $3,
+            is_wicketkeeper = coalesce($4, is_wicketkeeper),
+            is_captain = coalesce($5, is_captain),
+            profile_url = coalesce($6, profile_url),
+            last_seen_at = now()
+          where id = $1
+        `,
+        [
+          existingBySourceId.id,
+          displayName,
+          displayName,
+          player?.isWicketkeeper === true ? true : null,
+          player?.isCaptain === true ? true : null,
+          normalizeText(player?.profileUrl) || null,
+        ]
+      );
+
+      return existingBySourceId;
+    }
+
+    const existingSyntheticByName = await fetchOne(
+      client,
+      `
+        select id, source_player_id, display_name
+        from public.player
+        where source_system = $1
+          and league_name = $2
+          and canonical_name = $3
+          and (
+            source_player_id is null
+            or source_player_id = ''
+            or source_player_id like 'synthetic:%'
+          )
+        order by id asc
+        limit 1
+      `,
+      [context.sourceSystem, context.leagueName, displayName]
+    );
+
+    if (existingSyntheticByName?.id && isSyntheticPlayerSourceId(existingSyntheticByName.source_player_id)) {
+      await client.query(
+        `
+          update public.player
+          set
+            source_player_id = $2,
+            canonical_name = $3,
+            display_name = $4,
+            is_wicketkeeper = coalesce($5, is_wicketkeeper),
+            is_captain = coalesce($6, is_captain),
+            profile_url = coalesce($7, profile_url),
+            last_seen_at = now()
+          where id = $1
+        `,
+        [
+          existingSyntheticByName.id,
+          sourcePlayerId,
+          displayName,
+          displayName,
+          player?.isWicketkeeper === true ? true : null,
+          player?.isCaptain === true ? true : null,
+          normalizeText(player?.profileUrl) || null,
+        ]
+      );
+
+      return existingSyntheticByName;
+    }
+
     return fetchOne(
       client,
       `
@@ -896,6 +1141,9 @@ async function listSeriesPlayersForProfileEnrichment(seriesConfigKey, options = 
             or p.primary_role_bucket is null
             or p.batting_style_bucket is null
             or p.bowling_style_bucket is null
+            or ${MALFORMED_PRIMARY_ROLE_SQL}
+            or ${MALFORMED_BATTING_STYLE_SQL}
+            or ${MALFORMED_BOWLING_STYLE_SQL}
           )
         order by p.id asc
         ${limit ? `limit ${limit}` : ""}
@@ -936,15 +1184,51 @@ async function persistPlayerProfileEnrichment(input = {}) {
       `
         update public.player
         set
-          primary_role = coalesce($2, primary_role),
-          batting_style = coalesce($3, batting_style),
-          bowling_style = coalesce($4, bowling_style),
-          primary_role_bucket = coalesce($5, primary_role_bucket),
-          batting_hand = coalesce($6, batting_hand),
-          batting_style_bucket = coalesce($7, batting_style_bucket),
-          bowling_arm = coalesce($8, bowling_arm),
-          bowling_style_bucket = coalesce($9, bowling_style_bucket),
-          bowling_style_detail = coalesce($10, bowling_style_detail),
+          primary_role = case
+            when $2::text is not null then $2::text
+            when ${MALFORMED_PRIMARY_ROLE_SQL.replaceAll("p.", "")} then null
+            else primary_role
+          end,
+          batting_style = case
+            when $3::text is not null then $3::text
+            when ${MALFORMED_BATTING_STYLE_SQL.replaceAll("p.", "")} then null
+            else batting_style
+          end,
+          bowling_style = case
+            when $4::text is not null then $4::text
+            when ${MALFORMED_BOWLING_STYLE_SQL.replaceAll("p.", "")} then null
+            else bowling_style
+          end,
+          primary_role_bucket = case
+            when $5::text is not null then $5::text
+            when ${MALFORMED_PRIMARY_ROLE_SQL.replaceAll("p.", "")} then null
+            else primary_role_bucket
+          end,
+          batting_hand = case
+            when $6::text is not null then $6::text
+            when ${MALFORMED_BATTING_STYLE_SQL.replaceAll("p.", "")} then null
+            else batting_hand
+          end,
+          batting_style_bucket = case
+            when $7::text is not null then $7::text
+            when ${MALFORMED_BATTING_STYLE_SQL.replaceAll("p.", "")} then null
+            else batting_style_bucket
+          end,
+          bowling_arm = case
+            when $8::text is not null then $8::text
+            when ${MALFORMED_BOWLING_STYLE_SQL.replaceAll("p.", "")} then null
+            else bowling_arm
+          end,
+          bowling_style_bucket = case
+            when $9::text is not null then $9::text
+            when ${MALFORMED_BOWLING_STYLE_SQL.replaceAll("p.", "")} then null
+            else bowling_style_bucket
+          end,
+          bowling_style_detail = case
+            when $10::text is not null then $10::text
+            when ${MALFORMED_BOWLING_STYLE_SQL.replaceAll("p.", "")} then null
+            else bowling_style_detail
+          end,
           public_profile_snapshot = coalesce($11::jsonb, public_profile_snapshot),
           public_profile_html = coalesce(nullif($12, ''), public_profile_html),
           public_profile_cached_at = case
@@ -973,6 +1257,159 @@ async function persistPlayerProfileEnrichment(input = {}) {
     );
 
     return result.rows[0] || null;
+  });
+}
+
+async function backfillSeriesPlayerProfilesFromKnownPlayers(seriesConfigKey) {
+  return withClient(async (client) => {
+    const context = await resolveSeriesWriteContext(client, seriesConfigKey);
+    const result = await client.query(
+      `
+        with series_players as (
+          select distinct bi.player_id
+          from public.match m
+          join public.batting_innings bi on bi.match_id = m.id
+          where m.series_id = $1
+            and bi.player_id is not null
+          union
+          select distinct bs.player_id
+          from public.match m
+          join public.bowling_spell bs on bs.match_id = m.id
+          where m.series_id = $1
+            and bs.player_id is not null
+          union
+          select distinct fe.fielder_player_id as player_id
+          from public.match m
+          join public.fielding_event fe on fe.match_id = m.id
+          where m.series_id = $1
+            and fe.fielder_player_id is not null
+          union
+          select distinct fe.player_out_id as player_id
+          from public.match m
+          join public.fielding_event fe on fe.match_id = m.id
+          where m.series_id = $1
+            and fe.player_out_id is not null
+        ),
+        unresolved as (
+          select
+            p.id,
+            p.display_name,
+            lower(p.display_name) as name_key
+          from public.player p
+          join series_players sp on sp.player_id = p.id
+          where coalesce(nullif(p.primary_role_bucket, ''), '') = ''
+            and coalesce(nullif(p.batting_style_bucket, ''), '') = ''
+            and coalesce(nullif(p.bowling_style_bucket, ''), '') = ''
+        ),
+        candidates as (
+          select
+            u.id as target_player_id,
+            u.display_name as target_name,
+            c.id as candidate_player_id,
+            c.display_name as candidate_name,
+            c.profile_url,
+            c.primary_role,
+            c.batting_style,
+            c.bowling_style,
+            c.primary_role_bucket,
+            c.batting_hand,
+            c.batting_style_bucket,
+            c.bowling_arm,
+            c.bowling_style_bucket,
+            c.bowling_style_detail,
+            c.is_wicketkeeper,
+            count(*) over (partition by u.id) as candidate_count
+          from unresolved u
+          join public.player c
+            on lower(c.display_name) = u.name_key
+           and c.id <> u.id
+          where coalesce(nullif(c.profile_url, ''), '') <> ''
+             or coalesce(nullif(c.primary_role_bucket, ''), '') <> ''
+             or coalesce(nullif(c.batting_style_bucket, ''), '') <> ''
+             or coalesce(nullif(c.bowling_style_bucket, ''), '') <> ''
+        )
+        select
+          target_player_id,
+          target_name,
+          candidate_player_id,
+          candidate_name,
+          profile_url,
+          primary_role,
+          batting_style,
+          bowling_style,
+          primary_role_bucket,
+          batting_hand,
+          batting_style_bucket,
+          bowling_arm,
+          bowling_style_bucket,
+          bowling_style_detail,
+          is_wicketkeeper
+        from candidates
+        where candidate_count = 1
+        order by target_name asc
+      `,
+      [context.seriesId]
+    );
+
+    const players = [];
+
+    for (const row of result.rows) {
+      const backfill = deriveBackfillProfile(row);
+      const update = await client.query(
+        `
+          update public.player
+          set
+            primary_role = coalesce(nullif($2, ''), primary_role),
+            batting_style = coalesce(nullif($3, ''), batting_style),
+            bowling_style = coalesce(nullif($4, ''), bowling_style),
+            primary_role_bucket = coalesce(nullif($5, ''), primary_role_bucket),
+            batting_hand = coalesce(nullif($6, ''), batting_hand),
+            batting_style_bucket = coalesce(nullif($7, ''), batting_style_bucket),
+            bowling_arm = coalesce(nullif($8, ''), bowling_arm),
+            bowling_style_bucket = coalesce(nullif($9, ''), bowling_style_bucket),
+            bowling_style_detail = coalesce(nullif($10, ''), bowling_style_detail),
+            profile_url = coalesce(nullif($11, ''), profile_url),
+            profile_last_enriched_at = now(),
+            last_seen_at = now()
+          where id = $1
+          returning id
+        `,
+        [
+          toInteger(row.target_player_id),
+          backfill.primaryRole || null,
+          backfill.battingStyle || null,
+          backfill.bowlingStyle || null,
+          backfill.primaryRoleBucket || null,
+          backfill.battingHand || null,
+          backfill.battingStyleBucket || null,
+          backfill.bowlingArm || null,
+          backfill.bowlingStyleBucket || null,
+          backfill.bowlingStyleDetail || null,
+          backfill.profileUrl || null,
+        ]
+      );
+
+      if (!update.rows[0]?.id) {
+        continue;
+      }
+
+      players.push({
+        targetPlayerId: toInteger(row.target_player_id),
+        targetName: normalizeText(row.target_name),
+        sourcePlayerId: toInteger(row.candidate_player_id),
+        sourceName: normalizeText(row.candidate_name),
+        primaryRoleBucket: backfill.primaryRoleBucket,
+        battingStyleBucket: backfill.battingStyleBucket,
+        bowlingStyleBucket: backfill.bowlingStyleBucket,
+      });
+    }
+
+    return {
+      seriesId: context.seriesId,
+      configKey: context.configKey,
+      backfilledCount: players.length,
+      players,
+    };
   });
 }
 
@@ -1764,6 +2201,7 @@ async function upsertMatchFacts(matchFacts, options = {}) {
 module.exports = {
   listSeriesPlayersForProfileEnrichment,
   persistPlayerProfileEnrichment,
+  backfillSeriesPlayerProfilesFromKnownPlayers,
   upsertDiscovery,
   upsertMatchFacts,
   upsertMatchInventory,

@@ -130,3 +130,23 @@ series:
       enable_json_exports: true
       enable_pdf_reports: false
       enable_dashboard_views: true
+  - slug: bay-area-youth-cricket-hub-2026-2026-houston-usac-hub-440
+    label: 2026 Houston USAC Hub
+    enabled: true
+    source_system: cricclubs
+    league_name: USACricketJunior
+    season_year: 2026
+    series_url: https://cricclubs.com/USACricketJunior/viewLeague.do?league=440&clubId=40319
+    source_hints:
+      namespace: USACricketJunior
+      club_id: "40319"
+      series_id: "440"
+    targeting:
+      age_group: U15
+      divisions: []
+    validation_players: []
+    outputs:
+      enable_raw_snapshots: true
+      enable_json_exports: true
+      enable_pdf_reports: false
+      enable_dashboard_views: true

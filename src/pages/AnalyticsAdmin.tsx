@@ -310,7 +310,50 @@ function getEntityAdminMembershipTone(membership: CricketAdminEntityMembership) 
 }
 
 function getPendingRequestReadiness(requestType?: string | null, requestedUserId?: string | null) {
-  return requestType === "self_request" && Boolean(requestedUserId) ? "ready" : "waiting";
+  return Boolean(requestedUserId) ? "ready" : "waiting";
+}
+
+function getPendingRequestStatusLabel(
+  requestType?: string | null,
+  requestStatus?: string | null,
+  requestedUserId?: string | null,
+) {
+  const normalizedRequestType = requestType?.trim().toLowerCase();
+  const normalizedRequestStatus = requestStatus?.trim().toLowerCase();
+
+  if (normalizedRequestStatus && normalizedRequestStatus !== "pending") {
+    return requestStatus || normalizedRequestStatus;
+  }
+
+  if (requestedUserId) {
+    return normalizedRequestType === "admin_invite" ? "Linked account" : "Ready for decision";
+  }
+
+  return normalizedRequestType === "admin_invite" ? "Waiting for first sign-in" : "Waiting for user link";
+}
+
+function getPendingRequestApprovalLabel(requestType?: string | null, requestedUserId?: string | null) {
+  const normalizedRequestType = requestType?.trim().toLowerCase();
+
+  if (requestedUserId) {
+    return normalizedRequestType === "admin_invite"
+      ? "Known Game-Changrs account. You can approve this now."
+      : "Ready for decision";
+  }
+
+  return normalizedRequestType === "admin_invite"
+    ? "Waiting for Game-Changrs auth link"
+    : "Waiting for user link";
+}
+
+function getPendingRequestUserIdLabel(requestType?: string | null, requestedUserId?: string | null) {
+  if (requestedUserId) {
+    return requestedUserId;
+  }
+
+  return requestType === "admin_invite"
+    ? "Will link after the first Game-Changrs sign-in"
+    : "No user ID linked yet";
 }
 
 function matchesPendingRequestFilter(
@@ -2818,30 +2861,31 @@ const AnalyticsAdmin = () => {
                           </div>
 
                           {filteredPendingEntityAdminRequests.length ? (
-                            <div className="space-y-3">
+                            <div className="grid gap-3 xl:grid-cols-2">
                               {filteredPendingEntityAdminRequests.map((request) => {
                                 const requestId = request.requestId || "";
                                 const decisionStatus = requestId
                                   ? entityAdminRequestDecisionStatusByRequest[requestId]
                                   : undefined;
-                                const canApprove = request.requestType === "self_request" && Boolean(request.requestedUserId);
-                                const requestStatusLabel =
-                                  request.requestType === "admin_invite" && !request.requestedUserId
-                                    ? "Waiting for first login"
-                                    : request.requestStatus || "pending";
+                                const canApprove = Boolean(request.requestedUserId);
+                                const requestStatusLabel = getPendingRequestStatusLabel(
+                                  request.requestType,
+                                  request.requestStatus,
+                                  request.requestedUserId,
+                                );
 
                                 return (
                                   <div
                                     key={request.requestId || `${request.requestedEmail}-${request.createdAt}`}
-                                    className="rounded-2xl border border-border/70 bg-background/60 p-5"
+                                    className="h-full rounded-2xl border border-border/70 bg-background/60 p-5"
                                   >
-                                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                    <div className="flex h-full flex-col gap-4">
                                       <div className="space-y-4">
                                         <div className="flex flex-wrap gap-2">
                                           <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
                                             {request.requestType === "admin_invite" ? "Email pre-approval" : "User request"}
                                           </Badge>
-                                          <Badge className={getStatusBadgeClass(request.requestStatus)}>
+                                          <Badge className={getStatusBadgeClass(canApprove ? "ready" : request.requestStatus)}>
                                             {requestStatusLabel}
                                           </Badge>
                                         </div>
@@ -2850,8 +2894,14 @@ const AnalyticsAdmin = () => {
                                           <p className="break-all text-base font-semibold text-foreground">
                                             {request.requestedEmail || "-"}
                                           </p>
-                                          <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
-                                            {request.requestedUserId || "No user ID linked yet"}
+                                          <p
+                                            className={
+                                              request.requestedUserId
+                                                ? "break-all font-mono text-xs leading-6 text-muted-foreground"
+                                                : "text-xs leading-6 text-muted-foreground"
+                                            }
+                                          >
+                                            {getPendingRequestUserIdLabel(request.requestType, request.requestedUserId)}
                                           </p>
                                         </div>
 
@@ -2862,7 +2912,7 @@ const AnalyticsAdmin = () => {
                                         ) : null}
                                       </div>
 
-                                      <div className="flex flex-wrap gap-2 lg:justify-end">
+                                      <div className="mt-auto flex flex-wrap gap-2">
                                         <Button
                                           type="button"
                                           variant="outline"
@@ -3290,24 +3340,25 @@ const AnalyticsAdmin = () => {
 
                           {viewerAccessStatus === "success" ? (
                             filteredPendingViewerAccessRequests.length ? (
-                              <div className="space-y-3">
+                              <div className="grid gap-3 xl:grid-cols-2">
                                 {filteredPendingViewerAccessRequests.map((request) => {
                                   const requestId = request.requestId || "";
                                   const decisionStatus = requestId
                                     ? accessRequestDecisionStatusByRequest[requestId]
                                     : undefined;
-                                  const canApprove = request.requestType === "self_request" && Boolean(request.requestedUserId);
-                                  const requestStatusLabel =
-                                    request.requestType === "admin_invite" && !request.requestedUserId
-                                      ? "Waiting for first login"
-                                      : request.requestStatus || "pending";
+                                  const canApprove = Boolean(request.requestedUserId);
+                                  const requestStatusLabel = getPendingRequestStatusLabel(
+                                    request.requestType,
+                                    request.requestStatus,
+                                    request.requestedUserId,
+                                  );
 
                                   return (
                                     <div
                                       key={request.requestId || `${request.requestedEmail}-${request.createdAt}`}
-                                      className="rounded-2xl border border-border/70 bg-background/60 p-5"
+                                      className="h-full rounded-2xl border border-border/70 bg-background/60 p-5"
                                     >
-                                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                      <div className="flex h-full flex-col gap-4">
                                         <div className="space-y-4">
                                           <div className="flex flex-wrap gap-2">
                                             <Badge className={getStatusBadgeClass(request.requestType)}>
@@ -3316,7 +3367,7 @@ const AnalyticsAdmin = () => {
                                             <Badge className={getViewerAccessRoleBadgeClass(request.requestedAccessRole)}>
                                               {request.requestedAccessRole || "viewer"}
                                             </Badge>
-                                            <Badge className={getStatusBadgeClass(request.requestStatus)}>
+                                            <Badge className={getStatusBadgeClass(canApprove ? "ready" : request.requestStatus)}>
                                               {requestStatusLabel}
                                             </Badge>
                                           </div>
@@ -3325,8 +3376,14 @@ const AnalyticsAdmin = () => {
                                             <p className="break-all text-base font-semibold text-foreground">
                                               {request.requestedEmail || "-"}
                                             </p>
-                                            <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
-                                              {request.requestedUserId || "No user ID linked yet"}
+                                            <p
+                                              className={
+                                                request.requestedUserId
+                                                  ? "break-all font-mono text-xs leading-6 text-muted-foreground"
+                                                  : "text-xs leading-6 text-muted-foreground"
+                                              }
+                                            >
+                                              {getPendingRequestUserIdLabel(request.requestType, request.requestedUserId)}
                                             </p>
                                           </div>
 
@@ -3337,7 +3394,7 @@ const AnalyticsAdmin = () => {
                                           ) : null}
                                         </div>
 
-                                        <div className="flex flex-wrap gap-2 lg:justify-end">
+                                        <div className="mt-auto flex flex-wrap gap-2">
                                           <Button
                                             type="button"
                                             variant="outline"
@@ -3513,100 +3570,71 @@ const AnalyticsAdmin = () => {
       <section className="bg-gradient-hero pb-20 pt-32">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-6xl space-y-8">
-            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-end">
               <div className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  <Badge
-                    variant="outline"
-                    className="border-border/80 bg-card/70 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-foreground"
-                  >
-                    Analytics
-                  </Badge>
-                  <Badge
-                    variant="outline"
-                    className="border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-cyan-200"
-                  >
-                    Series Admin Console
-                  </Badge>
-                  <Badge
-                    variant="outline"
-                    className="border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-emerald-300"
-                  >
-                    Setup + Access Controls
-                  </Badge>
-                </div>
-                <div className="space-y-2">
-                  <h1 className="font-display text-4xl font-bold leading-[0.96] text-foreground md:text-5xl">
-                    Series administration
-                  </h1>
-                  <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-                    Run one series in order: required setup first, series admin team next, series users after that,
-                    then optional tuning inside the existing hosted series boundary.
+                <h1 className="font-display text-4xl font-bold leading-[0.96] text-foreground md:text-5xl">
+                  Series administration
+                </h1>
+                <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
+                  Keep setup, admin access, viewer access, and optional tuning in one place. The page below is trimmed
+                  to the actions a series admin needs most often.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-border/80 bg-card/85 p-5 shadow-xl">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Current workspace</p>
+                <p className="mt-3 text-lg font-semibold text-foreground">{selectedSeriesDisplayName}</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  {selectedSeriesContext || "Series context will appear here after selection."}
+                </p>
+                <div className="mt-4 space-y-1 text-sm leading-6">
+                  <p className="text-muted-foreground">
+                    Role:{" "}
+                    <span className="font-medium text-foreground">
+                      {catalog?.actor?.isPlatformAdmin ? "Platform admin" : "Series admin"}
+                    </span>
+                  </p>
+                  <p className="text-muted-foreground">
+                    Plan: <span className="font-medium text-foreground">{planSummaryLabel}</span>
                   </p>
                 </div>
               </div>
+            </div>
 
-              <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
-                {isPlatformAdminActor ? (
-                  <Button asChild variant="outline" className="w-full md:w-auto">
-                    <Link to={getAnalyticsPlatformAdminRoute()}>
-                      <ShieldCheck className="mr-2 h-4 w-4" />
-                      Platform Console
-                    </Link>
-                  </Button>
-                ) : null}
+            <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
+              {isPlatformAdminActor ? (
                 <Button asChild variant="outline" className="w-full md:w-auto">
-                  <Link to="/analytics">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Analytics
+                  <Link to={getAnalyticsPlatformAdminRoute()}>
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    Platform Console
                   </Link>
                 </Button>
-              </div>
+              ) : null}
+              <Button asChild variant="outline" className="w-full md:w-auto">
+                <Link to="/analytics">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Analytics
+                </Link>
+              </Button>
             </div>
 
             <div id="access-overview">
               <Card className="border-border/80 bg-card/85 shadow-xl">
-                <CardContent className="space-y-5 p-6">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-primary">Control overview</p>
-                      <div className="font-display text-2xl text-foreground">
-                        {catalog?.actor?.email || user?.email || "Signed-in user"}
-                      </div>
-                      {catalog?.actor?.userId ? (
-                        <p className="text-xs leading-6 text-muted-foreground">
-                          User ID: <span className="font-mono text-foreground">{catalog.actor.userId}</span>
-                        </p>
-                      ) : null}
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <Badge className={getAccessTone(catalog?.actor?.accessLabel)}>
-                        {catalog?.actor?.isPlatformAdmin ? "Platform admin in series console" : "Series admin"}
-                      </Badge>
-                      <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
-                        {selectedSeriesDisplayName}
-                      </Badge>
-                      <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
-                        {planStatusLabel}
-                      </Badge>
-                    </div>
-                  </div>
-
+                <CardContent className="grid gap-4 p-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                    <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
                       <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Entities</p>
                       <div className="mt-3 font-display text-4xl text-foreground">
                         {formatNumber(catalog?.entityCount ?? 0)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                    <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
                       <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Managed series</p>
                       <div className="mt-3 font-display text-4xl text-foreground">
                         {formatNumber(catalog?.seriesCount ?? 0)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                    <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
                       <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Selected series</p>
                       <div className="mt-3 text-base font-semibold leading-6 text-foreground">
                         {selectedSeriesDisplayName}
@@ -3615,60 +3643,52 @@ const AnalyticsAdmin = () => {
                         <p className="mt-1 text-xs leading-5 text-muted-foreground">{selectedSeriesContext}</p>
                       ) : null}
                     </div>
-                    <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                    <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
                       <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Plan</p>
                       <div className="mt-3 text-base font-semibold leading-6 text-foreground">{planSummaryLabel}</div>
                       <p className="mt-1 text-xs leading-5 text-muted-foreground">{planStatusLabel}</p>
                     </div>
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    {[
-                      {
-                        title: "1. Required setup",
-                        body: "Source URL, series identity, and capture behavior come first.",
-                      },
-                      {
-                        title: "2. Series admins",
-                        body: "Grant operational admin access for the entity that owns this series.",
-                      },
-                      {
-                        title: "3. Series users",
-                        body: "Approve viewer or analyst access after the admin team is set.",
-                      },
-                      {
-                        title: "4. Optional tuning",
-                        body: "Report profiles and division mappings stay lower on the page.",
-                      },
-                    ].map((item) => (
-                      <div key={item.title} className="rounded-2xl border border-border/70 bg-background/55 p-4">
-                        <p className="font-medium text-foreground">{item.title}</p>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.body}</p>
-                      </div>
-                    ))}
+                  <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Signed in</p>
+                    <p className="mt-3 break-all text-sm font-semibold text-foreground">
+                      {catalog?.actor?.email || user?.email || "Signed-in user"}
+                    </p>
+                    {catalog?.actor?.userId ? (
+                      <p className="mt-2 break-all font-mono text-xs leading-6 text-muted-foreground">
+                        {catalog.actor.userId}
+                      </p>
+                    ) : null}
+                    <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                      {catalog?.actor?.isPlatformAdmin
+                        ? "Platform admins can move between entities and series from this console."
+                        : "Series admins can manage setup and access for the selected entity."}
+                    </p>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {[
-                { href: "#access-overview", label: "Overview" },
-                { href: "#series-entry", label: "Mandatory setup" },
-                { href: "#series-admins", label: "Series admins" },
-                { href: "#series-users", label: "Series users" },
-                { href: "#plan-controls", label: "Plan + gates" },
-                { href: "#series-switcher", label: "Series switcher" },
-                { href: "#series-setup", label: "Optional tuning" },
-              ].map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className="inline-flex items-center rounded-full border border-border/80 bg-card/70 px-4 py-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
-                >
-                  {item.label}
-                </a>
-              ))}
+            <div className="rounded-2xl border border-border/80 bg-card/75 p-3">
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm leading-6">
+                {[
+                  { href: "#series-entry", label: "Mandatory setup" },
+                  { href: "#series-admins", label: "Series admins" },
+                  { href: "#series-users", label: "Series users" },
+                  { href: "#plan-controls", label: "Plan + gates" },
+                  { href: "#series-switcher", label: "Series switcher" },
+                  { href: "#series-setup", label: "Optional tuning" },
+                ].map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className="inline-flex items-center text-sm font-medium text-muted-foreground transition hover:text-foreground"
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </div>
             </div>
 
             {catalogStatus === "loading" ? (
@@ -4413,7 +4433,7 @@ const AnalyticsAdmin = () => {
                 {selectedSeries ? (
                   <Card className="order-2 border-border/80 bg-card/85 shadow-xl" id="series-admins">
                     <CardContent className="space-y-6 p-6">
-                      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <ShieldCheck className="h-4 w-4 text-cyan-200" />
@@ -4421,36 +4441,51 @@ const AnalyticsAdmin = () => {
                               Series admins
                             </p>
                           </div>
-                          <div>
-                            <h2 className="font-display text-2xl text-foreground">Series admin team</h2>
-                            <p className="text-sm leading-7 text-muted-foreground">
-                              Grant or remove series-admin access for the entity that owns this series. Admin access
-                              applies across every series under this entity.
+                          <h2 className="font-display text-2xl text-foreground">Series admin team</h2>
+                          <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
+                            Admin access applies across every series under{" "}
+                            <span className="font-medium text-foreground">
+                              {selectedEntity?.entityName || "the selected entity"}
+                            </span>
+                            . Use the email path before first sign-in, or grant directly when the person already has a
+                            Game-Changrs account.
+                          </p>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                          <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Active admins</p>
+                            <p className="mt-2 text-xl font-semibold text-foreground">
+                              {formatNumber(selectedEntity?.activeAdminUsers ?? (selectedEntity?.admins ?? []).length)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Admin seats</p>
+                            <p className="mt-2 text-xl font-semibold text-foreground">
+                              {selectedEntity?.maxAdminUsers !== null && selectedEntity?.maxAdminUsers !== undefined
+                                ? formatNumber(selectedEntity?.maxAdminUsers)
+                                : "Open"}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                              Pending requests
+                            </p>
+                            <p className="mt-2 text-xl font-semibold text-foreground">
+                              {formatNumber(pendingEntityAdminRequests.length)}
                             </p>
                           </div>
                         </div>
-
-                        <div className="rounded-xl border border-border/70 bg-background/60 p-3">
-                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Owning entity</p>
-                          <p className="mt-2 text-sm font-semibold text-foreground">
-                            {selectedEntity?.entityName || "No entity selected"}
-                          </p>
-                        </div>
                       </div>
 
-                      <div className="grid gap-4">
-                        <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
-                          <div className="space-y-3">
-                            <Badge variant="outline" className="w-fit border-border/80 bg-card/70 text-foreground">
-                              Step 1
-                            </Badge>
-                            <div>
-                              <p className="font-display text-xl text-foreground">Pre-approve by email</p>
-                              <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                                Best when the future series admin has not signed in yet. The request will stay pending
-                                until that email signs in and requests admin access.
-                              </p>
-                            </div>
+                      <div className="grid gap-4 xl:grid-cols-2">
+                        <div className="space-y-4 rounded-2xl border border-border/70 bg-background/55 p-5">
+                          <div className="space-y-1">
+                            <p className="text-lg font-semibold text-foreground">Pre-approve by email</p>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                              Best when the future admin has not signed in yet. The request stays pending until that
+                              email links to a Game-Changrs account.
+                            </p>
                           </div>
 
                           <div className="space-y-2">
@@ -4496,22 +4531,17 @@ const AnalyticsAdmin = () => {
                         </div>
 
                         <form
-                          className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5"
+                          className="space-y-4 rounded-2xl border border-border/70 bg-background/55 p-5"
                           onSubmit={(event) =>
                             selectedEntity?.entityId ? void handleAssignEntityAdmin(event, selectedEntity.entityId) : undefined
                           }
                         >
-                          <div className="space-y-3">
-                            <Badge variant="outline" className="w-fit border-border/80 bg-card/70 text-foreground">
-                              Step 2
-                            </Badge>
-                            <div>
-                              <p className="font-display text-xl text-foreground">Grant immediately by user ID</p>
-                              <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                                Use when the person already has a Game-Changrs account. This grants series-admin access
-                                across every series owned by {selectedEntity?.entityName || "the selected entity"}.
-                              </p>
-                            </div>
+                          <div className="space-y-1">
+                            <p className="text-lg font-semibold text-foreground">Grant immediately by user ID</p>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                              Use this when the person already has a Game-Changrs account. The admin seat covers every
+                              series under {selectedEntity?.entityName || "the selected entity"}.
+                            </p>
                           </div>
 
                           <div className="space-y-2">
@@ -4566,220 +4596,231 @@ const AnalyticsAdmin = () => {
                             </p>
                           ) : null}
                         </form>
+                      </div>
 
-                        <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
-                          <div className="space-y-3">
-                            <Badge variant="outline" className="w-fit border-border/80 bg-card/70 text-foreground">
-                              Step 3
-                            </Badge>
-                            <div>
-                              <p className="font-display text-xl text-foreground">Review pending requests</p>
-                              <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                                Approve self-service admin requests or manage email invites that are still waiting for
-                                first login.
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-                            <div className="space-y-2">
-                              <Label htmlFor="entity-admin-request-search">Search requests</Label>
-                              <Input
-                                id="entity-admin-request-search"
-                                value={entityAdminRequestQuery}
-                                onChange={(event) => setEntityAdminRequestQuery(event.target.value)}
-                                placeholder="Search by email, user ID, or note"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Show</Label>
-                              <div className="flex flex-wrap gap-2">
-                                {[
-                                  { value: "all", label: `All (${formatNumber(pendingEntityAdminRequests.length)})` },
-                                  { value: "ready", label: `Ready (${formatNumber(readyEntityAdminRequestCount)})` },
-                                  { value: "waiting", label: `Waiting (${formatNumber(waitingEntityAdminRequestCount)})` },
-                                ].map((item) => (
-                                  <Button
-                                    key={item.value}
-                                    type="button"
-                                    size="sm"
-                                    variant={entityAdminRequestFilter === item.value ? "default" : "outline"}
-                                    onClick={() => setEntityAdminRequestFilter(item.value as PendingRequestFilter)}
-                                  >
-                                    {item.label}
-                                  </Button>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-
-                          {filteredPendingEntityAdminRequests.length ? (
-                            <div className="space-y-3">
-                              {filteredPendingEntityAdminRequests.map((request) => {
-                                const requestId = request.requestId || "";
-                                const decisionStatus = requestId
-                                  ? entityAdminRequestDecisionStatusByRequest[requestId]
-                                  : undefined;
-                                const canApprove = request.requestType === "self_request" && Boolean(request.requestedUserId);
-                                const requestStatusLabel =
-                                  request.requestType === "admin_invite" && !request.requestedUserId
-                                    ? "Waiting for first login"
-                                    : request.requestStatus || "pending";
-
-                                return (
-                                  <div
-                                    key={request.requestId || `${request.requestedEmail}-${request.createdAt}`}
-                                    className="rounded-2xl border border-border/70 bg-background/60 p-5"
-                                  >
-                                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                      <div className="space-y-4">
-                                        <div className="flex flex-wrap gap-2">
-                                          <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
-                                            {request.requestType === "admin_invite" ? "Email pre-approval" : "User request"}
-                                          </Badge>
-                                          <Badge className={getStatusBadgeClass(request.requestStatus)}>
-                                            {requestStatusLabel}
-                                          </Badge>
-                                        </div>
-
-                                        <div className="space-y-1">
-                                          <p className="break-all text-base font-semibold text-foreground">
-                                            {request.requestedEmail || "-"}
-                                          </p>
-                                          <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
-                                            {request.requestedUserId || "No user ID linked yet"}
-                                          </p>
-                                        </div>
-
-                                        <div className="grid gap-3 sm:grid-cols-2">
-                                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
-                                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                                              Requested
-                                            </p>
-                                            <p className="mt-2 text-sm leading-6 text-foreground">
-                                              {formatDateTime(request.createdAt)}
-                                            </p>
-                                          </div>
-                                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
-                                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                                              Approval state
-                                            </p>
-                                            <p className="mt-2 text-sm leading-6 text-foreground">
-                                              {canApprove ? "Ready for decision" : "Waiting for user link"}
-                                            </p>
-                                          </div>
-                                        </div>
-
-                                        {request.requestNote ? (
-                                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
-                                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                                              Request note
-                                            </p>
-                                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                                              {request.requestNote}
-                                            </p>
-                                          </div>
-                                        ) : null}
-                                      </div>
-
-                                      <div className="flex flex-wrap gap-2 lg:justify-end">
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          disabled={!canApprove || decisionStatus === "saving" || !requestId}
-                                          onClick={() => void handleEntityAdminRequestDecision(request, "approve")}
-                                        >
-                                          {decisionStatus === "saving" && canApprove ? "Approving..." : "Approve"}
-                                        </Button>
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          disabled={decisionStatus === "saving" || !requestId}
-                                          onClick={() => void handleEntityAdminRequestDecision(request, "decline")}
-                                        >
-                                          Decline
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="rounded-2xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground">
-                              No pending series-admin requests match the current filter.
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                      <div className="space-y-4 rounded-2xl border border-border/70 bg-background/55 p-5">
+                        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                           <div className="space-y-1">
-                            <p className="text-sm font-semibold text-foreground">Current series admins</p>
-                            <p className="text-xs leading-6 text-muted-foreground">
-                              Owner transfer stays locked. Additional admins inherit access across this entity.
+                            <p className="text-lg font-semibold text-foreground">Pending requests</p>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                              Review self-service admin requests and email pre-approvals that are still waiting for
+                              first sign-in.
                             </p>
                           </div>
+                          <p className="text-sm leading-6 text-muted-foreground">
+                            {formatNumber(filteredPendingEntityAdminRequests.length)} visible
+                          </p>
+                        </div>
 
-                          {(selectedEntity?.admins ?? []).length ? (
-                            <div className="space-y-3">
-                              {(selectedEntity?.admins ?? []).map((membership) => {
-                                const removeKey = `remove:${selectedEntity?.entityId}:${membership.userId}`;
-                                const isRemoving = activeEntityAdminMutationKey === removeKey;
+                        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                          <div className="space-y-2">
+                            <Label htmlFor="entity-admin-request-search">Search requests</Label>
+                            <Input
+                              id="entity-admin-request-search"
+                              value={entityAdminRequestQuery}
+                              onChange={(event) => setEntityAdminRequestQuery(event.target.value)}
+                              placeholder="Search by email, user ID, or note"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Show</Label>
+                            <div className="flex flex-wrap gap-2">
+                              {[
+                                { value: "all", label: `All (${formatNumber(pendingEntityAdminRequests.length)})` },
+                                { value: "ready", label: `Ready (${formatNumber(readyEntityAdminRequestCount)})` },
+                                { value: "waiting", label: `Waiting (${formatNumber(waitingEntityAdminRequestCount)})` },
+                              ].map((item) => (
+                                <Button
+                                  key={item.value}
+                                  type="button"
+                                  size="sm"
+                                  variant={entityAdminRequestFilter === item.value ? "default" : "outline"}
+                                  onClick={() => setEntityAdminRequestFilter(item.value as PendingRequestFilter)}
+                                >
+                                  {item.label}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
 
-                                return (
-                                  <div
-                                    key={`${membership.userId}-${membership.role}`}
-                                    className="flex flex-col gap-3 rounded-xl border border-border/70 bg-background/55 p-4 md:flex-row md:items-center md:justify-between"
-                                  >
-                                    <div className="space-y-1">
-                                      <div className="flex flex-wrap items-center gap-2">
-                                        <p className="font-medium text-foreground">
-                                          {membership.isOwner ? "Entity owner" : "Series admin"}
-                                        </p>
-                                        <Badge className={getEntityAdminMembershipTone(membership)}>
-                                          {membership.isOwner ? "owner" : membership.role || "admin"}
-                                        </Badge>
-                                      </div>
-                                      <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
-                                        {membership.userId || "No user ID"}
+                        {filteredPendingEntityAdminRequests.length ? (
+                          <div className="grid gap-3 xl:grid-cols-2">
+                            {filteredPendingEntityAdminRequests.map((request) => {
+                              const requestId = request.requestId || "";
+                              const decisionStatus = requestId
+                                ? entityAdminRequestDecisionStatusByRequest[requestId]
+                                : undefined;
+                              const canApprove = Boolean(request.requestedUserId);
+                              const requestStatusLabel = getPendingRequestStatusLabel(
+                                request.requestType,
+                                request.requestStatus,
+                                request.requestedUserId,
+                              );
+
+                              return (
+                                <div
+                                  key={request.requestId || `${request.requestedEmail}-${request.createdAt}`}
+                                  className="h-full rounded-2xl border border-border/70 bg-background/45 p-5"
+                                >
+                                  <div className="flex h-full flex-col gap-4">
+                                    <div className="space-y-2">
+                                      <p className="break-all text-base font-semibold text-foreground">
+                                        {request.requestedEmail || "-"}
+                                      </p>
+                                      <p className="text-sm leading-6 text-muted-foreground">
+                                        {request.requestType === "admin_invite" ? "Email pre-approval" : "User request"}
+                                        <span className={canApprove ? "text-emerald-300" : "text-amber-300"}>
+                                          {` · ${requestStatusLabel}`}
+                                        </span>
+                                      </p>
+                                      <p
+                                        className={
+                                          request.requestedUserId
+                                            ? "break-all font-mono text-xs leading-6 text-muted-foreground"
+                                            : "text-xs leading-6 text-muted-foreground"
+                                        }
+                                      >
+                                        {getPendingRequestUserIdLabel(request.requestType, request.requestedUserId)}
                                       </p>
                                     </div>
 
-                                    {membership.canRemove ? (
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                      <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                          Requested
+                                        </p>
+                                        <p className="mt-2 text-sm leading-6 text-foreground">
+                                          {formatDateTime(request.createdAt)}
+                                        </p>
+                                      </div>
+                                      <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                          Approval state
+                                        </p>
+                                        <p className="mt-2 text-sm leading-6 text-foreground">
+                                          {getPendingRequestApprovalLabel(request.requestType, request.requestedUserId)}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {request.requestNote ? (
+                                      <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                          Request note
+                                        </p>
+                                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                          {request.requestNote}
+                                        </p>
+                                      </div>
+                                    ) : null}
+
+                                    <div className="mt-auto flex flex-wrap gap-2">
                                       <Button
                                         type="button"
                                         variant="outline"
                                         size="sm"
-                                        disabled={Boolean(activeEntityAdminMutationKey) || !selectedEntity?.entityId}
-                                        onClick={() =>
-                                          selectedEntity?.entityId && membership.userId
-                                            ? void handleRemoveEntityAdmin(selectedEntity.entityId, membership.userId)
-                                            : undefined
-                                        }
-                                        className="border-destructive/25 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                        disabled={!canApprove || decisionStatus === "saving" || !requestId}
+                                        onClick={() => void handleEntityAdminRequestDecision(request, "approve")}
                                       >
-                                        {isRemoving ? (
-                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        ) : (
-                                          <Trash2 className="mr-2 h-4 w-4" />
-                                        )}
-                                        Remove
+                                        {decisionStatus === "saving" && canApprove ? "Approving..." : "Approve"}
                                       </Button>
-                                    ) : (
-                                      <div className="text-xs leading-6 text-muted-foreground">Locked</div>
-                                    )}
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={decisionStatus === "saving" || !requestId}
+                                        onClick={() => void handleEntityAdminRequestDecision(request, "decline")}
+                                      >
+                                        Decline
+                                      </Button>
+                                    </div>
                                   </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="rounded-xl border border-border/70 bg-background/55 p-4 text-sm leading-7 text-muted-foreground">
-                              No entity-admin assignments are active yet for this series owner.
-                            </div>
-                          )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="rounded-2xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground">
+                            No pending series-admin requests match the current filter.
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-4 rounded-2xl border border-border/70 bg-background/55 p-5">
+                        <div className="space-y-1">
+                          <p className="text-lg font-semibold text-foreground">Current series admins</p>
+                          <p className="text-sm leading-6 text-muted-foreground">
+                            Owner transfer stays locked. Additional admins inherit access across this entity.
+                          </p>
                         </div>
+
+                        {(selectedEntity?.admins ?? []).length ? (
+                          <div className="space-y-3">
+                            {(selectedEntity?.admins ?? []).map((membership) => {
+                              const removeKey = `remove:${selectedEntity?.entityId}:${membership.userId}`;
+                              const isRemoving = activeEntityAdminMutationKey === removeKey;
+
+                              return (
+                                <div
+                                  key={`${membership.userId}-${membership.role}`}
+                                  className="grid gap-4 rounded-xl border border-border/70 bg-background/45 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+                                >
+                                  <div className="space-y-2">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                      <p className="font-medium text-foreground">
+                                        {membership.isOwner ? "Entity owner" : "Series admin"}
+                                      </p>
+                                      <p
+                                        className={`text-xs font-medium uppercase tracking-[0.14em] ${
+                                          membership.isOwner ? "text-emerald-300" : "text-amber-300"
+                                        }`}
+                                      >
+                                        {membership.isOwner ? "Owner" : membership.role || "Admin"}
+                                      </p>
+                                    </div>
+                                    <p className="text-sm leading-6 text-muted-foreground">
+                                      {membership.isOwner
+                                        ? "Locked owner seat for this entity."
+                                        : "Operational admin seat across every series under this entity."}
+                                    </p>
+                                    <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
+                                      {membership.userId || "No user ID"}
+                                    </p>
+                                  </div>
+
+                                  {membership.canRemove ? (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={Boolean(activeEntityAdminMutationKey) || !selectedEntity?.entityId}
+                                      onClick={() =>
+                                        selectedEntity?.entityId && membership.userId
+                                          ? void handleRemoveEntityAdmin(selectedEntity.entityId, membership.userId)
+                                          : undefined
+                                      }
+                                      className="border-destructive/25 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                    >
+                                      {isRemoving ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                      )}
+                                      Remove
+                                    </Button>
+                                  ) : (
+                                    <div className="text-xs leading-6 text-muted-foreground">Locked</div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-border/70 bg-background/55 p-4 text-sm leading-7 text-muted-foreground">
+                            No entity-admin assignments are active yet for this series owner.
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -4801,36 +4842,34 @@ const AnalyticsAdmin = () => {
                             <p className="text-sm leading-7 text-muted-foreground">
                               Current plan gates viewer grants, tuning controls, and future paid-series limits for this entity.
                             </p>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                              Status:{" "}
+                              <span className="font-medium text-foreground">
+                                {subscriptionSummary?.subscription?.status || "unconfigured"}
+                              </span>
+                              {" · "}
+                              Provider:{" "}
+                              <span className="font-medium text-foreground">
+                                {subscriptionSummary?.subscription?.billingProvider || "internal"}
+                              </span>
+                              {" · "}
+                              Mode:{" "}
+                              <span className="font-medium text-foreground">
+                                {subscriptionSummary?.subscription?.enforcementMode || "hard"} enforcement
+                              </span>
+                            </p>
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
-                          <Badge className={getStatusBadgeClass(subscriptionSummary?.subscription?.status)}>
-                            {subscriptionSummary?.subscription?.status || "unconfigured"}
-                          </Badge>
-                          <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
-                            {subscriptionSummary?.subscription?.billingProvider || "internal"}
-                          </Badge>
-                          <Badge
-                            variant="outline"
-                            className={
-                              isHardSubscriptionEnforcement
-                                ? "border-amber-500/25 bg-amber-500/10 text-amber-300"
-                                : "border-cyan-400/25 bg-cyan-400/10 text-cyan-200"
-                            }
-                          >
-                            {subscriptionSummary?.subscription?.enforcementMode || "hard"} enforcement
-                          </Badge>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSubscriptionReloadKey((current) => current + 1)}
-                          >
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                            Refresh plan
-                          </Button>
-                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSubscriptionReloadKey((current) => current + 1)}
+                        >
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Refresh plan
+                        </Button>
                       </div>
 
                       {subscriptionStatus === "loading" ? (
@@ -4888,29 +4927,14 @@ const AnalyticsAdmin = () => {
 
                             <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
                               <div className="space-y-3">
-                                <div className="flex flex-wrap gap-2">
-                                  <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
-                                    {selectedSeriesDisplayName}
-                                  </Badge>
-                                  {selectedSeriesContext ? (
-                                    <Badge variant="outline" className="border-border/80 bg-card/70 text-foreground">
-                                      {selectedSeriesContext}
-                                    </Badge>
-                                  ) : null}
-                                  <Badge
-                                    variant="outline"
-                                    className={
-                                      isHardSubscriptionEnforcement
-                                        ? "border-amber-500/25 bg-amber-500/10 text-amber-300"
-                                        : "border-cyan-400/25 bg-cyan-400/10 text-cyan-200"
-                                    }
-                                  >
-                                    {isHardSubscriptionEnforcement ? "Hard enforcement" : "Advisory mode"}
-                                  </Badge>
-                                </div>
-
+                                <p className="text-sm font-semibold text-foreground">
+                                  {selectedSeriesDisplayName}
+                                  {selectedSeriesContext ? ` · ${selectedSeriesContext}` : ""}
+                                </p>
                                 <p className="text-sm leading-6 text-muted-foreground">
-                                  Platform admins remain outside seat limits. Series-admin actions below still respect the current entity plan.
+                                  {isHardSubscriptionEnforcement ? "Hard enforcement" : "Advisory mode"}. Platform
+                                  admins remain outside seat limits, but series-admin actions below still respect the
+                                  current entity plan.
                                 </p>
                               </div>
 
@@ -4933,15 +4957,13 @@ const AnalyticsAdmin = () => {
                                     className="flex items-center justify-between rounded-xl border border-border/70 bg-background/60 p-3"
                                   >
                                     <p className="text-sm text-foreground">{item.label}</p>
-                                    <Badge
-                                      className={
-                                        item.enabled
-                                          ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
-                                          : "border-amber-500/25 bg-amber-500/10 text-amber-300"
-                                      }
+                                    <p
+                                      className={`text-xs font-medium uppercase tracking-[0.14em] ${
+                                        item.enabled ? "text-emerald-300" : "text-amber-300"
+                                      }`}
                                     >
                                       {item.enabled ? "Enabled" : "Locked"}
-                                    </Badge>
+                                    </p>
                                   </div>
                                 ))}
                               </div>
@@ -5017,13 +5039,13 @@ const AnalyticsAdmin = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {selectedSeries ? (
-                      <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div className="rounded-2xl border border-border/70 bg-background/55 p-5">
+                        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                           <div className="space-y-1">
                             <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
                               Current selection
                             </p>
-                            <p className="font-semibold text-foreground">
+                            <p className="text-lg font-semibold text-foreground">
                               {selectedSeries.seriesName || selectedSeries.configKey}
                             </p>
                             <p className="text-sm leading-6 text-muted-foreground">
@@ -5033,81 +5055,95 @@ const AnalyticsAdmin = () => {
                             </p>
                           </div>
 
-                          <div className="flex flex-wrap gap-2">
-                            <Badge className="border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
-                              Current series
-                            </Badge>
-                            {selectedSeries.isActive ? (
-                              <Badge className="border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
-                                Active
-                              </Badge>
-                            ) : null}
+                          <p className="text-sm leading-6 text-muted-foreground">
+                            {selectedSeries.accessRole || "admin"}
+                            {selectedSeries.isActive ? " · Active" : ""}
+                          </p>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Players</p>
+                            <p className="mt-2 text-sm font-semibold text-foreground">
+                              {formatNumber(selectedSeries.playerCount)}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Matches</p>
+                            <p className="mt-2 text-sm font-semibold text-foreground">
+                              {formatNumber(selectedSeries.computedMatches)} / {formatNumber(selectedSeries.matchCount)}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Warnings</p>
+                            <p className="mt-2 text-sm font-semibold text-foreground">
+                              {formatNumber(selectedSeries.warningMatches)}
+                            </p>
                           </div>
                         </div>
                       </div>
                     ) : null}
 
-                    {series.map((item) => {
-                      const isSelected = item.configKey === selectedSeries?.configKey;
+                    {series.some((item) => item.configKey !== selectedSeries?.configKey) ? (
+                      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                        {series
+                          .filter((item) => item.configKey !== selectedSeries?.configKey)
+                          .map((item) => {
+                            return (
+                              <button
+                                key={item.configKey}
+                                type="button"
+                                onClick={() => handleSelectSeries(item.configKey)}
+                                className="h-full w-full rounded-2xl border border-border/80 bg-background/45 p-4 text-left transition hover:border-primary/25 hover:bg-background/70"
+                              >
+                                <div className="flex h-full flex-col gap-4">
+                                  <div className="space-y-2">
+                                    <p className="text-lg font-semibold text-foreground">
+                                      {item.seriesName || item.configKey}
+                                    </p>
+                                    <p className="text-sm leading-6 text-muted-foreground">
+                                      {item.entityName || "Unassigned entity"}
+                                      {item.targetAgeGroup ? ` · ${item.targetAgeGroup}` : ""}
+                                      {item.seasonYear ? ` · ${item.seasonYear}` : ""}
+                                    </p>
+                                    <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                      {item.accessRole || "admin"}
+                                      {item.isActive ? " · Active" : ""}
+                                    </p>
+                                  </div>
 
-                      return (
-                        <button
-                          key={item.configKey}
-                          type="button"
-                          onClick={() => handleSelectSeries(item.configKey)}
-                          className={`w-full rounded-2xl border p-4 text-left transition ${
-                            isSelected
-                              ? "border-primary/40 bg-primary/10"
-                              : "border-border/80 bg-background/45 hover:border-primary/25 hover:bg-background/70"
-                          }`}
-                        >
-                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                            <div className="space-y-2">
-                              <div className="flex flex-wrap items-center gap-2">
-                                {isSelected ? (
-                                  <CheckCircle2 className="h-4 w-4 text-emerald-300" />
-                                ) : null}
-                                <p className="text-lg font-semibold text-foreground">
-                                  {item.seriesName || item.configKey}
-                                </p>
-                              </div>
-                              <p className="text-sm leading-6 text-muted-foreground">
-                                {item.entityName || "Unassigned entity"}
-                                {item.targetAgeGroup ? ` · ${item.targetAgeGroup}` : ""}
-                                {item.seasonYear ? ` · ${item.seasonYear}` : ""}
-                              </p>
-
-                              <div className="flex flex-wrap gap-2">
-                                <Badge variant="outline" className="border-border/80 bg-background/60 text-foreground">
-                                  {formatNumber(item.playerCount)} players
-                                </Badge>
-                                <Badge variant="outline" className="border-border/80 bg-background/60 text-foreground">
-                                  {formatNumber(item.computedMatches)} / {formatNumber(item.matchCount)} matches
-                                </Badge>
-                                <Badge variant="outline" className="border-border/80 bg-background/60 text-foreground">
-                                  {formatNumber(item.warningMatches)} warnings
-                                </Badge>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2 md:justify-end">
-                              {isSelected ? (
-                                <Badge className="border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
-                                  Selected
-                                </Badge>
-                              ) : null}
-                              <Badge className={getAccessTone(item.accessRole)}>{item.accessRole || "admin"}</Badge>
-                              {item.isActive ? (
-                                <Badge className="border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
-                                  Active
-                                </Badge>
-                              ) : null}
-                            </div>
-                          </div>
-
-                        </button>
-                      );
-                    })}
+                                  <div className="mt-auto grid gap-2 sm:grid-cols-3">
+                                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                        Players
+                                      </p>
+                                      <p className="mt-2 text-sm font-semibold text-foreground">
+                                        {formatNumber(item.playerCount)}
+                                      </p>
+                                    </div>
+                                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                        Matches
+                                      </p>
+                                      <p className="mt-2 text-sm font-semibold text-foreground">
+                                        {formatNumber(item.computedMatches)} / {formatNumber(item.matchCount)}
+                                      </p>
+                                    </div>
+                                    <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                        Warnings
+                                      </p>
+                                      <p className="mt-2 text-sm font-semibold text-foreground">
+                                        {formatNumber(item.warningMatches)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                      </div>
+                    ) : null}
                   </CardContent>
                 </Card>
 
@@ -6585,7 +6621,7 @@ const AnalyticsAdmin = () => {
 
                 <Card className="order-3 border-border/80 bg-card/85 shadow-xl" id="series-users">
                   <CardContent className="space-y-6 p-6">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <ShieldCheck className="h-4 w-4 text-cyan-200" />
@@ -6593,54 +6629,49 @@ const AnalyticsAdmin = () => {
                             Series users
                           </p>
                         </div>
-                        <div>
-                          <h2 className="font-display text-2xl text-foreground">Series user access</h2>
-                          <p className="text-sm leading-7 text-muted-foreground">
-                            Use one path at a time: pre-approve by email, grant by user ID, or review pending requests.
-                          </p>
-                        </div>
+                        <h2 className="font-display text-2xl text-foreground">Series user access</h2>
+                        <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
+                          Keep viewer and analyst access easy to follow: pre-approve by email, grant directly by user
+                          ID, or work through the pending request queue.
+                        </p>
                       </div>
 
-                      <div className="grid gap-2 sm:grid-cols-4">
-                        <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
                           <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Active viewers</p>
-                          <p className="mt-2 text-sm text-foreground">
+                          <p className="mt-2 text-xl font-semibold text-foreground">
                             {formatNumber(viewerAccess?.totals?.activeViewers ?? 0)}
                           </p>
                         </div>
-                        <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                        <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
                           <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Active analysts</p>
-                          <p className="mt-2 text-sm text-foreground">
+                          <p className="mt-2 text-xl font-semibold text-foreground">
                             {formatNumber(viewerAccess?.totals?.activeAnalysts ?? 0)}
                           </p>
                         </div>
-                        <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                        <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
                           <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Pending requests</p>
-                          <p className="mt-2 text-sm text-foreground">
+                          <p className="mt-2 text-xl font-semibold text-foreground">
                             {formatNumber(viewerAccess?.totals?.pendingRequests ?? 0)}
                           </p>
                         </div>
-                        <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+                        <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
                           <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Viewer plan cap</p>
-                          <p className="mt-2 text-sm text-foreground">
+                          <p className="mt-2 text-xl font-semibold text-foreground">
                             {formatNumber(viewerAccess?.subscription?.maxViewerUsers ?? null)}
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid gap-4">
-                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
-                        <div className="space-y-3">
-                          <Badge variant="outline" className="w-fit border-border/80 bg-card/70 text-foreground">
-                            Step 1
-                          </Badge>
-                          <div>
-                            <p className="font-display text-xl text-foreground">Pre-approve by email</p>
-                            <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                              Best before the person signs in for the first time.
-                            </p>
-                          </div>
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      <div className="space-y-4 rounded-2xl border border-border/70 bg-background/55 p-5">
+                        <div className="space-y-1">
+                          <p className="text-lg font-semibold text-foreground">Pre-approve by email</p>
+                          <p className="text-sm leading-6 text-muted-foreground">
+                            Best before the person signs in for the first time. This reserves the access path without
+                            needing a user ID yet.
+                          </p>
                         </div>
 
                         <div className="space-y-2">
@@ -6727,17 +6758,12 @@ const AnalyticsAdmin = () => {
                         </div>
                       </div>
 
-                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
-                        <div className="space-y-3">
-                          <Badge variant="outline" className="w-fit border-border/80 bg-card/70 text-foreground">
-                            Step 2
-                          </Badge>
-                          <div>
-                            <p className="font-display text-xl text-foreground">Grant immediately by user ID</p>
-                            <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                              Use when the person already has a Game-Changrs account.
-                            </p>
-                          </div>
+                      <div className="space-y-4 rounded-2xl border border-border/70 bg-background/55 p-5">
+                        <div className="space-y-1">
+                          <p className="text-lg font-semibold text-foreground">Grant immediately by user ID</p>
+                          <p className="text-sm leading-6 text-muted-foreground">
+                            Use this when the viewer or analyst already has a Game-Changrs account.
+                          </p>
                         </div>
 
                         <div className="space-y-2">
@@ -6800,8 +6826,8 @@ const AnalyticsAdmin = () => {
 
                         {viewerGrantEnabledByPlan && !viewerImmediateGrantAllowed ? (
                           <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm leading-7 text-amber-200">
-                            Direct user-id grants are at the current viewer cap. Use the email pre-approval path instead,
-                            or free an existing viewer seat.
+                            Direct user-id grants are at the current viewer cap. Use the email pre-approval path
+                            instead, or free an existing viewer seat.
                           </div>
                         ) : null}
 
@@ -6833,185 +6859,190 @@ const AnalyticsAdmin = () => {
                           </Button>
                         </div>
                       </div>
-
-                      <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
-                        <div className="space-y-3">
-                          <Badge variant="outline" className="w-fit border-border/80 bg-card/70 text-foreground">
-                            Step 3
-                          </Badge>
-                          <div>
-                            <p className="font-display text-xl text-foreground">Review pending requests</p>
-                            <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                              Approve self-service requests or check invites waiting for first login.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-                          <div className="space-y-2">
-                            <Label htmlFor="viewer-request-search">Search requests</Label>
-                            <Input
-                              id="viewer-request-search"
-                              value={viewerRequestQuery}
-                              onChange={(event) => setViewerRequestQuery(event.target.value)}
-                              placeholder="Search by email, user ID, role, or note"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Show</Label>
-                            <div className="flex flex-wrap gap-2">
-                              {[
-                                { value: "all", label: `All (${formatNumber(pendingViewerAccessRequests.length)})` },
-                                { value: "ready", label: `Ready (${formatNumber(readyViewerRequestCount)})` },
-                                { value: "waiting", label: `Waiting (${formatNumber(waitingViewerRequestCount)})` },
-                              ].map((item) => (
-                                <Button
-                                  key={item.value}
-                                  type="button"
-                                  size="sm"
-                                  variant={viewerRequestFilter === item.value ? "default" : "outline"}
-                                  onClick={() => setViewerRequestFilter(item.value as PendingRequestFilter)}
-                                >
-                                  {item.label}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        {viewerAccessStatus === "loading" ? (
-                          <div className="space-y-3">
-                            <Skeleton className="h-24 w-full" />
-                            <Skeleton className="h-24 w-full" />
-                          </div>
-                        ) : null}
-
-                        {viewerAccessStatus === "error" && viewerAccessError ? (
-                          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
-                            <div className="flex items-start gap-3">
-                              <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
-                              <div className="space-y-3">
-                                <p className="font-semibold text-destructive">Requests could not be loaded</p>
-                                <p className="text-sm leading-6 text-destructive/80">{viewerAccessError}</p>
-                              </div>
-                            </div>
-                          </div>
-                        ) : null}
-
-                        {viewerAccessStatus === "success" ? (
-                          filteredPendingViewerAccessRequests.length ? (
-                            <div className="space-y-3">
-                              {filteredPendingViewerAccessRequests.map((request) => {
-                                const requestId = request.requestId || "";
-                                const decisionStatus = requestId
-                                  ? accessRequestDecisionStatusByRequest[requestId]
-                                  : undefined;
-                                const canApprove = request.requestType === "self_request" && Boolean(request.requestedUserId);
-                                const requestStatusLabel =
-                                  request.requestType === "admin_invite" && !request.requestedUserId
-                                    ? "Waiting for first login"
-                                    : request.requestStatus || "pending";
-
-                                return (
-                                  <div
-                                    key={request.requestId || `${request.requestedEmail}-${request.createdAt}`}
-                                    className="rounded-2xl border border-border/70 bg-background/60 p-5"
-                                  >
-                                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                      <div className="space-y-4">
-                                        <div className="flex flex-wrap gap-2">
-                                          <Badge className={getStatusBadgeClass(request.requestType)}>
-                                            {request.requestType === "admin_invite" ? "Email pre-approval" : "User request"}
-                                          </Badge>
-                                          <Badge className={getViewerAccessRoleBadgeClass(request.requestedAccessRole)}>
-                                            {request.requestedAccessRole || "viewer"}
-                                          </Badge>
-                                          <Badge className={getStatusBadgeClass(request.requestStatus)}>
-                                            {requestStatusLabel}
-                                          </Badge>
-                                        </div>
-
-                                        <div className="space-y-1">
-                                          <p className="break-all text-base font-semibold text-foreground">
-                                            {request.requestedEmail || "-"}
-                                          </p>
-                                          <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
-                                            {request.requestedUserId || "No user ID linked yet"}
-                                          </p>
-                                        </div>
-
-                                        <div className="grid gap-3 sm:grid-cols-2">
-                                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
-                                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                                              Requested
-                                            </p>
-                                            <p className="mt-2 text-sm leading-6 text-foreground">
-                                              {formatDateTime(request.createdAt)}
-                                            </p>
-                                          </div>
-                                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
-                                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                                              Approval state
-                                            </p>
-                                            <p className="mt-2 text-sm leading-6 text-foreground">
-                                              {canApprove ? "Ready for decision" : "Waiting for user link"}
-                                            </p>
-                                          </div>
-                                        </div>
-
-                                        {request.requestNote ? (
-                                          <div className="rounded-xl border border-border/70 bg-background/55 p-3">
-                                            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                                              Request note
-                                            </p>
-                                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                                              {request.requestNote}
-                                            </p>
-                                          </div>
-                                        ) : null}
-                                      </div>
-
-                                      <div className="flex flex-wrap gap-2 lg:justify-end">
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          disabled={!canApprove || decisionStatus === "saving" || !requestId}
-                                          onClick={() => void handleAccessRequestDecision(request, "approve")}
-                                        >
-                                          {decisionStatus === "saving" && canApprove ? "Approving..." : "Approve"}
-                                        </Button>
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          disabled={decisionStatus === "saving" || !requestId}
-                                          onClick={() => void handleAccessRequestDecision(request, "decline")}
-                                        >
-                                          Decline
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="rounded-2xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground">
-                              No pending viewer requests match the current filter.
-                            </div>
-                          )
-                        ) : null}
-                      </div>
                     </div>
 
-                    <div className="space-y-4 rounded-2xl border border-border/80 bg-background/55 p-5">
+                    <div className="space-y-4 rounded-2xl border border-border/70 bg-background/55 p-5">
+                      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                        <div className="space-y-1">
+                          <p className="text-lg font-semibold text-foreground">Pending requests</p>
+                          <p className="text-sm leading-6 text-muted-foreground">
+                            Approve self-service requests or review email pre-approvals waiting for first sign-in.
+                          </p>
+                        </div>
+                        <p className="text-sm leading-6 text-muted-foreground">
+                          {formatNumber(filteredPendingViewerAccessRequests.length)} visible
+                        </p>
+                      </div>
+
+                      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                        <div className="space-y-2">
+                          <Label htmlFor="viewer-request-search">Search requests</Label>
+                          <Input
+                            id="viewer-request-search"
+                            value={viewerRequestQuery}
+                            onChange={(event) => setViewerRequestQuery(event.target.value)}
+                            placeholder="Search by email, user ID, role, or note"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Show</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { value: "all", label: `All (${formatNumber(pendingViewerAccessRequests.length)})` },
+                              { value: "ready", label: `Ready (${formatNumber(readyViewerRequestCount)})` },
+                              { value: "waiting", label: `Waiting (${formatNumber(waitingViewerRequestCount)})` },
+                            ].map((item) => (
+                              <Button
+                                key={item.value}
+                                type="button"
+                                size="sm"
+                                variant={viewerRequestFilter === item.value ? "default" : "outline"}
+                                onClick={() => setViewerRequestFilter(item.value as PendingRequestFilter)}
+                              >
+                                {item.label}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {viewerAccessStatus === "loading" ? (
+                        <div className="space-y-3">
+                          <Skeleton className="h-24 w-full" />
+                          <Skeleton className="h-24 w-full" />
+                        </div>
+                      ) : null}
+
+                      {viewerAccessStatus === "error" && viewerAccessError ? (
+                        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
+                            <div className="space-y-3">
+                              <p className="font-semibold text-destructive">Requests could not be loaded</p>
+                              <p className="text-sm leading-6 text-destructive/80">{viewerAccessError}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {viewerAccessStatus === "success" ? (
+                        filteredPendingViewerAccessRequests.length ? (
+                          <div className="grid gap-3 xl:grid-cols-2">
+                            {filteredPendingViewerAccessRequests.map((request) => {
+                              const requestId = request.requestId || "";
+                              const decisionStatus = requestId
+                                ? accessRequestDecisionStatusByRequest[requestId]
+                                : undefined;
+                              const canApprove = Boolean(request.requestedUserId);
+                              const requestStatusLabel = getPendingRequestStatusLabel(
+                                request.requestType,
+                                request.requestStatus,
+                                request.requestedUserId,
+                              );
+                              const accessRoleLabel = request.requestedAccessRole || "viewer";
+
+                              return (
+                                <div
+                                  key={request.requestId || `${request.requestedEmail}-${request.createdAt}`}
+                                  className="h-full rounded-2xl border border-border/70 bg-background/45 p-5"
+                                >
+                                  <div className="flex h-full flex-col gap-4">
+                                    <div className="space-y-2">
+                                      <p className="break-all text-base font-semibold text-foreground">
+                                        {request.requestedEmail || "-"}
+                                      </p>
+                                      <p className="text-sm leading-6 text-muted-foreground">
+                                        {request.requestType === "admin_invite" ? "Email pre-approval" : "User request"}
+                                        <span
+                                          className={
+                                            accessRoleLabel === "analyst" ? "text-cyan-200" : "text-emerald-300"
+                                          }
+                                        >
+                                          {` · ${accessRoleLabel}`}
+                                        </span>
+                                        <span className={canApprove ? "text-emerald-300" : "text-amber-300"}>
+                                          {` · ${requestStatusLabel}`}
+                                        </span>
+                                      </p>
+                                      <p
+                                        className={
+                                          request.requestedUserId
+                                            ? "break-all font-mono text-xs leading-6 text-muted-foreground"
+                                            : "text-xs leading-6 text-muted-foreground"
+                                        }
+                                      >
+                                        {getPendingRequestUserIdLabel(request.requestType, request.requestedUserId)}
+                                      </p>
+                                    </div>
+
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                      <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                          Requested
+                                        </p>
+                                        <p className="mt-2 text-sm leading-6 text-foreground">
+                                          {formatDateTime(request.createdAt)}
+                                        </p>
+                                      </div>
+                                      <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                          Approval state
+                                        </p>
+                                        <p className="mt-2 text-sm leading-6 text-foreground">
+                                          {getPendingRequestApprovalLabel(request.requestType, request.requestedUserId)}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {request.requestNote ? (
+                                      <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                          Request note
+                                        </p>
+                                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                          {request.requestNote}
+                                        </p>
+                                      </div>
+                                    ) : null}
+
+                                    <div className="mt-auto flex flex-wrap gap-2">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={!canApprove || decisionStatus === "saving" || !requestId}
+                                        onClick={() => void handleAccessRequestDecision(request, "approve")}
+                                      >
+                                        {decisionStatus === "saving" && canApprove ? "Approving..." : "Approve"}
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={decisionStatus === "saving" || !requestId}
+                                        onClick={() => void handleAccessRequestDecision(request, "decline")}
+                                      >
+                                        Decline
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="rounded-2xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground">
+                            No pending viewer requests match the current filter.
+                          </div>
+                        )
+                      ) : null}
+                    </div>
+
+                    <div className="space-y-4 rounded-2xl border border-border/70 bg-background/55 p-5">
                       <div className="flex items-center justify-between gap-3">
                         <div className="space-y-1">
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                            Current grants
-                          </p>
-                          <p className="text-sm leading-7 text-muted-foreground">
+                          <p className="text-lg font-semibold text-foreground">Current grants</p>
+                          <p className="text-sm leading-6 text-muted-foreground">
                             Viewer and analyst access for this series.
                           </p>
                         </div>
@@ -7052,71 +7083,76 @@ const AnalyticsAdmin = () => {
                             {(viewerAccess?.grants ?? []).map((grant) => {
                               const grantId = grant.grantId || "";
                               const revokeStatus = grantId ? viewerRevokeStatusByGrant[grantId] : undefined;
+                              const accessRoleLabel = grant.accessRole || "viewer";
+                              const isAnalystGrant = accessRoleLabel === "analyst";
+                              const grantStatusLabel = grant.isExpired ? "Expired" : grant.status || "active";
 
                               return (
                                 <div
                                   key={grant.grantId || `${grant.userId}-${grant.createdAt}`}
-                                  className="rounded-2xl border border-border/70 bg-background/60 p-5"
+                                  className="grid gap-4 rounded-2xl border border-border/70 bg-background/45 p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start"
                                 >
-                                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                    <div className="space-y-4">
-                                      <div className="flex flex-wrap gap-2">
-                                        <Badge className={getViewerAccessRoleBadgeClass(grant.accessRole)}>
-                                          {grant.accessRole || "viewer"}
-                                        </Badge>
-                                        <Badge className={getStatusBadgeClass(grant.isExpired ? "warning" : grant.status)}>
-                                          {grant.isExpired ? "expired" : grant.status || "active"}
-                                        </Badge>
+                                  <div className="space-y-4">
+                                    <div className="space-y-2">
+                                      <div className="flex flex-wrap items-center gap-3">
+                                        <p
+                                          className={`text-xs font-medium uppercase tracking-[0.14em] ${
+                                            isAnalystGrant ? "text-cyan-200" : "text-emerald-300"
+                                          }`}
+                                        >
+                                          {accessRoleLabel}
+                                        </p>
+                                        <p
+                                          className={`text-xs font-medium uppercase tracking-[0.14em] ${
+                                            grant.isExpired ? "text-amber-300" : "text-muted-foreground"
+                                          }`}
+                                        >
+                                          {grantStatusLabel}
+                                        </p>
                                       </div>
+                                      <p className="break-all font-mono text-xs leading-6 text-foreground">
+                                        {grant.userId || "-"}
+                                      </p>
+                                    </div>
 
-                                      <div className="space-y-1">
+                                    <div className="grid gap-3 sm:grid-cols-3">
+                                      <div className="rounded-xl border border-border/70 bg-background/55 p-3">
                                         <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                                          User ID
+                                          Granted by
                                         </p>
-                                        <p className="break-all font-mono text-xs leading-6 text-foreground">
-                                          {grant.userId || "-"}
+                                        <p className="mt-2 break-all text-sm leading-6 text-foreground">
+                                          {grant.grantedByUserId || "-"}
                                         </p>
                                       </div>
-
-                                      <div className="grid gap-3 sm:grid-cols-3">
-                                        <div className="rounded-xl border border-border/70 bg-background/55 p-3">
-                                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                                            Granted by
-                                          </p>
-                                          <p className="mt-2 break-all text-sm leading-6 text-foreground">
-                                            {grant.grantedByUserId || "-"}
-                                          </p>
-                                        </div>
-                                        <div className="rounded-xl border border-border/70 bg-background/55 p-3">
-                                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                                            Updated
-                                          </p>
-                                          <p className="mt-2 text-sm leading-6 text-foreground">
-                                            {formatDateTime(grant.updatedAt)}
-                                          </p>
-                                        </div>
-                                        <div className="rounded-xl border border-border/70 bg-background/55 p-3">
-                                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                                            Expiry
-                                          </p>
-                                          <p className="mt-2 text-sm leading-6 text-foreground">
-                                            {grant.expiresAt ? formatDateTime(grant.expiresAt) : "No expiry"}
-                                          </p>
-                                        </div>
+                                      <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                          Updated
+                                        </p>
+                                        <p className="mt-2 text-sm leading-6 text-foreground">
+                                          {formatDateTime(grant.updatedAt)}
+                                        </p>
+                                      </div>
+                                      <div className="rounded-xl border border-border/70 bg-background/55 p-3">
+                                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                          Expiry
+                                        </p>
+                                        <p className="mt-2 text-sm leading-6 text-foreground">
+                                          {grant.expiresAt ? formatDateTime(grant.expiresAt) : "No expiry"}
+                                        </p>
                                       </div>
                                     </div>
+                                  </div>
 
-                                    <div className="flex flex-wrap gap-2 lg:justify-end">
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={grant.status === "revoked" || revokeStatus === "saving" || !grantId}
-                                        onClick={() => void handleRevokeViewerGrant(grant)}
-                                      >
-                                        {revokeStatus === "saving" ? "Revoking..." : "Revoke"}
-                                      </Button>
-                                    </div>
+                                  <div className="flex flex-wrap gap-2 lg:justify-end">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={grant.status === "revoked" || revokeStatus === "saving" || !grantId}
+                                      onClick={() => void handleRevokeViewerGrant(grant)}
+                                    >
+                                      {revokeStatus === "saving" ? "Revoking..." : "Revoke"}
+                                    </Button>
                                   </div>
                                 </div>
                               );
@@ -7129,7 +7165,6 @@ const AnalyticsAdmin = () => {
                         )
                       ) : null}
                     </div>
-
                   </CardContent>
                 </Card>
                   </>

@@ -241,6 +241,20 @@ function formatDateTime(value?: string | null) {
   return parsed.toLocaleString();
 }
 
+function getEmailDisplayValue(email?: string | null, fallbackUserId?: string | null, emptyLabel = "-") {
+  const normalizedEmail = email?.trim();
+  if (normalizedEmail) {
+    return normalizedEmail;
+  }
+
+  const normalizedUserId = fallbackUserId?.trim();
+  if (normalizedUserId) {
+    return normalizedUserId;
+  }
+
+  return emptyLabel;
+}
+
 function getStatusBadgeClass(status?: string | null) {
   const normalized = status?.trim().toLowerCase();
 
@@ -346,14 +360,27 @@ function getPendingRequestApprovalLabel(requestType?: string | null, requestedUs
     : "Waiting for user link";
 }
 
-function getPendingRequestUserIdLabel(requestType?: string | null, requestedUserId?: string | null) {
-  if (requestedUserId) {
-    return requestedUserId;
+function getPendingRequestUserEmailLabel(
+  requestType?: string | null,
+  requestedEmail?: string | null,
+  requestedUserEmail?: string | null,
+  requestedUserId?: string | null,
+) {
+  if (requestedUserEmail?.trim()) {
+    return requestedUserEmail.trim();
+  }
+
+  if (requestedEmail?.trim()) {
+    return requestedEmail.trim();
+  }
+
+  if (requestedUserId?.trim()) {
+    return requestedUserId.trim();
   }
 
   return requestType === "admin_invite"
     ? "Will link after the first Game-Changrs sign-in"
-    : "No user ID linked yet";
+    : "No email linked yet";
 }
 
 function matchesPendingRequestFilter(
@@ -781,6 +808,7 @@ const AnalyticsAdmin = () => {
 
       const haystack = [
         request.requestedEmail,
+        request.requestedUserEmail,
         request.requestedUserId,
         request.requestNote,
         request.requestType,
@@ -2528,9 +2556,9 @@ const AnalyticsAdmin = () => {
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">User ID</p>
-                    <p className="mt-2 break-all font-mono text-sm text-foreground">
-                      {catalog?.actor?.userId || user?.id || "Unavailable"}
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Email</p>
+                    <p className="mt-2 break-all text-sm text-foreground">
+                      {catalog?.actor?.email || user?.email || catalog?.actor?.userId || user?.id || "Unavailable"}
                     </p>
                   </div>
 
@@ -2901,7 +2929,12 @@ const AnalyticsAdmin = () => {
                                                 : "text-xs leading-6 text-muted-foreground"
                                             }
                                           >
-                                            {getPendingRequestUserIdLabel(request.requestType, request.requestedUserId)}
+                                            {getPendingRequestUserEmailLabel(
+                                              request.requestType,
+                                              request.requestedEmail,
+                                              request.requestedUserEmail,
+                                              request.requestedUserId
+                                            )}
                                           </p>
                                         </div>
 
@@ -2973,7 +3006,7 @@ const AnalyticsAdmin = () => {
                                         </Badge>
                                       </div>
                                       <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
-                                        {membership.userId || "No user ID"}
+                                        {getEmailDisplayValue(membership.userEmail, membership.userId, "No email linked yet")}
                                       </p>
                                     </div>
 
@@ -3383,7 +3416,12 @@ const AnalyticsAdmin = () => {
                                                   : "text-xs leading-6 text-muted-foreground"
                                               }
                                             >
-                                              {getPendingRequestUserIdLabel(request.requestType, request.requestedUserId)}
+                                              {getPendingRequestUserEmailLabel(
+                                                request.requestType,
+                                                request.requestedEmail,
+                                                request.requestedUserEmail,
+                                                request.requestedUserId
+                                              )}
                                             </p>
                                           </div>
 
@@ -3491,10 +3529,10 @@ const AnalyticsAdmin = () => {
 
                                           <div className="space-y-1">
                                             <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                                              User ID
+                                              User email
                                             </p>
-                                            <p className="break-all font-mono text-xs leading-6 text-foreground">
-                                              {grant.userId || "-"}
+                                            <p className="break-all text-sm leading-6 text-foreground">
+                                              {getEmailDisplayValue(grant.userEmail, grant.userId, "-")}
                                             </p>
                                           </div>
 
@@ -3504,7 +3542,7 @@ const AnalyticsAdmin = () => {
                                                 Granted by
                                               </p>
                                               <p className="mt-2 break-all text-sm leading-6 text-foreground">
-                                                {grant.grantedByUserId || "-"}
+                                                {getEmailDisplayValue(grant.grantedByUserEmail, grant.grantedByUserId, "-")}
                                               </p>
                                             </div>
                                             <div className="rounded-xl border border-border/70 bg-background/55 p-3">
@@ -3655,11 +3693,6 @@ const AnalyticsAdmin = () => {
                     <p className="mt-3 break-all text-sm font-semibold text-foreground">
                       {catalog?.actor?.email || user?.email || "Signed-in user"}
                     </p>
-                    {catalog?.actor?.userId ? (
-                      <p className="mt-2 break-all font-mono text-xs leading-6 text-muted-foreground">
-                        {catalog.actor.userId}
-                      </p>
-                    ) : null}
                     <p className="mt-4 text-sm leading-6 text-muted-foreground">
                       {catalog?.actor?.isPlatformAdmin
                         ? "Platform admins can move between entities and series from this console."
@@ -3779,9 +3812,9 @@ const AnalyticsAdmin = () => {
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">User ID</p>
-                    <p className="mt-2 break-all font-mono text-sm text-foreground">
-                      {catalog?.actor?.userId || user?.id || "Unavailable"}
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Email</p>
+                    <p className="mt-2 break-all text-sm text-foreground">
+                      {catalog?.actor?.email || user?.email || catalog?.actor?.userId || user?.id || "Unavailable"}
                     </p>
                   </div>
 
@@ -4681,7 +4714,12 @@ const AnalyticsAdmin = () => {
                                             : "text-xs leading-6 text-muted-foreground"
                                         }
                                       >
-                                        {getPendingRequestUserIdLabel(request.requestType, request.requestedUserId)}
+                                        {getPendingRequestUserEmailLabel(
+                                          request.requestType,
+                                          request.requestedEmail,
+                                          request.requestedUserEmail,
+                                          request.requestedUserId
+                                        )}
                                       </p>
                                     </div>
 
@@ -4785,7 +4823,7 @@ const AnalyticsAdmin = () => {
                                         : "Operational admin seat across every series under this entity."}
                                     </p>
                                     <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
-                                      {membership.userId || "No user ID"}
+                                      {getEmailDisplayValue(membership.userEmail, membership.userId, "No email linked yet")}
                                     </p>
                                   </div>
 
@@ -6971,7 +7009,12 @@ const AnalyticsAdmin = () => {
                                             : "text-xs leading-6 text-muted-foreground"
                                         }
                                       >
-                                        {getPendingRequestUserIdLabel(request.requestType, request.requestedUserId)}
+                                        {getPendingRequestUserEmailLabel(
+                                          request.requestType,
+                                          request.requestedEmail,
+                                          request.requestedUserEmail,
+                                          request.requestedUserId
+                                        )}
                                       </p>
                                     </div>
 
@@ -7111,7 +7154,7 @@ const AnalyticsAdmin = () => {
                                         </p>
                                       </div>
                                       <p className="break-all font-mono text-xs leading-6 text-foreground">
-                                        {grant.userId || "-"}
+                                        {getEmailDisplayValue(grant.userEmail, grant.userId, "-")}
                                       </p>
                                     </div>
 
@@ -7121,7 +7164,7 @@ const AnalyticsAdmin = () => {
                                           Granted by
                                         </p>
                                         <p className="mt-2 break-all text-sm leading-6 text-foreground">
-                                          {grant.grantedByUserId || "-"}
+                                          {getEmailDisplayValue(grant.grantedByUserEmail, grant.grantedByUserId, "-")}
                                         </p>
                                       </div>
                                       <div className="rounded-xl border border-border/70 bg-background/55 p-3">

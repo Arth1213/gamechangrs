@@ -229,6 +229,33 @@ async function resolveKnownUserEmailByUserId(userId) {
   }
 }
 
+async function buildResolvedUserEmailMap(userIds) {
+  const normalizedUserIds = [...new Set(
+    (Array.isArray(userIds) ? userIds : [userIds])
+      .map((value) => normalizeUuid(value))
+      .filter(Boolean)
+  )];
+
+  if (normalizedUserIds.length === 0) {
+    return new Map();
+  }
+
+  const entries = await Promise.all(
+    normalizedUserIds.map(async (userId) => [userId, await resolveKnownUserEmailByUserId(userId)])
+  );
+
+  return new Map(entries.filter(([, email]) => Boolean(email)));
+}
+
+function getResolvedUserEmail(userEmailById, userId) {
+  const normalizedUserId = normalizeUuid(userId);
+  if (!normalizedUserId || !(userEmailById instanceof Map)) {
+    return "";
+  }
+
+  return normalizeEmail(userEmailById.get(normalizedUserId));
+}
+
 async function trySendSeriesViewerGuideNotification(input) {
   const recipientEmail =
     normalizeEmail(input?.email)
@@ -412,15 +439,20 @@ function mapSeriesRow(row) {
   };
 }
 
-function mapViewerGrantRow(row) {
+function mapViewerGrantRow(row, userEmailById = null) {
+  const userId = normalizeText(row.user_id);
+  const grantedByUserId = normalizeText(row.granted_by_user_id);
+
   return {
     grantId: normalizeText(row.id),
     entityId: normalizeText(row.entity_id),
     seriesSourceConfigId: toInteger(row.series_source_config_id),
-    userId: normalizeText(row.user_id),
+    userId,
+    userEmail: getResolvedUserEmail(userEmailById, userId),
     accessRole: normalizeText(row.access_role),
     status: normalizeText(row.status),
-    grantedByUserId: normalizeText(row.granted_by_user_id),
+    grantedByUserId,
+    grantedByUserEmail: getResolvedUserEmail(userEmailById, grantedByUserId),
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
     expiresAt: row.expires_at || null,
@@ -428,20 +460,27 @@ function mapViewerGrantRow(row) {
   };
 }
 
-function mapAccessRequestRow(row) {
+function mapAccessRequestRow(row, userEmailById = null) {
+  const requestedUserId = normalizeText(row.requested_user_id);
+  const requestedByUserId = normalizeText(row.requested_by_user_id);
+  const reviewedByUserId = normalizeText(row.reviewed_by_user_id);
+
   return {
     requestId: normalizeText(row.id),
     entityId: normalizeText(row.entity_id),
     seriesSourceConfigId: toInteger(row.series_source_config_id),
     requestedEmail: normalizeText(row.requested_email),
-    requestedUserId: normalizeText(row.requested_user_id),
+    requestedUserId,
+    requestedUserEmail: getResolvedUserEmail(userEmailById, requestedUserId),
     requestedAccessRole: normalizeText(row.requested_access_role),
     requestType: normalizeText(row.request_type),
     requestStatus: normalizeText(row.request_status),
     requestNote: normalizeText(row.request_note),
     adminResponseNote: normalizeText(row.admin_response_note),
-    requestedByUserId: normalizeText(row.requested_by_user_id),
-    reviewedByUserId: normalizeText(row.reviewed_by_user_id),
+    requestedByUserId,
+    requestedByUserEmail: getResolvedUserEmail(userEmailById, requestedByUserId),
+    reviewedByUserId,
+    reviewedByUserEmail: getResolvedUserEmail(userEmailById, reviewedByUserId),
     requestedExpiresAt: row.requested_expires_at || null,
     resolvedGrantId: normalizeText(row.resolved_grant_id),
     createdAt: row.created_at || null,
@@ -450,19 +489,26 @@ function mapAccessRequestRow(row) {
   };
 }
 
-function mapEntityAdminRequestRow(row) {
+function mapEntityAdminRequestRow(row, userEmailById = null) {
+  const requestedUserId = normalizeText(row.requested_user_id);
+  const requestedByUserId = normalizeText(row.requested_by_user_id);
+  const reviewedByUserId = normalizeText(row.reviewed_by_user_id);
+
   return {
     requestId: normalizeText(row.id),
     entityId: normalizeText(row.entity_id),
     requestedEmail: normalizeText(row.requested_email),
-    requestedUserId: normalizeText(row.requested_user_id),
+    requestedUserId,
+    requestedUserEmail: getResolvedUserEmail(userEmailById, requestedUserId),
     requestedRole: normalizeText(row.requested_role),
     requestType: normalizeText(row.request_type),
     requestStatus: normalizeText(row.request_status),
     requestNote: normalizeText(row.request_note),
     adminResponseNote: normalizeText(row.admin_response_note),
-    requestedByUserId: normalizeText(row.requested_by_user_id),
-    reviewedByUserId: normalizeText(row.reviewed_by_user_id),
+    requestedByUserId,
+    requestedByUserEmail: getResolvedUserEmail(userEmailById, requestedByUserId),
+    reviewedByUserId,
+    reviewedByUserEmail: getResolvedUserEmail(userEmailById, reviewedByUserId),
     resolvedMembershipId: normalizeText(row.resolved_membership_id),
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
@@ -470,23 +516,83 @@ function mapEntityAdminRequestRow(row) {
   };
 }
 
-function mapEntityAdminMembershipRow(row) {
+function mapEntityAdminMembershipRow(row, userEmailById = null) {
   const role = normalizeText(row.role);
   const status = normalizeText(row.status);
   const isOwner = row.is_owner === true || role === "owner";
+  const userId = normalizeText(row.user_id);
+  const invitedByUserId = normalizeText(row.invited_by_user_id);
 
   return {
     membershipId: normalizeText(row.membership_id || row.id),
     entityId: normalizeText(row.entity_id),
-    userId: normalizeText(row.user_id),
+    userId,
+    userEmail: getResolvedUserEmail(userEmailById, userId),
     role,
     status,
-    invitedByUserId: normalizeText(row.invited_by_user_id),
+    invitedByUserId,
+    invitedByUserEmail: getResolvedUserEmail(userEmailById, invitedByUserId),
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
     isOwner,
     canRemove: isOwner !== true && status === "active",
   };
+}
+
+async function mapViewerGrantRowWithResolvedEmails(row) {
+  const userEmailById = await buildResolvedUserEmailMap([row?.user_id, row?.granted_by_user_id]);
+  return mapViewerGrantRow(row, userEmailById);
+}
+
+async function mapViewerGrantRowsWithResolvedEmails(rows) {
+  const userEmailById = await buildResolvedUserEmailMap(
+    rows.flatMap((row) => [row?.user_id, row?.granted_by_user_id])
+  );
+  return rows.map((row) => mapViewerGrantRow(row, userEmailById));
+}
+
+async function mapAccessRequestRowWithResolvedEmails(row) {
+  const userEmailById = await buildResolvedUserEmailMap([
+    row?.requested_user_id,
+    row?.requested_by_user_id,
+    row?.reviewed_by_user_id,
+  ]);
+  return mapAccessRequestRow(row, userEmailById);
+}
+
+async function mapAccessRequestRowsWithResolvedEmails(rows) {
+  const userEmailById = await buildResolvedUserEmailMap(
+    rows.flatMap((row) => [row?.requested_user_id, row?.requested_by_user_id, row?.reviewed_by_user_id])
+  );
+  return rows.map((row) => mapAccessRequestRow(row, userEmailById));
+}
+
+async function mapEntityAdminRequestRowWithResolvedEmails(row) {
+  const userEmailById = await buildResolvedUserEmailMap([
+    row?.requested_user_id,
+    row?.requested_by_user_id,
+    row?.reviewed_by_user_id,
+  ]);
+  return mapEntityAdminRequestRow(row, userEmailById);
+}
+
+async function mapEntityAdminRequestRowsWithResolvedEmails(rows) {
+  const userEmailById = await buildResolvedUserEmailMap(
+    rows.flatMap((row) => [row?.requested_user_id, row?.requested_by_user_id, row?.reviewed_by_user_id])
+  );
+  return rows.map((row) => mapEntityAdminRequestRow(row, userEmailById));
+}
+
+async function mapEntityAdminMembershipRowWithResolvedEmails(row) {
+  const userEmailById = await buildResolvedUserEmailMap([row?.user_id, row?.invited_by_user_id]);
+  return mapEntityAdminMembershipRow(row, userEmailById);
+}
+
+async function mapEntityAdminMembershipRowsWithResolvedEmails(rows) {
+  const userEmailById = await buildResolvedUserEmailMap(
+    rows.flatMap((row) => [row?.user_id, row?.invited_by_user_id])
+  );
+  return rows.map((row) => mapEntityAdminMembershipRow(row, userEmailById));
 }
 
 async function listManagedEntities(client, input) {
@@ -550,15 +656,19 @@ async function listManagedEntities(client, input) {
         [input.userId]
       );
 
+  const ownerUserEmailById = await buildResolvedUserEmailMap(result.rows.map((row) => row.owner_user_id));
+
   return result.rows.map((row) => {
     const maxAdminUsers = toInteger(row.max_admin_users);
     const activeAdminUsers = toInteger(row.active_admin_user_count) || 0;
+    const ownerUserId = normalizeText(row.owner_user_id);
 
     return {
       entityId: normalizeText(row.entity_id),
       entitySlug: normalizeText(row.entity_slug),
       entityName: normalizeText(row.entity_name),
-      ownerUserId: normalizeText(row.owner_user_id),
+      ownerUserId,
+      ownerUserEmail: getResolvedUserEmail(ownerUserEmailById, ownerUserId),
       accessRole: normalizeText(row.access_role),
       seriesCount: toInteger(row.series_count) || 0,
       subscriptionPlanKey: normalizeText(row.subscription_plan_key),
@@ -625,7 +735,7 @@ async function listManagedEntityAdminMemberships(client, input) {
         [input.userId]
       );
 
-  return result.rows.map(mapEntityAdminMembershipRow);
+  return mapEntityAdminMembershipRowsWithResolvedEmails(result.rows);
 }
 
 async function listManagedEntityAdminRequests(client, input) {
@@ -696,10 +806,10 @@ async function listManagedEntityAdminRequests(client, input) {
             ear.requested_email
         `,
         [input.userId]
-      );
+  );
 
   const rows = await hydratePendingEntityAdminRequestUserIds(client, result.rows);
-  return rows.map(mapEntityAdminRequestRow);
+  return mapEntityAdminRequestRowsWithResolvedEmails(rows);
 }
 
 async function loadEntityManagementSnapshot(client, input) {
@@ -1006,7 +1116,7 @@ async function grantSeriesViewerAccess(client, input) {
     ]
   );
 
-  return mapViewerGrantRow(row);
+  return mapViewerGrantRowWithResolvedEmails(row);
 }
 
 async function loadSeriesAccessRequests(client, seriesSourceConfigId) {
@@ -1041,7 +1151,7 @@ async function loadSeriesAccessRequests(client, seriesSourceConfigId) {
   );
 
   const rows = await hydratePendingSeriesAccessRequestUserIds(client, result.rows);
-  return rows.map(mapAccessRequestRow);
+  return mapAccessRequestRowsWithResolvedEmails(rows);
 }
 
 async function upsertPendingSeriesAccessRequestRow(client, input) {
@@ -1122,7 +1232,7 @@ async function upsertPendingSeriesAccessRequestRow(client, input) {
       ]
     );
 
-    return mapAccessRequestRow(updated);
+    return mapAccessRequestRowWithResolvedEmails(updated);
   }
 
   const inserted = await fetchOne(
@@ -1156,7 +1266,7 @@ async function upsertPendingSeriesAccessRequestRow(client, input) {
     ]
   );
 
-  return mapAccessRequestRow(inserted);
+  return mapAccessRequestRowWithResolvedEmails(inserted);
 }
 
 async function autoActivatePendingSeriesInvites(client, input) {
@@ -1480,7 +1590,7 @@ async function grantEntityAdminMembership(client, input) {
   if (isExistingOwner && existingStatus === "active") {
     return {
       context,
-      membership: existing ? mapEntityAdminMembershipRow(existing) : null,
+      membership: existing ? await mapEntityAdminMembershipRowWithResolvedEmails(existing) : null,
       existingRole,
       existingStatus,
       isExistingOwner: true,
@@ -1546,7 +1656,7 @@ async function grantEntityAdminMembership(client, input) {
 
   return {
     context,
-    membership: mapEntityAdminMembershipRow(row),
+    membership: await mapEntityAdminMembershipRowWithResolvedEmails(row),
     existingRole,
     existingStatus,
     isExistingOwner: roleToPersist === "owner",
@@ -1648,7 +1758,7 @@ async function upsertPendingEntityAdminRequestRow(client, input) {
       ]
     );
 
-    return mapEntityAdminRequestRow(updated);
+    return mapEntityAdminRequestRowWithResolvedEmails(updated);
   }
 
   const inserted = await fetchOne(
@@ -1678,7 +1788,7 @@ async function upsertPendingEntityAdminRequestRow(client, input) {
     ]
   );
 
-  return mapEntityAdminRequestRow(inserted);
+  return mapEntityAdminRequestRowWithResolvedEmails(inserted);
 }
 
 async function hydratePendingEntityAdminRequestUserIds(client, rows) {
@@ -2040,7 +2150,7 @@ async function createSeriesAdminAccessRequest(input) {
             ? "Dry-run series-admin request validated against an approved email invite."
             : "Series-admin access granted from the approved email invite.",
           accessGranted: true,
-          request: mapEntityAdminRequestRow(resolvedRequest),
+          request: await mapEntityAdminRequestRowWithResolvedEmails(resolvedRequest),
           membership: granted.membership,
         };
       }
@@ -2144,7 +2254,7 @@ async function applyEntityAdminAccessRequestDecision(input) {
             entitySlug: context.entitySlug,
             ownerUserId: context.ownerUserId,
           },
-          request: mapEntityAdminRequestRow(declined),
+          request: await mapEntityAdminRequestRowWithResolvedEmails(declined),
           membership: null,
         };
       }
@@ -2196,7 +2306,7 @@ async function applyEntityAdminAccessRequestDecision(input) {
           entitySlug: context.entitySlug,
           ownerUserId: context.ownerUserId,
         },
-        request: mapEntityAdminRequestRow(approved),
+        request: await mapEntityAdminRequestRowWithResolvedEmails(approved),
         membership: granted.membership,
       };
     },
@@ -2269,7 +2379,7 @@ async function disableEntityAdminMembership(input) {
             entitySlug: context.entitySlug,
             ownerUserId: context.ownerUserId,
           },
-          membership: mapEntityAdminMembershipRow(existing),
+          membership: await mapEntityAdminMembershipRowWithResolvedEmails(existing),
         };
       }
 
@@ -2306,7 +2416,7 @@ async function disableEntityAdminMembership(input) {
           entitySlug: context.entitySlug,
           ownerUserId: context.ownerUserId,
         },
-        membership: row ? mapEntityAdminMembershipRow(row) : null,
+        membership: row ? await mapEntityAdminMembershipRowWithResolvedEmails(row) : null,
       };
     },
     { dryRun: input.dryRun === true }
@@ -2517,7 +2627,7 @@ async function listSeriesViewerGrants(input) {
     );
     const requests = await loadSeriesAccessRequests(client, access.seriesSourceConfigId);
 
-    const grants = result.rows.map(mapViewerGrantRow);
+    const grants = await mapViewerGrantRowsWithResolvedEmails(result.rows);
     const activeGrants = grants.filter((grant) => grant.status === "active" && grant.isExpired !== true);
     const pendingRequests = requests.filter((request) => request.requestStatus === "pending");
     const approvedRequests = requests.filter((request) => request.requestStatus === "approved");
@@ -2780,7 +2890,7 @@ async function createSeriesAccessRequest(input) {
             ? "Dry-run access request validated against an admin-approved email invite."
             : "Access granted from the admin-approved email invite.",
           accessGranted: true,
-          request: mapAccessRequestRow(resolvedRequest),
+          request: await mapAccessRequestRowWithResolvedEmails(resolvedRequest),
           grant,
         };
       }
@@ -2902,7 +3012,7 @@ async function applySeriesAccessRequestDecision(input) {
 
         return {
           message: input.dryRun ? "Dry-run decline validated." : "Access request declined.",
-          request: mapAccessRequestRow(declined),
+          request: await mapAccessRequestRowWithResolvedEmails(declined),
           grant: null,
         };
       }
@@ -2955,7 +3065,7 @@ async function applySeriesAccessRequestDecision(input) {
 
       return {
         message: input.dryRun ? "Dry-run approval validated." : "Access request approved.",
-        request: mapAccessRequestRow(approved),
+        request: await mapAccessRequestRowWithResolvedEmails(approved),
         grant,
       };
     },
@@ -3059,7 +3169,7 @@ async function revokeSeriesViewerGrant(input) {
 
       return {
         message: input.dryRun ? "Dry-run viewer access revoke validated." : "Viewer access revoked.",
-        grant: mapViewerGrantRow(row),
+        grant: await mapViewerGrantRowWithResolvedEmails(row),
       };
     },
     { dryRun: input.dryRun === true }

@@ -980,6 +980,7 @@ const AnalyticsIntelligenceReport = () => {
   const [viewerStatus, setViewerStatus] = useState<ViewerStatus>("loading");
   const [viewerError, setViewerError] = useState<string | null>(null);
   const [viewerSeries, setViewerSeries] = useState<Array<{ configKey?: string; seriesName?: string }>>([]);
+  const [viewerEmail, setViewerEmail] = useState<string>("");
   const [viewerUserId, setViewerUserId] = useState<string>("");
   const [viewerIsPlatformAdmin, setViewerIsPlatformAdmin] = useState(false);
   const [viewerReloadKey, setViewerReloadKey] = useState(0);
@@ -1041,6 +1042,7 @@ const AnalyticsIntelligenceReport = () => {
   useEffect(() => {
     if (!accessToken) {
       setViewerSeries([]);
+      setViewerEmail("");
       setViewerUserId("");
       setViewerIsPlatformAdmin(false);
       setViewerStatus("error");
@@ -1052,6 +1054,7 @@ const AnalyticsIntelligenceReport = () => {
     setViewerStatus("loading");
     setViewerError(null);
     setViewerSeries([]);
+    setViewerEmail("");
     setViewerUserId("");
     setViewerIsPlatformAdmin(false);
 
@@ -1061,6 +1064,7 @@ const AnalyticsIntelligenceReport = () => {
           return;
         }
         setViewerSeries(payload.series ?? []);
+        setViewerEmail(payload.actor?.email?.trim() || "");
         setViewerUserId(payload.actor?.userId?.trim() || "");
         setViewerIsPlatformAdmin(payload.actor?.isPlatformAdmin === true);
         setViewerStatus("success");
@@ -1071,6 +1075,7 @@ const AnalyticsIntelligenceReport = () => {
         }
         const message = error instanceof Error ? error.message : "Viewer access could not be resolved right now.";
         setViewerSeries([]);
+        setViewerEmail("");
         setViewerUserId("");
         setViewerIsPlatformAdmin(false);
         setViewerStatus("error");
@@ -1356,12 +1361,12 @@ const AnalyticsIntelligenceReport = () => {
                 <CardContent className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
                   <div className="rounded-2xl border border-border/80 bg-background/60 p-5">
                     <p className="text-[11px] uppercase tracking-[0.16em] text-primary">
-                      {viewerIsPlatformAdmin ? "Platform-admin scope" : "Send this user id to your admin"}
+                      {viewerIsPlatformAdmin ? "Platform-admin scope" : "Send this email to your admin"}
                     </p>
                     <div className="mt-4 rounded-2xl border border-border/80 bg-background/70 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">User ID</p>
-                      <p className="mt-2 break-all font-mono text-sm text-foreground">
-                        {viewerUserId || user?.id || "Unavailable"}
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Email</p>
+                      <p className="mt-2 break-all text-sm text-foreground">
+                        {viewerEmail || user?.email || viewerUserId || user?.id || "Unavailable"}
                       </p>
                     </div>
                   </div>

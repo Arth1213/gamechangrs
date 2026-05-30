@@ -195,9 +195,9 @@ const AnalyticsAdminGateway = () => {
                           This account does not currently have platform-admin or series-admin access.
                         </p>
                         <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">User ID</p>
-                          <p className="mt-2 break-all font-mono text-sm text-foreground">
-                            {user?.id || "Unavailable"}
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Email</p>
+                          <p className="mt-2 break-all text-sm text-foreground">
+                            {user?.email || user?.id || "Unavailable"}
                           </p>
                         </div>
                         {adminRequestMessage ? (

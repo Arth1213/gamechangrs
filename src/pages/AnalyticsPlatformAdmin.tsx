@@ -77,6 +77,38 @@ function formatDateTime(value?: string | null) {
   return parsed.toLocaleString();
 }
 
+function getEmailDisplayValue(email?: string | null, fallbackUserId?: string | null, emptyLabel = "-") {
+  const normalizedEmail = email?.trim();
+  if (normalizedEmail) {
+    return normalizedEmail;
+  }
+
+  const normalizedUserId = fallbackUserId?.trim();
+  if (normalizedUserId) {
+    return normalizedUserId;
+  }
+
+  return emptyLabel;
+}
+
+function getPendingRequestUserEmailLabel(request: CricketAdminEntityAccessRequest) {
+  if (request.requestedUserEmail?.trim()) {
+    return request.requestedUserEmail.trim();
+  }
+
+  if (request.requestedEmail?.trim()) {
+    return request.requestedEmail.trim();
+  }
+
+  if (request.requestedUserId?.trim()) {
+    return request.requestedUserId.trim();
+  }
+
+  return request.requestType === "admin_invite"
+    ? "Will link after the first Game-Changrs sign-in"
+    : "No email linked yet";
+}
+
 function getStatusBadgeClass(status?: string | null) {
   const normalized = status?.trim().toLowerCase();
 
@@ -231,6 +263,7 @@ const AnalyticsPlatformAdmin = () => {
           row.entity.entityName,
           row.entity.entitySlug,
           row.request.requestedEmail,
+          row.request.requestedUserEmail,
           row.request.requestedUserId,
           row.request.requestNote,
           row.request.requestType,
@@ -512,13 +545,8 @@ const AnalyticsPlatformAdmin = () => {
                         <div className="space-y-2">
                           <p className="text-[11px] uppercase tracking-[0.16em] text-primary">Global scope</p>
                           <div className="font-display text-2xl text-foreground">
-                            {catalog?.actor?.email || user?.email || "Signed-in user"}
+                            {catalog?.actor?.email || user?.email || catalog?.actor?.userId || user?.id || "Signed-in user"}
                           </div>
-                          {catalog?.actor?.userId ? (
-                            <p className="text-xs leading-6 text-muted-foreground">
-                              User ID: <span className="font-mono text-foreground">{catalog.actor.userId}</span>
-                            </p>
-                          ) : null}
                           <p className="text-sm leading-6 text-muted-foreground">
                             Superuser scope across every entity, every series console, and every player-report route.
                           </p>
@@ -650,8 +678,8 @@ const AnalyticsPlatformAdmin = () => {
                                 <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
                                   Entity owner
                                 </p>
-                                <div className="mt-2 break-all font-mono text-xs leading-6 text-foreground">
-                                  {entity.ownerUserId || "Not recorded"}
+                                <div className="mt-2 break-all text-sm leading-6 text-foreground">
+                                  {getEmailDisplayValue(entity.ownerUserEmail, entity.ownerUserId, "Not recorded")}
                                 </div>
                               </div>
                             </div>
@@ -683,8 +711,8 @@ const AnalyticsPlatformAdmin = () => {
                                             {membership.isOwner ? "owner" : membership.role || "admin"}
                                           </Badge>
                                         </div>
-                                        <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
-                                          {membership.userId || "No user ID"}
+                                        <p className="break-all text-sm leading-6 text-muted-foreground">
+                                          {getEmailDisplayValue(membership.userEmail, membership.userId, "No email linked yet")}
                                         </p>
                                       </div>
 
@@ -907,7 +935,7 @@ const AnalyticsPlatformAdmin = () => {
                             id="platform-admin-request-search"
                             value={requestQuery}
                             onChange={(event) => setRequestQuery(event.target.value)}
-                            placeholder="Search by entity, email, user ID, or note"
+                            placeholder="Search by entity, email, or note"
                           />
                         </div>
                         <div className="space-y-2">
@@ -965,8 +993,8 @@ const AnalyticsPlatformAdmin = () => {
                                       <p className="break-all text-base font-semibold text-foreground">
                                         {request.requestedEmail || "-"}
                                       </p>
-                                      <p className="break-all font-mono text-xs leading-6 text-muted-foreground">
-                                        {request.requestedUserId || "No user ID linked yet"}
+                                      <p className="break-all text-sm leading-6 text-muted-foreground">
+                                        {getPendingRequestUserEmailLabel(request)}
                                       </p>
                                     </div>
 

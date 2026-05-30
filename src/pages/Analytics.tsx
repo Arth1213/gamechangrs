@@ -2283,9 +2283,9 @@ const Analytics = ({ view = "landing" }: { view?: AnalyticsView }) => {
                       )}
                     </p>
                     <div className="mt-4 rounded-2xl border border-border/80 bg-background/70 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">User ID</p>
-                      <p className="mt-2 break-all font-mono text-sm text-foreground">
-                        {viewerCatalog?.actor?.userId || user?.id || "Unavailable"}
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Email</p>
+                      <p className="mt-2 break-all text-sm text-foreground">
+                        {viewerCatalog?.actor?.email || user?.email || viewerCatalog?.actor?.userId || user?.id || "Unavailable"}
                       </p>
                     </div>
                     {!isPlatformAdminViewer ? (

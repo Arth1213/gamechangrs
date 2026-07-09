@@ -8,10 +8,11 @@ If someone new needs to restore Game-Changrs on a laptop, tell them to open `STA
 
 1. Open `START_HERE.html`
 2. Open `LATEST_RESTORE_GUIDE.html`
-3. If using Codex to do the restore, open `CODEX_CLEAN_SLATE_RESTORE_PROMPT_CURRENT.txt`
-4. If local operator work is needed after restore, use `LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_CURRENT.md`
-5. Use `GAMECHANGRS_SYSTEM_MAP_CURRENT.html` or `.pdf` to understand the simplified system
-6. Use `GAMECHANGRS_PLATFORM_INVENTORY_DETAIL_CURRENT.html` or `.pdf` when exact platform/config ownership is needed
+3. Open `CODEX_REOPEN_CHECKLIST_CURRENT.html` if you are resuming work after signing back into Codex
+4. If using Codex to do the restore, open `CODEX_CLEAN_SLATE_RESTORE_PROMPT_CURRENT.txt`
+5. If local operator work is needed after restore, use `LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_CURRENT.md`
+6. Use `GAMECHANGRS_SYSTEM_MAP_CURRENT.html` or `.pdf` to understand the simplified system
+7. Use `GAMECHANGRS_PLATFORM_INVENTORY_DETAIL_CURRENT.html` or `.pdf` when exact platform/config ownership is needed
 
 ## What this pack is for
 
@@ -20,6 +21,8 @@ This pack is meant to make restore and handoff easy for a new person.
 It should answer:
 
 - what Game-Changrs actually is
+- which workspace roots to reopen in Codex after sign-in
+- which folders are canonical vs backup or historical copies
 - what files need to be restored first
 - which files come from Git and which files come from the OneDrive restore-point backup
 - what external platforms need manual setup before startup

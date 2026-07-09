@@ -160,6 +160,48 @@ function isApiRequest(req) {
   return req.path.startsWith("/api/");
 }
 
+const ANALYTICS_DATABASE_UNAVAILABLE_MESSAGE =
+  "Analytics database is unavailable right now. If the Supabase analytics project was paused, unpause it in Supabase, wait for the pooler to warm up, then retry the access check.";
+
+function getErrorCode(error) {
+  return normalizeText(error?.code || error?.cause?.code).toUpperCase();
+}
+
+function getErrorMessage(error) {
+  return normalizeText(error?.message || error?.cause?.message);
+}
+
+function isAnalyticsDatabaseUnavailableError(error) {
+  const message = getErrorMessage(error).toLowerCase();
+  const code = getErrorCode(error);
+
+  return (
+    code === "ENOTFOUND"
+    || code === "ECONNREFUSED"
+    || code === "ECONNRESET"
+    || code === "ETIMEDOUT"
+    || message.includes("tenant/user")
+    || message.includes("supavisor")
+    || message.includes("database is starting")
+    || message.includes("remaining connection slots are reserved")
+  );
+}
+
+function getClientErrorPayload(error) {
+  if (isAnalyticsDatabaseUnavailableError(error)) {
+    return {
+      statusCode: 503,
+      error: ANALYTICS_DATABASE_UNAVAILABLE_MESSAGE,
+      code: "analytics_database_unavailable",
+    };
+  }
+
+  return {
+    statusCode: error.statusCode || 500,
+    error: error.message || "Unexpected request failure.",
+  };
+}
+
 function sendHtml(res, html, statusCode = 200) {
   res.status(statusCode).type("html").send(html);
 }
@@ -1032,12 +1074,15 @@ app.use((req, res, next) => {
 });
 
 app.use((error, req, res, next) => {
-  const statusCode = error.statusCode || 500;
+  const payload = getClientErrorPayload(error);
+  const statusCode = payload.statusCode;
+
+  if (statusCode >= 500) {
+    console.error(`[api] ${req.method} ${req.originalUrl} failed:`, error);
+  }
+
   if (isApiRequest(req) || req.accepts(["json", "html"]) === "json") {
-    res.status(statusCode).json({
-      error: error.message || "Unexpected request failure.",
-      statusCode,
-    });
+    res.status(statusCode).json(payload);
     return;
   }
 
@@ -1045,7 +1090,7 @@ app.use((error, req, res, next) => {
     res,
     renderErrorPage({
       title: statusCode === 404 ? "Route Not Found" : "Request Failed",
-      message: error.message || "Unexpected request failure.",
+      message: payload.error || "Unexpected request failure.",
       statusCode,
       seriesConfigKey: req.params?.seriesConfigKey,
     }),

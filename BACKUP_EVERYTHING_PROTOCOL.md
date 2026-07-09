@@ -85,6 +85,7 @@ When "backup everything" is requested, the backup should either include or refer
 - a single layman-friendly restore guide in HTML or DOCX that can be followed from a clean slate
 - a Codex restore prompt that can drive the restore end to end once the files are placed on disk
 - a local-ops / series-management operator guide with startup steps and localhost URLs
+- a Codex reopen checklist that lists the canonical repo, analytics workspace, Arth workspace, local backup root, and OneDrive restore-point locations
 - a single-page system map that explains the full app footprint in layman terms
 - a more detailed platform inventory that expands configs, public values, storage locations, and platform usage
 - one canonical current handoff folder that a new operator can open first without hunting through old docs
@@ -124,6 +125,8 @@ Minimum named docs to include or refresh when practical:
 - `docs/RESTORE_PACK_CURRENT/START_HERE.html`
 - `docs/RESTORE_PACK_CURRENT/START_HERE.md`
 - `docs/LATEST_RESTORE_GUIDE.html`
+- `docs/CODEX_REOPEN_CHECKLIST_CURRENT.html`
+- `docs/CODEX_REOPEN_CHECKLIST_CURRENT.md`
 - `CODEX_CLEAN_SLATE_RESTORE_PROMPT_CURRENT.txt`
 - `LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_CURRENT.md`
 - `docs/GAMECHANGRS_SYSTEM_MAP_CURRENT.html`
@@ -145,6 +148,8 @@ Expected contents of `docs/RESTORE_PACK_CURRENT`:
 - `START_HERE.html`
 - `START_HERE.md`
 - `LATEST_RESTORE_GUIDE.html`
+- `CODEX_REOPEN_CHECKLIST_CURRENT.html`
+- `CODEX_REOPEN_CHECKLIST_CURRENT.md`
 - `CODEX_CLEAN_SLATE_RESTORE_PROMPT_CURRENT.txt`
 - `LOCAL_OPS_SERIES_MANAGEMENT_START_HERE_CURRENT.md`
 - `GAMECHANGRS_SYSTEM_MAP_CURRENT.html`
@@ -197,6 +202,7 @@ The email should attach:
 - `START_HERE.html` as the first human entry file when practical
 - one single-file layman restore guide in HTML or DOCX format
 - one Codex restore prompt file that can be pasted directly into Codex to restore from the backup set
+- one Codex reopen checklist that tells the next session which workspace roots and backup paths to open first
 - one single-page Game-Changrs simplified system map in HTML or PDF form, preferably both when practical
 - one detailed platform inventory in HTML or PDF form, preferably both when practical
 - the email body should point the reader to `docs/RESTORE_PACK_CURRENT/START_HERE.html` as the first file to open

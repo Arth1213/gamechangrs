@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game-Changrs Codex Reopen Checklist</title>
+    <style>
+      :root {
+        --bg: #f4efe6;
+        --paper: #fffaf2;
+        --ink: #18212f;
+        --muted: #5d6777;
+        --line: #d9cdb7;
+        --brand: #0f766e;
+        --brand-soft: #dff4f1;
+        --gold-soft: #fff3dd;
+        --gold-ink: #8a4b08;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Inter", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top right, rgba(15, 118, 110, 0.1), transparent 28%),
+          linear-gradient(180deg, #f6f1e8 0%, var(--bg) 100%);
+      }
+
+      .page {
+        width: min(1040px, calc(100vw - 32px));
+        margin: 20px auto 40px;
+      }
+
+      .sheet {
+        background: linear-gradient(180deg, rgba(255, 250, 242, 0.98), rgba(255, 247, 237, 0.98));
+        border: 1px solid rgba(217, 205, 183, 0.95);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: 0 18px 42px rgba(24, 33, 47, 0.08);
+      }
+
+      .eyebrow {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: var(--brand);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 12px 0 10px;
+        font-size: clamp(32px, 4vw, 46px);
+        line-height: 0.96;
+        letter-spacing: -0.04em;
+      }
+
+      .lead {
+        margin: 0;
+        max-width: 760px;
+        font-size: 16px;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+
+      .metrics,
+      .grid,
+      .cards {
+        display: grid;
+        gap: 14px;
+      }
+
+      .metrics {
+        margin-top: 20px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .grid {
+        margin-top: 18px;
+        grid-template-columns: 1.25fr 0.75fr;
+      }
+
+      .cards {
+        margin-top: 18px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .card,
+      .metric {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 16px;
+      }
+
+      .metric-label {
+        margin: 0 0 8px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .metric-value {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1;
+        font-weight: 800;
+      }
+
+      .metric p,
+      .card p,
+      li {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      h2 {
+        margin: 0 0 10px;
+        font-size: 20px;
+        letter-spacing: -0.02em;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+
+      .path {
+        display: block;
+        margin-top: 6px;
+        padding: 9px 10px;
+        border-radius: 12px;
+        background: #f7f2e6;
+        border: 1px solid rgba(217, 205, 183, 0.9);
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 12px;
+        overflow-wrap: anywhere;
+        color: var(--ink);
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 12px;
+        align-items: start;
+        padding-top: 12px;
+        border-top: 1px solid rgba(217, 205, 183, 0.8);
+      }
+
+      .step:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      .step-no {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--brand-soft);
+        color: var(--brand);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.55;
+        color: var(--ink);
+      }
+
+      .note {
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: var(--gold-soft);
+        border: 1px solid rgba(138, 75, 8, 0.16);
+      }
+
+      .note p {
+        color: var(--gold-ink);
+      }
+
+      @media (max-width: 860px) {
+        .metrics,
+        .grid,
+        .cards {
+          grid-template-columns: 1fr;
+        }
+
+        .sheet {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="sheet">
+        <span class="eyebrow">Open After Codex Sign-In</span>
+        <h1>Game-Changrs Codex Reopen Checklist</h1>
+        <p class="lead">
+          Use this file after signing back into Codex so the right Game-Changrs context comes back immediately.
+          It tells you which workspace root to open, which repo is canonical, where analytics lives, where restore
+          points live, and which folders are only historical copies.
+        </p>
+
+        <div class="metrics">
+          <article class="metric">
+            <div class="metric-label">Canonical Repo</div>
+            <p class="metric-value">1</p>
+            <p>Use <strong>gamechangrs-phase10-deploy</strong> as the source of truth.</p>
+          </article>
+          <article class="metric">
+            <div class="metric-label">Analytics Workspace</div>
+            <p class="metric-value">1</p>
+            <p><strong>bay-area-u15</strong> is the analytics/backend inside the canonical repo.</p>
+          </article>
+          <article class="metric">
+            <div class="metric-label">Restore Roots</div>
+            <p class="metric-value">2</p>
+            <p>One local backup root and one OneDrive restore root should always be known.</p>
+          </article>
+          <article class="metric">
+            <div class="metric-label">Arth Paths</div>
+            <p class="metric-value">2</p>
+            <p>One live profile path in the repo and one separate Arth workspace root.</p>
+          </article>
+        </div>
+
+        <div class="grid">
+          <article class="card">
+            <h2>Open These Paths First</h2>
+            <ul>
+              <li>
+                Parent workspace root
+                <span class="path">/Users/artharun/Downloads/GAME-CHANGRS</span>
+              </li>
+              <li>
+                Canonical Game-Changrs repo
+                <span class="path">/Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy</span>
+              </li>
+              <li>
+                Analytics/backend workspace inside the repo
+                <span class="path">/Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15</span>
+              </li>
+              <li>
+                Current restore/handoff pack
+                <span class="path">/Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/docs/RESTORE_PACK_CURRENT</span>
+              </li>
+              <li>
+                Local backup artifacts
+                <span class="path">/Users/artharun/Downloads/GAME-CHANGRS/backups</span>
+              </li>
+              <li>
+                OneDrive backup root
+                <span class="path">/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup</span>
+              </li>
+              <li>
+                Latest known restore point as of 2026-07-08
+                <span class="path">/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260708/2026_07_08-Game-Changrs-Complete-Restore-Point-1932-PDT</span>
+              </li>
+              <li>
+                Live Arth profile content inside the main repo
+                <span class="path">/Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/public/arth</span>
+              </li>
+              <li>
+                Separate Arth workspace root
+                <span class="path">/Users/artharun/arthcode</span>
+              </li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h2>Canonical vs Non-Canonical</h2>
+            <ul>
+              <li>Use <strong>gamechangrs-phase10-deploy</strong> as the source of truth for code changes.</li>
+              <li>Use the parent <strong>GAME-CHANGRS</strong> folder when you want code, backups, and helper folders visible together.</li>
+              <li><strong>bay-area-u15</strong> is not a separate repo. It is the analytics/backend and local-ops workspace inside the canonical repo.</li>
+              <li><strong>public/arth</strong> is the live Arth profile content that ships with the main site.</li>
+              <li><strong>/Users/artharun/arthcode</strong> is separate and should only be treated as active if you are intentionally working there.</li>
+              <li>Do not treat the codex-min, codex-safe, codex-general, or gamechangrs-main folders as source of truth unless doing recovery or comparison.</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="cards">
+          <article class="card">
+            <h2>Reopen Flow In Codex</h2>
+            <div class="step">
+              <div class="step-no">1</div>
+              <div>
+                <p>Open the workspace at <strong>/Users/artharun/Downloads/GAME-CHANGRS</strong>.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">2</div>
+              <div>
+                <p>Tell Codex to treat <strong>gamechangrs-phase10-deploy</strong> as the canonical repo.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">3</div>
+              <div>
+                <p>Ask Codex to read the current restore pack docs before making changes.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">4</div>
+              <div>
+                <p>If the task is analytics, have Codex inspect <strong>bay-area-u15</strong>.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-no">5</div>
+              <div>
+                <p>If the task is Arth profile work, tell Codex whether the change belongs in <strong>public/arth</strong> or <strong>/Users/artharun/arthcode</strong>.</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <h2>Prompt To Paste Into Codex</h2>
+            <span class="path">
+              Read /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/docs/RESTORE_PACK_CURRENT/START_HERE.html,
+              /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/docs/RESTORE_PACK_CURRENT/LATEST_RESTORE_GUIDE.html,
+              /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/docs/RESTORE_PACK_CURRENT/GAMECHANGRS_SYSTEM_MAP_CURRENT.html,
+              /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/docs/RESTORE_PACK_CURRENT/GAMECHANGRS_PLATFORM_INVENTORY_DETAIL_CURRENT.html,
+              and /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/docs/RESTORE_PACK_CURRENT/CODEX_REOPEN_CHECKLIST_CURRENT.html.
+            </span>
+            <div class="path">
+              <pre>Treat /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy as the canonical Game-Changrs repo.
+If the task involves analytics or local ops, also inspect /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/bay-area-u15.
+If the task involves the Arth profile, also inspect /Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/public/arth and /Users/artharun/arthcode.
+
+Build context first, then summarize current state before making changes.</pre>
+            </div>
+          </article>
+        </div>
+
+        <div class="note">
+          <p>
+            Keep these locations aligned: the repo restore pack at
+            <strong>/Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/docs/RESTORE_PACK_CURRENT</strong>,
+            the local backup folder at <strong>/Users/artharun/Downloads/GAME-CHANGRS/backups</strong>, and the OneDrive root at
+            <strong>/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup</strong>.
+            The <strong>backup everything for me</strong> workflow should refresh all three together.
+          </p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

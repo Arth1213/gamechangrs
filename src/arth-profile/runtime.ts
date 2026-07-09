@@ -1,4 +1,5 @@
 import academicsHtml from "./pages/academics.html?raw";
+import berkeleyMetiaHtml from "./pages/berkeley-metia.html?raw";
 import cricketHtml from "./pages/cricket.html?raw";
 import indexHtml from "./pages/index.html?raw";
 import leadershipHtml from "./pages/leadership.html?raw";
@@ -9,6 +10,7 @@ const PROFILE_PAGES: Record<string, string> = {
   "/arth/": indexHtml,
   "/arth/index.html": indexHtml,
   "/arth/academics.html": academicsHtml,
+  "/arth/berkeley-metia.html": berkeleyMetiaHtml,
   "/arth/leadership.html": leadershipHtml,
   "/arth/scouts.html": scoutsHtml,
   "/arth/cricket.html": cricketHtml,

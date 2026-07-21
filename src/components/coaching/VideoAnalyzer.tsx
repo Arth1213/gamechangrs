@@ -47,12 +47,20 @@ export function VideoAnalyzer({ mode }: VideoAnalyzerProps) {
   const [analysisStage, setAnalysisStage] = useState<'idle' | 'pose' | 'ai' | 'complete'>('idle');
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [videoDimensions, setVideoDimensions] = useState({ width: 640, height: 360 });
+  const [playbackTimestamp, setPlaybackTimestamp] = useState(0);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { requireAuth } = useRequireAuth();
-  const { isProcessing, progress, poseFrames, currentFrame, processVideo, reset } = usePoseDetection();
+  const { isProcessing, progress, poseFrames, currentFrame, processVideo, reset, error } = usePoseDetection();
+  const displayedFrame = poseFrames.length > 0
+    ? poseFrames.reduce((closest, frame) =>
+      Math.abs(frame.timestamp - playbackTimestamp) < Math.abs(closest.timestamp - playbackTimestamp)
+        ? frame
+        : closest,
+    )
+    : currentFrame;
 
   useEffect(() => {
     return () => {
@@ -70,6 +78,7 @@ export function VideoAnalyzer({ mode }: VideoAnalyzerProps) {
         setVideoUrl(URL.createObjectURL(file));
         setAnalysis(null);
         setAnalysisStage('idle');
+        setPlaybackTimestamp(0);
         reset();
       } else {
         toast({
@@ -159,6 +168,7 @@ export function VideoAnalyzer({ mode }: VideoAnalyzerProps) {
     setVideoUrl(null);
     setAnalysis(null);
     setAnalysisStage('idle');
+    setPlaybackTimestamp(0);
     reset();
   };
 
@@ -240,14 +250,16 @@ ${analysis.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
                 ref={videoRef}
                 src={videoUrl || undefined}
                 onLoadedMetadata={handleVideoLoad}
+                onTimeUpdate={(event) => setPlaybackTimestamp(event.currentTarget.currentTime * 1000)}
+                onSeeked={(event) => setPlaybackTimestamp(event.currentTarget.currentTime * 1000)}
                 controls={!isProcessing}
                 className="w-full"
                 style={{ maxHeight: '500px' }}
               />
               
-              {currentFrame && (
+              {displayedFrame && (
                 <PoseOverlay
-                  joints={currentFrame.joints}
+                  joints={displayedFrame.joints}
                   width={videoDimensions.width}
                   height={videoDimensions.height}
                 />
@@ -283,7 +295,7 @@ ${analysis.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
                 <div>
                   <p className="font-medium text-foreground">{selectedFile.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • {poseFrames.length > 0 ? `${poseFrames.length} frames analyzed` : 'Ready for analysis'}
+                    {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • {poseFrames.length > 0 ? `${poseFrames.length} verified pose frames` : 'Ready for verified pose tracking'}
                   </p>
                 </div>
               </div>
@@ -300,6 +312,12 @@ ${analysis.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
                 </Button>
               </div>
             </div>
+
+            {error && (
+              <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {error}
+              </p>
+            )}
 
             {/* Analyze Button */}
             {!analysis && (

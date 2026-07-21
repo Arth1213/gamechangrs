@@ -94,6 +94,7 @@ const REQUIRED_UPPER_BODY_LANDMARKS = [
   'left_wrist',
   'right_wrist',
 ] as const;
+const MIN_TRACKED_FRAMES = 10;
 
 // Calculate angle between three points using law of cosines
 function calculateAngle(p1: Joint, p2: Joint, p3: Joint): number {
@@ -137,7 +138,8 @@ function hasReliableCoreLandmarks(joints: Joint[]) {
 
 // Calculate cricket-relevant angles from joints
 function calculateCricketAngles(joints: Joint[]): Angle[] {
-  const getJoint = (name: string) => joints.find(j => j.name === name);
+  const getJoint = (name: string) =>
+    joints.find((joint) => joint.name === name && joint.visibility >= 0.45);
   const angles: Angle[] = [];
   
   // Left elbow angle (shoulder-elbow-wrist)
@@ -398,18 +400,16 @@ export function usePoseDetection() {
       URL.revokeObjectURL(video.src);
 
       const validFrames = frames.filter((frame) => frame.joints.length > 0);
-      if (validFrames.length === 0) {
-        const weakFrames = frames.filter((frame) => frame.joints.length > 0 || frame.angles.length > 0);
-        if (weakFrames.length > 0) {
-          throw new Error('The batter was only partially visible in this clip. Try a closer front-on view with the full body visible and avoid recording a video off another screen.');
-        }
-        throw new Error('The batter could not be isolated clearly enough from this clip. Try a front-on 15-20 second batting video with the whole body in frame.');
+      if (validFrames.length < MIN_TRACKED_FRAMES) {
+        throw new Error(
+          `Only ${validFrames.length} of ${totalFrames} sampled frames contained a verified pose. Use a well-lit video with the batter clearly visible.`,
+        );
       }
       
-      setPoseFrames(frames);
-      frameCacheRef.current.set(cacheKey, frames);
+      setPoseFrames(validFrames);
+      frameCacheRef.current.set(cacheKey, validFrames);
       setIsProcessing(false);
-      return frames;
+      return validFrames;
     } catch (err) {
       console.error('Video processing error:', err);
       setError(err instanceof Error ? err.message : 'Failed to process video');

@@ -26,7 +26,7 @@ test("the profile home and academics archive link to Wharton Moneyball", async (
     readFile(new URL("academics.html", pageRoot), "utf8"),
   ]);
 
-  assert.match(index, /Wharton Moneyball Experience/);
+  assert.match(index, /Wharton Moneyball/);
   assert.match(index, /href="\.\/moneyball\.html"/);
   assert.match(academics, /Wharton Moneyball Experience/);
   assert.match(academics, /href="\.\/moneyball\.html"/);
@@ -39,7 +39,7 @@ test("the production-served Arth pages include the Wharton profile update", asyn
     readFile(new URL("moneyball.html", publicProfileRoot), "utf8"),
   ]);
 
-  assert.match(index, /Wharton Moneyball Experience/);
+  assert.match(index, /Wharton Moneyball/);
   assert.match(index, /href="\.\/moneyball\.html"/);
   assert.match(academics, /Wharton Moneyball Experience/);
   assert.match(academics, /href="\.\/moneyball\.html"/);
@@ -69,16 +69,16 @@ test("the Wharton Moneyball signal opens the internal program archive", async ()
   }
 });
 
-test("the Archive groups Wharton Moneyball under Academics instead of a standalone card", async () => {
+test("the Portfolio groups Wharton Moneyball under Academics instead of a standalone card", async () => {
   const [sourceIndex, publicIndex] = await Promise.all([
     readFile(new URL("index.html", pageRoot), "utf8"),
     readFile(new URL("index.html", publicProfileRoot), "utf8"),
   ]);
 
   for (const index of [sourceIndex, publicIndex]) {
-    const archive = index.slice(index.indexOf('id="accomplishments"'), index.indexOf('id="contact"'));
-    assert.match(archive, /Berkeley M\.E\.T\. IA, Wharton Moneyball/);
-    assert.doesNotMatch(archive, /<span>Wharton Moneyball<\/span>/);
+    const portfolio = index.slice(index.indexOf('id="accomplishments"'), index.indexOf('id="contact"'));
+    assert.match(portfolio, /Wharton, Berkeley, coursework, certificates/);
+    assert.doesNotMatch(portfolio, /<span>Wharton Moneyball<\/span>/);
   }
 });
 
@@ -91,7 +91,7 @@ test("the main profile distinguishes completed APs from APs being pursued", asyn
   for (const index of [sourceIndex, publicIndex]) {
     assert.match(index, /Completed APs/);
     assert.match(index, /AP Chem, AP World, AP Calc AB/);
-    assert.match(index, /APs Pursuing/);
+    assert.match(index, /Current APs/);
     assert.match(index, /AP Computer Science, AP US History, AP Psychology, AP Calc BC/);
   }
 });

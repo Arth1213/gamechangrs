@@ -158,3 +158,22 @@ test("the homepage presents compact Portfolio sections without numeric rails", a
     assert.doesNotMatch(index, /03\s*\//);
   }
 });
+
+test("the homepage uses a tighter portrait crop and supplied signal marks", async () => {
+  const [sourceIndex, publicIndex, styles] = await Promise.all([
+    readFile(new URL("index.html", pageRoot), "utf8"),
+    readFile(new URL("index.html", publicProfileRoot), "utf8"),
+    readFile(new URL("styles.css", publicProfileRoot), "utf8"),
+  ]);
+
+  for (const index of [sourceIndex, publicIndex]) {
+    const signals = index.slice(index.indexOf('class="signal-ribbon"'), index.indexOf('id="about"'));
+    assert.match(signals, /assets\/brand\/wharton-shield\.png/);
+    assert.match(signals, /assets\/brand\/berkeley-b\.png/);
+    assert.match(signals, /gamechangrs-hex-ball-mark\.webp/);
+    assert.match(signals, /class="signal-mark" alt=""/);
+  }
+
+  assert.match(styles, /\.portrait-frame img\s*\{[^}]*transform:\s*scale\(/s);
+  assert.match(styles, /\.signal-mark\s*\{/);
+});

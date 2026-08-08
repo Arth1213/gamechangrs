@@ -419,7 +419,13 @@ main {
 }
 .academics-page .page-title { max-width: none; font-size: clamp(3rem, 5vw, 4.5rem); }
 .academics-page .hero-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, 1fr); gap: .75rem; }
-.academics-page .summary-card { align-items: flex-start; justify-content: center; min-height: 0; padding: 1.15rem; }
+.academics-page .summary-card {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 0;
+  padding: 1.15rem;
+}
 .academics-page .summary-card span {
   display: block;
   margin-bottom: .55rem;

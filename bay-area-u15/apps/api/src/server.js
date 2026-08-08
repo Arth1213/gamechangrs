@@ -14,6 +14,7 @@ const {
   renderAdminTuningPage,
   renderDashboardPage,
   renderErrorPage,
+  renderNccaTopPlayersPage,
   renderPlayerIntelligenceReportPage,
   renderPlayerReportPage,
   renderSeriesIndexPage,
@@ -56,6 +57,7 @@ const {
 } = require("./services/seriesService");
 const {
   getDashboardOverview,
+  getNccaTopPlayers,
   getPlayerReport,
   searchPlayers,
 } = require("./services/reportService");
@@ -771,6 +773,13 @@ app.get("/api/series/:seriesConfigKey/dashboard/overview", asyncHandler(async (r
   res.json(payload);
 }));
 
+app.get("/api/series/:seriesConfigKey/top-players", requireSeriesViewer, asyncHandler(async (req, res) => {
+  const payload = await getNccaTopPlayers({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+  });
+  res.json(payload);
+}));
+
 app.get("/api/series/:seriesConfigKey/players/search", requireSeriesViewer, asyncHandler(async (req, res) => {
   const payload = await searchPlayers({
     seriesConfigKey: req.cricketActor.seriesConfigKey,
@@ -923,6 +932,22 @@ app.get("/series/:seriesConfigKey/players/:playerId/report", requireSeriesViewer
     divisionId: req.query.divisionId,
   });
   sendHtml(res, renderPlayerReportPage(payload));
+}));
+
+app.get("/series/:seriesConfigKey/players/:playerId/intelligence", requireSeriesViewer, asyncHandler(async (req, res) => {
+  const payload = await getPlayerIntelligenceReport({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+    playerId: req.params.playerId,
+    divisionId: req.query.divisionId,
+  });
+  sendHtml(res, renderPlayerIntelligenceReportPage(payload));
+}));
+
+app.get("/series/:seriesConfigKey/top-players", requireSeriesViewer, asyncHandler(async (req, res) => {
+  const payload = await getNccaTopPlayers({
+    seriesConfigKey: req.cricketActor.seriesConfigKey,
+  });
+  sendHtml(res, renderNccaTopPlayersPage(payload));
 }));
 
 app.get("/api/series/:seriesConfigKey/admin/setup", requireSeriesAdmin, asyncHandler(async (req, res) => {

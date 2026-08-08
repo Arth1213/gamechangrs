@@ -3,6 +3,7 @@ import berkeleyMetiaHtml from "./pages/berkeley-metia.html?raw";
 import cricketHtml from "./pages/cricket.html?raw";
 import indexHtml from "./pages/index.html?raw";
 import leadershipHtml from "./pages/leadership.html?raw";
+import moneyballHtml from "./pages/moneyball.html?raw";
 import othersHtml from "./pages/others.html?raw";
 import scoutsHtml from "./pages/scouts.html?raw";
 
@@ -12,6 +13,7 @@ const PROFILE_PAGES: Record<string, string> = {
   "/arth/academics.html": academicsHtml,
   "/arth/berkeley-metia.html": berkeleyMetiaHtml,
   "/arth/leadership.html": leadershipHtml,
+  "/arth/moneyball.html": moneyballHtml,
   "/arth/scouts.html": scoutsHtml,
   "/arth/cricket.html": cricketHtml,
   "/arth/others.html": othersHtml,

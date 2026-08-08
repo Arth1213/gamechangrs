@@ -14,7 +14,7 @@ The page has three division tabs: Premier A, Premier B, and Premier C. Each tab 
 
 Each row includes rank, player name, team, primary role, composite selector score, percentile, confidence/sample context, an Assessment link, and a Threat Report link. Assessment uses the existing player report route with the selected `divisionId`; Threat Report uses the existing intelligence/threat-report route for the same player and division.
 
-The page uses the current SME visual tokens, typography, cards, table behavior, and mobile layout. It is not exposed as a generic all-series leaderboard.
+The page reuses the existing Player Assessment and Threat Report visual system directly: the same typography, color tokens, navigation, card treatment, table behavior, link treatment, and mobile layout. It is not exposed as a generic all-series leaderboard.
 
 ## Data and Readiness
 

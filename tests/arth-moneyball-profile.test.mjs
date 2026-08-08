@@ -134,3 +134,27 @@ test("the homepage uses the editorial hero and compact signal ribbon", async () 
     assert.doesNotMatch(index, /class="hero-signals"|class="focus-panel"/);
   }
 });
+
+test("the homepage presents compact Portfolio sections without numeric rails", async () => {
+  const [sourceIndex, publicIndex] = await Promise.all([
+    readFile(new URL("index.html", pageRoot), "utf8"),
+    readFile(new URL("index.html", publicProfileRoot), "utf8"),
+  ]);
+
+  for (const index of [sourceIndex, publicIndex]) {
+    const journey = index.slice(index.indexOf('id="journey"'), index.indexOf('id="accomplishments"'));
+    const portfolio = index.slice(index.indexOf('id="accomplishments"'), index.indexOf('id="contact"'));
+
+    assert.match(index, /<a href="#accomplishments">Portfolio<\/a>/);
+    assert.match(portfolio, /<h2>Portfolio<\/h2>/);
+    assert.match(index, /class="about-copy-grid"/);
+    assert.match(index, /class="journey-card-grid"/);
+    assert.match(journey, /href="\.\/moneyball\.html"/);
+    assert.match(journey, /href="\.\/berkeley-metia\.html"/);
+    assert.match(portfolio, /href="\.\/scouts\.html"/);
+    assert.match(portfolio, /href="\.\/others\.html"/);
+    assert.doesNotMatch(index, /01\s*\//);
+    assert.doesNotMatch(index, /02\s*\//);
+    assert.doesNotMatch(index, /03\s*\//);
+  }
+});

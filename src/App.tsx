@@ -12,6 +12,7 @@ import TechniqueAI from "./pages/TechniqueAI";
 import Analytics, { AnalyticsWorkspacePage } from "./pages/Analytics";
 import AnalyticsReport from "./pages/AnalyticsReport";
 import AnalyticsIntelligenceReport from "./pages/AnalyticsIntelligenceReport";
+import AnalyticsNccaTopPlayers from "./pages/AnalyticsNccaTopPlayers";
 import AnalyticsFeatureSample from "./pages/AnalyticsFeatureSample";
 import AnalyticsAdminGateway from "./pages/AnalyticsAdminGateway";
 import AnalyticsPlatformAdmin from "./pages/AnalyticsPlatformAdmin";
@@ -88,6 +89,11 @@ const App = () => (
             <Route path="/analytics/intelligence/:playerId" element={
               <ProtectedRoute>
                 <AnalyticsIntelligenceReport />
+              </ProtectedRoute>
+            } />
+            <Route path="/analytics/ncca/top-players" element={
+              <ProtectedRoute>
+                <AnalyticsNccaTopPlayers />
               </ProtectedRoute>
             } />
             <Route path="/analysis/:id" element={

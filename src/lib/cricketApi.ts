@@ -108,6 +108,27 @@ export type CricketSeriesOverviewResponse = {
   }>;
 };
 
+export const NCCA_TOP_PLAYERS_SERIES_KEY = "bay-area-youth-cricket-hub-2026-ncca-2026-summer-6e89aakq-kwupu80epy0a";
+
+export type CricketNccaTopPlayer = {
+  rank: number;
+  playerId: number;
+  divisionId: number;
+  displayName: string;
+  teamName: string;
+  roleLabel: string;
+  compositeScore: number | null;
+  percentileRank: number | null;
+  confidenceLabel: string;
+};
+
+export type CricketNccaTopPlayersResponse = {
+  series: { configKey: string; name: string; targetAgeGroup?: string };
+  divisions: Array<{ divisionId: number | null; label: "Premier A" | "Premier B" | "Premier C"; players: CricketNccaTopPlayer[] }>;
+  hasRankings: boolean;
+  readinessMessage: string;
+};
+
 export type CricketAdminEntityMembership = {
   membershipId?: string;
   entityId?: string;
@@ -1400,6 +1421,10 @@ export function getAnalyticsWorkspaceRoute(searchQuery?: string, seriesConfigKey
   return getAnalyticsRoute("/analytics/workspace", searchQuery, seriesConfigKey);
 }
 
+export function getAnalyticsNccaTopPlayersRoute() {
+  return "/analytics/ncca/top-players";
+}
+
 export function getAnalyticsAdminRoute(seriesConfigKey?: string | null) {
   return getAnalyticsRoute("/analytics/admin", undefined, seriesConfigKey);
 }
@@ -1482,6 +1507,22 @@ export async function fetchCricketSeriesOverview(seriesConfigKey: string, signal
   }
 
   return (await response.json()) as CricketSeriesOverviewResponse;
+}
+
+export async function fetchCricketNccaTopPlayers(accessToken: string, signal?: AbortSignal) {
+  const url = new URL(
+    getCricketApiUrl(`/api/series/${encodeURIComponent(NCCA_TOP_PLAYERS_SERIES_KEY)}/top-players`),
+    window.location.origin
+  );
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    signal,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) {
+    throw new Error(await readApiErrorMessage(response, `NCCA Top Players request failed with status ${response.status}.`));
+  }
+  return (await response.json()) as CricketNccaTopPlayersResponse;
 }
 
 export async function fetchCricketPlayerReport(

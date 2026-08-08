@@ -432,18 +432,17 @@ main {
 }
 .academics-page .summary-card strong { font-size: .93rem; line-height: 1.35; }
 .academics-page > .section { margin: 0; }
-.academics-page > .section:nth-of-type(2) .section-title,
-.academics-page > .section:nth-of-type(3) .section-title { font-size: 1.5rem; }
-.academics-page > .section:nth-of-type(2) .feature-project,
-.academics-page > .section:nth-of-type(3) .feature-project { display: flex; min-height: 0; flex-direction: column; }
-.academics-page > .section:nth-of-type(2) .feature-project > img,
-.academics-page > .section:nth-of-type(3) .feature-project > img { min-height: 0; aspect-ratio: 16 / 10; object-fit: cover; }
-.academics-page > .section:nth-of-type(2) .feature-project-copy,
-.academics-page > .section:nth-of-type(3) .feature-project-copy { min-height: 190px; padding: 1.25rem; }
-.academics-page > .section:nth-of-type(2) .feature-project-copy h3,
-.academics-page > .section:nth-of-type(3) .feature-project-copy h3 { font-size: 1.7rem; }
-.academics-page > .section:nth-of-type(2) .feature-project-copy p,
-.academics-page > .section:nth-of-type(3) .feature-project-copy p { margin-top: .7rem; font-size: .94rem; line-height: 1.5; }
+.academics-page .program-card-section .section-title { margin-bottom: .7rem; font-size: 1.5rem; }
+.academics-page .program-card-section .feature-project { display: flex; min-height: 0; flex-direction: column; }
+.academics-page .program-card-section .feature-project > img { min-height: 0; aspect-ratio: 16 / 9; object-fit: cover; }
+.academics-page .program-card-section .feature-project-copy {
+  min-height: 0;
+  padding: 1.2rem 1.25rem 1.3rem;
+  justify-content: flex-start;
+}
+.academics-page .program-card-section .feature-project-copy h3 { margin-top: .35rem; font-size: 1.45rem; }
+.academics-page .program-card-section .feature-project-copy p { margin-top: .65rem; font-size: .93rem; line-height: 1.45; }
+.academics-page .program-card-section .artifact-actions { margin-top: 1rem; }
 @media (max-width: 920px) {
   .academics-page .page-hero { grid-template-columns: 1fr; }
   .academics-page .hero-summary { min-height: 196px; }

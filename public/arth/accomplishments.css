@@ -403,3 +403,23 @@ main {
 .note-card { justify-content: space-between; min-height: 132px; }
 @media (max-width: 920px) { .hero-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .page-title { max-width: none; } .hero-summary { grid-template-columns: 1fr; } .artifact-card img { aspect-ratio: 16 / 10; } }
+
+/* Academics reference composition */
+.academics-page { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.academics-page .page-hero,
+.academics-page > .section:last-of-type { grid-column: 1 / -1; }
+.academics-page .page-hero { margin-bottom: .2rem; }
+.academics-page > .section { margin: 0; }
+.academics-page > .section:nth-of-type(2) .section-title,
+.academics-page > .section:nth-of-type(3) .section-title { font-size: 1.5rem; }
+.academics-page > .section:nth-of-type(2) .feature-project,
+.academics-page > .section:nth-of-type(3) .feature-project { display: flex; min-height: 0; flex-direction: column; }
+.academics-page > .section:nth-of-type(2) .feature-project > img,
+.academics-page > .section:nth-of-type(3) .feature-project > img { min-height: 0; aspect-ratio: 16 / 10; object-fit: cover; }
+.academics-page > .section:nth-of-type(2) .feature-project-copy,
+.academics-page > .section:nth-of-type(3) .feature-project-copy { min-height: 190px; padding: 1.25rem; }
+.academics-page > .section:nth-of-type(2) .feature-project-copy h3,
+.academics-page > .section:nth-of-type(3) .feature-project-copy h3 { font-size: 1.7rem; }
+.academics-page > .section:nth-of-type(2) .feature-project-copy p,
+.academics-page > .section:nth-of-type(3) .feature-project-copy p { margin-top: .7rem; font-size: .94rem; line-height: 1.5; }
+@media (max-width: 760px) { .academics-page { grid-template-columns: 1fr; } .academics-page .page-hero, .academics-page > .section:last-of-type { grid-column: auto; } }

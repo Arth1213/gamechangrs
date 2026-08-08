@@ -381,14 +381,13 @@ main {
 }
 
 /* Unified profile subpage system */
-.page-hero { grid-template-columns: minmax(0, 1.18fr) minmax(360px, 0.82fr); min-height: 350px; }
-.hero-panel, .hero-summary { border-radius: var(--radius-lg); }
-.hero-panel { display: flex; flex-direction: column; justify-content: center; }
+.page-hero { grid-template-columns: 1fr; gap: .8rem; }
+.hero-panel { min-height: 300px; display: flex; flex-direction: column; justify-content: center; border-radius: var(--radius-lg); }
+.hero-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: 1fr; gap: .65rem; padding: 0; border: 0; background: transparent; box-shadow: none; }
 .page-title { max-width: 12ch; font-size: clamp(2.9rem, 5vw, 4.2rem); line-height: .94; }
 .page-dek { max-width: 46ch; font-size: 1rem; }
 .hero-points { margin-top: .9rem; }
-.hero-summary { grid-template-rows: repeat(2, minmax(0, 1fr)); }
-.summary-card { display: flex; align-items: center; padding: 1rem; }
+.summary-card { display: flex; align-items: center; min-height: 92px; padding: 1rem; border-radius: var(--radius-md); }
 .summary-card strong { margin: 0; font-size: .98rem; }
 .section { margin-top: 1.25rem; }
 .section-title { font-size: clamp(1.65rem, 3vw, 2.2rem); }
@@ -402,5 +401,5 @@ main {
 .artifact-meta { display: flex; min-height: 132px; flex: 1; flex-direction: column; }
 .artifact-actions { margin-top: auto; }
 .note-card { justify-content: space-between; min-height: 132px; }
-@media (max-width: 920px) { .page-hero { min-height: 0; } }
-@media (max-width: 760px) { .page-title { max-width: none; } .artifact-card img { aspect-ratio: 16 / 10; } }
+@media (max-width: 920px) { .hero-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .page-title { max-width: none; } .hero-summary { grid-template-columns: 1fr; } .artifact-card img { aspect-ratio: 16 / 10; } }

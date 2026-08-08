@@ -632,7 +632,11 @@ main {
 .hero-kicker { max-width: 29ch; margin-top: 1.3rem; font-size: clamp(1.3rem, 2.05vw, 1.85rem); line-height: 1.16; }
 .hero-summary { max-width: 54ch; margin: 1rem 0 0; color: var(--muted); font-size: 1rem; line-height: 1.6; }
 .portrait-frame { aspect-ratio: 0.82; border-radius: 22px; box-shadow: 0 22px 58px rgba(0, 0, 0, 0.28); }
-.portrait-frame img { object-position: center center; }
+.portrait-frame img {
+  object-position: 54% center;
+  transform: scale(1.22);
+  transform-origin: center center;
+}
 
 .signal-ribbon { grid-area: ribbon; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-lg); background: rgba(19, 24, 28, 0.76); }
 .signal-item { min-height: 112px; padding: 1rem 1.15rem; border-left: 1px solid var(--line); transition: background-color 180ms ease; }
@@ -642,6 +646,9 @@ main {
 .signal-item span { font-family: "IBM Plex Mono", monospace; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
 .signal-item strong { display: block; margin-top: 0.42rem; font-size: 1rem; line-height: 1.18; }
 .signal-item small { margin-top: 0.35rem; line-height: 1.3; }
+.signal-header { display: flex !important; align-items: center; gap: 0.42rem; }
+.signal-header > span { display: block; }
+.signal-mark { width: 1.15rem; height: 1.15rem; flex: 0 0 auto; object-fit: contain; }
 
 .about-grid { grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr); align-items: start; }
 .copy-block { padding: clamp(1.35rem, 3vw, 2rem); }

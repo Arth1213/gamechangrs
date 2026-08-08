@@ -55,3 +55,16 @@ test("the Program Completion card displays a certificate thumbnail", async () =>
   assert.match(moneyball, /src="\.\/assets\/accomp-thumbs\/moneyball\/arth-wharton-moneyball-certificate\.png"/);
   assert.match(moneyball, /alt="Wharton Moneyball Experience completion certificate"/);
 });
+
+test("the Signals Wharton Moneyball link opens the internal program archive", async () => {
+  const [sourceIndex, publicIndex] = await Promise.all([
+    readFile(new URL("index.html", pageRoot), "utf8"),
+    readFile(new URL("index.html", publicProfileRoot), "utf8"),
+  ]);
+
+  for (const index of [sourceIndex, publicIndex]) {
+    const signals = index.slice(index.indexOf('<h2>Signals</h2>'), index.indexOf('id="accomplishments"'));
+    assert.match(signals, /href="\.\/moneyball\.html"/);
+    assert.doesNotMatch(signals, /globalyouth\.wharton\.upenn\.edu/);
+  }
+});

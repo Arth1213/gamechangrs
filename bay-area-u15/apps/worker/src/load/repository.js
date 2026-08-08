@@ -1,5 +1,6 @@
 const { withClient, withTransaction } = require("../lib/db");
 const { normalizePlayerProfile } = require("../lib/playerProfile");
+const { normalizeBattingIdentityConflicts } = require("../ops/battingIdentity");
 
 let ensurePlayerPublicProfileCacheColumnsPromise = null;
 
@@ -2066,9 +2067,16 @@ async function upsertMatchFacts(matchFacts, options = {}) {
       throw new Error(`Match row not found for source match id ${sourceMatchId}. Run stage before run.`);
     }
 
-    const parsedPlayers = Array.isArray(matchFacts?.scorecard?.playerRegistry)
+    const battingIdentity = normalizeBattingIdentityConflicts({
+      sourceMatchId,
+      battingInnings: matchFacts?.scorecard?.battingInnings || [],
+    });
+    const parsedPlayers = [
+      ...(Array.isArray(matchFacts?.scorecard?.playerRegistry)
       ? matchFacts.scorecard.playerRegistry
-      : [];
+      : []),
+      ...battingIdentity.syntheticPlayers,
+    ];
     const persistedPlayers = [];
 
     for (const player of parsedPlayers) {
@@ -2108,7 +2116,7 @@ async function upsertMatchFacts(matchFacts, options = {}) {
     await insertBattingRows(
       client,
       matchId,
-      matchFacts?.scorecard?.battingInnings || [],
+      battingIdentity.battingInnings,
       inningsIdByNo,
       teamLookup,
       playerLookup

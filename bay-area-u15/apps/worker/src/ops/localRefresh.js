@@ -306,7 +306,8 @@ async function refreshSingleMatch(options = {}) {
   });
 
   if (!summary.candidates.length && !summary.deferredMatches.length) {
-    throw new Error("The requested match could not be resolved in the current series inventory.");
+    summary.status = "failed";
+    throw refreshFailure("The requested match could not be resolved in the current series inventory.", summary);
   }
 
   return {

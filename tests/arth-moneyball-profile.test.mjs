@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const pageRoot = new URL("../src/arth-profile/pages/", import.meta.url);
+const publicProfileRoot = new URL("../public/arth/", import.meta.url);
 
 test("Wharton Moneyball has a routed profile page with all supplied artifacts", async () => {
   const [runtime, page] = await Promise.all([
@@ -25,8 +26,22 @@ test("the profile home and academics archive link to Wharton Moneyball", async (
     readFile(new URL("academics.html", pageRoot), "utf8"),
   ]);
 
-  assert.match(index, /Completed the Wharton Moneyball Experience/);
+  assert.match(index, /Wharton Moneyball Experience/);
   assert.match(index, /href="\.\/moneyball\.html"/);
   assert.match(academics, /Wharton Moneyball Experience/);
   assert.match(academics, /href="\.\/moneyball\.html"/);
+});
+
+test("the production-served Arth pages include the Wharton profile update", async () => {
+  const [index, academics, moneyball] = await Promise.all([
+    readFile(new URL("index.html", publicProfileRoot), "utf8"),
+    readFile(new URL("academics.html", publicProfileRoot), "utf8"),
+    readFile(new URL("moneyball.html", publicProfileRoot), "utf8"),
+  ]);
+
+  assert.match(index, /Wharton Moneyball Experience/);
+  assert.match(index, /href="\.\/moneyball\.html"/);
+  assert.match(academics, /Wharton Moneyball Experience/);
+  assert.match(academics, /href="\.\/moneyball\.html"/);
+  assert.match(moneyball, /Arth-Wharton-Moneyball-Certificate\.pdf/);
 });

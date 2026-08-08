@@ -460,3 +460,51 @@ main {
   .academics-page .page-hero, .academics-page > .section:last-of-type { grid-column: auto; }
   .academics-page .hero-summary { grid-template-columns: 1fr; min-height: 0; }
 }
+
+/* Shared composition for the remaining profile pages */
+main:not(.academics-page) .page-hero {
+  grid-template-columns: minmax(0, 1.08fr) minmax(330px, .92fr);
+  gap: 1rem;
+}
+main:not(.academics-page) .hero-panel {
+  min-height: 268px;
+  padding: clamp(1.5rem, 3vw, 2.4rem);
+}
+main:not(.academics-page) .page-title { max-width: none; }
+main:not(.academics-page) .hero-points { display: none; }
+main:not(.academics-page) .hero-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, 1fr);
+  gap: .75rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+main:not(.academics-page) .summary-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 0;
+  padding: 1.15rem;
+  border-radius: var(--radius-md);
+}
+main:not(.academics-page) .summary-card strong {
+  margin: 0;
+  font-size: .96rem;
+  line-height: 1.35;
+}
+main:not(.academics-page) .section { margin-top: 1.25rem; }
+main:not(.academics-page) .section-title { font-size: clamp(1.6rem, 3vw, 2.15rem); }
+main:not(.academics-page) .artifact-card,
+main:not(.academics-page) .note-card { border-radius: var(--radius-lg); }
+main:not(.academics-page) .artifact-meta { min-height: 138px; }
+main:not(.academics-page) .artifact-actions { margin-top: auto; padding-top: .8rem; }
+main:not(.academics-page) .note-card { min-height: 138px; }
+@media (max-width: 920px) {
+  main:not(.academics-page) .page-hero { grid-template-columns: 1fr; }
+  main:not(.academics-page) .hero-summary { min-height: 184px; }
+}
+@media (max-width: 760px) {
+  main:not(.academics-page) .hero-summary { grid-template-columns: 1fr; min-height: 0; }
+}

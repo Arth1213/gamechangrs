@@ -56,14 +56,14 @@ test("the Program Completion card displays a certificate thumbnail", async () =>
   assert.match(moneyball, /alt="Wharton Moneyball Experience completion certificate"/);
 });
 
-test("the Signals Wharton Moneyball link opens the internal program archive", async () => {
+test("the Wharton Moneyball signal opens the internal program archive", async () => {
   const [sourceIndex, publicIndex] = await Promise.all([
     readFile(new URL("index.html", pageRoot), "utf8"),
     readFile(new URL("index.html", publicProfileRoot), "utf8"),
   ]);
 
   for (const index of [sourceIndex, publicIndex]) {
-    const signals = index.slice(index.indexOf('<h2>Signals</h2>'), index.indexOf('id="accomplishments"'));
+    const signals = index.slice(index.indexOf('class="signal-ribbon"'), index.indexOf('id="about"'));
     assert.match(signals, /href="\.\/moneyball\.html"/);
     assert.doesNotMatch(signals, /globalyouth\.wharton\.upenn\.edu/);
   }
@@ -117,5 +117,20 @@ test("the homepage hero uses the updated Arth portrait", async () => {
 
   for (const index of [sourceIndex, publicIndex]) {
     assert.match(index, /src="\.\/assets\/arth-headshot-20260808\.png"/);
+  }
+});
+
+test("the homepage uses the editorial hero and compact signal ribbon", async () => {
+  const [sourceIndex, publicIndex] = await Promise.all([
+    readFile(new URL("index.html", pageRoot), "utf8"),
+    readFile(new URL("index.html", publicProfileRoot), "utf8"),
+  ]);
+
+  for (const index of [sourceIndex, publicIndex]) {
+    assert.match(index, /class="hero-intro"/);
+    assert.match(index, /class="signal-ribbon"/);
+    assert.match(index, /Wharton Moneyball/);
+    assert.match(index, /Berkeley M\.E\.T\. Innovation Academy/);
+    assert.doesNotMatch(index, /class="hero-signals"|class="focus-panel"/);
   }
 });

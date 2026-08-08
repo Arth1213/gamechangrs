@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "test": "node --test apps/worker/test/*.test.js",
     "ops:help": "node apps/worker/src/index.js help",
     "ops:doctor": "node scripts/opsDoctor.js",
     "ops:probe": "node apps/worker/src/index.js probe --config config/leagues.yaml",

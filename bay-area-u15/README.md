@@ -34,11 +34,8 @@ npm run ops:probe -- --series bay-area-usac-hub-2026
 npm run ops:probe -- --source cricclubs --url "https://cricclubs.com/..."
 npm run ops:register -- --source cricclubs --url "https://www.cricclubs.com/MiLC/viewLeague.do?league=27&clubId=18036" --label "MilC 2025" --seasonYear 2025 --targetAgeGroup Open
 npm run ops:stage -- --series bay-area-youth-cricket-hub-2025-milc-2025-27
-npm run ops:refresh:series -- --series bay-area-usac-hub-2026 --skipPipeline true
+npm run ops:refresh:series -- --series bay-area-usac-hub-2026
 npm run ops:refresh:match -- --series bay-area-usac-hub-2026 --matchId 7574
-npm run worker:compute:series -- --series bay-area-usac-hub-2026
-npm run worker:score:series -- --series bay-area-usac-hub-2026
-npm run worker:intelligence:series -- --series bay-area-usac-hub-2026
 npm run ops:validate:series -- --series bay-area-usac-hub-2026
 npm run ops:publish:series -- --series bay-area-usac-hub-2026 --dryRun
 ```
@@ -61,14 +58,12 @@ http://127.0.0.1:4012/local-ops
 2. `ops:probe`
 3. `ops:register`
 4. `ops:stage`
-5. `run` or `refresh`
-6. `compute-season`
-7. `compute-composite`
-8. `compute-intelligence`
-9. `validate-series`
-10. `publish-series --dryRun`
-11. `publish-series`
-12. verify the hosted app
+5. `run` or `refresh` (refresh performs its own recompute and validation)
+6. `publish-series --dryRun`
+7. `publish-series`
+8. verify the hosted app
+
+`refresh-series` and `refresh-match` inventory first, ingest only completed matches, recompute series analytics after successful ingest, and validate automatically. They do not publish. Scheduled and in-progress matches are deferred and recorded in the refresh summary. Standalone compute commands remain recovery tools, not normal refresh steps.
 
 ## Runbooks
 

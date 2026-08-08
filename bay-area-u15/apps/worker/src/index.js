@@ -134,40 +134,80 @@ async function main() {
   ensureDir(outDir);
 
   if (command === "refresh-series") {
-    const result = await refreshSeries({
-      series,
-      outDir,
-      matchLimit: args.matchLimit || args["match-limit"] || args.limit,
-      sourceMatchIds: parseListArg(
-        args.matchIds || args["match-ids"] || args.matchId || args["match-id"] || args.sourceMatchId || args["source-match-id"]
-      ),
-      dbMatchId: args.dbMatchId || args["db-match-id"],
-      skipPipeline: parseBooleanArg(args.skipPipeline ?? args["skip-pipeline"], false),
-      headless: parseBooleanArg(args.headless, true),
-      log: (message) => console.log(message),
-    });
-    writeJsonFile(path.join(outDir, "series_refresh_summary.json"), result);
-    console.log(`Series refresh complete: ${path.join(outDir, "series_refresh_summary.json")}`);
+    const summaryPath = path.join(outDir, "series_refresh_summary.json");
+    try {
+      const result = await refreshSeries({
+        series,
+        outDir,
+        configPath,
+        matchLimit: args.matchLimit || args["match-limit"] || args.limit,
+        sourceMatchIds: parseListArg(
+          args.matchIds || args["match-ids"] || args.matchId || args["match-id"] || args.sourceMatchId || args["source-match-id"]
+        ),
+        dbMatchId: args.dbMatchId || args["db-match-id"],
+        skipPipeline: parseBooleanArg(args.skipPipeline ?? args["skip-pipeline"], false),
+        headless: parseBooleanArg(args.headless, true),
+        operations: {
+          runSeasonAggregation,
+          runCompositeScoring,
+          runPlayerIntelligence,
+          validateSeries,
+        },
+        log: (message) => console.log(message),
+      });
+      writeJsonFile(summaryPath, result);
+      console.log(`Series refresh complete: ${summaryPath}`);
+    } catch (error) {
+      if (error.refreshSummary) {
+        writeJsonFile(summaryPath, error.refreshSummary);
+        console.error(`Series refresh failed; summary written: ${summaryPath}`);
+      }
+      throw error;
+    }
     return;
   }
 
   if (command === "refresh-match") {
-    const result = await refreshSingleMatch({
-      series,
-      outDir,
-      sourceMatchIds: parseListArg(
-        args.matchId || args["match-id"] || args.sourceMatchId || args["source-match-id"]
-      ),
-      dbMatchId: args.dbMatchId || args["db-match-id"],
-      skipPipeline: parseBooleanArg(args.skipPipeline ?? args["skip-pipeline"], false),
-      headless: parseBooleanArg(args.headless, true),
-      log: (message) => console.log(message),
-    });
-    const summaryFileName = result.candidates?.[0]?.sourceMatchId
-      ? `match_refresh_summary_${result.candidates[0].sourceMatchId}.json`
+    let result = null;
+    try {
+      result = await refreshSingleMatch({
+        series,
+        outDir,
+        configPath,
+        sourceMatchIds: parseListArg(
+          args.matchId || args["match-id"] || args.sourceMatchId || args["source-match-id"]
+        ),
+        dbMatchId: args.dbMatchId || args["db-match-id"],
+        skipPipeline: parseBooleanArg(args.skipPipeline ?? args["skip-pipeline"], false),
+        headless: parseBooleanArg(args.headless, true),
+        operations: {
+          runSeasonAggregation,
+          runCompositeScoring,
+          runPlayerIntelligence,
+          validateSeries,
+        },
+        log: (message) => console.log(message),
+      });
+    } catch (error) {
+      result = error.refreshSummary || null;
+      if (!result) {
+        throw error;
+      }
+      result.error = result.error || error.message;
+    }
+
+    const summaryFileName = result.candidates?.[0]?.sourceMatchId || result.deferredMatches?.[0]?.sourceMatchId
+      ? `match_refresh_summary_${result.candidates?.[0]?.sourceMatchId || result.deferredMatches?.[0]?.sourceMatchId}.json`
       : "match_refresh_summary.json";
-    writeJsonFile(path.join(outDir, summaryFileName), result);
-    console.log(`Match refresh complete: ${path.join(outDir, summaryFileName)}`);
+    const summaryPath = path.join(outDir, summaryFileName);
+    writeJsonFile(summaryPath, result);
+
+    if (result.status === "failed") {
+      console.error(`Match refresh failed; summary written: ${summaryPath}`);
+      throw new Error(result.error || "Match refresh failed.");
+    }
+
+    console.log(`Match refresh complete: ${summaryPath}`);
     return;
   }
 

@@ -633,9 +633,9 @@ main {
 .hero-summary { max-width: 54ch; margin: 1rem 0 0; color: var(--muted); font-size: 1rem; line-height: 1.6; }
 .portrait-frame { aspect-ratio: 0.82; border-radius: 22px; box-shadow: 0 22px 58px rgba(0, 0, 0, 0.28); }
 .portrait-frame img {
-  object-position: 54% center;
-  transform: scale(1.22);
-  transform-origin: center center;
+  object-position: center top;
+  transform: scale(1.18);
+  transform-origin: 40% 8%;
 }
 
 .signal-ribbon { grid-area: ribbon; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-lg); background: rgba(19, 24, 28, 0.76); }

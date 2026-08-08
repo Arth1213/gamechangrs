@@ -174,6 +174,7 @@ test("the homepage uses a tighter portrait crop and supplied signal marks", asyn
     assert.match(signals, /class="signal-mark" alt=""/);
   }
 
-  assert.match(styles, /\.portrait-frame img\s*\{[^}]*transform:\s*scale\(/s);
+  assert.match(styles, /\.portrait-frame img\s*\{[^}]*transform:\s*scale\(1\.18\)/s);
+  assert.match(styles, /\.portrait-frame img\s*\{[^}]*transform-origin:\s*40% 8%/s);
   assert.match(styles, /\.signal-mark\s*\{/);
 });

@@ -2146,6 +2146,90 @@ function renderDashboardPage(payload) {
   });
 }
 
+function renderNccaTopPlayersPage(payload) {
+  const series = payload.series || {};
+  const divisions = Array.isArray(payload.divisions) ? payload.divisions : [];
+  const readinessMessage = normalizeText(payload.readinessMessage)
+    || "Rankings will appear after the NCCA refresh and recomputation complete.";
+
+  const tabButtons = divisions.map((division, index) => `
+    <button
+      type="button"
+      class="button ${index === 0 ? "" : "secondary"}"
+      data-division-tab="${escapeHtml(division.label)}"
+      aria-selected="${index === 0 ? "true" : "false"}"
+    >${escapeHtml(division.label)}</button>
+  `).join("");
+
+  const divisionPanels = divisions.map((division, index) => {
+    const players = Array.isArray(division.players) ? division.players : [];
+    return `
+      <section data-division-panel="${escapeHtml(division.label)}"${index === 0 ? "" : " hidden"}>
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">Composite Selector Score</span>
+            <h2>${escapeHtml(division.label)}</h2>
+          </div>
+          <div class="pill pill-good">Top ${escapeHtml(String(players.length || 20))}</div>
+        </div>
+        ${renderTable(
+          [
+            { label: "#", className: "right", render: (row) => escapeHtml(String(row.rank)) },
+            { label: "Player", render: (row) => `<a class="result-link" href="${escapeHtml(row.reportPath)}">${escapeHtml(row.displayName)}</a>` },
+            { label: "Team", render: (row) => escapeHtml(row.teamName || "—") },
+            { label: "Role", render: (row) => escapeHtml(row.roleLabel || humanizeRole(row.roleType)) },
+            { label: "Composite", className: "right", render: (row) => `<span class="inline-score">${escapeHtml(displayNumber(row.compositeScore, 1, "0"))}</span>` },
+            { label: "Percentile", className: "right", render: (row) => escapeHtml(displayNumber(row.percentileRank, 1, "0")) },
+            { label: "Confidence", render: (row) => renderBadge(row.confidenceLabel, toneFromLabel(row.confidenceLabel)) },
+            { label: "Assessment", render: (row) => `<a class="result-link" href="${escapeHtml(row.reportPath)}">Player Assessment</a>` },
+            { label: "Threat Report", render: (row) => `<a class="result-link" href="${escapeHtml(row.intelligencePath)}">Threat Report</a>` },
+          ],
+          players,
+          { emptyMessage: readinessMessage }
+        )}
+      </section>
+    `;
+  }).join("");
+
+  return renderDocument({
+    title: "NCCA Top Players",
+    description: "NCCA Summer 2026 top players by composite selector score.",
+    seriesConfigKey: series.configKey,
+    seriesName: series.name,
+    pills: [
+      { value: "NCCA Summer 2026" },
+      { label: "Metric", value: "Composite Selector Score", tone: "good" },
+    ],
+    hero: `
+      <section class="sheet">
+        <span class="eyebrow">NCCA Summer 2026</span>
+        <h1>Top Players</h1>
+        <p class="hero-copy">Top 20 players within each division, ranked by the current composite selector score. Rankings do not compare players across divisions.</p>
+        ${payload.hasRankings ? "" : `<div class="inline-note">${escapeHtml(readinessMessage)}</div>`}
+        <div class="action-row" role="tablist" aria-label="NCCA division rankings">${tabButtons}</div>
+      </section>
+    `,
+    content: `<section class="sheet">${divisionPanels}</section>`,
+    scripts: `
+      (() => {
+        const tabs = Array.from(document.querySelectorAll("[data-division-tab]"));
+        const panels = Array.from(document.querySelectorAll("[data-division-panel]"));
+        tabs.forEach((tab) => tab.addEventListener("click", () => {
+          const selected = tab.dataset.divisionTab;
+          tabs.forEach((candidate) => {
+            const isSelected = candidate.dataset.divisionTab === selected;
+            candidate.setAttribute("aria-selected", String(isSelected));
+            candidate.classList.toggle("secondary", !isSelected);
+          });
+          panels.forEach((panel) => {
+            panel.hidden = panel.dataset.divisionPanel !== selected;
+          });
+        }));
+      })();
+    `,
+  });
+}
+
 function renderPlayerReportPage(report) {
   const meta = report.meta || {};
   const series = meta.series || {};
@@ -7208,6 +7292,7 @@ module.exports = {
   renderAdminTuningPage,
   renderDashboardPage,
   renderErrorPage,
+  renderNccaTopPlayersPage,
   renderPlayerIntelligenceReportPage,
   renderPlayerReportPage,
   renderSeriesIndexPage,

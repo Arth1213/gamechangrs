@@ -35,7 +35,107 @@ const {
   withClient,
 } = require("./seriesService");
 
+const NCCA_TOP_PLAYERS_CONFIG_KEY = "bay-area-youth-cricket-hub-2026-ncca-2026-summer-6e89aakq-kwupu80epy0a";
+const NCCA_TOP_PLAYER_DIVISIONS = ["Premier A", "Premier B", "Premier C"];
+
 let ensurePlayerPublicProfileCacheColumnsPromise = null;
+
+function buildNccaTopPlayersPayload(context, rows) {
+  const divisions = NCCA_TOP_PLAYER_DIVISIONS.map((label) => ({
+    divisionId: null,
+    label,
+    players: [],
+  }));
+  const divisionsByLabel = new Map(divisions.map((division) => [division.label, division]));
+
+  for (const row of rows || []) {
+    const division = divisionsByLabel.get(normalizeText(row.division_label).replace(/^\d{4}\s+/, ""));
+    if (!division) {
+      continue;
+    }
+    division.divisionId = division.divisionId ?? toInteger(row.division_id);
+    division.players.push({
+      playerId: toInteger(row.player_id),
+      divisionId: toInteger(row.division_id),
+      displayName: normalizeText(row.display_name),
+      teamName: normalizeText(row.team_name),
+      roleType: normalizeText(row.role_type),
+      roleLabel: humanizeRole(row.role_type),
+      compositeScore: roundNumeric(row.composite_score),
+      percentileRank: roundNumeric(row.percentile_rank),
+      confidenceScore: roundNumeric(row.confidence_score),
+      confidenceLabel: confidenceLabel(row.confidence_score),
+    });
+  }
+
+  for (const division of divisions) {
+    division.players.sort((left, right) => (
+      (right.compositeScore ?? Number.NEGATIVE_INFINITY) - (left.compositeScore ?? Number.NEGATIVE_INFINITY)
+      || (right.percentileRank ?? Number.NEGATIVE_INFINITY) - (left.percentileRank ?? Number.NEGATIVE_INFINITY)
+      || left.displayName.localeCompare(right.displayName)
+    ));
+    division.players = division.players.slice(0, 20).map((player, index) => ({
+      ...player,
+      rank: index + 1,
+      reportPath: `/series/${context.configKey}/players/${player.playerId}/report?divisionId=${player.divisionId}`,
+      intelligencePath: `/series/${context.configKey}/players/${player.playerId}/intelligence?divisionId=${player.divisionId}`,
+    }));
+  }
+
+  const hasRankings = divisions.some((division) => division.players.length > 0);
+  return {
+    series: {
+      configKey: context.configKey,
+      name: context.seriesName,
+      targetAgeGroup: context.targetAgeGroup,
+    },
+    reportProfile: context.reportProfile,
+    divisions,
+    hasRankings,
+    readinessMessage: hasRankings
+      ? ""
+      : "Rankings will appear after the NCCA refresh and recomputation complete.",
+  };
+}
+
+async function getNccaTopPlayers(input) {
+  return withClient(async (client) => {
+    const context = await resolveSeriesContext(client, input.seriesConfigKey);
+    if (!context || context.configKey !== NCCA_TOP_PLAYERS_CONFIG_KEY) {
+      const error = new Error("NCCA Top Players is available only for NCCA Summer 2026.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const rows = (await client.query(
+      `
+        select
+          pcs.player_id,
+          pcs.division_id,
+          p.display_name,
+          t.display_name as team_name,
+          d.source_label as division_label,
+          psa.role_type,
+          pcs.composite_score,
+          pcs.percentile_rank,
+          psa.confidence_score
+        from player_composite_score pcs
+        join player p on p.id = pcs.player_id
+        join division d on d.id = pcs.division_id
+        left join team t on t.id = pcs.team_id
+        left join player_season_advanced psa
+          on psa.series_id = pcs.series_id
+         and psa.division_id is not distinct from pcs.division_id
+         and psa.player_id = pcs.player_id
+        where pcs.series_id = $1
+          and regexp_replace(d.source_label, '^[0-9]{4}\\s+', '') = any($2::text[])
+      `,
+      [context.seriesId, NCCA_TOP_PLAYER_DIVISIONS]
+    )).rows;
+
+    return buildNccaTopPlayersPayload(context, rows);
+  });
+}
 
 async function getDashboardOverview(input) {
   return withClient(async (client) => {
@@ -3332,7 +3432,10 @@ function titleContainsPlayerName(title, expectedName) {
 }
 
 module.exports = {
+  NCCA_TOP_PLAYERS_CONFIG_KEY,
+  buildNccaTopPlayersPayload,
   getDashboardOverview,
+  getNccaTopPlayers,
   getPlayerReport,
   searchPlayers,
 };

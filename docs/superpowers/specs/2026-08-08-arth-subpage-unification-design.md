@@ -6,7 +6,7 @@ Make Academics, Leadership, Scouts, Cricket, Berkeley M.E.T., and Wharton Moneyb
 
 ## Shared system
 
-Keep the existing dark palette, Fraunces headings, Space Grotesk body text, IBM Plex Mono only where it identifies an artifact type, rounded cards, and category navigation. Replace the current hero panel plus summary-card density with a compact hero: page title, one concise summary, and a four-item fact grid.
+Keep the existing dark palette, Fraunces headings, Space Grotesk body text, IBM Plex Mono only where it identifies an artifact type, rounded cards, and category navigation. Use one restrained typography scale: capped page title, shared section/project title, shared body size, and limited metadata size. Replace the current hero panel plus summary-card density with a fixed-height hero: page title, one concise summary, actions, and a four-item equal-height stat rail.
 
 ## Content structure
 
@@ -14,7 +14,7 @@ Do not render generic section labels such as Programs, Highlights, Gallery, Evid
 
 ## Card treatment
 
-Use the same three-column desktop card grid and one-column mobile layout across all pages. Cards retain their file links and images but shorten copy to one factual line. Preserve all supplied artifacts, links, and download actions; remove repeated explanatory text only.
+Use one shared left-aligned content grid: three columns on desktop, two on tablet, one on mobile. Cards have equal internal padding, aligned actions, fixed thumbnail ratios, one palette, one border, and one radius. Preserve all supplied artifacts, links, and download actions; remove repeated explanatory text only.
 
 ## Page-specific content
 

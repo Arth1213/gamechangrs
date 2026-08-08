@@ -68,3 +68,16 @@ test("the Signals Wharton Moneyball link opens the internal program archive", as
     assert.doesNotMatch(signals, /globalyouth\.wharton\.upenn\.edu/);
   }
 });
+
+test("the Archive groups Wharton Moneyball under Academics instead of a standalone card", async () => {
+  const [sourceIndex, publicIndex] = await Promise.all([
+    readFile(new URL("index.html", pageRoot), "utf8"),
+    readFile(new URL("index.html", publicProfileRoot), "utf8"),
+  ]);
+
+  for (const index of [sourceIndex, publicIndex]) {
+    const archive = index.slice(index.indexOf('id="accomplishments"'), index.indexOf('id="contact"'));
+    assert.match(archive, /Berkeley M\.E\.T\. IA, Wharton Moneyball/);
+    assert.doesNotMatch(archive, /<span>Wharton Moneyball<\/span>/);
+  }
+});

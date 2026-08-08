@@ -10,7 +10,7 @@ Modify the homepage source and production HTML copies, `public/arth/styles.css`,
 
 ## Crop treatment
 
-Apply a CSS scale to `.portrait-frame img` and keep it clipped by the existing frame. Position the scaled image slightly toward Arth so the white vertical strip at the left and the clothes/hanger area at the right are outside the frame. Preserve Arth’s face, sunglasses, phone, and upper body as the visual focus.
+Apply a moderate CSS scale to `.portrait-frame img` and keep it clipped by the existing frame. Anchor the transform near the upper-left so Arth’s full face and hair remain visible while more of the right-side clothes/hanger area is outside the frame. Preserve his sunglasses, phone, and upper body as the visual focus.
 
 Use a `transform` on the image rather than editing or replacing `arth-headshot-20260808.png`.
 

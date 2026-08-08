@@ -81,3 +81,17 @@ test("the Archive groups Wharton Moneyball under Academics instead of a standalo
     assert.doesNotMatch(archive, /<span>Wharton Moneyball<\/span>/);
   }
 });
+
+test("the main profile distinguishes completed APs from APs being pursued", async () => {
+  const [sourceIndex, publicIndex] = await Promise.all([
+    readFile(new URL("index.html", pageRoot), "utf8"),
+    readFile(new URL("index.html", publicProfileRoot), "utf8"),
+  ]);
+
+  for (const index of [sourceIndex, publicIndex]) {
+    assert.match(index, /Completed APs/);
+    assert.match(index, /AP Chem, AP World, AP Calc AB/);
+    assert.match(index, /APs Pursuing/);
+    assert.match(index, /AP Computer Science, AP US History, AP Psychology, AP Calc BC/);
+  }
+});

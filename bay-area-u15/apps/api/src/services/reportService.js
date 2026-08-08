@@ -49,7 +49,7 @@ function buildNccaTopPlayersPayload(context, rows) {
   const divisionsByLabel = new Map(divisions.map((division) => [division.label, division]));
 
   for (const row of rows || []) {
-    const division = divisionsByLabel.get(normalizeText(row.division_label));
+    const division = divisionsByLabel.get(normalizeText(row.division_label).replace(/^\d{4}\s+/, ""));
     if (!division) {
       continue;
     }
@@ -128,7 +128,7 @@ async function getNccaTopPlayers(input) {
          and psa.division_id is not distinct from pcs.division_id
          and psa.player_id = pcs.player_id
         where pcs.series_id = $1
-          and d.source_label = any($2::text[])
+          and regexp_replace(d.source_label, '^[0-9]{4}\\s+', '') = any($2::text[])
       `,
       [context.seriesId, NCCA_TOP_PLAYER_DIVISIONS]
     )).rows;

@@ -21,7 +21,7 @@ const rows = [
   { player_id: 101, division_id: 11, display_name: "Bea", team_name: "Tigers", division_label: "Premier A", role_type: "all_rounder", composite_score: 88.5, percentile_rank: 94, confidence_score: 85 },
   { player_id: 102, division_id: 11, display_name: "Asha", team_name: "Tigers", division_label: "Premier A", role_type: "batter", composite_score: 88.5, percentile_rank: 96, confidence_score: 75 },
   { player_id: 103, division_id: 11, display_name: "Zed", team_name: "Lions", division_label: "Premier A", role_type: "bowler", composite_score: 80, percentile_rank: 90, confidence_score: 60 },
-  { player_id: 201, division_id: 12, display_name: "Cia", team_name: "Hawks", division_label: "Premier B", role_type: "batter", composite_score: 91, percentile_rank: 99, confidence_score: 90 },
+  { player_id: 201, division_id: 12, display_name: "Cia", team_name: "Hawks", division_label: "2026 Premier B", role_type: "batter", composite_score: 91, percentile_rank: 99, confidence_score: 90 },
 ];
 
 test("NCCA top-player payload keeps divisions separate and orders score ties by percentile", () => {

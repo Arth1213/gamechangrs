@@ -55,8 +55,11 @@ What it does:
 1. reruns live discovery
 2. reruns live inventory
 3. persists inventory changes into the analytics database
-4. selects flagged matches from `match_refresh_state`
-5. optionally reruns fact ingest for those matches
+4. selects only completed matches that are new, changed, or flagged in `match_refresh_state`
+5. defers scheduled and in-progress matches into the refresh summary
+6. ingests scorecard, commentary/ball-by-ball when available, reconciliation, and match analytics
+7. recomputes season aggregation, composite scoring, and player intelligence after a fully successful ingest
+8. validates the series automatically
 
 Writes:
 
@@ -88,25 +91,23 @@ Writes:
 
 - `storage/exports/<series-key>/match_refresh_summary_<source-match-id>.json`
 
-## Required follow-up after refresh
+## Refresh completion and publishing
 
-Always run:
+Normal refresh commands automatically recompute and validate. They never publish.
+
+Run only the publish dry run after the refresh summary reports `completed` or `completed-with-deferred` and validation is publish-ready:
 
 ```bash
-npm run worker:compute:series -- --series <series-key>
-npm run worker:score:series -- --series <series-key>
-npm run worker:intelligence:series -- --series <series-key>
-npm run ops:validate:series -- --series <series-key>
 npm run ops:publish:series -- --series <series-key> --dryRun
 ```
 
-Console equivalents:
+Standalone `compute-season`, `compute-composite`, `compute-intelligence`, and `validate-series` commands remain recovery tools for an interrupted or historical operation.
 
-- `Compute season aggregation`
-- `Compute composite scoring`
-- `Compute player intelligence`
-- `Validate publish readiness`
-- `Publish current DB state` with `dryRun`
+## Failure and deferral rules
+
+- A source-access failure or any selected match ingest failure fails the refresh and writes a partial summary.
+- A scheduled or in-progress match is deferred; it is not scraped or marked complete.
+- A requested completed match uses the same inventory, ingest, recompute, and validation contract as a series refresh.
 
 ## Operator rule
 

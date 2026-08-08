@@ -3899,17 +3899,34 @@ async function executeComputeIntelligence(input = {}, runContext = null) {
 
 async function executeRefreshSeries(input = {}, runContext = null) {
   const runtime = resolveSeriesRuntime(input.series);
-  const result = await refreshSeries({
-    series: runtime.series,
-    outDir: runtime.outDir,
-    matchLimit: input.matchLimit,
-    sourceMatchIds: parseListInput(input.matchIds),
-    dbMatchId: input.dbMatchId,
-    skipPipeline: toBoolean(input.skipPipeline),
-    headless: toBoolean(input.headless),
-    log: typeof runContext?.log === "function" ? runContext.log : () => {},
-  });
   const artifactPath = path.join(runtime.outDir, "series_refresh_summary.json");
+  let result = null;
+
+  try {
+    result = await refreshSeries({
+      series: runtime.series,
+      outDir: runtime.outDir,
+      configPath: runtime.configPath,
+      matchLimit: input.matchLimit,
+      sourceMatchIds: parseListInput(input.matchIds),
+      dbMatchId: input.dbMatchId,
+      skipPipeline: toBoolean(input.skipPipeline),
+      headless: toBoolean(input.headless),
+      operations: {
+        runSeasonAggregation,
+        runCompositeScoring,
+        runPlayerIntelligence,
+        validateSeries,
+      },
+      log: typeof runContext?.log === "function" ? runContext.log : () => {},
+    });
+  } catch (error) {
+    if (error.refreshSummary) {
+      writeJsonFile(artifactPath, error.refreshSummary);
+    }
+    throw error;
+  }
+
   writeJsonFile(artifactPath, result);
 
   return {
@@ -3923,21 +3940,43 @@ async function executeRefreshSeries(input = {}, runContext = null) {
 
 async function executeRefreshMatch(input = {}, runContext = null) {
   const runtime = resolveSeriesRuntime(input.series);
-  const result = await refreshSingleMatch({
-    series: runtime.series,
-    outDir: runtime.outDir,
-    sourceMatchIds: parseListInput(input.matchId || input.matchIds),
-    dbMatchId: input.dbMatchId,
-    skipPipeline: toBoolean(input.skipPipeline),
-    headless: toBoolean(input.headless),
-    log: typeof runContext?.log === "function" ? runContext.log : () => {},
-  });
-  const sourceMatchId = result?.candidates?.[0]?.sourceMatchId;
+  let result = null;
+
+  try {
+    result = await refreshSingleMatch({
+      series: runtime.series,
+      outDir: runtime.outDir,
+      configPath: runtime.configPath,
+      sourceMatchIds: parseListInput(input.matchId || input.matchIds),
+      dbMatchId: input.dbMatchId,
+      skipPipeline: toBoolean(input.skipPipeline),
+      headless: toBoolean(input.headless),
+      operations: {
+        runSeasonAggregation,
+        runCompositeScoring,
+        runPlayerIntelligence,
+        validateSeries,
+      },
+      log: typeof runContext?.log === "function" ? runContext.log : () => {},
+    });
+  } catch (error) {
+    result = error.refreshSummary || null;
+    if (!result) {
+      throw error;
+    }
+    result.error = result.error || error.message;
+  }
+
+  const sourceMatchId = result?.candidates?.[0]?.sourceMatchId || result?.deferredMatches?.[0]?.sourceMatchId;
   const artifactPath = path.join(
     runtime.outDir,
     sourceMatchId ? `match_refresh_summary_${sourceMatchId}.json` : "match_refresh_summary.json"
   );
   writeJsonFile(artifactPath, result);
+
+  if (result.status === "failed") {
+    throw new Error(result.error || "Match refresh failed.");
+  }
 
   return {
     ok: true,

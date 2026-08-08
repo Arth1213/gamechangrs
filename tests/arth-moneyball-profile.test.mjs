@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 const pageRoot = new URL("../src/arth-profile/pages/", import.meta.url);
@@ -44,4 +44,14 @@ test("the production-served Arth pages include the Wharton profile update", asyn
   assert.match(academics, /Wharton Moneyball Experience/);
   assert.match(academics, /href="\.\/moneyball\.html"/);
   assert.match(moneyball, /Arth-Wharton-Moneyball-Certificate\.pdf/);
+});
+
+test("the Program Completion card displays a certificate thumbnail", async () => {
+  const [moneyball] = await Promise.all([
+    readFile(new URL("moneyball.html", publicProfileRoot), "utf8"),
+    access(new URL("assets/accomp-thumbs/moneyball/arth-wharton-moneyball-certificate.png", publicProfileRoot)),
+  ]);
+
+  assert.match(moneyball, /src="\.\/assets\/accomp-thumbs\/moneyball\/arth-wharton-moneyball-certificate\.png"/);
+  assert.match(moneyball, /alt="Wharton Moneyball Experience completion certificate"/);
 });

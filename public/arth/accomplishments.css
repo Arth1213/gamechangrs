@@ -408,7 +408,29 @@ main {
 .academics-page { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .academics-page .page-hero,
 .academics-page > .section:last-of-type { grid-column: 1 / -1; }
-.academics-page .page-hero { margin-bottom: .2rem; }
+.academics-page .page-hero {
+  grid-template-columns: minmax(0, 1.1fr) minmax(340px, .9fr);
+  gap: 1rem;
+  margin-bottom: .2rem;
+}
+.academics-page .hero-panel {
+  min-height: 294px;
+  padding: clamp(1.65rem, 3.2vw, 2.6rem);
+}
+.academics-page .page-title { max-width: none; font-size: clamp(3rem, 5vw, 4.5rem); }
+.academics-page .hero-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, 1fr); gap: .75rem; }
+.academics-page .summary-card { align-items: flex-start; justify-content: center; min-height: 0; padding: 1.15rem; }
+.academics-page .summary-card span {
+  display: block;
+  margin-bottom: .55rem;
+  color: var(--accent);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .69rem;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.academics-page .summary-card strong { font-size: .93rem; line-height: 1.35; }
 .academics-page > .section { margin: 0; }
 .academics-page > .section:nth-of-type(2) .section-title,
 .academics-page > .section:nth-of-type(3) .section-title { font-size: 1.5rem; }
@@ -422,4 +444,12 @@ main {
 .academics-page > .section:nth-of-type(3) .feature-project-copy h3 { font-size: 1.7rem; }
 .academics-page > .section:nth-of-type(2) .feature-project-copy p,
 .academics-page > .section:nth-of-type(3) .feature-project-copy p { margin-top: .7rem; font-size: .94rem; line-height: 1.5; }
-@media (max-width: 760px) { .academics-page { grid-template-columns: 1fr; } .academics-page .page-hero, .academics-page > .section:last-of-type { grid-column: auto; } }
+@media (max-width: 920px) {
+  .academics-page .page-hero { grid-template-columns: 1fr; }
+  .academics-page .hero-summary { min-height: 196px; }
+}
+@media (max-width: 760px) {
+  .academics-page { grid-template-columns: 1fr; }
+  .academics-page .page-hero, .academics-page > .section:last-of-type { grid-column: auto; }
+  .academics-page .hero-summary { grid-template-columns: 1fr; min-height: 0; }
+}

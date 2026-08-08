@@ -95,3 +95,15 @@ test("the main profile distinguishes completed APs from APs being pursued", asyn
     assert.match(index, /AP Computer Science, AP US History, AP Psychology, AP Calc BC/);
   }
 });
+
+test("the main profile identifies Arth as a junior", async () => {
+  const [sourceIndex, publicIndex] = await Promise.all([
+    readFile(new URL("index.html", pageRoot), "utf8"),
+    readFile(new URL("index.html", publicProfileRoot), "utf8"),
+  ]);
+
+  for (const index of [sourceIndex, publicIndex]) {
+    assert.match(index, /Junior at DVHS/);
+    assert.doesNotMatch(index, /Sophomore at DVHS|a sophomore at DVHS/i);
+  }
+});

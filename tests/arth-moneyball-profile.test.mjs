@@ -107,3 +107,15 @@ test("the main profile identifies Arth as a junior", async () => {
     assert.doesNotMatch(index, /Sophomore at DVHS|a sophomore at DVHS/i);
   }
 });
+
+test("the homepage hero uses the updated Arth portrait", async () => {
+  const [sourceIndex, publicIndex] = await Promise.all([
+    readFile(new URL("index.html", pageRoot), "utf8"),
+    readFile(new URL("index.html", publicProfileRoot), "utf8"),
+    access(new URL("assets/arth-headshot-20260808.png", publicProfileRoot)),
+  ]);
+
+  for (const index of [sourceIndex, publicIndex]) {
+    assert.match(index, /src="\.\/assets\/arth-headshot-20260808\.png"/);
+  }
+});

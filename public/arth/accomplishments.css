@@ -508,3 +508,20 @@ main:not(.academics-page) .note-card { min-height: 138px; }
 @media (max-width: 760px) {
   main:not(.academics-page) .hero-summary { grid-template-columns: 1fr; min-height: 0; }
 }
+
+/* Typography and image sizing: display serif is reserved for page structure. */
+.feature-project-copy h3,
+.artifact-meta h3,
+.note-card h3 {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: clamp(1.05rem, 1.7vw, 1.3rem);
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+}
+.academics-page .program-card-section .feature-project > img {
+  width: 100%;
+  height: auto;
+  flex: 0 0 auto;
+}
+.academics-page .program-card-section .feature-project-copy h3 { font-size: 1.2rem; }

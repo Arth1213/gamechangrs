@@ -536,6 +536,32 @@ main:not(.academics-page) .note-card { min-height: 138px; }
   object-fit: cover;
 }
 .artifact-meta { min-height: 144px; }
+.artifact-wall--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* Shared neon information tiles */
+.hero-summary .summary-card {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  background:
+    linear-gradient(135deg, rgba(156, 255, 211, 0.07), transparent 52%),
+    rgba(16, 20, 23, 0.9);
+  border-color: rgba(156, 255, 211, 0.18);
+  box-shadow: inset 0 1px 0 rgba(156, 255, 211, 0.12), 0 16px 36px rgba(0, 0, 0, 0.16);
+}
+.hero-summary .summary-card .stat-label,
+.academics-page .summary-card span {
+  display: block;
+  margin: 0 0 .55rem;
+  color: var(--accent);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .69rem;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.hero-summary .summary-card strong { margin: 0; }
 @media (max-width: 760px) {
   .artifact-card img { height: clamp(210px, 62vw, 340px); }
+  .artifact-wall--two { grid-template-columns: 1fr; }
 }

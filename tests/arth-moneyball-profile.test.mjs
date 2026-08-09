@@ -145,7 +145,9 @@ test("the homepage presents compact Portfolio sections without numeric rails", a
     const journey = index.slice(index.indexOf('id="journey"'), index.indexOf('id="accomplishments"'));
     const portfolio = index.slice(index.indexOf('id="accomplishments"'), index.indexOf('id="contact"'));
 
-    assert.match(index, /<a href="#accomplishments">Portfolio<\/a>/);
+    assert.match(index, /<nav class="category-nav" aria-label="Categories">/);
+    assert.match(index, /<a href="\.\/academics\.html">Academics<\/a>/);
+    assert.match(index, /<a href="\.\/others\.html">Others<\/a>/);
     assert.match(portfolio, /<h2>Portfolio<\/h2>/);
     assert.match(index, /class="about-copy-grid"/);
     assert.match(index, /class="journey-card-grid"/);

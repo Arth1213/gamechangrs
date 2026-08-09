@@ -952,10 +952,21 @@ body.motion-ready .reveal.is-visible {
     grid-template-columns: 1fr;
   }
 
-  .journey-card,
-  .portfolio-card {
-    min-height: auto;
-  }
+.journey-card,
+.portfolio-card {
+  min-height: auto;
+}
+}
+
+/* Homepage metadata uses the same visible neon language as profile tiles. */
+.hero-meta,
+.signal-ribbon .signal-item > span,
+.signal-ribbon .signal-header > span,
+.fact-item > span,
+.journey-card > span,
+.portfolio-card > span {
+  color: var(--accent) !important;
+  text-shadow: 0 0 12px rgba(156, 255, 211, 0.2);
 }
 
 @media (prefers-reduced-motion: reduce) {

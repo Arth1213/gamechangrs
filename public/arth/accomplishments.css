@@ -561,6 +561,35 @@ main:not(.academics-page) .note-card { min-height: 138px; }
   text-transform: uppercase;
 }
 .hero-summary .summary-card strong { margin: 0; }
+
+/* Single final-deliverable treatment for Wharton Moneyball */
+.moneyball-page .final-project-section { margin-top: 1.25rem; }
+.moneyball-page .final-project-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.moneyball-page .final-project-copy { padding: 1.35rem 1.4rem 1rem; }
+.moneyball-page .final-project-copy h2 {
+  margin: 0;
+  font-family: "Fraunces", serif;
+  font-size: clamp(1.7rem, 3vw, 2.25rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.moneyball-page .final-project-copy h3 {
+  margin: .8rem 0 0;
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
+  line-height: 1.25;
+}
+.moneyball-page .final-project-card > img {
+  width: 100%;
+  height: clamp(230px, 35vw, 430px);
+  object-fit: cover;
+}
+.moneyball-page .final-project-card > .artifact-actions { margin: 0; padding: 1rem 1.4rem 1.35rem; }
 @media (max-width: 760px) {
   .artifact-card img { height: clamp(210px, 62vw, 340px); }
   .artifact-wall--two { grid-template-columns: 1fr; }

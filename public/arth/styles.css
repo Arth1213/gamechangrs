@@ -999,6 +999,12 @@ body.motion-ready .reveal.is-visible {
   text-shadow: 0 0 12px rgba(156, 255, 211, 0.2);
 }
 
+#contact .link-list .link-row > span {
+  color: var(--accent);
+  font-weight: 600;
+  text-shadow: 0 0 12px rgba(156, 255, 211, 0.2);
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

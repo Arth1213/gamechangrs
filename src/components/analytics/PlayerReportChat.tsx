@@ -27,7 +27,7 @@ type PlayerReportChatMessage = {
   id: string;
   role: "assistant" | "user";
   content: string;
-  evidence?: PlayerReportChatEvidenceItem[];
+  evidence?: CricketPlayerReportChatEvidenceItem[];
   followUps?: string[];
   limitations?: string[];
   error?: boolean;

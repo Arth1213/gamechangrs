@@ -146,7 +146,7 @@ async function main() {
         ),
         dbMatchId: args.dbMatchId || args["db-match-id"],
         skipPipeline: parseBooleanArg(args.skipPipeline ?? args["skip-pipeline"], false),
-        headless: parseBooleanArg(args.headless, true),
+        headless: true,
         operations: {
           runSeasonAggregation,
           runCompositeScoring,
@@ -179,7 +179,7 @@ async function main() {
         ),
         dbMatchId: args.dbMatchId || args["db-match-id"],
         skipPipeline: parseBooleanArg(args.skipPipeline ?? args["skip-pipeline"], false),
-        headless: parseBooleanArg(args.headless, true),
+        headless: true,
         operations: {
           runSeasonAggregation,
           runCompositeScoring,
@@ -283,7 +283,7 @@ async function main() {
       matchIds: parseListArg(args.matchIds || args["match-ids"]),
       useStagedInventory:
         args.useStagedInventory === true || args["use-staged-inventory"] === true,
-      headless: parseBooleanArg(args.headless, false),
+      headless: true,
       log: (message) => console.log(message),
     });
     writeJsonFile(path.join(outDir, "run_summary.json"), result);

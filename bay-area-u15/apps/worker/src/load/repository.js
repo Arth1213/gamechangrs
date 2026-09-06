@@ -170,7 +170,9 @@ function deriveBackfillProfile(candidate = {}) {
     bowlingArm,
     bowlingStyleBucket,
     bowlingStyleDetail,
-    profileUrl: sanitizeProfileValue(candidate.profile_url),
+    // An exact name is enough to reuse non-identifying playing-style metadata,
+    // but it is not evidence that a cross-league profile URL is the same person.
+    profileUrl: "",
   };
 }
 
@@ -2207,6 +2209,7 @@ async function upsertMatchFacts(matchFacts, options = {}) {
 }
 
 module.exports = {
+  deriveBackfillProfile,
   listSeriesPlayersForProfileEnrichment,
   persistPlayerProfileEnrichment,
   backfillSeriesPlayerProfilesFromKnownPlayers,

@@ -540,7 +540,7 @@ async function fetchMatchDetailWithContext(context, matchInventoryRow, options =
     rawScorecard,
     rawCommentary,
     notes: [
-      "Scorecard and commentary fetched through headed Chromium because the source path is Cloudflare-protected.",
+      "Scorecard and commentary fetched through background Chromium.",
       ...(rawScorecard.scorecardUnavailable
         ? [`Scorecard unavailable: ${normalizeText(rawScorecard.unavailableReason) || "Scorecard Not Available"}.`]
         : []),
@@ -559,7 +559,7 @@ async function fetchMatchDetail(matchInventoryRow, options = {}) {
 
   return withBrowser(
     async (context) => fetchMatchDetailWithContext(context, matchInventoryRow, options),
-    { headless: false }
+    { headless: true }
   );
 }
 

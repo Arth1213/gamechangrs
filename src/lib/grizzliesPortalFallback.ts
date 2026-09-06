@@ -26,13 +26,22 @@ const playerIds: Record<string, number> = {
   "Kashyap Manchili": 7283, "Aarnav Iyer": 7460, "Bilal Basheer": 7991,
   "Praneel Venna": 4583, "Vinay Khandelwal": 8167, "Aadhav Iyer": 3779,
   "Ayaan Khan": 3800, "Husnain Bukhari": 8174, "Shivam Mishra": 4077,
-  "Supransh Kumar": 3831,
+  "Supransh Kumar": 3831, "Naman Patil": 3958, "Vivaan Jagtiani": 3881,
+  "Kamran Hotak": 4560, "Gary Graham": 5037, "Kristopher Ramsaran": 3950,
+  "Vidit Kwatra": 4562, "Rayyan Ketekar": 5298, "Abhishek Paradkar": 3781,
+  "Saaket Bapu": 4063, "Aryan Mathur": 4749, "Sahil Garg": 3879,
+  "Mohit Nataraj": 3834, "Harish Kakani": 8050, "Adnesh Tondale": 3959,
+  "Vedant Jain": 3782, "Muhammad Faisal": 4121,
+};
+
+const profileUrls: Record<number, string> = {
+  3839: "https://cricclubs.com/NCCA/user/9qyZVOaLX6I2PkRcVHysAg", 8333: "https://cricclubs.com/NCCA/user/_qwQEAsjdr3EvvixA_-zgA", 5013: "https://cricclubs.com/NCCA/user/RRX71jeoqq0idqLUra1Evg", 4503: "https://cricclubs.com/NCCA/user/IdizbTUpqZ2Edlzmp_k7Cw", 3775: "https://cricclubs.com/NCCA/user/P0qEFkSKn8ehLi-INjVX0Q", 3778: "https://cricclubs.com/NCCA/user/kDoBplmQzlP8Jlt56nvykQ", 3913: "https://cricclubs.com/NCCA/user/Y7DO-lLcVC2REgOl_cgqNQ", 7339: "https://cricclubs.com/NCCA/user/mq8AKM6gb104uWpsipmsBQ", 4034: "https://cricclubs.com/NCCA/user/qypP7wP_e61GCg-HaV9q3A", 3882: "https://cricclubs.com/NCCA/user/xOJieC8H9vA_4TkIh6_DdQ", 3883: "https://cricclubs.com/NCCA/user/PHlWiCk-ceDC-dHy-fdFQA", 5009: "https://cricclubs.com/NCCA/user/2ISDMfB9RYsDOGcNSaDgIQ", 8167: "https://cricclubs.com/NCCA/user/HUqXLcCJ3hBgADqblMTLBQ", 3779: "https://cricclubs.com/NCCA/user/cWuTq6vlPP0gC2Baytoxtw", 3800: "https://cricclubs.com/NCCA/user/rQyCNPLz7YEHvD52AJkzFA", 8174: "https://cricclubs.com/NCCA/user/9F9-s5lELTH0jNCaWaIWtA", 4077: "https://cricclubs.com/NCCA/user/CV1n7mcFVRvxzvZ58EwHhg", 3831: "https://cricclubs.com/NCCA/user/5ZD18zExA-uuUof4CFdzjw", 3958: "https://cricclubs.com/NCCA/user/Pvx1We1bRgbUw1QBKN1Ehw", 3881: "https://cricclubs.com/NCCA/user/Ynv9rifmaU0bB8OxMrD4Ww", 4560: "https://cricclubs.com/NCCA/user/Js8hQHJI0tYWrDAsVboJDQ", 5037: "https://cricclubs.com/NCCA/user/h0csM2bmrBZFIbivgZW8WA", 3950: "https://cricclubs.com/NCCA/user/zPdnL5HFLkl8D13963aFNQ", 4562: "https://cricclubs.com/NCCA/user/vuDQwpy5q9DDKX7HQy102A", 5298: "https://cricclubs.com/NCCA/user/6SpnbIVgj9AM2a2kx2BVbg", 3781: "https://cricclubs.com/NCCA/user/ETymOtwZSgQAevE9y1ZuPA", 4063: "https://cricclubs.com/NCCA/user/QR4p6HS7zVKiUZVDnh9wxw", 4749: "https://cricclubs.com/NCCA/user/mTOAIBKktTqX7U6Ud1B3AA", 3879: "https://cricclubs.com/NCCA/user/RP1XEhiRDKaUZkF_7iIRiQ", 3834: "https://cricclubs.com/NCCA/user/n2f70PVcy2-M4U20f5dF-w", 8050: "https://cricclubs.com/NCCA/user/71f3390mDYDmJm1_ubcopQ", 3959: "https://cricclubs.com/NCCA/user/BnWjxFousPUfQWJed01Ptw", 3782: "https://cricclubs.com/NCCA/user/BMx8_cO6DdQ7V_5njshFZA", 4121: "https://cricclubs.com/NCCA/user/VaKKffxm2TTVFksLhGWQbA",
 };
 
 function paths(playerId: number) {
   const query = `series=${SERIES}`;
   return {
-    cricclubsProfileUrl: `https://prod-lm.cricclubs.com/NCCA/viewPlayer.do?playerId=${playerId}&clubId=1191`,
+    cricclubsProfileUrl: profileUrls[playerId] || null,
     assessmentPath: `/analytics/reports/${playerId}?${query}`,
     threatPath: `/analytics/intelligence/${playerId}?${query}`,
   };

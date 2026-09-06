@@ -1844,7 +1844,7 @@ export function TechniqueAI({ onReportSaved }: TechniqueAIProps) {
           drills: analysis.drills,
           video_duration: durationLabel,
           video_url: publicVideoUrl,
-        })
+        } as never)
         .select("id, mode, overall_score, created_at, video_duration, video_url")
         .single();
 

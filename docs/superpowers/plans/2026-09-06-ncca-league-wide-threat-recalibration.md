@@ -14,7 +14,7 @@
 
 - Scope is NCCA 2026 Summer only; do not alter division-level composite scores or role classification.
 - Premier A/B/C weights are exactly `1.00`, `0.70`, and `0.45`.
-- Evidence confidence is `min(matches_played / 4, 1)` and neutral score is exactly `50.00`.
+- Evidence confidence is `min(matches_played / 4, 1)` and neutral score is exactly `50.00`; the fixed full-division denominator is exactly `2.15`.
 - Red means percentile `>= 85` with at least three total matches; one/two-match high-percentile players are Amber.
 - Unknown means no eligible NCCA match evidence.
 - Preserve existing unrelated worker modifications in `runSeasonAggregation.js` and `playerIdentityOverrides.test.js`.
@@ -90,7 +90,7 @@ git commit -m "feat: add NCCA league threat score storage"
 - [ ] **Step 1: Write failing calculator tests**
 
 ```js
-test("weights Premier A above identical Premier B and C evidence", () => {
+test("weights Premier A above identical Premier B and C single-division evidence", () => {
   const result = buildLeagueThreatRows([
     { divisionLabel: "2026 Premier A", playerId: 1, compositeScore: 80, matchesPlayed: 4 },
     { divisionLabel: "2026 Premier B", playerId: 2, compositeScore: 80, matchesPlayed: 4 },
@@ -126,7 +126,7 @@ const DIVISION_WEIGHTS = new Map([
 const NEUTRAL_COMPOSITE_SCORE = 50;
 ```
 
-For every eligible player-division row, calculate `confidence`, `confidenceAdjustedComposite`, and weighted contribution. Group by player, divide total weighted contribution by the player’s participating-weight sum, and call the existing deterministic percentile helper pattern from `compositeScore.js` on the final league scores. Include each division’s source score, matches, confidence, weight, and adjusted score in `divisionEvidence`.
+For every eligible player-division row, calculate `confidence` and `weightedDeviation = divisionWeight * confidence * (compositeScore - 50)`. Group by player and calculate `leagueThreatScore = 50 + sum(weightedDeviation) / 2.15`. Call the existing deterministic percentile helper pattern from `compositeScore.js` on the final league scores. Include each division’s source score, matches, confidence, weight, and adjusted score in `divisionEvidence`.
 
 - [ ] **Step 3: Add tier boundary and percentile tests**
 

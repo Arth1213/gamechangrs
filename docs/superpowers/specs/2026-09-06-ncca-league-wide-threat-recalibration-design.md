@@ -39,11 +39,12 @@ For each eligible player, calculate:
 
 ```text
 league_threat_score =
-  sum(division_weight * confidence_adjusted_composite)
-  / sum(division_weight)
+  50.00
+  + sum(division_weight * confidence * (composite_score - 50.00))
+    / 2.15
 ```
 
-The denominator includes only divisions in which that player participated. This lets a Premier A season stand on its own, allows B/C evidence to supplement it, and prevents non-participation from acting as a zero.
+`2.15` is the full division-weight total: `1.00 + 0.70 + 0.45`. Missing division evidence contributes zero deviation from the neutral baseline, not a zero score. This makes Premier A evidence materially more influential than identical Premier B or C evidence for every player, while still allowing multiple divisions to contribute evidence.
 
 Rank `league_threat_score` across all eligible NCCA players using the existing deterministic percentile method. Persist the result as `league_percentile_rank`.
 

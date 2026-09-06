@@ -220,7 +220,7 @@ const AnalyticsAdminGateway = () => {
                             {adminRequestStatus === "saving" ? "Submitting request..." : "Request series admin access"}
                           </Button>
                           <Button type="button" variant="outline" onClick={() => setReloadKey((current) => current + 1)}>
-                            <Loader2 className={`mr-2 h-4 w-4 ${status === "loading" ? "animate-spin" : ""}`} />
+                            <Loader2 className="mr-2 h-4 w-4" />
                             Recheck access
                           </Button>
                         </div>

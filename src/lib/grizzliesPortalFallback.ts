@@ -44,16 +44,18 @@ const profileOverrides: Record<string, string> = {
   "Praneel Venna": "https://cricclubs.com/NCCA/user/LlerDiZTU3eQN_A8Ybki0g",
 };
 
-const percentileByPlayerId: Record<number, number> = {
-  3775: 57.7697, 3778: 84.5011, 3779: 52.8662, 3781: 71.9745, 3782: 47.1338, 3800: 14.0127, 3831: 81.5287, 3834: 38.8535, 3839: 38.0042, 3879: 60.0849, 3881: 80.2559, 3882: 54.1401, 3883: 46.0722, 3913: 61.5711, 3950: 51.38, 3958: 82.8154, 3959: 60.7219, 4034: 40.7643, 4063: 31.2102, 4077: 90.0212, 4121: 88.535, 4503: 87.7514, 4560: 89.9452, 4562: 76.4168, 4583: 71.6636, 4749: 54.2112, 5009: 83.8641, 5013: 77.9359, 5037: 68.446, 5298: 68.9205, 7283: 95.6124, 7339: 38.9397, 7460: 92.1389, 7991: 98.7203, 8050: 75.5839, 8167: 15.7221, 8174: 100, 8333: 1.2739,
+const threatToneByPlayerId: Record<number, "red" | "amber" | "green"> = {
+  3775: "green", 3778: "red", 3779: "amber", 3781: "red", 3782: "green", 3800: "green",
+  3831: "red", 3834: "green", 3839: "green", 3879: "amber", 3881: "red", 3882: "amber",
+  3883: "green", 3913: "red", 3950: "amber", 3958: "red", 3959: "amber", 4034: "green",
+  4063: "green", 4077: "amber", 4121: "red", 4503: "red", 4560: "red", 4562: "red",
+  4583: "amber", 4749: "green", 5009: "red", 5013: "red", 5037: "amber", 5298: "green",
+  7283: "amber", 7339: "green", 7460: "amber", 7991: "amber", 8050: "red", 8167: "green",
+  8174: "red", 8333: "green",
 };
 
 function threatTone(playerId: number | undefined): "red" | "amber" | "green" | "unknown" {
-  const percentile = playerId ? percentileByPlayerId[playerId] : undefined;
-  if (percentile === undefined) return "unknown";
-  if (percentile >= 85) return "red";
-  if (percentile >= 60) return "amber";
-  return "green";
+  return playerId ? threatToneByPlayerId[playerId] || "unknown" : "unknown";
 }
 
 function paths(playerId: number, profileUrl = profileUrls[playerId] || null) {

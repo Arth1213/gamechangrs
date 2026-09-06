@@ -1,0 +1,70 @@
+{
+  "seriesConfigKey": "bay-area-youth-cricket-hub-2026-ncca-2026-summer-6e89aakq-kwupu80epy0a",
+  "seriesId": 10,
+  "scoreVersion": "ncca-league-threat-v1",
+  "calculation": {
+    "neutralCompositeScore": 50,
+    "fullDivisionWeight": 2.15,
+    "divisionWeights": { "2026 Premier A": 1, "2026 Premier B": 0.7, "2026 Premier C": 0.45 },
+    "confidence": "min(matches_played / 4, 1)",
+    "threatTier": "red percentile >= 85 with >= 3 total matches; amber percentile >= 60 otherwise; green below 60"
+  },
+  "recomputation": {
+    "playerSeasonAdvancedRows": 1864,
+    "leagueThreatRows": 1600,
+    "intelligenceMatchupRows": 52444,
+    "intelligenceDismissalRows": 6371,
+    "intelligenceProfileRows": 3076
+  },
+  "portalMappingAudit": {
+    "mappedPlayers": 38,
+    "missingLeagueThreatRows": 0,
+    "tierCounts": { "red": 14, "amber": 11, "green": 13, "unknown": 0 },
+    "players": [
+      ["Amogh Arepally", 3839, "green", 9], ["Saurabh Netravalkar", 8333, "green", 2],
+      ["Nisarulhaq Wahdat", 5013, "red", 5], ["Ramesh Basnet", 4503, "red", 3],
+      ["Syon Kurdekar", 3775, "green", 4], ["Saideep Ganesh", 3778, "red", 4],
+      ["Suliman Arabzai", 3913, "red", 10], ["Sidhant Reddy", 7339, "green", 2],
+      ["Avyukth Raghunarayan", 4034, "green", 5], ["Vatsal Vaghela", 3882, "amber", 8],
+      ["Rahul Jariwala", 3883, "green", 6], ["Zahid Zakhil", 5009, "red", 13],
+      ["Kashyap Manchili", 7283, "amber", 2], ["Naman Patil", 3958, "red", 8],
+      ["Vivaan Jagtiani", 3881, "red", 10], ["Kamran Hotak", 4560, "red", 7],
+      ["Gary Graham", 5037, "amber", 7], ["Kristopher Ramsaran", 3950, "amber", 4],
+      ["Vidit Kwatra", 4562, "red", 11], ["Rayyan Ketekar", 5298, "green", 6],
+      ["Abhishek Paradkar", 3781, "red", 3], ["Saaket Bapu", 4063, "green", 9],
+      ["Aryan Mathur", 4749, "green", 14], ["Sahil Garg", 3879, "amber", 4],
+      ["Mohit Nataraj", 3834, "green", 5], ["Harish Kakani", 8050, "red", 5],
+      ["Adnesh Tondale", 3959, "amber", 6], ["Vedant Jain", 3782, "green", 2],
+      ["Muhammad Faisal", 4121, "red", 9], ["Aarnav Iyer", 7460, "amber", 2],
+      ["Bilal Basheer", 7991, "amber", 2], ["Praneel Venna", 4583, "amber", 2],
+      ["Vinay Khandelwal", 8167, "green", 1], ["Aadhav Iyer", 3779, "amber", 18],
+      ["Ayaan Khan", 3800, "green", 2], ["Husnain Bukhari", 8174, "red", 4],
+      ["Shivam Mishra", 4077, "amber", 2], ["Supransh Kumar", 3831, "red", 17]
+    ],
+    "rowFormat": ["rosterName", "playerId", "tier", "totalNccaMatches"]
+  },
+  "selectedEvidence": {
+    "Kashyap Manchili": {
+      "playerId": 7283,
+      "leagueThreatScore": 53.9707,
+      "leaguePercentileRank": 90.7442,
+      "totalMatches": 2,
+      "tier": "amber",
+      "reason": "The score is high relative to the league, but the mandatory red gate blocks a two-match sample.",
+      "divisionEvidence": [{ "division": "2026 Premier B", "matches": 2, "weight": 0.7, "confidence": 0.5, "composite": 74.3916 }]
+    },
+    "Vivaan Jagtiani": {
+      "playerId": 3881,
+      "leagueThreatScore": 55.3141,
+      "leaguePercentileRank": 94.6216,
+      "totalMatches": 10,
+      "tier": "red",
+      "reason": "Ten NCCA matches satisfy the red evidence gate; Premier A receives the highest division weight.",
+      "divisionEvidence": [
+        { "division": "2026 Premier A", "matches": 2, "weight": 1, "confidence": 0.5, "composite": 49.6347 },
+        { "division": "2026 Premier B", "matches": 7, "weight": 0.7, "confidence": 1, "composite": 65.1074 },
+        { "division": "2026 Premier C", "matches": 1, "weight": 0.45, "confidence": 0.25, "composite": 59.1809 }
+      ]
+    }
+  }
+}

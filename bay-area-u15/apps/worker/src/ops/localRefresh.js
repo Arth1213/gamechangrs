@@ -135,6 +135,7 @@ async function runDownstreamOperations(options, summary) {
   const downstream = {
     seasonAggregation: null,
     compositeScoring: null,
+    leagueThreatScoring: null,
     intelligence: null,
   };
 
@@ -153,6 +154,9 @@ async function runDownstreamOperations(options, summary) {
   }
   if (typeof operations.runCompositeScoring === "function") {
     downstream.compositeScoring = await operations.runCompositeScoring(sharedOptions);
+  }
+  if (typeof operations.runLeagueThreatScoring === "function") {
+    downstream.leagueThreatScoring = await operations.runLeagueThreatScoring(sharedOptions);
   }
   if (typeof operations.runPlayerIntelligence === "function") {
     downstream.intelligence = await operations.runPlayerIntelligence(sharedOptions);
@@ -320,4 +324,5 @@ async function refreshSingleMatch(options = {}) {
 module.exports = {
   refreshSeries,
   refreshSingleMatch,
+  runDownstreamOperations,
 };

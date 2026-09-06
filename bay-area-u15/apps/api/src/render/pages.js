@@ -6330,9 +6330,10 @@ function renderPlayerIntelligenceReportPage(report) {
     );
   }
 
-  function getThreatTone(percentileRank) {
-    const numeric = toNumber(percentileRank, null);
-    if (numeric === null) {
+  function getThreatTone(threatHeader) {
+    const tier = normalizeText(threatHeader?.leagueThreatTier).toLowerCase();
+    const matches = toInteger(threatHeader?.leagueTotalMatches);
+    if (!tier || tier === "unknown") {
       return {
         label: "Unknown",
         tone: "watch",
@@ -6340,26 +6341,26 @@ function renderPlayerIntelligenceReportPage(report) {
       };
     }
 
-    if (numeric >= 85) {
+    if (tier === "red") {
       return {
         label: "Red",
         tone: "risk",
-        note: "High opposition threat in the current live sample.",
+        note: `High opposition threat across ${displayNumber(matches, 0, "0")} NCCA matches.`,
       };
     }
 
-    if (numeric >= 60) {
+    if (tier === "amber") {
       return {
         label: "Amber",
         tone: "watch",
-        note: "Manageable, but still a live planning concern.",
+        note: `Manageable, but still a live planning concern across ${displayNumber(matches, 0, "0")} NCCA matches.`,
       };
     }
 
     return {
       label: "Green",
       tone: "good",
-      note: "Lower threat in the current planning sample.",
+      note: `Lower threat in the current planning sample across ${displayNumber(matches, 0, "0")} NCCA matches.`,
     };
   }
 
@@ -7023,7 +7024,7 @@ function renderPlayerIntelligenceReportPage(report) {
     };
   }
 
-  const threatProfile = getThreatTone(header.percentileRank);
+  const threatProfile = getThreatTone(header);
   const threatNarrative = buildThreatNarrative(leadingStrength);
   const weaknessNarrative = buildWeaknessNarrative(leadingWatchout, tacticalPlan?.battingPlan?.[0]);
   const pressureCard = buildPressureCard(leadingPressure);

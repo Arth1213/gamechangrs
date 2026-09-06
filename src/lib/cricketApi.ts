@@ -129,6 +129,23 @@ export type CricketNccaTopPlayersResponse = {
   readinessMessage: string;
 };
 
+export type CricketGrizzliesPortalPlayer = {
+  name: string;
+  rosterCategory: string;
+  nccaStatus: "matched" | "not_found";
+  cricclubsProfileUrl: string | null;
+  assessmentPath: string | null;
+  threatPath: string | null;
+  threatTone?: "red" | "amber" | "green" | "unknown";
+};
+
+export type CricketGrizzliesPortalResponse = {
+  title: string;
+  nccaSeriesConfigKey: string;
+  teams: Array<{ name: string; players: CricketGrizzliesPortalPlayer[] }>;
+  analysisStatus: string;
+};
+
 export type CricketAdminEntityMembership = {
   membershipId?: string;
   entityId?: string;
@@ -1523,6 +1540,16 @@ export async function fetchCricketNccaTopPlayers(accessToken: string, signal?: A
     throw new Error(await readApiErrorMessage(response, `NCCA Top Players request failed with status ${response.status}.`));
   }
   return (await response.json()) as CricketNccaTopPlayersResponse;
+}
+
+export async function fetchGrizzliesPortal(accessToken: string, signal?: AbortSignal) {
+  const response = await fetch(getCricketApiUrl("/api/portals/grizzlies/2026"), {
+    method: "GET",
+    signal,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(await readApiErrorMessage(response, "Grizzlies portal is unavailable."));
+  return (await response.json()) as CricketGrizzliesPortalResponse;
 }
 
 export async function fetchCricketPlayerReport(

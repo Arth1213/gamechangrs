@@ -1,6 +1,8 @@
 "use strict";
 
 const path = require("path");
+const fs = require("fs");
+const YAML = require("yaml");
 
 const { loadEnvFile } = require("./env");
 const {
@@ -120,6 +122,24 @@ async function requireAuthenticatedCricketUser(req) {
     email: user.email,
   };
 
+  return req.cricketActor;
+}
+
+function loadGrizzliesAllowedEmails() {
+  const configPath = path.resolve(__dirname, "../../../../../config/grizzlies-2026-portal.yaml");
+  const config = YAML.parse(fs.readFileSync(configPath, "utf8"));
+  return new Set((config?.portal?.allowedEmails || []).map((email) => normalizeText(email).toLowerCase()));
+}
+
+async function requireGrizzliesPortalAccess(req) {
+  const actor = await requireAuthenticatedCricketUser(req);
+  const email = normalizeText(actor.email).toLowerCase();
+  if (!email || !loadGrizzliesAllowedEmails().has(email)) {
+    const error = new Error("You do not have access to Grizzlies 2026 Analytics.");
+    error.statusCode = 403;
+    throw error;
+  }
+  req.cricketActor = { ...actor, email };
   return req.cricketActor;
 }
 
@@ -254,6 +274,7 @@ module.exports = {
   extractBearerToken,
   fetchSupabaseUser,
   requireAuthenticatedCricketUser,
+  requireGrizzliesPortalAccess,
   requireSeriesAdminAccess,
   requireSeriesViewerAccess,
 };

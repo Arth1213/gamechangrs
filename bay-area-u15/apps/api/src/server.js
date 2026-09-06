@@ -3,7 +3,7 @@
 const express = require("express");
 const fs = require("fs");
 
-const { requireAuthenticatedCricketUser, requireSeriesAdminAccess, requireSeriesViewerAccess } = require("./lib/auth");
+const { requireAuthenticatedCricketUser, requireGrizzliesPortalAccess, requireSeriesAdminAccess, requireSeriesViewerAccess } = require("./lib/auth");
 const { closePool, testConnection } = require("./lib/connection");
 const { normalizeText, toBoolean, toInteger } = require("./lib/utils");
 const { renderLocalOpsConsolePage } = require("./render/localOpsPage");
@@ -64,6 +64,7 @@ const {
 const {
   getPlayerIntelligenceReport,
 } = require("./services/playerIntelligenceService");
+const { getGrizzliesPortalPayload } = require("./services/grizzliesPortalService");
 const {
   getLocalOpsOverview,
   getLocalOpsRunDetail,
@@ -739,6 +740,10 @@ app.get("/", asyncHandler(async (req, res) => {
     ? await getDashboardOverview({ seriesConfigKey: activeSeries.configKey })
     : null;
   sendHtml(res, renderSeriesIndexPage({ seriesCards, activeOverview }));
+}));
+
+app.get("/api/portals/grizzlies/2026", requireGrizzliesPortalAccess, asyncHandler(async (_req, res) => {
+  res.json(await getGrizzliesPortalPayload());
 }));
 
 app.get("/players/:playerId", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {

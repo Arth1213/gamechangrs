@@ -150,3 +150,21 @@ series:
       enable_json_exports: true
       enable_pdf_reports: false
       enable_dashboard_views: true
+  - slug: grizzlies-2026-milc
+    label: 2026 MiLC series
+    enabled: false
+    source_system: cricclubs
+    league_name: MiLC
+    season_year: 2026
+    series_url: ""
+    source_hints: {}
+    enable_auto_discovery: false
+    targeting:
+      age_group: Open
+      divisions: []
+    validation_players: []
+    outputs:
+      enable_raw_snapshots: false
+      enable_json_exports: false
+      enable_pdf_reports: false
+      enable_dashboard_views: false

@@ -486,6 +486,19 @@ CREATE TABLE IF NOT EXISTS player_composite_score (
   UNIQUE (series_id, division_id, player_id, score_version)
 );
 
+CREATE TABLE IF NOT EXISTS player_series_threat_score (
+  id BIGSERIAL PRIMARY KEY,
+  series_id BIGINT NOT NULL REFERENCES series(id) ON DELETE CASCADE,
+  player_id BIGINT NOT NULL REFERENCES player(id) ON DELETE CASCADE,
+  league_threat_score NUMERIC(8,4) NOT NULL,
+  league_percentile_rank NUMERIC(8,4) NOT NULL,
+  total_matches INTEGER NOT NULL CHECK (total_matches >= 0),
+  division_evidence JSONB NOT NULL DEFAULT '[]'::jsonb,
+  score_version TEXT NOT NULL DEFAULT 'ncca-league-threat-v1',
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (series_id, player_id, score_version)
+);
+
 CREATE TABLE IF NOT EXISTS data_quality_issue (
   id BIGSERIAL PRIMARY KEY,
   ingest_run_id BIGINT REFERENCES ingest_run(id) ON DELETE SET NULL,
@@ -518,6 +531,7 @@ CREATE INDEX IF NOT EXISTS idx_player_stats_snapshot_player ON player_stats_snap
 CREATE INDEX IF NOT EXISTS idx_player_strength_snapshot_player ON player_strength_snapshot (player_id, snapshot_date);
 CREATE INDEX IF NOT EXISTS idx_player_matchup_pair ON player_matchup (batter_player_id, bowler_player_id);
 CREATE INDEX IF NOT EXISTS idx_player_composite_score ON player_composite_score (series_id, division_id, composite_score DESC);
+CREATE INDEX IF NOT EXISTS idx_player_series_threat_score_rank ON player_series_threat_score (series_id, league_percentile_rank DESC);
 CREATE INDEX IF NOT EXISTS idx_data_quality_issue_scope ON data_quality_issue (issue_scope, entity_table, severity);
 
 COMMIT;

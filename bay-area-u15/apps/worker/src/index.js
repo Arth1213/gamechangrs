@@ -12,6 +12,7 @@ const { registerSeries } = require("./ops/seriesRegistry");
 const { validateSeries } = require("./ops/localValidate");
 const { runMatchPipeline } = require("./pipeline/runMatchPipeline");
 const { runCompositeScoring } = require("./pipeline/runCompositeScoring");
+const { runLeagueThreatScoring } = require("./pipeline/runLeagueThreatScoring");
 const { runPlayerIntelligence } = require("./pipeline/runPlayerIntelligence");
 const { runPlayerProfileEnrichment } = require("./pipeline/runPlayerProfileEnrichment");
 const { runSeasonAggregation } = require("./pipeline/runSeasonAggregation");
@@ -150,6 +151,7 @@ async function main() {
         operations: {
           runSeasonAggregation,
           runCompositeScoring,
+          runLeagueThreatScoring,
           runPlayerIntelligence,
           validateSeries,
         },
@@ -183,6 +185,7 @@ async function main() {
         operations: {
           runSeasonAggregation,
           runCompositeScoring,
+          runLeagueThreatScoring,
           runPlayerIntelligence,
           validateSeries,
         },
@@ -317,6 +320,19 @@ async function main() {
     return;
   }
 
+  if (command === "compute-league-threat") {
+    const result = await runLeagueThreatScoring({
+      series,
+      outDir,
+      log: (message) => console.log(message),
+    });
+    writeJsonFile(path.join(outDir, "league_threat_scoring_summary.json"), result);
+    console.log(
+      `League threat scoring complete: ${path.join(outDir, "league_threat_scoring_summary.json")}`
+    );
+    return;
+  }
+
   if (command === "enrich-profiles") {
     const result = await runPlayerProfileEnrichment({
       series,
@@ -383,6 +399,7 @@ function printHelp() {
   console.log("  node apps/worker/src/index.js run --config config/leagues.yaml --series bay-area-youth-cricket-hub-2025-milc-2025-27 --matchIds 853,852 --matchLimit 2");
   console.log("  node apps/worker/src/index.js compute-season --config config/leagues.yaml --series bay-area-youth-cricket-hub-2025-milc-2025-27");
   console.log("  node apps/worker/src/index.js compute-composite --config config/leagues.yaml --series bay-area-youth-cricket-hub-2025-milc-2025-27");
+  console.log("  node apps/worker/src/index.js compute-league-threat --config config/leagues.yaml --series bay-area-youth-cricket-hub-2025-milc-2025-27");
   console.log("  node apps/worker/src/index.js enrich-profiles --config config/leagues.yaml --series bay-area-usac-hub-2026");
   console.log("  node apps/worker/src/index.js compute-intelligence --config config/leagues.yaml --series bay-area-usac-hub-2026");
   console.log("  node apps/worker/src/index.js process-queue --limit 1");

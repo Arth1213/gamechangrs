@@ -136,6 +136,7 @@ export type CricketGrizzliesPortalPlayer = {
   cricclubsProfileUrl: string | null;
   assessmentPath: string | null;
   threatPath: string | null;
+  threatTone?: "red" | "amber" | "green" | "unknown";
 };
 
 export type CricketGrizzliesPortalResponse = {

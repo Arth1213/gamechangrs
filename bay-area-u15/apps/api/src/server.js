@@ -743,7 +743,7 @@ app.get("/", asyncHandler(async (req, res) => {
 }));
 
 app.get("/api/portals/grizzlies/2026", requireGrizzliesPortalAccess, asyncHandler(async (_req, res) => {
-  res.json(getGrizzliesPortalPayload());
+  res.json(await getGrizzliesPortalPayload());
 }));
 
 app.get("/players/:playerId", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {

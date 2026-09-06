@@ -1,6 +1,15 @@
 "use strict";
 
 const { toInteger } = require("../lib/cricket");
+const { loadYamlConfig } = require("../lib/config");
+
+function loadGrizzliesPortalConfig(filePath) {
+  const config = loadYamlConfig(filePath);
+  if (!config?.portal?.nccaSeriesConfigKey || !Array.isArray(config?.portal?.allowedEmails)) {
+    throw new Error("Grizzlies portal configuration is incomplete.");
+  }
+  return config;
+}
 
 function createCanonicalPlayerResolver(config = {}) {
   const canonicalBySourcePlayerId = new Map();
@@ -32,4 +41,4 @@ function createCanonicalPlayerResolver(config = {}) {
   };
 }
 
-module.exports = { createCanonicalPlayerResolver };
+module.exports = { createCanonicalPlayerResolver, loadGrizzliesPortalConfig };

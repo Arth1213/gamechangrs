@@ -5,7 +5,14 @@ const test = require("node:test");
 
 const {
   createCanonicalPlayerResolver,
+  loadGrizzliesPortalConfig,
 } = require("../src/ops/playerIdentityOverrides");
+
+test("portal configuration contains exactly the three requested teams and 51 roster players", () => {
+  const config = loadGrizzliesPortalConfig("../config/grizzlies-2026-portal.yaml");
+  assert.deepEqual(Object.keys(config.roster).sort(), ["East Bay Blazers", "San Ramon Grizzlies", "Silicon Valley Strikers"]);
+  assert.equal(Object.values(config.roster).flat().length, 51);
+});
 
 test("canonical resolver merges Husnain scorecard IDs into the approved profile identity", () => {
   const resolvePlayerId = createCanonicalPlayerResolver({

@@ -223,7 +223,7 @@ git commit -m "feat: run league-wide threat scoring after composite scoring"
 
 **Files:**
 - Modify: `bay-area-u15/apps/api/src/services/grizzliesPortalService.js`
-- Modify: `bay-area-u15/apps/api/src/services/reportService.js`
+- Modify: `bay-area-u15/apps/api/src/services/playerIntelligenceService.js`
 - Modify: `bay-area-u15/apps/api/src/render/pages.js`
 - Modify: `bay-area-u15/apps/api/test/grizzliesPortal.test.js`
 - Create: `bay-area-u15/apps/api/test/leagueThreatReport.test.js`
@@ -252,15 +252,15 @@ In `loadPlayerFacts`, join `player_series_threat_score` on NCCA series and playe
 
 - [ ] **Step 3: Write a failing report data test**
 
-Create a report-service fixture that provides a selected division composite plus a league-threat row. Assert that report header tier reads the league row and that the selected division composite remains available in the supporting metrics.
+Create a player-intelligence-service fixture that provides a selected division composite plus a league-threat row. Assert that the threat header reads the league row while the selected division composite remains available in its existing supporting metrics.
 
 Run: `node --test apps/api/test/leagueThreatReport.test.js`
 
-Expected: failure because report data does not query `player_series_threat_score`.
+Expected: failure because Player Threat data does not query `player_series_threat_score`.
 
 - [ ] **Step 4: Add report-service league-threat loader and rendering**
 
-Load the one league-threat row for the selected series/player in `reportService.js`, pass it through `deriveReportMetrics`, and expose it in the report header. In `render/pages.js`, make `getThreatTone` accept the persisted tier/evidence and render an evidence note containing total NCCA matches. Do not use selected division percentile for the main threat tier.
+Load the one league-threat row for the selected series/player in `playerIntelligenceService.js` and expose it in the Player Threat header. In `render/pages.js`, make `getThreatTone` accept the persisted tier/evidence and render an evidence note containing total NCCA matches. Do not use selected division percentile for the main threat tier.
 
 - [ ] **Step 5: Run API tests and production build**
 
@@ -275,7 +275,7 @@ Expected: Vite build exits 0.
 - [ ] **Step 6: Commit API consumer change**
 
 ```bash
-git add bay-area-u15/apps/api/src/services/grizzliesPortalService.js bay-area-u15/apps/api/src/services/reportService.js bay-area-u15/apps/api/src/render/pages.js bay-area-u15/apps/api/test/grizzliesPortal.test.js bay-area-u15/apps/api/test/leagueThreatReport.test.js
+git add bay-area-u15/apps/api/src/services/grizzliesPortalService.js bay-area-u15/apps/api/src/services/playerIntelligenceService.js bay-area-u15/apps/api/src/render/pages.js bay-area-u15/apps/api/test/grizzliesPortal.test.js bay-area-u15/apps/api/test/leagueThreatReport.test.js
 git commit -m "feat: use league-wide NCCA threat tiers in reports"
 ```
 

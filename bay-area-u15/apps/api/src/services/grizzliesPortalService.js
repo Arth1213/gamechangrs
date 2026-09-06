@@ -18,11 +18,11 @@ function getConfiguredPlayerId(config, name) {
   return Number.isInteger(cluster?.canonicalPlayerId) ? cluster.canonicalPlayerId : null;
 }
 
-function getThreatTone(percentileRank) {
-  if (percentileRank === null || percentileRank === undefined || percentileRank === "") return "unknown";
-  const percentile = Number(percentileRank);
+function getThreatTone(input) {
+  const percentile = Number(input?.leaguePercentileRank);
+  const totalMatches = Number(input?.totalMatches);
   if (!Number.isFinite(percentile)) return "unknown";
-  if (percentile >= 85) return "red";
+  if (percentile >= 85 && Number.isFinite(totalMatches) && totalMatches >= 3) return "red";
   if (percentile >= 60) return "amber";
   return "green";
 }
@@ -40,13 +40,14 @@ async function loadPlayerFacts(config) {
         select
           p.id as player_id,
           p.profile_url,
-          max(pcs.percentile_rank) as percentile_rank
+          pts.league_percentile_rank,
+          pts.total_matches
         from public.player p
-        left join public.player_composite_score pcs
-          on pcs.player_id = p.id
-          and pcs.series_id = $1
+        left join public.player_series_threat_score pts
+          on pts.player_id = p.id
+          and pts.series_id = $1
+          and pts.score_version = 'ncca-league-threat-v1'
         where p.id = any($2::bigint[])
-        group by p.id, p.profile_url
       `,
       [context.seriesId, playerIds]
     );
@@ -76,7 +77,10 @@ async function getGrizzliesPortalPayload() {
         cricclubsProfileUrl: profileUrl,
         assessmentPath: playerId ? `/analytics/reports/${playerId}${query}` : null,
         threatPath: playerId ? `/analytics/intelligence/${playerId}${query}` : null,
-        threatTone: getThreatTone(facts?.percentile_rank),
+        threatTone: getThreatTone({
+          leaguePercentileRank: facts?.league_percentile_rank,
+          totalMatches: facts?.total_matches,
+        }),
       };
     }),
   }));

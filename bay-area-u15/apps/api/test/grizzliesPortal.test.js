@@ -12,10 +12,11 @@ test("Grizzlies portal accepts an approved Gmail address regardless of casing", 
   assert.equal(actor.email, "niravsh@gmail.com");
 });
 
-test("portal threat colors use the established NCCA tier thresholds", () => {
-  assert.equal(getThreatTone(85), "red");
-  assert.equal(getThreatTone(60), "amber");
-  assert.equal(getThreatTone(59.99), "green");
+test("portal threat colors use persisted league-wide tiers and the evidence gate", () => {
+  assert.equal(getThreatTone({ leaguePercentileRank: 85, totalMatches: 3 }), "red");
+  assert.equal(getThreatTone({ leaguePercentileRank: 99, totalMatches: 2 }), "amber");
+  assert.equal(getThreatTone({ leaguePercentileRank: 60, totalMatches: 1 }), "amber");
+  assert.equal(getThreatTone({ leaguePercentileRank: 59.99, totalMatches: 8 }), "green");
   assert.equal(getThreatTone(null), "unknown");
 });
 

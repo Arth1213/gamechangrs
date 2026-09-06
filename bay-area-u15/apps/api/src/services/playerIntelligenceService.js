@@ -31,6 +31,27 @@ function roundMetric(value, digits = 2) {
   return roundNumeric(numeric, digits);
 }
 
+function buildThreatHeader(row) {
+  const leaguePercentileRank = roundMetric(row?.league_percentile_rank, 2);
+  const leagueTotalMatches = toInteger(row?.total_matches);
+  let leagueThreatTier = "unknown";
+  if (leaguePercentileRank !== null) {
+    if (leaguePercentileRank >= 85 && leagueTotalMatches >= 3) {
+      leagueThreatTier = "red";
+    } else if (leaguePercentileRank >= 60) {
+      leagueThreatTier = "amber";
+    } else {
+      leagueThreatTier = "green";
+    }
+  }
+  return {
+    leagueThreatScore: roundMetric(row?.league_threat_score, 2),
+    leaguePercentileRank,
+    leagueTotalMatches,
+    leagueThreatTier,
+  };
+}
+
 function safeDivide(numerator, denominator) {
   const left = toNumber(numerator, null);
   const right = toNumber(denominator, null);
@@ -1544,6 +1565,19 @@ async function getPlayerIntelligenceReport(input) {
 
     const selectedSeason = pickSelectedSeasonRow(seasonRows, requestedDivisionId);
     const divisionLabelMap = buildDivisionLabelMap(seasonRows);
+    const leagueThreatRow = (
+      await client.query(
+        `
+          select league_threat_score, league_percentile_rank, total_matches
+          from public.player_series_threat_score
+          where series_id = $1
+            and player_id = $2
+            and score_version = 'ncca-league-threat-v1'
+          limit 1
+        `,
+        [context.seriesId, playerId]
+      )
+    ).rows[0] || null;
 
     const matchupRows = (
       await client.query(
@@ -1655,6 +1689,7 @@ async function getPlayerIntelligenceReport(input) {
       percentileRank: roundMetric(selectedSeason.percentile_rank, 2),
       confidenceScore: roundMetric(selectedSeason.confidence_score, 2),
       confidenceLabel: confidenceLabel(selectedSeason.confidence_score),
+      ...buildThreatHeader(leagueThreatRow),
     };
 
     return {
@@ -1691,6 +1726,7 @@ async function getPlayerIntelligenceReport(input) {
         sources: [
           "player_season_advanced",
           "player_composite_score",
+          "player_series_threat_score",
           "player_intelligence_matchup",
           "player_intelligence_dismissal",
           "player_intelligence_profile",
@@ -1720,5 +1756,6 @@ async function getPlayerIntelligenceReport(input) {
 }
 
 module.exports = {
+  buildThreatHeader,
   getPlayerIntelligenceReport,
 };

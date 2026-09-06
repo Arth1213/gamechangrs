@@ -339,7 +339,7 @@ export function CreateListingDialog({
             <Label>Listing Type</Label>
             <Select
               value={formData.listingType}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, listingType: value }))}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, listingType: value as "donation" | "sale" }))}
             >
               <SelectTrigger>
                 <SelectValue />

@@ -343,7 +343,9 @@ const CoachingMarketplace = () => {
 
     if (playerProfile) {
       const maxExperience = getMaxExperienceYears(nextFiltered);
-      nextFiltered = sortCoachesByMatch(nextFiltered, playerProfile, maxExperience).map((match) => match.coach!);
+      nextFiltered = sortCoachesByMatch(nextFiltered, playerProfile, maxExperience).map(
+        (match) => match.coach!,
+      ) as (CoachWithDetails & { isConnected: boolean })[];
     }
 
     if (sortBy === "rating") {

@@ -57,6 +57,10 @@ approvedMappings:
   Supransh Kumar: 3831
   Sreehaas Krishna:
     profileUrl: https://prod-lm.cricclubs.com/NCCA/viewPlayer.do?playerId=2102795&clubId=1191
+profileOverrides:
+  Aarnav Iyer: https://cricclubs.com/NCCA/user/8PN7E6MQQ0cHb6MKpNHXpg
+  Bilal Basheer: https://cricclubs.com/NCCA/user/aPcCEWPWFTirk5mtFeLaJg
+  Praneel Venna: https://cricclubs.com/NCCA/user/LlerDiZTU3eQN_A8Ybki0g
 roster:
   Silicon Valley Strikers:
     - [Carmi Le Roux, Wildcard]

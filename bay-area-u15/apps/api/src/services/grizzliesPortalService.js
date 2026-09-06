@@ -64,7 +64,10 @@ async function getGrizzliesPortalPayload() {
       const configured = config.approvedMappings?.[name];
       const playerId = Number.isInteger(configured) ? configured : null;
       const facts = playerId ? playerFacts.get(playerId) : null;
-      const profileUrl = typeof configured === "object" ? configured.profileUrl || null : facts?.profile_url || null;
+      const profileUrl =
+        typeof configured === "object"
+          ? configured.profileUrl || null
+          : config?.profileOverrides?.[name] || facts?.profile_url || null;
       const query = playerId ? `?series=${encodeURIComponent(seriesConfigKey)}` : "";
       return {
         name,

@@ -12,6 +12,8 @@ import { CricketGrizzliesPortalResponse, fetchGrizzliesPortal } from "@/lib/cric
 import { grizzliesPortalFallback } from "@/lib/grizzliesPortalFallback";
 import { minorLeagueLaunch } from "@/lib/grizzliesPortalPresentation";
 import { cricclubsPlayerNameHref } from "@/lib/grizzliesPlayerLink";
+import { assessmentButtonClass } from "@/lib/grizzliesSquadActions";
+import { grizzliesWelcome } from "@/lib/grizzliesWelcome";
 
 type PortalPlayer = CricketGrizzliesPortalResponse["teams"][number]["players"][number];
 
@@ -32,8 +34,8 @@ function threatButtonClass(tone: PortalPlayer["threatTone"]) {
 function PlayerLinks({ player }: { player: PortalPlayer }) {
   return (
     <div className="flex flex-wrap gap-2">
-      {player.assessmentPath ? <Button asChild size="sm" className="h-8 bg-emerald-600 px-2.5 text-xs text-white hover:bg-emerald-500"><Link to={player.assessmentPath}>Assessment</Link></Button> : null}
       {player.threatPath ? <Button asChild size="sm" className={`h-8 px-2.5 text-xs ${threatButtonClass(player.threatTone)}`}><Link to={player.threatPath}>Threat</Link></Button> : null}
+      {player.assessmentPath ? <Button asChild size="sm" className={`h-8 px-2.5 text-xs ${assessmentButtonClass}`}><Link to={player.assessmentPath}>Assessment</Link></Button> : null}
       {!player.assessmentPath && !player.threatPath ? <span className="text-xs text-muted-foreground">NCCA data not found</span> : null}
     </div>
   );
@@ -61,7 +63,7 @@ function SquadPanel({ team, className }: { team: CricketGrizzliesPortalResponse[
 }
 
 export default function AnalyticsGrizzlies2026() {
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const [data, setData] = useState<CricketGrizzliesPortalResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const portal = data ?? grizzliesPortalFallback;
@@ -78,7 +80,7 @@ export default function AnalyticsGrizzlies2026() {
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
       <main className="container space-y-8 pb-16 pt-28">
-        <section className="flex flex-col gap-5 md:flex-row md:items-center"><img src="/grizzlies-2026-logo.png" alt="San Ramon Grizzlies" className="h-24 w-24 object-contain" /><div><p className="text-xs font-semibold uppercase tracking-[.24em] text-primary">2026 Minor League</p><h1 className="font-display text-4xl font-bold leading-tight md:text-5xl">Grizzlies 2026 Analytics</h1><p className="mt-1 font-display text-xl font-semibold text-primary md:text-2xl">Powered by GameChangrs</p><p className="mt-3 text-muted-foreground">Welcome to the 2026 Grizzlies Season.</p></div></section>
+        <section className="flex flex-col gap-5 md:flex-row md:items-center"><img src="/grizzlies-2026-logo.png" alt="San Ramon Grizzlies" className="h-24 w-24 object-contain" /><div><p className="text-xs font-semibold uppercase tracking-[.24em] text-primary">2026 Minor League</p><h1 className="font-display text-4xl font-bold leading-tight md:text-5xl">Grizzlies 2026 Analytics</h1><p className="mt-1 font-display text-xl font-semibold text-primary md:text-2xl">Powered by GameChangrs</p><p className="mt-4 font-display text-xl font-semibold text-white md:text-2xl">{grizzliesWelcome(user)}</p></div></section>
         {!session ? <Card><CardContent className="flex gap-3 py-10"><Lock />Sign in with an approved Gmail account to view this portal.</CardContent></Card> : null}
         {!data && session && !error ? <Card><CardContent className="flex gap-3 py-5 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Using the verified roster fallback while the protected portal service is unavailable.</CardContent></Card> : null}
         {error ? <Card className="border-amber-500/50"><CardContent className="flex gap-3 py-5 text-sm text-muted-foreground"><ShieldAlert className="h-4 w-4 text-amber-500" />Using the verified roster fallback while the protected portal service is deployed.</CardContent></Card> : null}
@@ -86,7 +88,7 @@ export default function AnalyticsGrizzlies2026() {
           <TabsList><TabsTrigger value="squad">Squad Intelligence</TabsTrigger><TabsTrigger value="analysis">AI Match Analysis</TabsTrigger></TabsList>
           <TabsContent value="squad" className="mt-6"><div className="grid gap-5 lg:grid-cols-3 lg:items-start">{portal.teams.map((team) => <SquadPanel key={team.name} team={team} className={squadStyle(team.name)} />)}</div></TabsContent>
           <TabsContent value="analysis" className="mt-6 space-y-6">
-            <Card className="border-red-500/35 bg-gradient-to-b from-red-500/[.10] to-background shadow-[0_20px_70px_-45px_rgba(239,68,68,.8)]"><CardContent className="flex flex-col items-center px-6 py-14 text-center md:py-16"><div className="mb-5 flex h-24 w-32 items-center justify-center rounded-2xl border border-red-500/30 bg-black/25 p-3"><img src="/milc-2026-mark.png" alt="Minor League Cricket" className="max-h-full max-w-full object-contain" /></div><p className="text-xs font-semibold uppercase tracking-[.22em] text-red-400">Minor League Cricket</p><h2 className="mt-3 font-display text-3xl font-bold tracking-tight md:text-4xl">{minorLeagueLaunch.heading}</h2><p className="mt-3 max-w-xl text-base text-muted-foreground md:text-lg">{minorLeagueLaunch.supportingText}</p></CardContent></Card>
+            <Card className="border-red-500/35 bg-gradient-to-b from-red-500/[.10] to-background shadow-[0_20px_70px_-45px_rgba(239,68,68,.8)]"><CardContent className="flex flex-col items-center px-6 py-14 text-center md:py-16"><div className="mb-5 flex h-32 w-40 items-center justify-center"><img src={minorLeagueLaunch.logoSrc} alt="Minor League Cricket" className="max-h-full max-w-full object-contain" /></div><p className="text-xs font-semibold uppercase tracking-[.22em] text-red-400">Minor League Cricket</p><h2 className="mt-3 font-display text-3xl font-bold tracking-tight md:text-4xl">{minorLeagueLaunch.heading}</h2><p className="mt-3 max-w-xl text-base text-muted-foreground md:text-lg">{minorLeagueLaunch.supportingText}</p></CardContent></Card>
             <Card><CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0"><div><CardTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-red-400" />West Division Schedule</CardTitle><CardDescription className="mt-2">2026 opening fixtures shown below. The official MiLC schedule remains the source of record.</CardDescription></div><Button asChild variant="outline" size="sm" className="shrink-0"><a href={minorLeagueLaunch.officialScheduleUrl} target="_blank" rel="noreferrer">Official schedule <ExternalLink className="ml-1.5 h-3.5 w-3.5" /></a></Button></CardHeader><CardContent><div className="grid gap-3 md:grid-cols-2">{minorLeagueLaunch.fixtures.map((fixture) => <article key={`${fixture.date}-${fixture.homeTeam}-${fixture.awayTeam}`} className="rounded-lg border border-border bg-muted/20 p-4"><p className="text-sm font-semibold text-red-300">{fixture.date} · {fixture.venue}</p><p className="mt-2 font-display text-lg font-semibold">{fixture.homeTeam} <span className="px-1 text-sm font-normal text-muted-foreground">vs</span> {fixture.awayTeam}</p></article>)}</div></CardContent></Card>
           </TabsContent>
         </Tabs>

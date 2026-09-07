@@ -1,4 +1,5 @@
 export const minorLeagueLaunch = {
+  logoSrc: "/milc-logo.png",
   heading: "Minor League 2026 — Starting Soon",
   supportingText: "Stay tuned for Match Analytics once the series starts.",
   officialScheduleUrl:

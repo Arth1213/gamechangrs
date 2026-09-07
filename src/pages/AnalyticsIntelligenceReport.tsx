@@ -34,6 +34,7 @@ import {
   getCricketPlayerIntelligenceDocumentUrl,
 } from "@/lib/cricketApi";
 import { measureEmbeddedReportHeight } from "@/lib/iframeReport";
+import { getGrizzliesReportContext } from "@/lib/grizzliesReportContext";
 
 class SectionErrorBoundary extends React.Component<
   { title: string; children: React.ReactNode },
@@ -1010,6 +1011,9 @@ const AnalyticsIntelligenceReport = () => {
     () => getAnalyticsWorkspaceRoute(currentSearchQuery, effectiveSeriesKey || undefined),
     [currentSearchQuery, effectiveSeriesKey]
   );
+  const grizzliesReportContext = getGrizzliesReportContext(effectiveSeriesKey);
+  const reportBackPath = grizzliesReportContext?.backPath || backToSearchUrl;
+  const reportBackLabel = grizzliesReportContext ? "Back to Grizzlies Analytics" : "Back to Search";
   const hasViewerAccess = viewerSeries.some((series) => series.configKey?.trim() === effectiveSeriesKey);
   const sectionSpacingClassName = isStandalone ? "pt-10 pb-12" : "pt-32 pb-20";
   const reportDocumentUrl = useMemo(() => {
@@ -1526,14 +1530,20 @@ const AnalyticsIntelligenceReport = () => {
       {!isStandalone ? <Navbar /> : null}
 
       <section className={`bg-gradient-hero ${sectionSpacingClassName}`}>
-        <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-7xl space-y-8">
-            <div className="space-y-5">
+          <div className="container mx-auto px-4">
+            <div className="mx-auto max-w-7xl space-y-8">
+              <div className="space-y-5">
+              {grizzliesReportContext ? (
+                <p className="font-display text-2xl font-semibold tracking-tight text-white md:text-3xl">
+                  {grizzliesReportContext.titlePrefix} <span className="text-red-500">{grizzliesReportContext.titleAccent}</span>{" "}
+                  {grizzliesReportContext.titleSuffix}
+                </p>
+              ) : null}
               <div className="flex flex-wrap gap-3">
                 <Button variant="outline" asChild>
-                  <Link to={backToSearchUrl}>
+                  <Link to={reportBackPath}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Search
+                    {reportBackLabel}
                   </Link>
                 </Button>
                 <StandaloneReportActions

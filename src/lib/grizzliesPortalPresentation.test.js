@@ -9,6 +9,7 @@ test("publishes the approved Minor League launch copy and verified Grizzlies fix
     minorLeagueLaunch.supportingText,
     "Stay tuned for Match Analytics once the series starts."
   );
+  assert.equal(minorLeagueLaunch.logoSrc, "/milc-logo.png");
   assert.equal(minorLeagueLaunch.fixtures.length, 4);
   assert.deepEqual(
     minorLeagueLaunch.fixtures.map((fixture) => fixture.homeTeam),

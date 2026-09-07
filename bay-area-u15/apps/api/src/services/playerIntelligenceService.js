@@ -16,6 +16,8 @@ const {
 } = require("./seriesService");
 
 const MIN_SPLIT_SAMPLE_BALLS = 12;
+const BATTING_WEAKNESS_DISMISSAL_WEIGHT = 0.75;
+const BATTING_WEAKNESS_STRIKE_RATE_WEIGHT = 0.25;
 const MIN_PRESSURE_DOT_THRESHOLD = 2;
 const MAX_MATCHUP_ROWS = 8;
 const MAX_DISMISSAL_ROWS = 6;
@@ -866,27 +868,61 @@ function pickBestBattingSplit(rows) {
   return sortSplitRows(preferKnownRows(eligibleRows, (row) => row.splitLabel), "batting")[0] || null;
 }
 
-function pickRiskBattingSplit(rows) {
-  return [...preferKnownRows(
+function pickWeightedBattingRisk(rows, overallBatting) {
+  const eligibleRows = preferKnownRows(
     rows.filter((row) => (row.legalBalls || 0) >= MIN_SPLIT_SAMPLE_BALLS),
     (row) => row.splitLabel
-  )]
+  );
+  if (!eligibleRows.length) {
+    return null;
+  }
+
+  const overallStrikeRate = toNumber(overallBatting?.strikeRate, null);
+  const candidates = eligibleRows.map((row) => {
+    const legalBalls = toInteger(row.legalBalls) || 0;
+    const dismissalRate = legalBalls > 0
+      ? ((toInteger(row.dismissals) || 0) / legalBalls) * 100
+      : 0;
+    const strikeRate = toNumber(row.strikeRate, null);
+    const strikeRateSuppression = overallStrikeRate !== null && overallStrikeRate > 0 && strikeRate !== null
+      ? Math.max(0, ((overallStrikeRate - strikeRate) / overallStrikeRate) * 100)
+      : 0;
+    return {
+      ...row,
+      dismissalRate,
+      strikeRateSuppression,
+      overallStrikeRate,
+    };
+  });
+  const maxDismissalRate = Math.max(...candidates.map((row) => row.dismissalRate), 0);
+  const maxStrikeRateSuppression = Math.max(...candidates.map((row) => row.strikeRateSuppression), 0);
+
+  return candidates
+    .map((row) => ({
+      ...row,
+      dismissalWeight: BATTING_WEAKNESS_DISMISSAL_WEIGHT,
+      strikeRateWeight: BATTING_WEAKNESS_STRIKE_RATE_WEIGHT,
+      weightedWeaknessScore:
+        BATTING_WEAKNESS_DISMISSAL_WEIGHT * (maxDismissalRate > 0 ? row.dismissalRate / maxDismissalRate : 0)
+        + BATTING_WEAKNESS_STRIKE_RATE_WEIGHT * (
+          maxStrikeRateSuppression > 0 ? row.strikeRateSuppression / maxStrikeRateSuppression : 0
+        ),
+    }))
     .sort((left, right) => {
-      const dismissalDiff = (right.dismissals || 0) - (left.dismissals || 0);
-      if (dismissalDiff !== 0) {
-        return dismissalDiff;
+      const scoreDiff = right.weightedWeaknessScore - left.weightedWeaknessScore;
+      if (scoreDiff !== 0) {
+        return scoreDiff;
       }
-
-      const ballsPerDismissalLeft = toNumber(left.ballsPerDismissal, Number.POSITIVE_INFINITY);
-      const ballsPerDismissalRight = toNumber(right.ballsPerDismissal, Number.POSITIVE_INFINITY);
-      if (ballsPerDismissalLeft !== ballsPerDismissalRight) {
-        return ballsPerDismissalLeft - ballsPerDismissalRight;
+      const dismissalRateDiff = right.dismissalRate - left.dismissalRate;
+      if (dismissalRateDiff !== 0) {
+        return dismissalRateDiff;
       }
-
-      const strikeRateLeft = toNumber(left.strikeRate, Number.POSITIVE_INFINITY);
-      const strikeRateRight = toNumber(right.strikeRate, Number.POSITIVE_INFINITY);
-      return strikeRateLeft - strikeRateRight;
-    })[0] || null;
+      const strikeRateDiff = toNumber(left.strikeRate, Number.POSITIVE_INFINITY) - toNumber(right.strikeRate, Number.POSITIVE_INFINITY);
+      if (strikeRateDiff !== 0) {
+        return strikeRateDiff;
+      }
+      return (right.legalBalls || 0) - (left.legalBalls || 0);
+    })[0];
 }
 
 function pickBestBowlingSplit(rows) {
@@ -941,8 +977,25 @@ function buildSignalCards(input) {
     });
   }
 
+  const battingRisk = pickWeightedBattingRisk(
+    input.lens.batting.byBowlerType,
+    input.lens.batting.overall
+  );
+  if (battingRisk) {
+    const hasClassifiedBattingRiskLabel = !isPlaceholderIntelligenceLabel(battingRisk.splitLabel);
+    watchouts.push({
+      label: hasClassifiedBattingRiskLabel
+        ? `Batting pressure vs ${battingRisk.splitLabel}`
+        : "Batting pressure",
+      tone: "watch",
+      metricLabel: "Weakness score",
+      metricValue: roundMetric(battingRisk.weightedWeaknessScore * 100, 1),
+      note: `75% dismissal risk / 25% strike-rate suppression: dismissed ${battingRisk.dismissals} times in ${battingRisk.legalBalls} balls (dismissal rate ${roundMetric(battingRisk.dismissalRate, 2)}%) and scored at SR ${battingRisk.strikeRate ?? "n/a"}${battingRisk.overallStrikeRate !== null ? ` versus overall SR ${battingRisk.overallStrikeRate}` : ""}.`,
+    });
+  }
+
   const dismissalRisk = pickDismissalRisk(input.lens.dismissals);
-  if (dismissalRisk) {
+  if (dismissalRisk && dismissalRisk.bowlerStyleLabel !== battingRisk?.splitLabel) {
     const hasClassifiedDismissalLabel = !isPlaceholderIntelligenceLabel(dismissalRisk.bowlerStyleLabel);
     watchouts.push({
       label: hasClassifiedDismissalLabel
@@ -954,22 +1007,6 @@ function buildSignalCards(input) {
       note: hasClassifiedDismissalLabel
         ? `Most wickets here have come through ${dismissalRisk.dismissalType || "this dismissal type"}, usually around ${dismissalRisk.averageRunsAtDismissal || 0} runs at dismissal.`
         : `Most wickets in the current sample have come against bowling styles that are not yet classified, usually around ${dismissalRisk.averageRunsAtDismissal || 0} runs at dismissal.`,
-    });
-  }
-
-  const battingRisk = pickRiskBattingSplit(input.lens.batting.byBowlerType);
-  if (battingRisk && (!dismissalRisk || battingRisk.splitLabel !== dismissalRisk.bowlerStyleLabel)) {
-    const hasClassifiedBattingRiskLabel = !isPlaceholderIntelligenceLabel(battingRisk.splitLabel);
-    watchouts.push({
-      label: hasClassifiedBattingRiskLabel
-        ? `Batting pressure vs ${battingRisk.splitLabel}`
-        : "Batting pressure",
-      tone: "watch",
-      metricLabel: "Balls per dismissal",
-      metricValue: battingRisk.ballsPerDismissal,
-      note: hasClassifiedBattingRiskLabel
-        ? `Dismissed ${battingRisk.dismissals} times in ${battingRisk.legalBalls} balls against this bowling type.`
-        : `Dismissed ${battingRisk.dismissals} times in ${battingRisk.legalBalls} balls against bowling styles that are not yet classified.`,
     });
   }
 
@@ -1024,7 +1061,7 @@ function buildTacticalPlan(lens) {
   const battingPlan = [];
   const bowlingPlan = [];
 
-  const battingRisk = pickRiskBattingSplit(lens.batting.byBowlerType);
+  const battingRisk = pickWeightedBattingRisk(lens.batting.byBowlerType, lens.batting.overall);
   if (battingRisk) {
     battingPlan.push(
       `Most vulnerable batting setup is against ${battingRisk.splitLabel} in the current live sample.`
@@ -1756,6 +1793,8 @@ async function getPlayerIntelligenceReport(input) {
 }
 
 module.exports = {
+  buildSignalCards,
   buildThreatHeader,
   getPlayerIntelligenceReport,
+  pickWeightedBattingRisk,
 };

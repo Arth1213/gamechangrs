@@ -12,7 +12,7 @@ import { CricketGrizzliesPortalResponse, fetchGrizzliesPortal } from "@/lib/cric
 import { grizzliesPortalFallback } from "@/lib/grizzliesPortalFallback";
 import { minorLeagueLaunch } from "@/lib/grizzliesPortalPresentation";
 import { cricclubsPlayerNameHref } from "@/lib/grizzliesPlayerLink";
-import { assessmentButtonClass } from "@/lib/grizzliesSquadActions";
+import { assessmentButtonClass, threatButtonClass } from "@/lib/grizzliesSquadActions";
 import { grizzliesPoweredBy } from "@/lib/grizzliesBranding";
 import { grizzliesWelcome } from "@/lib/grizzliesWelcome";
 
@@ -24,12 +24,6 @@ function sortPlayersByNccaAvailability(players: PortalPlayer[]) {
     const rightHasData = right.nccaStatus === "matched" || Boolean(right.assessmentPath || right.threatPath || right.cricclubsProfileUrl);
     return Number(rightHasData) - Number(leftHasData);
   });
-}
-
-function threatButtonClass(tone: PortalPlayer["threatTone"]) {
-  if (tone === "red") return "border border-red-500 bg-transparent text-white hover:bg-red-500/15";
-  if (tone === "amber") return "border border-amber-400 bg-transparent text-white hover:bg-amber-400/15";
-  return "border border-emerald-500 bg-transparent text-white hover:bg-emerald-500/15";
 }
 
 function PlayerLinks({ player }: { player: PortalPlayer }) {

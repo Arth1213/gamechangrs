@@ -1,4 +1,4 @@
-import brandMark from "@/assets/brand/gamechangrs-logo-mark-color.png";
+import brandMark from "@/assets/brand/gamechangrs-cricket-analytics-logo-v2.png.asset.json";
 import { cn } from "@/lib/utils";
 
 export function CricketBrandTile({ className }: { className?: string }) {
@@ -8,7 +8,7 @@ export function CricketBrandTile({ className }: { className?: string }) {
       aria-hidden="true"
     >
       <img
-        src={brandMark}
+        src={brandMark.url}
         alt=""
         className="h-full w-full object-contain"
         draggable="false"

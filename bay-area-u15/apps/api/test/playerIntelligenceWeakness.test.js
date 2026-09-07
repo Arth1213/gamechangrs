@@ -13,8 +13,8 @@ test("weights dismissal risk above strike-rate suppression when selecting a batt
   );
 
   assert.equal(risk.splitLabel, "Right-Arm Pace");
-  assert.equal(risk.dismissalWeight, 0.75);
-  assert.equal(risk.strikeRateWeight, 0.25);
+  assert.equal(risk.dismissalWeight, 0.85);
+  assert.equal(risk.strikeRateWeight, 0.15);
   assert.ok(Math.abs(risk.dismissalRate - 6.666666666666667) < 0.000001);
   assert.ok(Math.abs(risk.strikeRateSuppression - 8.333333333333332) < 0.000001);
 });
@@ -60,6 +60,6 @@ test("uses the weighted batting weakness as the report's first watchout", () => 
   });
 
   assert.equal(cards.watchouts[0].label, "Batting pressure vs Right-Arm Pace");
-  assert.match(cards.watchouts[0].note, /75% dismissal risk \/ 25% strike-rate suppression/);
+  assert.match(cards.watchouts[0].note, /85% dismissal risk \/ 15% strike-rate suppression/);
   assert.match(cards.watchouts[0].note, /SR 110 versus overall SR 120/);
 });

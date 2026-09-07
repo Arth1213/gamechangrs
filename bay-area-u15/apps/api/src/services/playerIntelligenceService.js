@@ -16,8 +16,8 @@ const {
 } = require("./seriesService");
 
 const MIN_SPLIT_SAMPLE_BALLS = 12;
-const BATTING_WEAKNESS_DISMISSAL_WEIGHT = 0.75;
-const BATTING_WEAKNESS_STRIKE_RATE_WEIGHT = 0.25;
+const BATTING_WEAKNESS_DISMISSAL_WEIGHT = 0.85;
+const BATTING_WEAKNESS_STRIKE_RATE_WEIGHT = 0.15;
 const MIN_PRESSURE_DOT_THRESHOLD = 2;
 const MAX_MATCHUP_ROWS = 8;
 const MAX_DISMISSAL_ROWS = 6;
@@ -990,7 +990,7 @@ function buildSignalCards(input) {
       tone: "watch",
       metricLabel: "Weakness score",
       metricValue: roundMetric(battingRisk.weightedWeaknessScore * 100, 1),
-      note: `75% dismissal risk / 25% strike-rate suppression: dismissed ${battingRisk.dismissals} times in ${battingRisk.legalBalls} balls (dismissal rate ${roundMetric(battingRisk.dismissalRate, 2)}%) and scored at SR ${battingRisk.strikeRate ?? "n/a"}${battingRisk.overallStrikeRate !== null ? ` versus overall SR ${battingRisk.overallStrikeRate}` : ""}.`,
+      note: `85% dismissal risk / 15% strike-rate suppression: dismissed ${battingRisk.dismissals} times in ${battingRisk.legalBalls} balls (dismissal rate ${roundMetric(battingRisk.dismissalRate, 2)}%) and scored at SR ${battingRisk.strikeRate ?? "n/a"}${battingRisk.overallStrikeRate !== null ? ` versus overall SR ${battingRisk.overallStrikeRate}` : ""}.`,
     });
   }
 

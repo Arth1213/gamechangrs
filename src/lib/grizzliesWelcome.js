@@ -16,9 +16,6 @@ export function grizzliesWelcomeHeader(user) {
   return {
     greetingPrefix: name ? "Welcome " : "Welcome",
     greetingName: name,
-    seasonPrefix: "2026 ",
-    teamName: "Grizzlies",
-    seasonSuffix: " Season",
   };
 }
 

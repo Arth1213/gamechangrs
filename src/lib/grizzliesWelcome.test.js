@@ -31,7 +31,8 @@ test("builds the two-line Grizzlies header with a separately styled team name", 
   assert.deepEqual(
     grizzliesWelcomeHeader({ user_metadata: { full_name: "Arth Arun" }, email: "helloarth09@gmail.com" }),
     {
-      greeting: "Welcome Arth Arun",
+      greetingPrefix: "Welcome ",
+      greetingName: "Arth Arun",
       seasonPrefix: "2026 ",
       teamName: "Grizzlies",
       seasonSuffix: " Season",

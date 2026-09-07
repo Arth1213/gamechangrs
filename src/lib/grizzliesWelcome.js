@@ -14,7 +14,8 @@ export function grizzliesWelcomeParts(user) {
 export function grizzliesWelcomeHeader(user) {
   const name = getGrizzliesWelcomeName(user);
   return {
-    greeting: name ? `Welcome ${name}` : "Welcome",
+    greetingPrefix: name ? "Welcome " : "Welcome",
+    greetingName: name,
     seasonPrefix: "2026 ",
     teamName: "Grizzlies",
     seasonSuffix: " Season",

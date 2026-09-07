@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { grizzliesWelcome, grizzliesWelcomeParts } from "./grizzliesWelcome.js";
+import { grizzliesWelcome, grizzliesWelcomeHeader, grizzliesWelcomeParts } from "./grizzliesWelcome.js";
 
 test("uses the authenticated profile name in the Grizzlies welcome", () => {
   assert.equal(
@@ -24,5 +24,17 @@ test("separates the authenticated name for Grizzlies gold styling", () => {
   assert.deepEqual(
     grizzliesWelcomeParts({ user_metadata: { full_name: "Arth Arun" }, email: "helloarth09@gmail.com" }),
     { prefix: "Welcome ", name: "Arth Arun", suffix: " to the 2026 Grizzlies Season." },
+  );
+});
+
+test("builds the two-line Grizzlies header with a separately styled team name", () => {
+  assert.deepEqual(
+    grizzliesWelcomeHeader({ user_metadata: { full_name: "Arth Arun" }, email: "helloarth09@gmail.com" }),
+    {
+      greeting: "Welcome Arth Arun",
+      seasonPrefix: "2026 ",
+      teamName: "Grizzlies",
+      seasonSuffix: " Season",
+    },
   );
 });

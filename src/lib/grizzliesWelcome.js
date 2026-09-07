@@ -11,6 +11,16 @@ export function grizzliesWelcomeParts(user) {
     : { prefix: "Welcome to the 2026 Grizzlies Season.", name: null, suffix: "" };
 }
 
+export function grizzliesWelcomeHeader(user) {
+  const name = getGrizzliesWelcomeName(user);
+  return {
+    greeting: name ? `Welcome ${name}` : "Welcome",
+    seasonPrefix: "2026 ",
+    teamName: "Grizzlies",
+    seasonSuffix: " Season",
+  };
+}
+
 export function grizzliesWelcome(user) {
   const { prefix, name, suffix } = grizzliesWelcomeParts(user);
   return `${prefix}${name || ""}${suffix}`;

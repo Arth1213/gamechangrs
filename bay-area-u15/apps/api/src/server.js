@@ -330,20 +330,40 @@ async function loadSeriesCards() {
   return withClient(async (client) => {
     const result = await client.query(
       `
+        with configured_series as (
+          select distinct series_id
+          from series_source_config
+        ),
+        match_metrics as (
+          select
+            m.series_id,
+            count(distinct m.id)::int as match_count,
+            count(distinct case when mrs.analytics_status = 'computed' then m.id end)::int as computed_matches
+          from match m
+          join configured_series cs on cs.series_id = m.series_id
+          left join match_refresh_state mrs on mrs.match_id = m.id
+          group by m.series_id
+        ),
+        player_metrics as (
+          select
+            pcs.series_id,
+            count(distinct pcs.player_id)::int as player_count
+          from player_composite_score pcs
+          join configured_series cs on cs.series_id = pcs.series_id
+          group by pcs.series_id
+        )
         select
           c.config_key,
           coalesce(s.name, c.name) as series_name,
           c.target_age_group,
           c.is_active,
-          count(distinct m.id)::int as match_count,
-          count(distinct case when mrs.analytics_status = 'computed' then m.id end)::int as computed_matches,
-          count(distinct pcs.player_id)::int as player_count
+          coalesce(mm.match_count, 0)::int as match_count,
+          coalesce(mm.computed_matches, 0)::int as computed_matches,
+          coalesce(pm.player_count, 0)::int as player_count
         from series_source_config c
         join series s on s.id = c.series_id
-        left join match m on m.series_id = s.id
-        left join match_refresh_state mrs on mrs.match_id = m.id
-        left join player_composite_score pcs on pcs.series_id = s.id
-        group by c.id, s.id
+        left join match_metrics mm on mm.series_id = s.id
+        left join player_metrics pm on pm.series_id = s.id
         order by c.is_active desc, c.updated_at desc nulls last, c.id desc
       `
     );

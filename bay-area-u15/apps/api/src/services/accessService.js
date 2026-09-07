@@ -890,6 +890,29 @@ async function loadEntityManagementSnapshot(client, input) {
 async function listManagedSeries(client, input) {
   const result = await client.query(
     `
+      with configured_series as (
+        select distinct series_id
+        from public.series_source_config
+      ),
+      match_metrics as (
+        select
+          m.series_id,
+          count(distinct m.id)::int as match_count,
+          count(distinct case when mrs.analytics_status = 'computed' then m.id end)::int as computed_matches,
+          count(distinct case when mrs.reconciliation_status = 'warn' then m.id end)::int as warning_matches
+        from public.match m
+        join configured_series cs on cs.series_id = m.series_id
+        left join public.match_refresh_state mrs on mrs.match_id = m.id
+        group by m.series_id
+      ),
+      player_metrics as (
+        select
+          pcs.series_id,
+          count(distinct pcs.player_id)::int as player_count
+        from public.player_composite_score pcs
+        join configured_series cs on cs.series_id = pcs.series_id
+        group by pcs.series_id
+      )
       select
         c.id as series_source_config_id,
         c.config_key,
@@ -907,10 +930,10 @@ async function listManagedSeries(client, input) {
           when $2::boolean = true then 'platform_admin'
           else em.role
         end as access_role,
-        count(distinct m.id)::int as match_count,
-        count(distinct case when mrs.analytics_status = 'computed' then m.id end)::int as computed_matches,
-        count(distinct case when mrs.reconciliation_status = 'warn' then m.id end)::int as warning_matches,
-        count(distinct pcs.player_id)::int as player_count
+        coalesce(mm.match_count, 0)::int as match_count,
+        coalesce(mm.computed_matches, 0)::int as computed_matches,
+        coalesce(mm.warning_matches, 0)::int as warning_matches,
+        coalesce(pm.player_count, 0)::int as player_count
       from public.series_source_config c
       join public.series s on s.id = c.series_id
       join public.entity e on e.id = c.entity_id
@@ -919,11 +942,9 @@ async function listManagedSeries(client, input) {
        and em.user_id = $1
        and em.status = 'active'
        and em.role in ('owner', 'admin')
-      left join public.match m on m.series_id = s.id
-      left join public.match_refresh_state mrs on mrs.match_id = m.id
-      left join public.player_composite_score pcs on pcs.series_id = s.id
+      left join match_metrics mm on mm.series_id = s.id
+      left join player_metrics pm on pm.series_id = s.id
       where $2::boolean = true or em.id is not null
-      group by c.id, s.id, e.id, em.role
       order by c.is_active desc, e.display_name, coalesce(s.name, c.name), c.id
     `,
     [input.userId, input.isPlatformAdmin === true]
@@ -935,6 +956,29 @@ async function listManagedSeries(client, input) {
 async function listViewableSeries(client, input) {
   const result = await client.query(
     `
+      with configured_series as (
+        select distinct series_id
+        from public.series_source_config
+      ),
+      match_metrics as (
+        select
+          m.series_id,
+          count(distinct m.id)::int as match_count,
+          count(distinct case when mrs.analytics_status = 'computed' then m.id end)::int as computed_matches,
+          count(distinct case when mrs.reconciliation_status = 'warn' then m.id end)::int as warning_matches
+        from public.match m
+        join configured_series cs on cs.series_id = m.series_id
+        left join public.match_refresh_state mrs on mrs.match_id = m.id
+        group by m.series_id
+      ),
+      player_metrics as (
+        select
+          pcs.series_id,
+          count(distinct pcs.player_id)::int as player_count
+        from public.player_composite_score pcs
+        join configured_series cs on cs.series_id = pcs.series_id
+        group by pcs.series_id
+      )
       select
         c.id as series_source_config_id,
         c.config_key,
@@ -953,10 +997,10 @@ async function listViewableSeries(client, input) {
           when em.id is not null then em.role
           else sag.access_role
         end as access_role,
-        count(distinct m.id)::int as match_count,
-        count(distinct case when mrs.analytics_status = 'computed' then m.id end)::int as computed_matches,
-        count(distinct case when mrs.reconciliation_status = 'warn' then m.id end)::int as warning_matches,
-        count(distinct pcs.player_id)::int as player_count
+        coalesce(mm.match_count, 0)::int as match_count,
+        coalesce(mm.computed_matches, 0)::int as computed_matches,
+        coalesce(mm.warning_matches, 0)::int as warning_matches,
+        coalesce(pm.player_count, 0)::int as player_count
       from public.series_source_config c
       join public.series s on s.id = c.series_id
       join public.entity e on e.id = c.entity_id
@@ -970,11 +1014,9 @@ async function listViewableSeries(client, input) {
        and sag.user_id = $1
        and sag.status = 'active'
        and (sag.expires_at is null or sag.expires_at > now())
-      left join public.match m on m.series_id = s.id
-      left join public.match_refresh_state mrs on mrs.match_id = m.id
-      left join public.player_composite_score pcs on pcs.series_id = s.id
+      left join match_metrics mm on mm.series_id = s.id
+      left join player_metrics pm on pm.series_id = s.id
       where $2::boolean = true or em.id is not null or sag.id is not null
-      group by c.id, s.id, e.id, em.id, em.role, sag.id, sag.access_role
       order by c.is_active desc, e.display_name, coalesce(s.name, c.name), c.id
     `,
     [input.userId, input.isPlatformAdmin === true]

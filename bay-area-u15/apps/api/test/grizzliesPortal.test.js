@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const { requireGrizzliesPortalAccess } = require("../src/lib/auth");
-const { getThreatTone } = require("../src/services/grizzliesPortalService");
+const { getConfiguredPlayerId, getThreatTone } = require("../src/services/grizzliesPortalService");
 
 test("Grizzlies portal accepts an approved Gmail address regardless of casing", async () => {
   const req = { cricketActor: { userId: "user-1", email: "NIRAVSH@GMAIL.COM" } };
@@ -18,6 +18,19 @@ test("portal threat colors use persisted league-wide tiers and the evidence gate
   assert.equal(getThreatTone({ leaguePercentileRank: 60, totalMatches: 1 }), "amber");
   assert.equal(getThreatTone({ leaguePercentileRank: 59.99, totalMatches: 8 }), "green");
   assert.equal(getThreatTone(null), "unknown");
+});
+
+test("portal resolves an approved identity cluster to its canonical report player", () => {
+  const config = {
+    approvedMappings: {
+      "Sreehaas Krishna": {
+        profileUrl: "https://prod-lm.cricclubs.com/NCCA/viewPlayer.do?playerId=2102795&clubId=1191",
+      },
+    },
+    identityClusters: [{ name: "Sreehaas Krishna", canonicalPlayerId: 4569 }],
+  };
+
+  assert.equal(getConfiguredPlayerId(config, "Sreehaas Krishna"), 4569);
 });
 
 test("Grizzlies portal rejects authenticated users outside the allow-list", async () => {

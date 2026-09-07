@@ -14,6 +14,7 @@ function loadPortalConfig() {
 function getConfiguredPlayerId(config, name) {
   const mapping = config?.approvedMappings?.[name];
   if (Number.isInteger(mapping)) return mapping;
+  if (Number.isInteger(mapping?.playerId)) return mapping.playerId;
   const cluster = (config?.identityClusters || []).find((item) => item?.name === name);
   return Number.isInteger(cluster?.canonicalPlayerId) ? cluster.canonicalPlayerId : null;
 }
@@ -28,8 +29,12 @@ function getThreatTone(input) {
 }
 
 async function loadPlayerFacts(config) {
-  const playerIds = Object.values(config?.approvedMappings || {})
-    .filter((value) => Number.isInteger(value));
+  const playerIds = [...new Set(
+    Object.values(config?.roster || {})
+      .flat()
+      .map(([name]) => getConfiguredPlayerId(config, name))
+      .filter(Number.isInteger)
+  )];
   if (!playerIds.length) return new Map();
 
   return withClient(async (client) => {
@@ -63,7 +68,7 @@ async function getGrizzliesPortalPayload() {
     name: teamName,
     players: roster.map(([name, rosterCategory]) => {
       const configured = config.approvedMappings?.[name];
-      const playerId = Number.isInteger(configured) ? configured : null;
+      const playerId = getConfiguredPlayerId(config, name);
       const facts = playerId ? playerFacts.get(playerId) : null;
       const profileUrl =
         typeof configured === "object"
@@ -93,4 +98,4 @@ async function getGrizzliesPortalPayload() {
   };
 }
 
-module.exports = { getGrizzliesPortalPayload, getThreatTone };
+module.exports = { getConfiguredPlayerId, getGrizzliesPortalPayload, getThreatTone };

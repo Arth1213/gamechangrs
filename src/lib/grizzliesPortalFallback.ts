@@ -9,7 +9,7 @@ const roster: Record<string, readonly RosterRow[]> = {
     ["Carmi Le Roux", "Wildcard"], ["Shehan Jayasuriya", "Domestic WC"], ["Vivaan Jagtiani", "U21"], ["Naman Patil", "U21"], ["Amogh Arepally", "U19"], ["Yosuf Zazai", "Domestic R"], ["Kamran Hotak", "Domestic R"], ["Gary Graham", "Domestic R"], ["Saurabh Netravalkar", "Domestic R"], ["Kristopher Ramsaran", "Domestic R"], ["Aarnav Iyer", "Domestic"], ["Nisarulhaq Wahdat", "Domestic"], ["Bilal Basheer", "Domestic"], ["Vidit Kwatra", "Domestic"], ["Praneel Venna", "Domestic"], ["Ramesh Basnet", "Domestic"], ["Vinay Khandelwal", "Free Agent optional"], ["Kashyap Manchili", "Free Agent optional"],
   ],
   "East Bay Blazers": [
-    ["Angelo Perera", "Wildcard"], ["Sanjay Krishnamurthi", "Domestic WC"], ["Advaith Dhumal Rao", "U19"], ["Rayyan Ketekar", "U19"], ["Syon Kurdekar", "U19"], ["Abhishek Paradkar", "Domestic R"], ["Faisal Khan Ahmadzai", "Domestic R"], ["Hezbullah Durrani", "Domestic R"], ["Saideep Ganesh", "Domestic R"], ["Suliman Arabzai", "Domestic R"], ["Aakash Sudareshan", "Domestic"], ["Sidhant Reddy", "Domestic"], ["Mohammad Katawazai", "Domestic"], ["Avyukth Raghunarayan", "Domestic"], ["Aadhav Iyer", "Domestic"], ["Ayaan Khan", "Domestic"], ["Saaket Bapu", "Free Agent optional"], ["Aryan Mathur", "Free Agent optional"],
+    ["Angelo Perera", "Wildcard"], ["Sanjay Krishnamurthi", "Domestic WC"], ["Advaith Dhumal Rao", "U19"], ["Rayyan Ketekar", "U19"], ["Syon Kurdekar", "U19"], ["Abhishek Paradkar", "Domestic R"], ["Faisal Khan Ahmadzai", "Domestic R"], ["Hezbullah Durrani", "Domestic R"], ["Saideep Ganesh", "Domestic R"], ["Suliman Arabzai", "Domestic R"], ["Aakash Sundaresan", "Domestic"], ["Sidhant Reddy", "Domestic"], ["Mohammad Katawazai", "Domestic"], ["Avyukth Raghunarayan", "Domestic"], ["Aadhav Iyer", "Domestic"], ["Ayaan Khan", "Domestic"], ["Saaket Bapu", "Free Agent optional"], ["Aryan Mathur", "Free Agent optional"],
   ],
   "San Ramon Grizzlies": [
     ["Husnain Bukhari", "Wildcard"], ["Shivam Mishra", "Domestic WC"], ["Supransh Kumar", "U19"], ["Sahil Garg", "U19"], ["Aryan Sidhu", "U19"], ["Vatsal Vaghela", "Domestic R"], ["Mohit Nataraj", "Domestic R"], ["Rahul Jariwala", "Domestic R"], ["Harish Kakani", "Domestic R"], ["Ayan Desai", "Domestic R"], ["Zahid Zakhil", "Domestic"], ["Adnesh Tondale", "Domestic"], ["Vedant Jain", "Domestic"], ["Muhammad Faisal", "Domestic"], ["Sreehaas Krishna", "Domestic"],
@@ -31,7 +31,8 @@ const playerIds: Record<string, number> = {
   "Vidit Kwatra": 4562, "Rayyan Ketekar": 5298, "Abhishek Paradkar": 3781,
   "Saaket Bapu": 4063, "Aryan Mathur": 4749, "Sahil Garg": 3879,
   "Mohit Nataraj": 3834, "Harish Kakani": 8050, "Adnesh Tondale": 3959,
-  "Vedant Jain": 3782, "Muhammad Faisal": 4121,
+  "Vedant Jain": 3782, "Muhammad Faisal": 4121, "Advaith Dhumal Rao": 4213,
+  "Sreehaas Krishna": 4569, "Aakash Sundaresan": 8336,
 };
 
 const profileUrls: Record<number, string> = {
@@ -42,6 +43,9 @@ const profileOverrides: Record<string, string> = {
   "Aarnav Iyer": "https://cricclubs.com/NCCA/user/8PN7E6MQQ0cHb6MKpNHXpg",
   "Bilal Basheer": "https://cricclubs.com/NCCA/user/aPcCEWPWFTirk5mtFeLaJg",
   "Praneel Venna": "https://cricclubs.com/NCCA/user/LlerDiZTU3eQN_A8Ybki0g",
+  "Advaith Dhumal Rao": "https://prod-lm.cricclubs.com/NCCA/viewPlayer.do?playerId=783050&clubId=1191",
+  "Sreehaas Krishna": "https://prod-lm.cricclubs.com/NCCA/viewPlayer.do?playerId=2102795&clubId=1191",
+  "Aakash Sundaresan": "https://prod-lm.cricclubs.com/NCCA/viewPlayer.do?playerId=2781662&clubId=1191",
 };
 
 const threatToneByPlayerId: Record<number, "red" | "amber" | "green"> = {
@@ -75,17 +79,12 @@ export const grizzliesPortalFallback: CricketGrizzliesPortalResponse = {
     name,
     players: players.map(([playerName, rosterCategory]) => {
       const playerId = playerIds[playerName];
-      const sreehaas = playerName === "Sreehaas Krishna";
       return {
         name: playerName,
         rosterCategory,
-        nccaStatus: playerId || sreehaas ? "matched" : "not_found",
+        nccaStatus: playerId ? "matched" : "not_found",
         threatTone: threatTone(playerId),
-        ...(playerId ? paths(playerId, profileOverrides[playerName]) : sreehaas ? {
-          cricclubsProfileUrl: "https://prod-lm.cricclubs.com/NCCA/viewPlayer.do?playerId=2102795&clubId=1191",
-          assessmentPath: null,
-          threatPath: null,
-        } : { cricclubsProfileUrl: null, assessmentPath: null, threatPath: null }),
+        ...(playerId ? paths(playerId, profileOverrides[playerName]) : { cricclubsProfileUrl: null, assessmentPath: null, threatPath: null }),
       };
     }),
   })),

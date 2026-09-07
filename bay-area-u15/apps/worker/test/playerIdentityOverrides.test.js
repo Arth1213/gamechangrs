@@ -14,6 +14,15 @@ test("portal configuration contains exactly the three requested teams and 51 ros
   assert.equal(Object.values(config.roster).flat().length, 51);
 });
 
+test("portal maps the approved NCCA identities to report-backed player IDs", () => {
+  const config = loadGrizzliesPortalConfig("../config/grizzlies-2026-portal.yaml");
+
+  assert.equal(config.approvedMappings["Advaith Dhumal Rao"], 4213);
+  assert.equal(config.approvedMappings["Sreehaas Krishna"], 4569);
+  assert.equal(config.approvedMappings["Aakash Sundaresan"], 8336);
+  assert.equal(config.roster["East Bay Blazers"].some(([name]) => name === "Aakash Sundaresan"), true);
+});
+
 test("canonical resolver merges Husnain scorecard IDs into the approved profile identity", () => {
   const resolvePlayerId = createCanonicalPlayerResolver({
     identityClusters: [{ canonicalPlayerId: 8174, sourcePlayerIds: [8130, 8349, 8174] }],

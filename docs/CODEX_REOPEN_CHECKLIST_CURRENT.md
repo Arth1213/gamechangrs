@@ -17,7 +17,7 @@ Use this after signing back into Codex so the right Game-Changrs context comes b
 - OneDrive backup root:
   `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup`
 - Latest known restore point as of 2026-09-06:
-  `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260906/2026_09_06-Game-Changrs-Complete-Restore-Point-1945-PDT`
+  `/Users/artharun/Library/CloudStorage/OneDrive-Personal/Game-Changrs-Backup/20260906/2026_09_06-Game-Changrs-Complete-Restore-Point-2005-PDT`
 - Live Arth profile content inside the main repo:
   `/Users/artharun/Downloads/GAME-CHANGRS/gamechangrs-phase10-deploy/public/arth`
 - Separate Arth workspace root:

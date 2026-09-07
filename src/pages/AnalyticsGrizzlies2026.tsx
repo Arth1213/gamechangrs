@@ -13,6 +13,7 @@ import { grizzliesPortalFallback } from "@/lib/grizzliesPortalFallback";
 import { minorLeagueLaunch } from "@/lib/grizzliesPortalPresentation";
 import { cricclubsPlayerNameHref } from "@/lib/grizzliesPlayerLink";
 import { assessmentButtonClass } from "@/lib/grizzliesSquadActions";
+import { grizzliesPoweredBy } from "@/lib/grizzliesBranding";
 import { grizzliesWelcome } from "@/lib/grizzliesWelcome";
 
 type PortalPlayer = CricketGrizzliesPortalResponse["teams"][number]["players"][number];
@@ -80,7 +81,7 @@ export default function AnalyticsGrizzlies2026() {
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
       <main className="container space-y-8 pb-16 pt-28">
-        <section className="flex flex-col gap-5 md:flex-row md:items-center"><img src="/grizzlies-2026-logo.png" alt="San Ramon Grizzlies" className="h-24 w-24 object-contain" /><div><p className="text-xs font-semibold uppercase tracking-[.24em] text-primary">2026 Minor League</p><h1 className="font-display text-4xl font-bold leading-tight md:text-5xl">Grizzlies 2026 Analytics</h1><p className="mt-1 font-display text-xl font-semibold text-primary md:text-2xl">Powered by GameChangrs</p><p className="mt-4 font-display text-xl font-semibold text-white md:text-2xl">{grizzliesWelcome(user)}</p></div></section>
+        <section className="flex flex-col gap-5 md:flex-row md:items-center"><img src="/grizzlies-2026-logo.png" alt="San Ramon Grizzlies" className="h-24 w-24 object-contain" /><div><p className="text-xs font-semibold uppercase tracking-[.24em] text-primary">2026 Minor League</p><h1 className="font-display text-4xl font-bold leading-tight md:text-5xl">Grizzlies 2026 Analytics</h1><p className="mt-1 font-display text-xl font-semibold md:text-2xl"><span className="text-foreground">{grizzliesPoweredBy.prefix}</span>{" "}<span className="text-gradient-primary">{grizzliesPoweredBy.accent}</span></p><p className="mt-4 font-display text-xl font-semibold text-white md:text-2xl">{grizzliesWelcome(user)}</p></div></section>
         {!session ? <Card><CardContent className="flex gap-3 py-10"><Lock />Sign in with an approved Gmail account to view this portal.</CardContent></Card> : null}
         {!data && session && !error ? <Card><CardContent className="flex gap-3 py-5 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Using the verified roster fallback while the protected portal service is unavailable.</CardContent></Card> : null}
         {error ? <Card className="border-amber-500/50"><CardContent className="flex gap-3 py-5 text-sm text-muted-foreground"><ShieldAlert className="h-4 w-4 text-amber-500" />Using the verified roster fallback while the protected portal service is deployed.</CardContent></Card> : null}

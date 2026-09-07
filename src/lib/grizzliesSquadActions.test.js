@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { assessmentButtonClass, squadActionOrder, threatButtonClass } from "./grizzliesSquadActions.js";
+
+const stylesheet = readFileSync(new URL("../index.css", import.meta.url), "utf8");
+const tailwindConfig = readFileSync(new URL("../../tailwind.config.ts", import.meta.url), "utf8");
 
 test("renders Assessment as a neutral filled button", () => {
   assert.deepEqual(squadActionOrder, ["threat", "assessment"]);
@@ -34,4 +38,15 @@ test("renders Threat with a severity-colored outline and label", () => {
   assert.match(green, /hover:text-white/);
 
   assert.match(threatButtonClass("unknown"), /border-emerald-300\/85/);
+});
+
+test("ships explicit CSS for the red Threat severity", () => {
+  assert.match(threatButtonClass("red"), /grizzlies-threat-red/);
+  assert.match(stylesheet, /\.grizzlies-threat-red\s*\{/);
+  assert.match(stylesheet, /border-color:\s*rgb\(248 113 113/);
+  assert.match(stylesheet, /color:\s*rgb\(254 202 202/);
+});
+
+test("includes JavaScript helpers in Tailwind's production class scan", () => {
+  assert.match(tailwindConfig, /\.\/src\/\*\*\/\*\.\{js,jsx,ts,tsx\}/);
 });

@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { CricketGrizzliesPortalResponse, fetchGrizzliesPortal } from "@/lib/cricketApi";
 import { grizzliesPortalFallback } from "@/lib/grizzliesPortalFallback";
 import { minorLeagueLaunch } from "@/lib/grizzliesPortalPresentation";
+import { cricclubsPlayerNameHref } from "@/lib/grizzliesPlayerLink";
 
 type PortalPlayer = CricketGrizzliesPortalResponse["teams"][number]["players"][number];
 
@@ -31,10 +32,9 @@ function threatButtonClass(tone: PortalPlayer["threatTone"]) {
 function PlayerLinks({ player }: { player: PortalPlayer }) {
   return (
     <div className="flex flex-wrap gap-2">
-      {player.cricclubsProfileUrl ? <Button asChild size="sm" variant="outline" className="h-8 px-2.5 text-xs"><a href={player.cricclubsProfileUrl} target="_blank" rel="noreferrer">CricClubs</a></Button> : null}
       {player.assessmentPath ? <Button asChild size="sm" className="h-8 bg-emerald-600 px-2.5 text-xs text-white hover:bg-emerald-500"><Link to={player.assessmentPath}>Assessment</Link></Button> : null}
       {player.threatPath ? <Button asChild size="sm" className={`h-8 px-2.5 text-xs ${threatButtonClass(player.threatTone)}`}><Link to={player.threatPath}>Threat</Link></Button> : null}
-      {!player.cricclubsProfileUrl && !player.assessmentPath && !player.threatPath ? <span className="text-xs text-muted-foreground">NCCA data not found</span> : null}
+      {!player.assessmentPath && !player.threatPath ? <span className="text-xs text-muted-foreground">NCCA data not found</span> : null}
     </div>
   );
 }
@@ -50,11 +50,11 @@ function SquadPanel({ team, className }: { team: CricketGrizzliesPortalResponse[
       <div className="hidden max-h-[640px] overflow-y-auto bg-background/70 lg:block">
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background"><TableRow className="border-b"><TableHead className="w-[42%]">Player</TableHead><TableHead>Intelligence</TableHead></TableRow></TableHeader>
-          <TableBody>{players.map((player) => <TableRow key={player.name} className="border-b last:border-b-0 align-top"><TableCell className="py-3"><p className="font-semibold leading-tight">{player.name}</p><p className="mt-1 text-xs text-muted-foreground">{player.rosterCategory}</p></TableCell><TableCell className="py-3"><PlayerLinks player={player} /></TableCell></TableRow>)}</TableBody>
+          <TableBody>{players.map((player) => <TableRow key={player.name} className="border-b last:border-b-0 align-top"><TableCell className="py-3">{cricclubsPlayerNameHref(player) ? <a href={cricclubsPlayerNameHref(player) || undefined} target="_blank" rel="noreferrer" className="font-semibold leading-tight text-foreground underline-offset-4 hover:text-primary hover:underline">{player.name}</a> : <p className="font-semibold leading-tight">{player.name}</p>}<p className="mt-1 text-xs text-muted-foreground">{player.rosterCategory}</p></TableCell><TableCell className="py-3"><PlayerLinks player={player} /></TableCell></TableRow>)}</TableBody>
         </Table>
       </div>
       <div className="space-y-3 bg-background/70 p-3 lg:hidden">
-        {players.map((player) => <article key={player.name} className="rounded-lg border border-border/80 bg-background/80 p-3"><p className="font-semibold leading-tight">{player.name}</p><p className="mt-1 text-xs text-muted-foreground">{player.rosterCategory}</p><div className="mt-3"><PlayerLinks player={player} /></div></article>)}
+        {players.map((player) => <article key={player.name} className="rounded-lg border border-border/80 bg-background/80 p-3">{cricclubsPlayerNameHref(player) ? <a href={cricclubsPlayerNameHref(player) || undefined} target="_blank" rel="noreferrer" className="font-semibold leading-tight text-foreground underline-offset-4 hover:text-primary hover:underline">{player.name}</a> : <p className="font-semibold leading-tight">{player.name}</p>}<p className="mt-1 text-xs text-muted-foreground">{player.rosterCategory}</p><div className="mt-3"><PlayerLinks player={player} /></div></article>)}
       </div>
     </section>
   );

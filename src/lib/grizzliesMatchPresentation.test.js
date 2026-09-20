@@ -38,6 +38,15 @@ test("report source omits redundant hero labels", () => {
   assert.match(source, />Top performances</i);
 });
 
+test("report content is enclosed by a responsive gold perimeter frame", () => {
+  const reportPath = fileURLToPath(new URL("../pages/AnalyticsGrizzliesMatchReport.tsx", import.meta.url));
+  const source = fs.readFileSync(reportPath, "utf8");
+  assert.match(source, /data-testid="grizzlies-report-frame"/);
+  assert.match(source, /border-amber-300\/60/);
+  assert.match(source, /shadow-\[0_0_0_1px_rgba\(251,191,36,0\.12\),0_0_36px_rgba\(245,158,11,0\.10\)\]/);
+  assert.match(source, /p-3 sm:p-6 lg:p-8/);
+});
+
 test("formats the verified innings as compact hero score cards", () => {
   assert.equal(typeof presentation.formatGrizzliesMatchScores, "function");
   assert.deepEqual(presentation.formatGrizzliesMatchScores([

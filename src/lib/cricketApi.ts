@@ -223,6 +223,16 @@ export type CricketGrizzliesMatchAnalysisResponse = {
     }>;
     turningPointCandidates?: CricketGrizzliesTurningPoint[];
     dataQuality?: { partnershipIdentitiesAvailable?: boolean; [key: string]: unknown };
+    innings?: Array<{
+      innings?: number;
+      battingTeam?: string;
+      runs?: number;
+      wickets?: number;
+      legalBalls?: number;
+      runRate?: number | null;
+      dotBallRate?: number | null;
+      boundaryRate?: number | null;
+    }>;
   };
   analysis: {
     analysisModelVersion?: string;
@@ -230,6 +240,7 @@ export type CricketGrizzliesMatchAnalysisResponse = {
     strengths?: Array<{ team?: string; statement?: string; confidence?: string }>;
     weaknesses?: Array<{ team?: string; statement?: string; confidence?: string }>;
     criticalMoments?: Array<{ innings?: number; over?: number; event?: string; impactScore?: number }>;
+    criticalMomentNarrative?: string;
     turningPoints?: CricketGrizzliesTurningPoint[];
     grizzliesWatchOut?: Array<{ statement?: string; confidence?: string }>;
     grizzliesGamePlan?: Array<{ statement?: string; confidence?: string }>;

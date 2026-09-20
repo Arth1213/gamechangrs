@@ -286,7 +286,7 @@ test("classifies front-running, failed-chase, defense, death-surge, and collapse
   }
 });
 
-test("v2 summary and turning point use the same recovery evidence", () => {
+test("current summary and turning point use the same recovery evidence", () => {
   const evidence = {
     complete: true,
     analysisModelVersion: "t20-context-v2",
@@ -308,7 +308,7 @@ test("v2 summary and turning point use the same recovery evidence", () => {
   };
 
   const analysis = buildGrizzliesMatchAnalysis({ evidence });
-  assert.equal(analysis.analysisModelVersion, "t20-context-v2");
+  assert.equal(analysis.analysisModelVersion, "t20-context-v3");
   assert.equal(analysis.turningPoints[0].type, "chase_recovery_partnership");
   assert.match(analysis.turningPoints[0].statement, /Vivaan Jagtiani and Bilal Basheer/);
   assert.equal(analysis.matchSummary.includes(analysis.turningPoints[0].evidenceLabel), true);
@@ -367,6 +367,88 @@ test("match summary names leading batting and bowling performances", () => {
   assert.match(analysis.matchSummary, /Beta Bowler returned 3\/30/);
   assert.match(analysis.matchSummary, /Beta Batter led B with 80 off 50/);
   assert.match(analysis.matchSummary, /Alpha Bowler returned 2\/25/);
+});
+
+test("v3 analysis supplies verified team narratives and Grizzlies actions", () => {
+  const analysis = buildGrizzliesMatchAnalysis({
+    evidence: {
+      complete: true,
+      match: { resultText: "Silicon Valley Strikers won by 6 wickets" },
+      teams: ["East Bay Blazers", "Silicon Valley Strikers"],
+      grizzliesParticipated: false,
+      innings: [
+        { innings: 1, battingTeam: "East Bay Blazers", runs: 166, wickets: 7, legalBalls: 120, runRate: 8.3, dotBallRate: 40.83, boundaryRate: 17.5 },
+        { innings: 2, battingTeam: "Silicon Valley Strikers", runs: 167, wickets: 4, legalBalls: 114, runRate: 8.79, dotBallRate: 43.86, boundaryRate: 20.18 },
+      ],
+      criticalMoments: [
+        { innings: 1, over: 3, event: "wicket", impactScore: 12 },
+        { innings: 1, over: 3, event: "wicket", impactScore: 12 },
+      ],
+      turningPointCandidates: [{
+        type: "chase_recovery_partnership",
+        innings: 2,
+        evidenceLabel: "38-run Vivaan Jagtiani–Bilal Basheer partnership",
+        confidence: "high",
+        statementFacts: {
+          batterNames: ["Vivaan Jagtiani", "Bilal Basheer"],
+          runs: 38,
+          legalBalls: 18,
+          startScore: 129,
+          startWickets: 4,
+          endScore: 167,
+          endWickets: 4,
+          entryRequiredRate: 9.5,
+          exitRequiredRate: 0,
+        },
+      }],
+      dataQuality: { partnershipIdentitiesAvailable: true },
+    },
+    batting: [
+      { innings_no: 1, player_name: "Saideep Ganesh", runs: 54, balls_faced: 25, strike_rate: 216 },
+      { innings_no: 2, player_name: "Bilal Basheer", runs: 48, balls_faced: 30, strike_rate: 160 },
+    ],
+    bowling: [
+      { innings_no: 1, player_name: "Aarnav Iyer", wickets: 3, runs_conceded: 38, economy: 9.5 },
+      { innings_no: 2, player_name: "Angelo Perera", wickets: 2, runs_conceded: 28, economy: 7 },
+    ],
+  });
+
+  assert.equal(analysis.analysisModelVersion, "t20-context-v3");
+  assert.deepEqual(analysis.strengths.map((item) => item.team), ["East Bay Blazers", "Silicon Valley Strikers"]);
+  assert.deepEqual(analysis.weaknesses.map((item) => item.team), ["East Bay Blazers", "Silicon Valley Strikers"]);
+  assert.equal(analysis.strengths.every((item) => item.statement.length > 80), true);
+  assert.equal(analysis.weaknesses.every((item) => item.statement.length > 80), true);
+  assert.match(analysis.criticalMomentNarrative, /129\/4/);
+  assert.match(analysis.criticalMomentNarrative, /38 runs from 18 balls/);
+  assert.doesNotMatch(analysis.criticalMomentNarrative, /0\.00/);
+  assert.doesNotMatch(analysis.matchSummary, /left it at 0\.00/);
+  assert.match(analysis.matchSummary, /completed the chase/);
+  assert.doesNotMatch(analysis.weaknesses[1].statement, /early top-order risk/i);
+  assert.equal(analysis.grizzliesWatchOut.length, 2);
+  assert.equal(analysis.grizzliesGamePlan.length, 2);
+  assert.deepEqual(analysis.grizzliesWatchOut.map((item) => item.team), ["East Bay Blazers", "Silicon Valley Strikers"]);
+  assert.deepEqual(analysis.grizzliesGamePlan.map((item) => item.team), ["East Bay Blazers", "Silicon Valley Strikers"]);
+});
+
+test("Grizzlies actions target only the opponent when Grizzlies played", () => {
+  const analysis = buildGrizzliesMatchAnalysis({
+    evidence: {
+      complete: true,
+      match: { resultText: "San Ramon Grizzlies won by 6 wickets" },
+      teams: ["Silicon Valley Strikers", "San Ramon Grizzlies"],
+      grizzliesParticipated: true,
+      innings: [
+        { innings: 1, battingTeam: "Silicon Valley Strikers", runs: 130, wickets: 8, legalBalls: 120, runRate: 6.5, dotBallRate: 43.33, boundaryRate: 10.83 },
+        { innings: 2, battingTeam: "San Ramon Grizzlies", runs: 134, wickets: 4, legalBalls: 112, runRate: 7.18, dotBallRate: 48.21, boundaryRate: 13.39 },
+      ],
+      criticalMoments: [],
+      turningPointCandidates: [],
+      dataQuality: { partnershipIdentitiesAvailable: false },
+    },
+  });
+
+  assert.deepEqual(analysis.grizzliesWatchOut.map((item) => item.team), ["Silicon Valley Strikers"]);
+  assert.deepEqual(analysis.grizzliesGamePlan.map((item) => item.team), ["Silicon Valley Strikers"]);
 });
 
 test("report versioning migration preserves legacy output and keys candidates by model", () => {

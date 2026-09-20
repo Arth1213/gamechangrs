@@ -28,3 +28,18 @@ export function formatGrizzliesFixtureDate(value) {
   ) return "Date pending";
   return `${MONTH_NAMES[month - 1]} ${day}, ${year}`;
 }
+
+export function formatGrizzliesMatchScores(innings) {
+  return (Array.isArray(innings) ? innings : []).map((row) => {
+    const runs = Number(row?.runs);
+    const wickets = Number(row?.wickets);
+    const legalBalls = Number(row?.legalBalls);
+    return {
+      teamName: String(row?.battingTeam || "Team"),
+      score: `${Number.isFinite(runs) ? runs : 0}/${Number.isFinite(wickets) ? wickets : 0}`,
+      overs: Number.isFinite(legalBalls) && legalBalls >= 0
+        ? `${Math.floor(legalBalls / 6)}.${legalBalls % 6} overs`
+        : "Overs unavailable",
+    };
+  });
+}

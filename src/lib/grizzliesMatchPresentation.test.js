@@ -4,7 +4,9 @@ import fs from "node:fs";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { formatGrizzliesFixtureDate } from "./grizzliesMatchPresentation.js";
+import * as presentation from "./grizzliesMatchPresentation.js";
+
+const { formatGrizzliesFixtureDate } = presentation;
 
 test("formats date-only fixture values without leaking time or timezone text", () => {
   assert.equal(formatGrizzliesFixtureDate("2026-09-19"), "Sep 19, 2026");
@@ -31,6 +33,18 @@ test("report source omits redundant hero labels", () => {
   const source = fs.readFileSync(reportPath, "utf8");
   assert.doesNotMatch(source, />Match narrative</i);
   assert.doesNotMatch(source, />Scorecard snapshot</i);
+  assert.doesNotMatch(source, />Match intelligence</i);
   assert.match(source, />The deciding story</i);
   assert.match(source, />Top performances</i);
+});
+
+test("formats the verified innings as compact hero score cards", () => {
+  assert.equal(typeof presentation.formatGrizzliesMatchScores, "function");
+  assert.deepEqual(presentation.formatGrizzliesMatchScores([
+    { battingTeam: "East Bay Blazers", runs: 166, wickets: 7, legalBalls: 120 },
+    { battingTeam: "Silicon Valley Strikers", runs: 167, wickets: 4, legalBalls: 114 },
+  ]), [
+    { teamName: "East Bay Blazers", score: "166/7", overs: "20.0 overs" },
+    { teamName: "Silicon Valley Strikers", score: "167/4", overs: "19.0 overs" },
+  ]);
 });

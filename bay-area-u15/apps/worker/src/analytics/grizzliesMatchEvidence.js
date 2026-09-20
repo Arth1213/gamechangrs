@@ -3,7 +3,7 @@
 const crypto = require("node:crypto");
 const { buildT20MatchIntelligence } = require("./t20MatchIntelligence");
 
-const ANALYSIS_MODEL_VERSION = "t20-context-v2";
+const ANALYSIS_MODEL_VERSION = "t20-context-v3";
 
 function toNumber(value) {
   const number = Number(value);
@@ -108,7 +108,9 @@ function buildTurningPointStatement(candidate) {
   if (Array.isArray(facts.batterNames) && facts.batterNames.length === 2) {
     const pressure = facts.entryRequiredRate != null && facts.exitRequiredRate != null
       && Number.isFinite(Number(facts.entryRequiredRate)) && Number.isFinite(Number(facts.exitRequiredRate))
-      ? `, moving the required rate from ${Number(facts.entryRequiredRate).toFixed(2)} to ${Number(facts.exitRequiredRate).toFixed(2)}`
+      ? Number(facts.exitRequiredRate) === 0
+        ? `, taking control from a required rate of ${Number(facts.entryRequiredRate).toFixed(2)} and completing the chase`
+        : `, moving the required rate from ${Number(facts.entryRequiredRate).toFixed(2)} to ${Number(facts.exitRequiredRate).toFixed(2)}`
       : "";
     return `${facts.batterNames[0]} and ${facts.batterNames[1]} added ${facts.runs} from ${facts.legalBalls} balls${pressure}.`;
   }
@@ -150,6 +152,113 @@ function performanceSentence(team, inningsNo, batting, bowling) {
   return parts.length ? `${parts.join(", while ")}.` : "";
 }
 
+function formatOvers(legalBalls) {
+  const balls = toNumber(legalBalls);
+  return `${Math.floor(balls / 6)}.${balls % 6}`;
+}
+
+function topPerformanceSummary(row, kind) {
+  if (!row) return null;
+  const playerName = String(row.player_name ?? row.playerName ?? "").trim();
+  if (!playerName) return null;
+  if (kind === "batting") {
+    const balls = toNumber(row.balls_faced ?? row.ballsFaced);
+    return `${playerName}'s ${toNumber(row.runs)}${balls ? ` off ${balls}` : ""}`;
+  }
+  return `${playerName}'s ${toNumber(row.wickets)}/${toNumber(row.runs_conceded ?? row.runsConceded)}`;
+}
+
+function findWinner(teams, resultText) {
+  const normalizedResult = String(resultText || "").toLowerCase();
+  return teams.find((team) => normalizedResult.includes(String(team).toLowerCase()) && /\bwon\b/i.test(resultText || "")) || null;
+}
+
+function turningPointForTeam(turningPoint, teamInnings) {
+  return turningPoint && toNumber(turningPoint.innings) === toNumber(teamInnings) ? turningPoint : null;
+}
+
+function buildTeamNarratives(evidence, turningPoint, batting, bowling) {
+  const innings = Array.isArray(evidence?.innings) ? evidence.innings : [];
+  const teams = innings.map((row) => String(row.battingTeam || "")).filter(Boolean);
+  const winner = findWinner(teams, evidence?.match?.resultText);
+
+  return innings.map((teamInnings, index) => {
+    const inningsNo = toNumber(teamInnings.innings, index + 1);
+    const opponentInnings = innings.find((row) => toNumber(row.innings) !== inningsNo) || null;
+    const opponent = String(opponentInnings?.battingTeam || "the opposition");
+    const batter = topBattingPerformance(batting, inningsNo);
+    const bowler = opponentInnings ? topBowlingPerformance(bowling, toNumber(opponentInnings.innings)) : null;
+    const batterSummary = topPerformanceSummary(batter, "batting");
+    const bowlerSummary = topPerformanceSummary(bowler, "bowling");
+    const runRate = Number(teamInnings.runRate);
+    const boundaryRate = Number(teamInnings.boundaryRate);
+    const dotBallRate = Number(teamInnings.dotBallRate);
+    const dotBalls = Number.isFinite(dotBallRate) ? Math.round((dotBallRate * toNumber(teamInnings.legalBalls)) / 100) : null;
+    const teamTurningPoint = turningPointForTeam(turningPoint, inningsNo);
+    const facts = teamTurningPoint?.statementFacts || {};
+    const performanceClause = [batterSummary, bowlerSummary].filter(Boolean).join(" and ");
+    const strength = `${teamInnings.battingTeam} produced ${teamInnings.runs}/${teamInnings.wickets} at ${Number.isFinite(runRate) ? runRate.toFixed(2) : "a verified"} runs per over${Number.isFinite(boundaryRate) ? ` with a ${boundaryRate.toFixed(2)}% boundary-ball rate` : ""}. ${performanceClause ? `${performanceClause} supplied the clearest individual impact.` : "The innings total provides the verified performance baseline."}${teamTurningPoint ? ` Their ${facts.runs}-run stand from ${facts.legalBalls} balls controlled the decisive pressure passage.` : ""}`;
+
+    let weakness;
+    if (teamInnings.battingTeam !== winner && inningsNo === 1 && opponentInnings) {
+      weakness = `${teamInnings.battingTeam} lost ${teamInnings.wickets} wickets while setting ${teamInnings.runs} and then could not defend the total, allowing ${opponent} to reach ${opponentInnings.runs}/${opponentInnings.wickets} in ${formatOvers(opponentInnings.legalBalls)} overs. The main opening for Grizzlies is sustained wicket pressure followed by an attack on the closing overs.`;
+    } else if (teamInnings.battingTeam !== winner) {
+      weakness = `${teamInnings.battingTeam} lost ${teamInnings.wickets} wickets and finished at ${teamInnings.runs}/${teamInnings.wickets}${dotBalls != null ? ` after absorbing approximately ${dotBalls} dot balls` : ""}. Grizzlies can exploit that pressure by protecting boundary options, forcing rotation, and attacking new batters before they settle.`;
+    } else if (teamTurningPoint && toNumber(facts.startWickets) >= 3 && toNumber(facts.startScore) <= toNumber(teamInnings.runs) * 0.35) {
+      weakness = `${teamInnings.battingTeam} still exposed an early top-order risk by falling to ${facts.startScore}/${facts.startWickets} before the decisive partnership repaired the chase${dotBalls != null ? `, with approximately ${dotBalls} dot balls across the innings` : ""}. Grizzlies should attack that vulnerable entry point before the middle order can establish another recovery stand.`;
+    } else if (teamTurningPoint) {
+      weakness = `${teamInnings.battingTeam} left the chase under pressure at ${facts.startScore}/${facts.startWickets}, still requiring ${facts.runs} runs at ${Number(facts.entryRequiredRate).toFixed(2)} per over before the decisive stand. Grizzlies can exploit this by denying boundary access earlier and preserving their best matchup bowlers for the final four overs.`;
+    } else {
+      weakness = `${teamInnings.battingTeam} recorded ${dotBalls != null ? `approximately ${dotBalls} dot balls and ` : ""}${teamInnings.wickets} wickets lost despite the result. Grizzlies should use disciplined fields and pace changes to turn those stalled deliveries into clustered wicket opportunities.`;
+    }
+
+    const keyThreats = [batterSummary, bowlerSummary].filter(Boolean).join(" plus ");
+    const watchOut = `Against ${teamInnings.battingTeam}, Grizzlies must account for ${keyThreats || "the verified scoring and wicket-taking core"}. Their evidence shows they can ${teamTurningPoint ? "recover or finish a chase through a sustained partnership" : `score at ${Number.isFinite(runRate) ? runRate.toFixed(2) : "competitive"} runs per over`}, so passive middle-overs cricket will allow their main threats to dictate the game.`;
+    const gamePlan = `The Grizzlies plan against ${teamInnings.battingTeam} should target the demonstrated opening: ${weakness.replace(`${teamInnings.battingTeam} `, "they ")} Set attacking fields for new batters, control their preferred boundary zones, and reserve matchup bowling for the players who produced the verified top performances.`;
+
+    return {
+      team: teamInnings.battingTeam,
+      strength: { team: teamInnings.battingTeam, statement: strength, confidence: "high" },
+      weakness: { team: teamInnings.battingTeam, statement: weakness, confidence: "high" },
+      watchOut: { team: teamInnings.battingTeam, statement: watchOut, confidence: "high" },
+      gamePlan: { team: teamInnings.battingTeam, statement: gamePlan, confidence: "high" },
+    };
+  });
+}
+
+function buildCriticalMomentNarrative(evidence, turningPoint, batting) {
+  const innings = Array.isArray(evidence?.innings) ? evidence.innings : [];
+  const moments = Array.isArray(evidence?.criticalMoments) ? evidence.criticalMoments : [];
+  const wicketClusters = new Map();
+  for (const moment of moments.filter((item) => item?.event === "wicket")) {
+    const key = `${toNumber(moment.innings)}:${toNumber(moment.over)}`;
+    wicketClusters.set(key, (wicketClusters.get(key) || 0) + 1);
+  }
+  const clusterDescriptions = [...wicketClusters.entries()]
+    .filter(([, wickets]) => wickets > 1)
+    .map(([key, wickets]) => {
+      const [inningsNo, over] = key.split(":").map(Number);
+      const team = innings.find((row) => toNumber(row.innings) === inningsNo)?.battingTeam || `innings ${inningsNo}`;
+      const teamPossessive = /s$/i.test(team) ? `${team}'` : `${team}'s`;
+      return `${wickets} wickets in over ${over} of ${teamPossessive} innings`;
+    });
+  const facts = turningPoint?.statementFacts || {};
+  const chasePressure = Number(facts.exitRequiredRate) === 0
+    ? `from a required rate of ${Number(facts.entryRequiredRate).toFixed(2)} through to a completed chase`
+    : `while reducing the required rate from ${Number(facts.entryRequiredRate).toFixed(2)} to ${Number(facts.exitRequiredRate).toFixed(2)}`;
+  const partnership = Array.isArray(facts.batterNames) && facts.batterNames.length === 2
+    ? `${facts.batterNames[0]} and ${facts.batterNames[1]} then turned the decisive passage: from ${facts.startScore}/${facts.startWickets}, they scored ${facts.runs} runs from ${facts.legalBalls} balls${Number.isFinite(Number(facts.entryRequiredRate)) ? `, carrying the chase ${chasePressure}` : ""}.`
+    : "";
+  const firstTopBatter = topBattingPerformance(batting, 1);
+  const recovery = firstTopBatter
+    ? `${topPerformanceSummary(firstTopBatter, "batting")} was the main counterattack for the first-innings side.`
+    : "";
+  const pressure = clusterDescriptions.length
+    ? `The match first shifted through ${clusterDescriptions.join(" and ")}, which repeatedly interrupted the innings.`
+    : "The early wicket passages created the initial pressure in the match.";
+  return `${pressure} ${recovery} ${partnership}`.replace(/\s+/g, " ").trim();
+}
+
 function buildMatchSummary(evidence, turningPoint, batting = [], bowling = []) {
   const innings = Array.isArray(evidence?.innings) ? evidence.innings : [];
   const resultText = String(evidence?.match?.resultText || "Verified result available").trim();
@@ -169,8 +278,11 @@ function buildMatchSummary(evidence, turningPoint, batting = [], bowling = []) {
     const entryPressure = facts.entryRequiredRate != null && Number.isFinite(Number(facts.entryRequiredRate))
       ? ` with the required rate at ${Number(facts.entryRequiredRate).toFixed(2)}`
       : "";
-    const exitState = facts.exitRequiredRate != null && Number.isFinite(Number(facts.exitRequiredRate))
-      ? ` and left it at ${Number(facts.exitRequiredRate).toFixed(2)}`
+    const exitRate = Number(facts.exitRequiredRate);
+    const exitState = facts.exitRequiredRate != null && Number.isFinite(exitRate)
+      ? exitRate === 0
+        ? " and completed the chase"
+        : ` and reduced it to ${exitRate.toFixed(2)}`
       : "";
     return `${base}${performances ? ` ${performances}` : ""} The ${turningPoint.evidenceLabel} began at ${facts.startScore}/${facts.startWickets}${entryPressure}${exitState}, making it the decisive sustained passage. ${resultText}.`;
   }
@@ -184,16 +296,21 @@ function buildGrizzliesMatchAnalysis(input) {
   const turningPoints = turningPoint
     ? [{ ...turningPoint, statement: buildTurningPointStatement(turningPoint) }]
     : [];
+  const teamNarratives = buildTeamNarratives(evidence, turningPoint, input?.batting, input?.bowling);
+  const opponentNarratives = evidence.grizzliesParticipated
+    ? teamNarratives.filter((item) => !/san ramon grizzlies/i.test(item.team))
+    : teamNarratives;
   return {
-    schemaVersion: "grizzlies-match-analysis-v2",
+    schemaVersion: "grizzlies-match-analysis-v3",
     analysisModelVersion: ANALYSIS_MODEL_VERSION,
     grizzliesParticipated: evidence.grizzliesParticipated,
-    strengths: [],
-    weaknesses: [],
+    strengths: teamNarratives.map((item) => item.strength),
+    weaknesses: teamNarratives.map((item) => item.weakness),
     criticalMoments: evidence.criticalMoments || evidence.momentum || [],
+    criticalMomentNarrative: buildCriticalMomentNarrative(evidence, turningPoint, input?.batting),
     turningPoints,
-    grizzliesWatchOut: [],
-    grizzliesGamePlan: [],
+    grizzliesWatchOut: opponentNarratives.map((item) => item.watchOut),
+    grizzliesGamePlan: opponentNarratives.map((item) => item.gamePlan),
     evidenceNotes: evidence.dataQuality?.partnershipIdentitiesAvailable
       ? []
       : ["Partnership identities were incomplete; the narrative uses verified innings or phase evidence only."],

@@ -188,6 +188,25 @@ export type CricketGrizzliesMatchAnalysisResponse = {
     evidenceNotes?: string[];
     confidence?: string;
   };
+  matchSummary: string;
+  scorecard: {
+    topBatting: Array<{
+      playerName: string;
+      teamName: string;
+      runs: number;
+      ballsFaced: number;
+      strikeRate: number;
+      fours: number;
+      sixes: number;
+    }>;
+    topBowling: Array<{
+      playerName: string;
+      teamName: string;
+      wickets: number;
+      runsConceded: number;
+      economy: number;
+    }>;
+  };
   sourceDataChecksum: string;
   generatedAt: string | null;
   reviewedAt: string | null;

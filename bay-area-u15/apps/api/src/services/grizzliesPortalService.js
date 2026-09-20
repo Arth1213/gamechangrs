@@ -66,6 +66,51 @@ function normalizePortalText(value) {
   return String(value || "").trim();
 }
 
+function formatOvers(legalBalls) {
+  const balls = Number(legalBalls);
+  if (!Number.isFinite(balls) || balls < 0) return null;
+  return `${Math.floor(balls / 6)}.${balls % 6}`;
+}
+
+function formatWicketMargin(value) {
+  const wickets = Number(value);
+  const words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+  return Number.isInteger(wickets) && wickets >= 0 && wickets < words.length
+    ? words[wickets]
+    : normalizePortalText(value);
+}
+
+function possessive(name) {
+  return /s$/i.test(name) ? `${name}'` : `${name}'s`;
+}
+
+function buildGrizzliesMatchSummary(input) {
+  const match = input?.match || {};
+  const innings = Array.isArray(input?.evidence?.innings) ? input.evidence.innings : [];
+  if (innings.length < 2) {
+    return normalizePortalText(match.resultText) || "Verified match facts are available, but the innings summary is incomplete.";
+  }
+
+  const [firstInnings, secondInnings] = innings;
+  const winner = normalizePortalText(match.resultText).match(/^(.+?) won by (\d+) wickets?$/i);
+  const winnerName = winner?.[1] || normalizePortalText(secondInnings.battingTeam);
+  const wickets = winner?.[2] || null;
+  const chaseScore = `${secondInnings.runs}/${secondInnings.wickets}`;
+  const chaseOvers = formatOvers(secondInnings.legalBalls);
+  const firstScore = `${firstInnings.runs}/${firstInnings.wickets}`;
+  const firstTeam = normalizePortalText(firstInnings.battingTeam) || "the first innings side";
+  const secondRate = Number(secondInnings.runRate);
+  const firstRate = Number(firstInnings.runRate);
+  const rateSentence = Number.isFinite(secondRate) && Number.isFinite(firstRate)
+    ? ` Their ${secondRate.toFixed(2)} run rate exceeded ${possessive(firstTeam)} ${firstRate.toFixed(2)}, deciding the match.`
+    : "";
+
+  if (wickets && chaseOvers) {
+    return `${winnerName} completed a ${formatWicketMargin(wickets)}-wicket chase of ${chaseScore} in ${chaseOvers} overs after ${firstTeam} posted ${firstScore}.${rateSentence}`;
+  }
+  return `${normalizePortalText(match.resultText) || `${winnerName} won`}. ${firstTeam} posted ${firstScore} and the reply reached ${chaseScore}.${rateSentence}`;
+}
+
 function isWestDivision(value) {
   return /\bwest\b/i.test(normalizePortalText(value));
 }
@@ -188,7 +233,8 @@ async function getGrizzliesMatchAnalysis(matchId) {
       error.statusCode = 404;
       throw error;
     }
-    const result = await client.query(
+    const [result, scorecardResult] = await Promise.all([
+      client.query(
       `
         select
           m.id as match_id,
@@ -225,14 +271,62 @@ async function getGrizzliesMatchAnalysis(matchId) {
         limit 1
       `,
       [numericMatchId, context.seriesId, normalizePortalText(config?.portal?.milcWestDivisionLabel) || "West"]
-    );
+      ),
+      client.query(
+        `
+          with top_batting as (
+            select
+              'batting' as performance_type,
+              p.display_name as player_name,
+              t.display_name as team_name,
+              bi.runs,
+              bi.balls_faced,
+              bi.strike_rate,
+              bi.fours,
+              bi.sixes,
+              null::integer as wickets,
+              null::integer as runs_conceded,
+              null::numeric as economy,
+              row_number() over (order by bi.runs desc, bi.strike_rate desc nulls last, bi.balls_faced asc nulls last, bi.id asc) as rank
+            from public.batting_innings bi
+            join public.player p on p.id = bi.player_id
+            join public.team t on t.id = bi.team_id
+            where bi.match_id = $1
+              and coalesce(bi.did_not_bat, false) = false
+          ), top_bowling as (
+            select
+              'bowling' as performance_type,
+              p.display_name as player_name,
+              t.display_name as team_name,
+              null::integer as runs,
+              null::integer as balls_faced,
+              null::numeric as strike_rate,
+              null::integer as fours,
+              null::integer as sixes,
+              bs.wickets,
+              bs.runs_conceded,
+              bs.economy,
+              row_number() over (order by bs.wickets desc, bs.runs_conceded asc, bs.economy asc nulls last, bs.id asc) as rank
+            from public.bowling_spell bs
+            join public.player p on p.id = bs.player_id
+            join public.team t on t.id = bs.team_id
+            where bs.match_id = $1
+          )
+          select * from top_batting where rank <= 2
+          union all
+          select * from top_bowling where rank <= 2
+          order by performance_type, rank
+        `,
+        [numericMatchId]
+      ),
+    ]);
     const row = result.rows[0];
     if (!row) {
       const error = new Error("Grizzlies match analysis was not found.");
       error.statusCode = 404;
       throw error;
     }
-    return {
+    const response = {
       match: {
         matchId: Number(row.match_id),
         sourceMatchId: normalizePortalText(row.source_match_id),
@@ -245,11 +339,35 @@ async function getGrizzliesMatchAnalysis(matchId) {
       reportStatus: normalizePortalText(row.report_status),
       evidence: row.evidence_json || {},
       analysis: row.analysis_json || {},
+      scorecard: {
+        topBatting: scorecardResult.rows
+          .filter((item) => item.performance_type === "batting")
+          .map((item) => ({
+            playerName: normalizePortalText(item.player_name),
+            teamName: normalizePortalText(item.team_name),
+            runs: Number(item.runs) || 0,
+            ballsFaced: Number(item.balls_faced) || 0,
+            strikeRate: Number(item.strike_rate) || 0,
+            fours: Number(item.fours) || 0,
+            sixes: Number(item.sixes) || 0,
+          })),
+        topBowling: scorecardResult.rows
+          .filter((item) => item.performance_type === "bowling")
+          .map((item) => ({
+            playerName: normalizePortalText(item.player_name),
+            teamName: normalizePortalText(item.team_name),
+            wickets: Number(item.wickets) || 0,
+            runsConceded: Number(item.runs_conceded) || 0,
+            economy: Number(item.economy) || 0,
+          })),
+      },
       sourceDataChecksum: normalizePortalText(row.source_data_checksum),
       generatedAt: row.generated_at || null,
       reviewedAt: row.reviewed_at || null,
       publishedAt: row.published_at || null,
     };
+    response.matchSummary = buildGrizzliesMatchSummary(response);
+    return response;
   }));
 }
 
@@ -329,6 +447,7 @@ async function getGrizzliesPortalPayload() {
 
 module.exports = {
   getConfiguredPlayerId,
+  buildGrizzliesMatchSummary,
   getGrizzliesPortalPayload,
   getThreatTone,
   getGrizzliesMatchAnalysis,

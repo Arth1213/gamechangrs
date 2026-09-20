@@ -10,10 +10,32 @@ const {
 const {
   getConfiguredPlayerId,
   getThreatTone,
+  buildGrizzliesMatchSummary,
   mapGrizzliesWestFixtures,
   isGrizzliesMatchAnalysisAvailable,
   withPortalPhaseTimeout,
 } = require("../src/services/grizzliesPortalService");
+
+test("match summary explains the result through verified innings totals and run rates", () => {
+  const summary = buildGrizzliesMatchSummary({
+    match: {
+      homeTeam: "East Bay Blazers",
+      awayTeam: "Silicon Valley Strikers",
+      resultText: "Silicon Valley Strikers won by 6 Wickets",
+    },
+    evidence: {
+      innings: [
+        { battingTeam: "East Bay Blazers", runs: 166, wickets: 7, legalBalls: 120, runRate: 8.3 },
+        { battingTeam: "Silicon Valley Strikers", runs: 167, wickets: 4, legalBalls: 114, runRate: 8.79 },
+      ],
+    },
+  });
+
+  assert.equal(
+    summary,
+    "Silicon Valley Strikers completed a six-wicket chase of 167/4 in 19.0 overs after East Bay Blazers posted 166/7. Their 8.79 run rate exceeded East Bay Blazers' 8.30, deciding the match."
+  );
+});
 
 test("Grizzlies portal accepts an approved Gmail address regardless of casing", async () => {
   const req = { cricketActor: { userId: "user-1", email: "NIRAVSH@GMAIL.COM" } };

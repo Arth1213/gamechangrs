@@ -84,6 +84,21 @@ function parseAttackChange(text, resolver) {
 function inferDismissal(text, links, striker, resolver) {
   const normalized = normalizeText(text);
   const lower = normalized.toLowerCase();
+  const isDismissal = /\bout!/i.test(normalized)
+    || /\b(?:retired|run out|stumped|lbw|caught|bowled)\b/i.test(normalized);
+
+  // Player initials in ordinary delivery text (for example "C Le Roux" or
+  // "B Basheer") must never be interpreted as scorecard dismissal notation.
+  if (!isDismissal) {
+    return {
+      dismissalType: "other",
+      wicketCreditedToBowler: false,
+      playerOut: null,
+      primaryFielder: null,
+      bowler: null,
+      wicketFlag: false,
+    };
+  }
   const linkedPlayers = links
     .map((link) => resolvePlayer(resolver, link?.text, [link]))
     .filter(Boolean);
@@ -135,7 +150,7 @@ function inferDismissal(text, links, striker, resolver) {
     };
   }
 
-  if (/caught/i.test(lower) || /\bc\b/i.test(lower)) {
+  if (/\b(?:caught|catch)\b/i.test(lower)) {
     return {
       dismissalType: "caught",
       wicketCreditedToBowler: true,
@@ -146,7 +161,7 @@ function inferDismissal(text, links, striker, resolver) {
     };
   }
 
-  if (/bowled/i.test(lower) || /\bb\s+[a-z]/i.test(lower)) {
+  if (/\bbowled\b/i.test(lower)) {
     return {
       dismissalType: "bowled",
       wicketCreditedToBowler: true,
@@ -235,7 +250,9 @@ function parseDeliveryRow(row, resolver, currentBowler, innings) {
       wicketFlag,
       dismissalType: dismissal.dismissalType === "other" ? null : dismissal.dismissalType,
       playerOutSourcePlayerId:
-        normalizeText(dismissal.playerOut?.sourcePlayerId) || normalizeText(striker?.sourcePlayerId),
+        wicketFlag
+          ? normalizeText(dismissal.playerOut?.sourcePlayerId) || normalizeText(striker?.sourcePlayerId)
+          : null,
       primaryFielderSourcePlayerId: normalizeText(dismissal.primaryFielder?.sourcePlayerId),
       wicketCreditedToBowler:
         dismissal.dismissalType === "retired_hurt" ? false : dismissal.wicketCreditedToBowler,

@@ -106,7 +106,8 @@ function buildGrizzliesMatchEvidence(input) {
 function buildTurningPointStatement(candidate) {
   const facts = candidate?.statementFacts || {};
   if (Array.isArray(facts.batterNames) && facts.batterNames.length === 2) {
-    const pressure = Number.isFinite(Number(facts.entryRequiredRate)) && Number.isFinite(Number(facts.exitRequiredRate))
+    const pressure = facts.entryRequiredRate != null && facts.exitRequiredRate != null
+      && Number.isFinite(Number(facts.entryRequiredRate)) && Number.isFinite(Number(facts.exitRequiredRate))
       ? `, moving the required rate from ${Number(facts.entryRequiredRate).toFixed(2)} to ${Number(facts.exitRequiredRate).toFixed(2)}`
       : "";
     return `${facts.batterNames[0]} and ${facts.batterNames[1]} added ${facts.runs} from ${facts.legalBalls} balls${pressure}.`;
@@ -117,7 +118,39 @@ function buildTurningPointStatement(candidate) {
   return "Verified match-state evidence identified the decisive passage.";
 }
 
-function buildMatchSummary(evidence, turningPoint) {
+function inningsNumber(row) {
+  return toNumber(row?.innings ?? row?.inningsNo ?? row?.innings_no);
+}
+
+function topBattingPerformance(rows, inningsNo) {
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => inningsNumber(row) === inningsNo && Number.isFinite(Number(row?.runs)))
+    .sort((left, right) => toNumber(right.runs) - toNumber(left.runs) || toNumber(right.strike_rate) - toNumber(left.strike_rate))[0] || null;
+}
+
+function topBowlingPerformance(rows, inningsNo) {
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => inningsNumber(row) === inningsNo && Number.isFinite(Number(row?.wickets)))
+    .sort((left, right) => toNumber(right.wickets) - toNumber(left.wickets) || toNumber(left.economy) - toNumber(right.economy))[0] || null;
+}
+
+function performanceSentence(team, inningsNo, batting, bowling) {
+  const batter = topBattingPerformance(batting, inningsNo);
+  const bowler = topBowlingPerformance(bowling, inningsNo);
+  const parts = [];
+  if (batter) {
+    const name = String(batter.player_name ?? batter.playerName ?? "Top batter");
+    const balls = toNumber(batter.balls_faced ?? batter.ballsFaced);
+    parts.push(`${name} led ${team} with ${toNumber(batter.runs)}${balls ? ` off ${balls}` : ""}`);
+  }
+  if (bowler && toNumber(bowler.wickets) > 0) {
+    const name = String(bowler.player_name ?? bowler.playerName ?? "The leading bowler");
+    parts.push(`${name} returned ${toNumber(bowler.wickets)}/${toNumber(bowler.runs_conceded ?? bowler.runsConceded)}`);
+  }
+  return parts.length ? `${parts.join(", while ")}.` : "";
+}
+
+function buildMatchSummary(evidence, turningPoint, batting = [], bowling = []) {
   const innings = Array.isArray(evidence?.innings) ? evidence.innings : [];
   const resultText = String(evidence?.match?.resultText || "Verified result available").trim();
   if (innings.length < 2) return `${resultText}. Detailed innings context is incomplete.`;
@@ -126,16 +159,20 @@ function buildMatchSummary(evidence, turningPoint) {
   const firstTeam = String(first.battingTeam || "The first innings side");
   const secondTeam = String(second.battingTeam || "The chasing side");
   const base = `${firstTeam} set ${first.runs}/${first.wickets}, and ${secondTeam} replied with ${second.runs}/${second.wickets}.`;
+  const performances = [
+    performanceSentence(firstTeam, 1, batting, bowling),
+    performanceSentence(secondTeam, 2, batting, bowling),
+  ].filter(Boolean).join(" ");
   if (!turningPoint) return `${resultText}. ${base}`;
   const facts = turningPoint.statementFacts || {};
   if (Array.isArray(facts.batterNames) && facts.batterNames.length === 2) {
-    const entryPressure = Number.isFinite(Number(facts.entryRequiredRate))
+    const entryPressure = facts.entryRequiredRate != null && Number.isFinite(Number(facts.entryRequiredRate))
       ? ` with the required rate at ${Number(facts.entryRequiredRate).toFixed(2)}`
       : "";
-    const exitState = Number.isFinite(Number(facts.exitRequiredRate))
+    const exitState = facts.exitRequiredRate != null && Number.isFinite(Number(facts.exitRequiredRate))
       ? ` and left it at ${Number(facts.exitRequiredRate).toFixed(2)}`
       : "";
-    return `${base} The ${turningPoint.evidenceLabel} began at ${facts.startScore}/${facts.startWickets}${entryPressure}${exitState}, making it the decisive sustained passage. ${resultText}.`;
+    return `${base}${performances ? ` ${performances}` : ""} The ${turningPoint.evidenceLabel} began at ${facts.startScore}/${facts.startWickets}${entryPressure}${exitState}, making it the decisive sustained passage. ${resultText}.`;
   }
   return `${base} The ${turningPoint.evidenceLabel} was the highest-impact sustained passage. ${resultText}.`;
 }
@@ -161,7 +198,7 @@ function buildGrizzliesMatchAnalysis(input) {
       ? []
       : ["Partnership identities were incomplete; the narrative uses verified innings or phase evidence only."],
     confidence: turningPoint?.confidence || "insufficient",
-    matchSummary: buildMatchSummary(evidence, turningPoint),
+    matchSummary: buildMatchSummary(evidence, turningPoint, input?.batting, input?.bowling),
   };
 }
 

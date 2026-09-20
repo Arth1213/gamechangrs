@@ -5,6 +5,7 @@ const {
   buildGrizzliesMatchAnalysis,
   buildGrizzliesMatchEvidence,
 } = require("../analytics/grizzliesMatchEvidence");
+const { normalizePersistedBallEvents } = require("../analytics/t20MatchIntelligence");
 const { withClient, withTransaction } = require("../lib/db");
 
 const REPORT_TYPE = "grizzlies_match_analysis";
@@ -54,14 +55,24 @@ async function loadMatchEvidenceRows(client, { seriesConfigKey, matchIds }) {
           where i.match_id = m.id
         ), '[]'::jsonb) as innings_json,
         coalesce((
-          select jsonb_agg(to_jsonb(bi) order by bi.innings_id, bi.batting_position, bi.id)
-          from public.batting_innings bi
-          where bi.match_id = m.id
+          select jsonb_agg(to_jsonb(batting_row) order by batting_row.innings_no, batting_row.batting_position, batting_row.id)
+          from (
+            select bi.*, batting_innings_row.innings_no, batting_player.display_name as player_name
+            from public.batting_innings bi
+            join public.innings batting_innings_row on batting_innings_row.id = bi.innings_id
+            join public.player batting_player on batting_player.id = bi.player_id
+            where bi.match_id = m.id
+          ) batting_row
         ), '[]'::jsonb) as batting_json,
         coalesce((
-          select jsonb_agg(to_jsonb(bs) order by bs.innings_id, bs.id)
-          from public.bowling_spell bs
-          where bs.match_id = m.id
+          select jsonb_agg(to_jsonb(bowling_row) order by bowling_row.innings_no, bowling_row.id)
+          from (
+            select bs.*, bowling_innings_row.innings_no, bowling_player.display_name as player_name
+            from public.bowling_spell bs
+            join public.innings bowling_innings_row on bowling_innings_row.id = bs.innings_id
+            join public.player bowling_player on bowling_player.id = bs.player_id
+            where bs.match_id = m.id
+          ) bowling_row
         ), '[]'::jsonb) as bowling_json,
         coalesce((
           select jsonb_agg(jsonb_build_object('id', player_rows.id, 'displayName', player_rows.display_name))
@@ -84,6 +95,7 @@ async function loadMatchEvidenceRows(client, { seriesConfigKey, matchIds }) {
             'eventIndex', be.event_index,
             'over', be.over_no,
             'ballInOver', be.ball_in_over,
+            'phase', be.phase,
             'strikerPlayerId', be.striker_player_id,
             'nonStrikerPlayerId', be.non_striker_player_id,
             'bowlerPlayerId', be.bowler_player_id,
@@ -94,7 +106,8 @@ async function loadMatchEvidenceRows(client, { seriesConfigKey, matchIds }) {
             'wicket', be.wicket_flag,
             'boundary', be.batter_runs in (4, 6),
             'scoreAfterRuns', be.score_after_runs,
-            'wicketsAfter', be.wickets_after
+            'wicketsAfter', be.wickets_after,
+            'commentaryText', be.commentary_text
           ) order by be.innings_no, be.event_index, be.id)
           from public.ball_event be
           where be.match_id = m.id
@@ -139,11 +152,16 @@ function eligibilityReason(row, divisionLabel) {
 
 function buildCandidate(row) {
   const innings = asArray(row.innings_json);
-  const ballEvents = asArray(row.ball_events_json);
   const batting = asArray(row.batting_json);
+  const ballEvents = normalizePersistedBallEvents(asArray(row.ball_events_json), batting);
   const bowling = asArray(row.bowling_json);
   const players = asArray(row.players_json);
   const playersById = new Map(players.map((player) => [Number(player.id), String(player.displayName || player.display_name || "")]));
+  for (const batter of batting) {
+    const id = Number(batter.player_id ?? batter.playerId);
+    const name = String(batter.player_name ?? batter.playerName ?? "");
+    if (Number.isInteger(id) && id > 0 && name) playersById.set(id, name);
+  }
   const match = {
     id: Number(row.match_id),
     sourceMatchId: row.source_match_id || null,

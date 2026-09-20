@@ -7,8 +7,8 @@ const T20_PHASES = Object.freeze({
 });
 
 const RECOVERY_THRESHOLDS = Object.freeze({
-  minimumPartnershipRuns: 30,
-  minimumPartnershipBalls: 18,
+  minimumPartnershipRuns: 15,
+  minimumPartnershipBalls: 9,
   earlyWickets: 2,
 });
 
@@ -74,11 +74,181 @@ function phaseForOver(over) {
   return Object.entries(T20_PHASES).find(([, range]) => over >= range.firstOver && over <= range.lastOver)?.[0] || "unknown";
 }
 
+function battingPlayerId(row) {
+  return playerId(row, "playerId", "player_id");
+}
+
+function battingInnings(row) {
+  return toNumber(row?.innings ?? row?.inningsNo ?? row?.innings_no);
+}
+
+function battingPosition(row) {
+  return toNumber(row?.battingPosition ?? row?.batting_position, Number.MAX_SAFE_INTEGER);
+}
+
+function isDidNotBat(row) {
+  return row?.didNotBat === true || row?.did_not_bat === true;
+}
+
+function cleanPlayerName(value) {
+  return String(value || "")
+    .replace(/^did not bat/i, "")
+    .replace(/\([^)]*\)/g, "")
+    .replace(/\s+c&\s*$/i, "")
+    .replace(/[^a-z0-9]+/gi, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function playerNameKeys(value) {
+  const normalized = cleanPlayerName(value);
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  if (!normalized) return [];
+  return [...new Set([
+    normalized,
+    tokens.length >= 2 ? `${tokens[0][0]} ${tokens[tokens.length - 1]}` : normalized,
+  ])];
+}
+
+function commentaryStrikerName(event) {
+  const commentary = String(event?.commentaryText ?? event?.commentary_text ?? "");
+  const match = commentary.match(/\s+to\s+(.+)$/i);
+  return String(match?.[1] || "")
+    .replace(/\s+OUT!.*$/i, "")
+    .replace(/,.*$/, "")
+    .replace(/\s+(?:\d+\s+)?(?:wides?|no\s+balls?|leg\s+byes?|byes?)\s*$/i, "")
+    .trim();
+}
+
+function hasExplicitDismissal(event) {
+  const commentary = String(event?.commentaryText ?? event?.commentary_text ?? "").trim();
+  return commentary ? /\bOUT!/i.test(commentary) : eventWicket(event);
+}
+
+/**
+ * Repairs historical commentary rows before analytical use. Older persisted
+ * rows may contain false wicket flags and no non-striker identity. The batting
+ * order and the observed striker sequence provide a deterministic active pair;
+ * explicit OUT commentary remains the only wicket signal when commentary is
+ * present.
+ */
+function normalizePersistedBallEvents(ballEvents, batting = []) {
+  const battingOrders = new Map();
+  const battingAliases = new Map();
+  for (const row of Array.isArray(batting) ? batting : []) {
+    const innings = battingInnings(row);
+    const id = battingPlayerId(row);
+    if (!innings || !id || isDidNotBat(row)) continue;
+    if (!battingOrders.has(innings)) battingOrders.set(innings, []);
+    battingOrders.get(innings).push({ id, position: battingPosition(row) });
+    if (!battingAliases.has(innings)) battingAliases.set(innings, new Map());
+    for (const key of playerNameKeys(row?.playerName ?? row?.player_name)) {
+      if (!battingAliases.get(innings).has(key)) battingAliases.get(innings).set(key, id);
+    }
+  }
+  for (const rows of battingOrders.values()) rows.sort((left, right) => left.position - right.position);
+
+  const canonicalEvents = (Array.isArray(ballEvents) ? ballEvents : []).map((event) => {
+    const innings = getEventInnings(event);
+    const aliases = battingAliases.get(innings) || new Map();
+    const name = event?.strikerName ?? event?.striker_name ?? commentaryStrikerName(event);
+    const canonicalStriker = playerNameKeys(name).map((key) => aliases.get(key)).find(Boolean)
+      || playerId(event, "strikerPlayerId", "striker_player_id");
+    const wicket = hasExplicitDismissal(event);
+    return {
+      ...event,
+      strikerPlayerId: canonicalStriker,
+      playerOutId: wicket ? canonicalStriker : null,
+    };
+  });
+  const sortedEvents = sortBallEvents(canonicalEvents);
+  const observedStrikers = new Map();
+  for (const event of sortedEvents) {
+    const innings = getEventInnings(event);
+    const striker = playerId(event, "strikerPlayerId", "striker_player_id");
+    if (!observedStrikers.has(innings)) observedStrikers.set(innings, new Set());
+    if (striker) observedStrikers.get(innings).add(striker);
+  }
+
+  const states = new Map();
+  function stateFor(innings) {
+    if (!states.has(innings)) {
+      const order = (battingOrders.get(innings) || []).map((row) => row.id);
+      const observed = observedStrikers.get(innings) || new Set();
+      const usesBattingIds = order.some((id) => observed.has(id));
+      states.set(innings, {
+        order,
+        usesBattingIds,
+        nextIndex: usesBattingIds ? Math.min(2, order.length) : 0,
+        active: usesBattingIds ? order.slice(0, 2) : [],
+        segmentIndexes: [],
+        score: 0,
+        wickets: 0,
+      });
+    }
+    return states.get(innings);
+  }
+
+  const normalizedEvents = [];
+  for (const event of sortedEvents) {
+    const innings = getEventInnings(event);
+    const state = stateFor(innings);
+    const striker = playerId(event, "strikerPlayerId", "striker_player_id");
+    if (striker && !state.active.includes(striker)) {
+      if (state.active.length < 2) state.active.push(striker);
+      else if (state.usesBattingIds && state.order.includes(striker)) state.active[1] = striker;
+    }
+    const storedNonStriker = playerId(event, "nonStrikerPlayerId", "non_striker_player_id");
+    const inferredNonStriker = storedNonStriker
+      || state.active.find((id) => id !== striker)
+      || null;
+    const wicket = hasExplicitDismissal(event);
+    const playerOut = wicket
+      ? playerId(event, "playerOutId", "player_out_id") || striker
+      : null;
+    state.score += eventRuns(event);
+    if (wicket) state.wickets += 1;
+
+    const normalized = {
+      ...event,
+      phase: event?.phase || phaseForOver(getOver(event)),
+      nonStrikerPlayerId: inferredNonStriker,
+      playerOutId: playerOut,
+      wicket,
+      scoreAfterRuns: state.score,
+      wicketsAfter: state.wickets,
+    };
+    normalizedEvents.push(normalized);
+
+    if (!state.usesBattingIds) {
+      state.segmentIndexes.push(normalizedEvents.length - 1);
+      if (state.active.length === 2) {
+        for (const index of state.segmentIndexes) {
+          const segmentEvent = normalizedEvents[index];
+          const segmentStriker = playerId(segmentEvent, "strikerPlayerId", "striker_player_id");
+          segmentEvent.nonStrikerPlayerId = state.active.find((id) => id !== segmentStriker) || null;
+        }
+      }
+    }
+
+    if (wicket && playerOut) {
+      state.active = state.active.filter((id) => id !== playerOut);
+      while (state.usesBattingIds && state.active.length < 2 && state.nextIndex < state.order.length) {
+        const next = state.order[state.nextIndex];
+        state.nextIndex += 1;
+        if (!state.active.includes(next)) state.active.push(next);
+      }
+      state.segmentIndexes = [];
+    }
+  }
+  return normalizedEvents;
+}
+
 function buildPhaseMetrics(ballEvents) {
   const buckets = new Map();
   for (const event of sortBallEvents(ballEvents)) {
     const innings = getEventInnings(event);
-    const phase = phaseForOver(getOver(event));
+    const phase = event?.phase || phaseForOver(getOver(event));
     const key = `${innings}:${phase}`;
     if (!buckets.has(key)) {
       buckets.set(key, { innings, phase, runs: 0, wickets: 0, legalBalls: 0, dots: 0, boundaries: 0 });
@@ -140,9 +310,11 @@ function buildPartnerships(innings, ballEvents, playersById = new Map()) {
     return stateByInnings.get(inningsNumber);
   }
 
-  function closeActive(complete) {
+  function closeActive(complete, final = false) {
     if (!active) return;
     const row = inningsRowFor(innings, active.innings);
+    const officialFinalScore = toNumber(row.runs ?? row.totalRuns ?? row.total_runs);
+    if (final && officialFinalScore > active.endScore) active.endScore = officialFinalScore;
     const target = toNumber(row.targetRuns ?? row.target_runs, active.innings === 2 ? toNumber(inningsRowFor(innings, 1).runs ?? inningsRowFor(innings, 1).totalRuns ?? inningsRowFor(innings, 1).total_runs) + 1 : 0);
     const maximumBalls = toNumber(row.maximumBalls ?? row.maximum_balls, 120);
     partnerships.push({
@@ -172,8 +344,8 @@ function buildPartnerships(innings, ballEvents, playersById = new Map()) {
     const inningsNumber = getEventInnings(event);
     const state = stateFor(inningsNumber);
     const pair = pairForEvent(event);
-    if (active && (active.innings !== inningsNumber || !samePair(active.batterIds, pair))) {
-      closeActive(true);
+    if (active && (active.innings !== inningsNumber || (pair.length === 2 && !samePair(active.batterIds, pair)))) {
+      closeActive(true, active.innings !== inningsNumber);
     }
     if (!active && pair.length === 2) {
       active = {
@@ -204,12 +376,18 @@ function buildPartnerships(innings, ballEvents, playersById = new Map()) {
     }
     if (active && eventWicket(event)) closeActive(true);
   }
-  closeActive(false);
+  // An unbeaten stand at the end of a completed innings is still a complete
+  // analytical passage and can be the match-winning partnership.
+  closeActive(true, true);
   return partnerships;
 }
 
 function partnershipCandidate(partnership, innings) {
   if (!partnership?.complete || partnership.legalBalls <= 0) return null;
+  if (
+    partnership.runs < RECOVERY_THRESHOLDS.minimumPartnershipRuns
+    && partnership.legalBalls < RECOVERY_THRESHOLDS.minimumPartnershipBalls
+  ) return null;
   const inningsRow = inningsRowFor(innings, partnership.innings);
   const target = toNumber(inningsRow.targetRuns ?? inningsRow.target_runs);
   const inningsRuns = toNumber(inningsRow.runs ?? inningsRow.totalRuns ?? inningsRow.total_runs, target);
@@ -345,6 +523,7 @@ module.exports = {
   buildPartnerships,
   buildPhaseMetrics,
   buildT20MatchIntelligence,
+  normalizePersistedBallEvents,
   rankTurningPoints,
   sortBallEvents,
 };

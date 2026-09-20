@@ -12,6 +12,7 @@ const {
 } = require("../src/analytics/grizzliesMatchEvidence");
 const {
   buildT20MatchIntelligence,
+  normalizePersistedBallEvents,
   rankTurningPoints,
 } = require("../src/analytics/t20MatchIntelligence");
 
@@ -78,6 +79,23 @@ function makeEvent(overrides = {}) {
     ...overrides,
   };
 }
+
+test("repairs historical false wickets and reconstructs active batting pairs", () => {
+  const normalized = normalizePersistedBallEvents([
+    makeEvent({ innings: 1, eventIndex: 1, over: 0, strikerPlayerId: 10, nonStrikerPlayerId: null, wicket: true, playerOutId: 10, commentaryText: "C Le Roux to B Basheer, 1 run" }),
+    makeEvent({ innings: 1, eventIndex: 2, over: 0, strikerPlayerId: 10, nonStrikerPlayerId: null, wicket: true, playerOutId: 10, commentaryText: "C Le Roux to B Basheer OUT! BOWLED Bilal Basheer b C Le Roux" }),
+    makeEvent({ innings: 1, eventIndex: 3, over: 0, strikerPlayerId: 12, nonStrikerPlayerId: null, wicket: true, playerOutId: 12, commentaryText: "C Le Roux to New Batter, 1 run" }),
+  ], [
+    { innings_no: 1, batting_position: 1, player_id: 10, did_not_bat: false },
+    { innings_no: 1, batting_position: 2, player_id: 11, did_not_bat: false },
+    { innings_no: 1, batting_position: 3, player_id: 12, did_not_bat: false },
+  ]);
+
+  assert.deepEqual(normalized.map((event) => event.wicket), [false, true, false]);
+  assert.deepEqual(normalized.map((event) => event.wicketsAfter), [0, 1, 1]);
+  assert.deepEqual(normalized.map((event) => event.nonStrikerPlayerId), [11, 11, 11]);
+  assert.deepEqual(normalized.map((event) => event.playerOutId), [null, 10, null]);
+});
 
 test("reconstructs a recovery partnership and its chase pressure", () => {
   const chaseEvents = [];
@@ -314,6 +332,41 @@ test("tied match narrative never claims a completed chase", () => {
 
   assert.doesNotMatch(analysis.matchSummary, /completed (?:the )?chase/i);
   assert.match(analysis.matchSummary, /Match tied/);
+});
+
+test("match summary names leading batting and bowling performances", () => {
+  const analysis = buildGrizzliesMatchAnalysis({
+    evidence: {
+      complete: true,
+      match: { resultText: "B won by 4 wickets" },
+      innings: [
+        { innings: 1, battingTeam: "A", runs: 150, wickets: 7 },
+        { innings: 2, battingTeam: "B", runs: 151, wickets: 6 },
+      ],
+      criticalMoments: [],
+      turningPointCandidates: [{
+        type: "chase_recovery_partnership",
+        innings: 2,
+        evidenceLabel: "60-run Batter One–Batter Two partnership",
+        confidence: "high",
+        statementFacts: { batterNames: ["Batter One", "Batter Two"], runs: 60, legalBalls: 40, startScore: 40, startWickets: 3, entryRequiredRate: 8.2, exitRequiredRate: 6.1 },
+      }],
+      dataQuality: { partnershipIdentitiesAvailable: true },
+    },
+    batting: [
+      { innings_no: 1, player_name: "Alpha Batter", runs: 70, balls_faced: 45 },
+      { innings_no: 2, player_name: "Beta Batter", runs: 80, balls_faced: 50 },
+    ],
+    bowling: [
+      { innings_no: 1, player_name: "Beta Bowler", wickets: 3, runs_conceded: 30, economy: 6 },
+      { innings_no: 2, player_name: "Alpha Bowler", wickets: 2, runs_conceded: 25, economy: 6.25 },
+    ],
+  });
+
+  assert.match(analysis.matchSummary, /Alpha Batter led A with 70 off 45/);
+  assert.match(analysis.matchSummary, /Beta Bowler returned 3\/30/);
+  assert.match(analysis.matchSummary, /Beta Batter led B with 80 off 50/);
+  assert.match(analysis.matchSummary, /Alpha Bowler returned 2\/25/);
 });
 
 test("report versioning migration preserves legacy output and keys candidates by model", () => {

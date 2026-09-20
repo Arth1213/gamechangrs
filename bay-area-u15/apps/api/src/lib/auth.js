@@ -143,6 +143,17 @@ async function requireGrizzliesPortalAccess(req) {
   return req.cricketActor;
 }
 
+function createGrizzliesPortalAccessMiddleware(accessCheck = requireGrizzliesPortalAccess) {
+  return async function grizzliesPortalAccessMiddleware(req, _res, next) {
+    try {
+      await accessCheck(req);
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
 async function resolveViewerSeriesConfigKey(req, actor, options = {}) {
   const explicitSeriesConfigKey = normalizeText(
     options.seriesConfigKey || req.params?.seriesConfigKey || req.query?.series
@@ -273,6 +284,7 @@ async function requireSeriesViewerAccess(req, options = {}) {
 module.exports = {
   extractBearerToken,
   fetchSupabaseUser,
+  createGrizzliesPortalAccessMiddleware,
   requireAuthenticatedCricketUser,
   requireGrizzliesPortalAccess,
   requireSeriesAdminAccess,

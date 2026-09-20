@@ -3,7 +3,10 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { requireGrizzliesPortalAccess } = require("../src/lib/auth");
+const {
+  createGrizzliesPortalAccessMiddleware,
+  requireGrizzliesPortalAccess,
+} = require("../src/lib/auth");
 const {
   getConfiguredPlayerId,
   getThreatTone,
@@ -44,6 +47,21 @@ test("Grizzlies portal rejects authenticated users outside the allow-list", asyn
     () => requireGrizzliesPortalAccess({ cricketActor: { userId: "user-2", email: "other@example.com" } }),
     { message: "You do not have access to Grizzlies 2026 Analytics.", statusCode: 403 }
   );
+});
+
+test("Grizzlies portal middleware advances to the route after its asynchronous access check", async () => {
+  const req = {};
+  let nextError = "not-called";
+  const middleware = createGrizzliesPortalAccessMiddleware(async (request) => {
+    request.cricketActor = { userId: "user-1", email: "helloarth09@gmail.com" };
+  });
+
+  await middleware(req, {}, (error) => {
+    nextError = error || null;
+  });
+
+  assert.equal(nextError, null);
+  assert.equal(req.cricketActor.email, "helloarth09@gmail.com");
 });
 
 test("portal lists every West fixture but exposes analysis only for reviewed fact-complete matches", () => {

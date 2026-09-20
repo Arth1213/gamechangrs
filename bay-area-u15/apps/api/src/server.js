@@ -3,7 +3,12 @@
 const express = require("express");
 const fs = require("fs");
 
-const { requireAuthenticatedCricketUser, requireGrizzliesPortalAccess, requireSeriesAdminAccess, requireSeriesViewerAccess } = require("./lib/auth");
+const {
+  createGrizzliesPortalAccessMiddleware,
+  requireAuthenticatedCricketUser,
+  requireSeriesAdminAccess,
+  requireSeriesViewerAccess,
+} = require("./lib/auth");
 const { closePool, testConnection } = require("./lib/connection");
 const { normalizeText, toBoolean, toInteger } = require("./lib/utils");
 const { renderLocalOpsConsolePage } = require("./render/localOpsPage");
@@ -77,6 +82,7 @@ const {
 } = require("./services/reportExportService");
 
 const app = express();
+const requireGrizzliesPortalAccess = createGrizzliesPortalAccessMiddleware();
 const LOCAL_OPS_UI_ENABLED = toBoolean(process.env.LOCAL_OPS_ENABLE_UI);
 const API_CORS_ALLOWED_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 const API_CORS_ALLOWED_HEADERS = [

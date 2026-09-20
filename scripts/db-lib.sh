@@ -3,6 +3,9 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TRACKING_TABLE="public.codex_schema_migrations"
+# Declare the array at load time so Bash `set -u` treats an empty migration
+# history as a valid value before the tracking table has been created.
+declare -a APPLIED_VERSIONS=("")
 
 fail() {
   echo "Error: $*" >&2
@@ -186,7 +189,9 @@ EOF
 }
 
 load_applied_versions() {
-  APPLIED_VERSIONS=()
+  # Bash 3 with `set -u` treats a zero-length array as unset when expanded.
+  # Keep an inert sentinel instead; all versions are non-empty strings.
+  APPLIED_VERSIONS=("")
 
   if [ "$(tracking_table_exists)" != "yes" ]; then
     return 0

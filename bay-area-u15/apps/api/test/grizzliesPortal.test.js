@@ -37,6 +37,37 @@ test("match summary explains the result through verified innings totals and run 
   );
 });
 
+test("match summary names both teams' leading performers and the player who decided the chase", () => {
+  const summary = buildGrizzliesMatchSummary({
+    match: {
+      homeTeam: "East Bay Blazers",
+      awayTeam: "Silicon Valley Strikers",
+      resultText: "Silicon Valley Strikers won by 6 Wickets",
+    },
+    evidence: {
+      innings: [
+        { battingTeam: "East Bay Blazers", runs: 166, wickets: 7, legalBalls: 120, runRate: 8.3 },
+        { battingTeam: "Silicon Valley Strikers", runs: 167, wickets: 4, legalBalls: 114, runRate: 8.79 },
+      ],
+    },
+    scorecard: {
+      topBatting: [
+        { playerName: "Saideep Ganesh", teamName: "East Bay Blazers", runs: 54, ballsFaced: 25, strikeRate: 216 },
+        { playerName: "Bilal Basheer", teamName: "Silicon Valley Strikers", runs: 48, ballsFaced: 30, strikeRate: 160 },
+      ],
+      topBowling: [
+        { playerName: "Aarnav Iyer", teamName: "Silicon Valley Strikers", wickets: 3, runsConceded: 38, economy: 9.5 },
+        { playerName: "East Bay Bowler", teamName: "East Bay Blazers", wickets: 2, runsConceded: 27, economy: 6.75 },
+      ],
+    },
+  });
+
+  assert.equal(
+    summary,
+    "Silicon Valley Strikers completed a six-wicket chase of 167/4 in 19.0 overs after East Bay Blazers posted 166/7. Saideep Ganesh drove East Bay Blazers to that total with 54 off 25, while East Bay Bowler led their bowling with 2/27. Bilal Basheer then led Silicon Valley Strikers' reply with 48 off 30, backed by Aarnav Iyer's 3/38. Bilal Basheer's innings was decisive: it helped Silicon Valley Strikers sustain 8.79 runs per over, above East Bay Blazers' 8.30, and finish with six wickets in hand."
+  );
+});
+
 test("Grizzlies portal accepts an approved Gmail address regardless of casing", async () => {
   const req = { cricketActor: { userId: "user-1", email: "NIRAVSH@GMAIL.COM" } };
   const actor = await requireGrizzliesPortalAccess(req);

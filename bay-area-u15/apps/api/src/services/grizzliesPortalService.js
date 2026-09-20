@@ -84,6 +84,13 @@ function possessive(name) {
   return /s$/i.test(name) ? `${name}'` : `${name}'s`;
 }
 
+function findTeamPerformance(items, teamName) {
+  const normalizedTeam = normalizePortalText(teamName).toLowerCase();
+  return (Array.isArray(items) ? items : []).find(
+    (item) => normalizePortalText(item?.teamName).toLowerCase() === normalizedTeam
+  );
+}
+
 function buildGrizzliesMatchSummary(input) {
   const match = input?.match || {};
   const innings = Array.isArray(input?.evidence?.innings) ? input.evidence.innings : [];
@@ -101,12 +108,37 @@ function buildGrizzliesMatchSummary(input) {
   const firstTeam = normalizePortalText(firstInnings.battingTeam) || "the first innings side";
   const secondRate = Number(secondInnings.runRate);
   const firstRate = Number(firstInnings.runRate);
+  const firstBatter = findTeamPerformance(input?.scorecard?.topBatting, firstTeam);
+  const secondTeam = normalizePortalText(secondInnings.battingTeam) || winnerName;
+  const secondBatter = findTeamPerformance(input?.scorecard?.topBatting, secondTeam);
+  const firstBowler = findTeamPerformance(input?.scorecard?.topBowling, firstTeam);
+  const secondBowler = findTeamPerformance(input?.scorecard?.topBowling, secondTeam);
+  const hasPerformanceContext = firstBatter || secondBatter || firstBowler || secondBowler;
   const rateSentence = Number.isFinite(secondRate) && Number.isFinite(firstRate)
     ? ` Their ${secondRate.toFixed(2)} run rate exceeded ${possessive(firstTeam)} ${firstRate.toFixed(2)}, deciding the match.`
     : "";
 
   if (wickets && chaseOvers) {
-    return `${winnerName} completed a ${formatWicketMargin(wickets)}-wicket chase of ${chaseScore} in ${chaseOvers} overs after ${firstTeam} posted ${firstScore}.${rateSentence}`;
+    const resultSentence = `${winnerName} completed a ${formatWicketMargin(wickets)}-wicket chase of ${chaseScore} in ${chaseOvers} overs after ${firstTeam} posted ${firstScore}.`;
+    if (!hasPerformanceContext) return `${resultSentence}${rateSentence}`;
+
+    const firstPerformance = firstBatter
+      ? `${firstBatter.playerName} drove ${firstTeam} to that total with ${firstBatter.runs} off ${firstBatter.ballsFaced}`
+      : `${firstTeam} set the target`;
+    const firstBowlingClause = firstBowler
+      ? `, while ${firstBowler.playerName} led their bowling with ${firstBowler.wickets}/${firstBowler.runsConceded}`
+      : "";
+    const secondPerformance = secondBatter
+      ? `${secondBatter.playerName} then led ${possessive(secondTeam)} reply with ${secondBatter.runs} off ${secondBatter.ballsFaced}`
+      : `${secondTeam} controlled the chase`;
+    const secondBowlingClause = secondBowler
+      ? `, backed by ${possessive(secondBowler.playerName)} ${secondBowler.wickets}/${secondBowler.runsConceded}`
+      : "";
+    const decidingSubject = secondBatter ? `${possessive(secondBatter.playerName)} innings` : `${possessive(secondTeam)} chase`;
+    const decidingSentence = Number.isFinite(secondRate) && Number.isFinite(firstRate)
+      ? `${decidingSubject} was decisive: it helped ${secondTeam} sustain ${secondRate.toFixed(2)} runs per over, above ${possessive(firstTeam)} ${firstRate.toFixed(2)}, and finish with ${formatWicketMargin(wickets)} wickets in hand.`
+      : `${decidingSubject} was decisive, completing the chase with ${formatWicketMargin(wickets)} wickets in hand.`;
+    return `${resultSentence} ${firstPerformance}${firstBowlingClause}. ${secondPerformance}${secondBowlingClause}. ${decidingSentence}`;
   }
   return `${normalizePortalText(match.resultText) || `${winnerName} won`}. ${firstTeam} posted ${firstScore} and the reply reached ${chaseScore}.${rateSentence}`;
 }
@@ -287,7 +319,7 @@ async function getGrizzliesMatchAnalysis(matchId) {
               null::integer as wickets,
               null::integer as runs_conceded,
               null::numeric as economy,
-              row_number() over (order by bi.runs desc, bi.strike_rate desc nulls last, bi.balls_faced asc nulls last, bi.id asc) as rank
+              row_number() over (partition by bi.team_id order by bi.runs desc, bi.strike_rate desc nulls last, bi.balls_faced asc nulls last, bi.id asc) as rank
             from public.batting_innings bi
             join public.player p on p.id = bi.player_id
             join public.team t on t.id = bi.team_id
@@ -306,16 +338,16 @@ async function getGrizzliesMatchAnalysis(matchId) {
               bs.wickets,
               bs.runs_conceded,
               bs.economy,
-              row_number() over (order by bs.wickets desc, bs.runs_conceded asc, bs.economy asc nulls last, bs.id asc) as rank
+              row_number() over (partition by bs.team_id order by bs.wickets desc, bs.runs_conceded asc, bs.economy asc nulls last, bs.id asc) as rank
             from public.bowling_spell bs
             join public.player p on p.id = bs.player_id
             join public.team t on t.id = bs.team_id
             where bs.match_id = $1
           )
-          select * from top_batting where rank <= 2
+          select * from top_batting where rank = 1
           union all
-          select * from top_bowling where rank <= 2
-          order by performance_type, rank
+          select * from top_bowling where rank = 1
+          order by performance_type, team_name
         `,
         [numericMatchId]
       ),

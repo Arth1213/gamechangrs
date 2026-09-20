@@ -147,6 +147,34 @@ function isWestDivision(value) {
   return /\bwest\b/i.test(normalizePortalText(value));
 }
 
+function reportStatusOf(row) {
+  return normalizePortalText(row?.status || row?.report_status || row?.reportStatus).toLowerCase();
+}
+
+function reportTime(row) {
+  const value = row?.published_at || row?.publishedAt || row?.reviewed_at || row?.reviewedAt || row?.generated_at || row?.generatedAt;
+  const parsed = Date.parse(value || "");
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function selectVisibleGrizzliesReportRow(rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => reportStatusOf(row) === "published" || reportStatusOf(row) === "reviewed")
+    .slice()
+    .sort((left, right) => {
+      const statusDelta = (reportStatusOf(right) === "published" ? 2 : 1) - (reportStatusOf(left) === "published" ? 2 : 1);
+      return statusDelta || reportTime(right) - reportTime(left) || Number(right?.id || 0) - Number(left?.id || 0);
+    })[0] || null;
+}
+
+function resolveGrizzliesMatchSummary(reportRow, fallbackInput) {
+  const modelVersion = normalizePortalText(reportRow?.analysis_model_version || reportRow?.analysisModelVersion);
+  const storedSummary = normalizePortalText(reportRow?.analysis_json?.matchSummary || reportRow?.analysis?.matchSummary);
+  return modelVersion === "t20-context-v2" && storedSummary
+    ? storedSummary
+    : buildGrizzliesMatchSummary(fallbackInput);
+}
+
 function isGrizzliesMatchAnalysisAvailable(input) {
   const status = normalizePortalText(input?.status || input?.match_status).toLowerCase();
   const parseStatus = normalizePortalText(input?.parseStatus || input?.parse_status).toLowerCase();
@@ -163,8 +191,15 @@ function isGrizzliesMatchAnalysisAvailable(input) {
 }
 
 function mapGrizzliesWestFixtures(rows) {
-  return (Array.isArray(rows) ? rows : [])
-    .filter((row) => isWestDivision(row?.division_label || row?.divisionLabel))
+  const westRows = (Array.isArray(rows) ? rows : []).filter((row) => isWestDivision(row?.division_label || row?.divisionLabel));
+  const rowsByMatch = new Map();
+  for (const row of westRows) {
+    const matchId = Number(row.id ?? row.matchId);
+    if (!rowsByMatch.has(matchId)) rowsByMatch.set(matchId, []);
+    rowsByMatch.get(matchId).push(row);
+  }
+  return [...rowsByMatch.values()]
+    .map((matchRows) => selectVisibleGrizzliesReportRow(matchRows) || matchRows[0])
     .map((row) => {
       const matchId = Number(row.id ?? row.matchId);
       const status = normalizePortalText(row.match_status || row.status).toLowerCase() || "unavailable";
@@ -184,7 +219,11 @@ function mapGrizzliesWestFixtures(rows) {
         parseStatus: normalizePortalText(row.parse_status || row.parseStatus),
         analyticsStatus: normalizePortalText(row.analytics_status || row.analyticsStatus),
         ballEventCount: Number(row.ball_event_count ?? row.ballEventCount) || 0,
-        report: { status: reportStatus, path: null },
+        report: {
+          status: reportStatus,
+          path: null,
+          analysisModelVersion: normalizePortalText(row.analysis_model_version || row.analysisModelVersion) || null,
+        },
       };
       if (isGrizzliesMatchAnalysisAvailable(fixture)) {
         fixture.report.path = `/analytics/grizzlies/2026/matches/${matchId}`;
@@ -214,28 +253,31 @@ async function loadGrizzliesWestFixtures(config) {
           t2.display_name as team2_name,
           mrs.parse_status,
           mrs.analytics_status,
-          count(distinct be.id)::int as ball_event_count,
-          report.status as report_status
+          (select count(*)::int from public.ball_event be where be.match_id = m.id) as ball_event_count,
+          report.status as report_status,
+          report.analysis_model_version
         from public.match m
         join public.team t1 on t1.id = m.team1_id
         join public.team t2 on t2.id = m.team2_id
         join public.division d on d.id = m.division_id
         left join public.match_refresh_state mrs on mrs.match_id = m.id
-        left join public.ball_event be on be.match_id = m.id
-        left join public.grizzlies_match_analysis_report report
-          on report.match_id = m.id
-          and report.series_id = m.series_id
-          and report.report_type = 'grizzlies_match_analysis'
+        left join lateral (
+          select candidate.status, candidate.analysis_model_version
+          from public.grizzlies_match_analysis_report candidate
+          where candidate.match_id = m.id
+            and candidate.series_id = m.series_id
+            and candidate.report_type = 'grizzlies_match_analysis'
+            and candidate.status in ('reviewed', 'published')
+          order by
+            case candidate.status when 'published' then 2 else 1 end desc,
+            candidate.published_at desc nulls last,
+            candidate.reviewed_at desc nulls last,
+            candidate.generated_at desc nulls last,
+            candidate.id desc
+          limit 1
+        ) report on true
         where m.series_id = $1
           and lower(coalesce(d.source_label, '')) = lower($2)
-        group by
-          m.id,
-          d.source_label,
-          t1.display_name,
-          t2.display_name,
-          mrs.parse_status,
-          mrs.analytics_status,
-          report.status
         order by m.match_date asc nulls last, m.id asc
       `,
       [context.seriesId, normalizePortalText(config?.portal?.milcWestDivisionLabel) || "West"]
@@ -277,6 +319,7 @@ async function getGrizzliesMatchAnalysis(matchId) {
           t1.display_name as home_team,
           t2.display_name as away_team,
           report.status as report_status,
+          report.analysis_model_version,
           report.evidence_json,
           report.analysis_json,
           report.source_data_checksum,
@@ -288,17 +331,27 @@ async function getGrizzliesMatchAnalysis(matchId) {
         join public.team t1 on t1.id = m.team1_id
         join public.team t2 on t2.id = m.team2_id
         join public.match_refresh_state mrs on mrs.match_id = m.id
-        join public.grizzlies_match_analysis_report report
-          on report.match_id = m.id
-          and report.series_id = m.series_id
-          and report.report_type = 'grizzlies_match_analysis'
+        join lateral (
+          select candidate.*
+          from public.grizzlies_match_analysis_report candidate
+          where candidate.match_id = m.id
+            and candidate.series_id = m.series_id
+            and candidate.report_type = 'grizzlies_match_analysis'
+            and candidate.status in ('reviewed', 'published')
+          order by
+            case candidate.status when 'published' then 2 else 1 end desc,
+            candidate.published_at desc nulls last,
+            candidate.reviewed_at desc nulls last,
+            candidate.generated_at desc nulls last,
+            candidate.id desc
+          limit 1
+        ) report on true
         where m.id = $1
           and m.series_id = $2
           and lower(coalesce(d.source_label, '')) = lower($3)
           and m.status = 'completed'
           and mrs.parse_status = 'parsed'
           and mrs.analytics_status = 'computed'
-          and report.status in ('reviewed', 'published')
           and exists (select 1 from public.ball_event be where be.match_id = m.id)
         limit 1
       `,
@@ -369,6 +422,7 @@ async function getGrizzliesMatchAnalysis(matchId) {
         resultText: normalizePortalText(row.result_text) || null,
       },
       reportStatus: normalizePortalText(row.report_status),
+      analysisModelVersion: normalizePortalText(row.analysis_model_version) || "legacy-v1",
       evidence: row.evidence_json || {},
       analysis: row.analysis_json || {},
       scorecard: {
@@ -398,7 +452,7 @@ async function getGrizzliesMatchAnalysis(matchId) {
       reviewedAt: row.reviewed_at || null,
       publishedAt: row.published_at || null,
     };
-    response.matchSummary = buildGrizzliesMatchSummary(response);
+    response.matchSummary = resolveGrizzliesMatchSummary(row, response);
     return response;
   }));
 }
@@ -486,5 +540,7 @@ module.exports = {
   loadGrizzliesWestFixtures,
   isGrizzliesMatchAnalysisAvailable,
   mapGrizzliesWestFixtures,
+  resolveGrizzliesMatchSummary,
+  selectVisibleGrizzliesReportRow,
   withPortalPhaseTimeout,
 };

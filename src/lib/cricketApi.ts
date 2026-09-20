@@ -163,7 +163,32 @@ export type CricketGrizzliesMatchFixture = {
   status: "scheduled" | "live" | "completed" | "unavailable" | string;
   resultText: string | null;
   scoreline: string | null;
-  report: { status: "unavailable" | "draft" | "reviewed" | "published" | string; path: string | null };
+  report: {
+    status: "unavailable" | "draft" | "reviewed" | "published" | string;
+    path: string | null;
+    analysisModelVersion?: string | null;
+  };
+};
+
+export type CricketGrizzliesTurningPoint = {
+  type?: string;
+  innings?: number;
+  startBall?: number;
+  endBall?: number;
+  statement?: string;
+  evidenceLabel?: string;
+  evidenceRefs?: string[];
+  confidence?: string;
+  statementFacts?: Record<string, unknown>;
+  components?: {
+    requiredRateRelief?: number;
+    runRateSwing?: number;
+    wicketPreservation?: number;
+    inningsShare?: number;
+    phaseLeverage?: number;
+    wicketsClustered?: number;
+    scoringSuppression?: number;
+  };
 };
 
 export type CricketGrizzliesMatchAnalysisResponse = {
@@ -177,12 +202,35 @@ export type CricketGrizzliesMatchAnalysisResponse = {
     resultText: string | null;
   };
   reportStatus: string;
-  evidence: { complete?: boolean; missing?: string[]; momentum?: Array<{ innings?: number; over?: number; event?: string; impactScore?: number }> };
+  analysisModelVersion: string;
+  evidence: {
+    complete?: boolean;
+    missing?: string[];
+    analysisModelVersion?: string;
+    momentum?: Array<{ innings?: number; over?: number; event?: string; impactScore?: number }>;
+    phaseMetrics?: Array<{ innings?: number; phase?: string; runs?: number; wickets?: number; legalBalls?: number; runRate?: number }>;
+    partnerships?: Array<{
+      innings?: number;
+      batterIds?: number[];
+      batterNames?: string[];
+      startScore?: number;
+      endScore?: number;
+      runs?: number;
+      legalBalls?: number;
+      entryRequiredRate?: number | null;
+      exitRequiredRate?: number | null;
+      complete?: boolean;
+    }>;
+    turningPointCandidates?: CricketGrizzliesTurningPoint[];
+    dataQuality?: { partnershipIdentitiesAvailable?: boolean; [key: string]: unknown };
+  };
   analysis: {
+    analysisModelVersion?: string;
+    matchSummary?: string;
     strengths?: Array<{ team?: string; statement?: string; confidence?: string }>;
     weaknesses?: Array<{ team?: string; statement?: string; confidence?: string }>;
     criticalMoments?: Array<{ innings?: number; over?: number; event?: string; impactScore?: number }>;
-    turningPoints?: Array<{ statement?: string; confidence?: string }>;
+    turningPoints?: CricketGrizzliesTurningPoint[];
     grizzliesWatchOut?: Array<{ statement?: string; confidence?: string }>;
     grizzliesGamePlan?: Array<{ statement?: string; confidence?: string }>;
     evidenceNotes?: string[];

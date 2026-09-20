@@ -13,6 +13,8 @@ const {
   buildGrizzliesMatchSummary,
   mapGrizzliesWestFixtures,
   isGrizzliesMatchAnalysisAvailable,
+  resolveGrizzliesMatchSummary,
+  selectVisibleGrizzliesReportRow,
   withPortalPhaseTimeout,
 } = require("../src/services/grizzliesPortalService");
 
@@ -191,4 +193,60 @@ test("portal phase timeout returns a clear retryable error instead of waiting fo
     () => withPortalPhaseTimeout("West Division fixtures", new Promise(() => {}), 10),
     { message: "Grizzlies portal West Division fixtures timed out. Retry shortly.", statusCode: 503, code: "grizzlies_portal_timeout" }
   );
+});
+
+test("generated v2 remains hidden until published and visible selection is deterministic", () => {
+  const legacy = {
+    id: 1,
+    analysis_model_version: "legacy-v1",
+    status: "published",
+    published_at: "2026-09-19T20:00:00Z",
+  };
+  const generatedV2 = {
+    id: 2,
+    analysis_model_version: "t20-context-v2",
+    status: "generated",
+    generated_at: "2026-09-20T01:00:00Z",
+  };
+  assert.equal(selectVisibleGrizzliesReportRow([legacy, generatedV2]).id, 1);
+
+  const publishedV2 = {
+    ...generatedV2,
+    status: "published",
+    published_at: "2026-09-20T02:00:00Z",
+  };
+  assert.equal(selectVisibleGrizzliesReportRow([legacy, publishedV2]).id, 2);
+});
+
+test("v2 detail uses its stored summary and never rebuilds the legacy narrative", () => {
+  const row = {
+    analysis_model_version: "t20-context-v2",
+    analysis_json: { matchSummary: "A verified partnership decided this chase." },
+  };
+  const summary = resolveGrizzliesMatchSummary(row, {
+    match: { resultText: "Legacy fallback" },
+    evidence: { innings: [] },
+  });
+  assert.equal(summary, "A verified partnership decided this chase.");
+});
+
+test("fixture mapping collapses duplicate visible report rows to one fixture", () => {
+  const base = {
+    id: 42,
+    source_match_id: "west-completed",
+    division_label: "West",
+    match_date: "2026-09-19",
+    team1_name: "Silicon Valley Strikers",
+    team2_name: "East Bay Blazers",
+    match_status: "completed",
+    parse_status: "parsed",
+    analytics_status: "computed",
+    ball_event_count: 244,
+  };
+  const fixtures = mapGrizzliesWestFixtures([
+    { ...base, report_status: "reviewed", analysis_model_version: "legacy-v1" },
+    { ...base, report_status: "published", analysis_model_version: "t20-context-v2" },
+  ]);
+  assert.equal(fixtures.length, 1);
+  assert.equal(fixtures[0].report.analysisModelVersion, "t20-context-v2");
 });

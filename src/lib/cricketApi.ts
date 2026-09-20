@@ -144,6 +144,54 @@ export type CricketGrizzliesPortalResponse = {
   nccaSeriesConfigKey: string;
   teams: Array<{ name: string; players: CricketGrizzliesPortalPlayer[] }>;
   analysisStatus: string;
+  aiMatchAnalysis: {
+    seriesConfigKey: string | null;
+    officialScheduleUrl: string | null;
+    fixtures: CricketGrizzliesMatchFixture[];
+  };
+};
+
+export type CricketGrizzliesMatchFixture = {
+  matchId: number;
+  sourceMatchId: string;
+  startsAt: string | null;
+  dateLabel: string;
+  venue: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  divisionLabel: string;
+  status: "scheduled" | "live" | "completed" | "unavailable" | string;
+  resultText: string | null;
+  scoreline: string | null;
+  report: { status: "unavailable" | "draft" | "reviewed" | "published" | string; path: string | null };
+};
+
+export type CricketGrizzliesMatchAnalysisResponse = {
+  match: {
+    matchId: number;
+    sourceMatchId: string;
+    date: string | null;
+    venue: string | null;
+    homeTeam: string;
+    awayTeam: string;
+    resultText: string | null;
+  };
+  reportStatus: string;
+  evidence: { complete?: boolean; missing?: string[]; momentum?: Array<{ innings?: number; over?: number; event?: string; impactScore?: number }> };
+  analysis: {
+    strengths?: Array<{ team?: string; statement?: string; confidence?: string }>;
+    weaknesses?: Array<{ team?: string; statement?: string; confidence?: string }>;
+    criticalMoments?: Array<{ innings?: number; over?: number; event?: string; impactScore?: number }>;
+    turningPoints?: Array<{ statement?: string; confidence?: string }>;
+    grizzliesWatchOut?: Array<{ statement?: string; confidence?: string }>;
+    grizzliesGamePlan?: Array<{ statement?: string; confidence?: string }>;
+    evidenceNotes?: string[];
+    confidence?: string;
+  };
+  sourceDataChecksum: string;
+  generatedAt: string | null;
+  reviewedAt: string | null;
+  publishedAt: string | null;
 };
 
 export type CricketAdminEntityMembership = {
@@ -1550,6 +1598,16 @@ export async function fetchGrizzliesPortal(accessToken: string, signal?: AbortSi
   });
   if (!response.ok) throw new Error(await readApiErrorMessage(response, "Grizzlies portal is unavailable."));
   return (await response.json()) as CricketGrizzliesPortalResponse;
+}
+
+export async function fetchGrizzliesMatchAnalysis(accessToken: string, matchId: string, signal?: AbortSignal) {
+  const response = await fetch(getCricketApiUrl(`/api/portals/grizzlies/2026/matches/${encodeURIComponent(matchId)}/analysis`), {
+    method: "GET",
+    signal,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(await readApiErrorMessage(response, "Match analysis is unavailable."));
+  return (await response.json()) as CricketGrizzliesMatchAnalysisResponse;
 }
 
 export async function fetchCricketPlayerReport(

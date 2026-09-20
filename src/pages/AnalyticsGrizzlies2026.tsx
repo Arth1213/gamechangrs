@@ -10,7 +10,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { CricketGrizzliesPortalResponse, fetchGrizzliesPortal } from "@/lib/cricketApi";
 import { grizzliesPortalFallback } from "@/lib/grizzliesPortalFallback";
-import { minorLeagueLaunch } from "@/lib/grizzliesPortalPresentation";
 import { cricclubsPlayerNameHref } from "@/lib/grizzliesPlayerLink";
 import { assessmentButtonClass, threatButtonClass } from "@/lib/grizzliesSquadActions";
 import { grizzliesPoweredBy } from "@/lib/grizzliesBranding";
@@ -57,6 +56,16 @@ function SquadPanel({ team, className }: { team: CricketGrizzliesPortalResponse[
   );
 }
 
+function MatchAnalysisTab({ portal }: { portal: CricketGrizzliesPortalResponse }) {
+  const schedule = portal.aiMatchAnalysis;
+  return <div className="space-y-6">
+    <Card className="border-red-500/35 bg-gradient-to-b from-red-500/[.10] to-background">
+      <CardHeader><CardTitle className="font-display text-3xl">MiLC 2026 West Division</CardTitle><CardDescription>Current and future West Division fixtures. Analysis becomes available only after verified match facts are persisted and reviewed.</CardDescription></CardHeader>
+    </Card>
+    <Card><CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0"><div><CardTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-red-400" />West Division Schedule</CardTitle><CardDescription className="mt-2">All MiLC 2026 West fixtures shown from the analytics inventory.</CardDescription></div>{schedule.officialScheduleUrl ? <Button asChild variant="outline" size="sm" className="shrink-0"><a href={schedule.officialScheduleUrl} target="_blank" rel="noreferrer">Official schedule <ExternalLink className="ml-1.5 h-3.5 w-3.5" /></a></Button> : null}</CardHeader><CardContent>{schedule.fixtures.length ? <div className="grid gap-3 md:grid-cols-2">{schedule.fixtures.map((fixture) => <article key={fixture.matchId} className="rounded-lg border border-border bg-muted/20 p-4"><div className="flex flex-wrap items-start justify-between gap-2"><p className="text-sm font-semibold text-red-300">{fixture.dateLabel || "Date pending"}{fixture.venue ? ` · ${fixture.venue}` : ""}</p><span className="rounded-full border border-border px-2 py-0.5 text-xs capitalize text-muted-foreground">{fixture.status}</span></div><p className="mt-2 font-display text-lg font-semibold">{fixture.homeTeam} <span className="px-1 text-sm font-normal text-muted-foreground">vs</span> {fixture.awayTeam}</p>{fixture.resultText ? <p className="mt-2 text-sm text-muted-foreground">{fixture.scoreline || fixture.resultText}</p> : null}{fixture.report.path ? <Button asChild size="sm" className="mt-4 bg-emerald-600 text-white hover:bg-emerald-500"><Link to={fixture.report.path}>Open AI Match Analysis</Link></Button> : <p className="mt-4 text-xs text-muted-foreground">{fixture.status === "completed" ? "Analysis is pending verified facts and review." : "Analysis is available after completion and review."}</p>}</article>)}</div> : <p className="rounded-lg border border-border/70 bg-muted/10 p-5 text-sm text-muted-foreground">West Division fixtures are not currently available from the protected service.</p>}</CardContent></Card>
+  </div>;
+}
+
 export default function AnalyticsGrizzlies2026() {
   const { session, user } = useAuth();
   const [data, setData] = useState<CricketGrizzliesPortalResponse | null>(null);
@@ -83,10 +92,7 @@ export default function AnalyticsGrizzlies2026() {
         <Tabs defaultValue="squad">
           <TabsList><TabsTrigger value="squad">Squad Intelligence</TabsTrigger><TabsTrigger value="analysis">AI Match Analysis</TabsTrigger></TabsList>
           <TabsContent value="squad" className="mt-6"><div className="grid gap-5 lg:grid-cols-3 lg:items-start">{portal.teams.map((team) => <SquadPanel key={team.name} team={team} className={squadStyle(team.name)} />)}</div></TabsContent>
-          <TabsContent value="analysis" className="mt-6 space-y-6">
-            <Card className="border-red-500/35 bg-gradient-to-b from-red-500/[.10] to-background shadow-[0_20px_70px_-45px_rgba(239,68,68,.8)]"><CardContent className="flex flex-col items-center px-6 py-14 text-center md:py-16"><div className="mb-5 flex h-32 w-40 items-center justify-center"><img src={minorLeagueLaunch.logoSrc} alt="Minor League Cricket" className="max-h-full max-w-full object-contain" /></div><p className="text-xs font-semibold uppercase tracking-[.22em] text-red-400">Minor League Cricket</p><h2 className="mt-3 font-display text-3xl font-bold tracking-tight md:text-4xl">{minorLeagueLaunch.heading}</h2><p className="mt-3 max-w-xl text-base text-muted-foreground md:text-lg">{minorLeagueLaunch.supportingText}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0"><div><CardTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-red-400" />West Division Schedule</CardTitle><CardDescription className="mt-2">2026 opening fixtures shown below. The official MiLC schedule remains the source of record.</CardDescription></div><Button asChild variant="outline" size="sm" className="shrink-0"><a href={minorLeagueLaunch.officialScheduleUrl} target="_blank" rel="noreferrer">Official schedule <ExternalLink className="ml-1.5 h-3.5 w-3.5" /></a></Button></CardHeader><CardContent><div className="grid gap-3 md:grid-cols-2">{minorLeagueLaunch.fixtures.map((fixture) => <article key={`${fixture.date}-${fixture.homeTeam}-${fixture.awayTeam}`} className="rounded-lg border border-border bg-muted/20 p-4"><p className="text-sm font-semibold text-red-300">{fixture.date} · {fixture.venue}</p><p className="mt-2 font-display text-lg font-semibold">{fixture.homeTeam} <span className="px-1 text-sm font-normal text-muted-foreground">vs</span> {fixture.awayTeam}</p></article>)}</div></CardContent></Card>
-          </TabsContent>
+          <TabsContent value="analysis" className="mt-6"><MatchAnalysisTab portal={portal} /></TabsContent>
         </Tabs>
       </main>
       <Footer />

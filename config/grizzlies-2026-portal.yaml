@@ -1,6 +1,9 @@
 portal:
   slug: grizzlies-2026
   nccaSeriesConfigKey: bay-area-youth-cricket-hub-2026-ncca-2026-summer-6e89aakq-kwupu80epy0a
+  milcSeriesConfigKey: bay-area-youth-cricket-hub-2026-milc-2026-blc41vvv-ulhfvy3ooajug
+  milcWestDivisionLabel: West
+  milcOfficialScheduleUrl: https://www.minorleaguecricket.com/MiLC/schedules?leagueId=4gjH8PVcUeCazKJUkOOrOA&year=2026&series=Blc41vvV_UlHFvY3oOajUg&division=HOmSYAY2QKZkcwibJprhCw&day=All+days&seriesName=MiLC+2026
   allowedEmails:
     - samirnshah@gmail.com
     - niravsh@gmail.com

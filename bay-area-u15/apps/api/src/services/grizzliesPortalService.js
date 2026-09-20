@@ -82,6 +82,143 @@ function mapGrizzliesWestFixtures(rows) {
     });
 }
 
+async function loadGrizzliesWestFixtures(config) {
+  const seriesConfigKey = normalizePortalText(config?.portal?.milcSeriesConfigKey);
+  if (!seriesConfigKey) return { seriesConfigKey: null, officialScheduleUrl: null, fixtures: [] };
+
+  return withClient(async (client) => {
+    const context = await resolveSeriesContext(client, seriesConfigKey, { ensureReportProfile: false });
+    if (!context?.seriesId) return { seriesConfigKey, officialScheduleUrl: config?.portal?.milcOfficialScheduleUrl || null, fixtures: [] };
+    const result = await client.query(
+      `
+        select
+          m.id,
+          m.source_match_id,
+          m.match_date,
+          m.venue,
+          m.status as match_status,
+          m.result_text,
+          d.source_label as division_label,
+          t1.display_name as team1_name,
+          t2.display_name as team2_name,
+          mrs.parse_status,
+          mrs.analytics_status,
+          count(distinct be.id)::int as ball_event_count,
+          report.status as report_status
+        from public.match m
+        join public.team t1 on t1.id = m.team1_id
+        join public.team t2 on t2.id = m.team2_id
+        join public.division d on d.id = m.division_id
+        left join public.match_refresh_state mrs on mrs.match_id = m.id
+        left join public.ball_event be on be.match_id = m.id
+        left join public.grizzlies_match_analysis_report report
+          on report.match_id = m.id
+          and report.series_id = m.series_id
+          and report.report_type = 'grizzlies_match_analysis'
+        where m.series_id = $1
+          and lower(coalesce(d.source_label, '')) = lower($2)
+        group by
+          m.id,
+          d.source_label,
+          t1.display_name,
+          t2.display_name,
+          mrs.parse_status,
+          mrs.analytics_status,
+          report.status
+        order by m.match_date asc nulls last, m.id asc
+      `,
+      [context.seriesId, normalizePortalText(config?.portal?.milcWestDivisionLabel) || "West"]
+    );
+    return {
+      seriesConfigKey,
+      officialScheduleUrl: config?.portal?.milcOfficialScheduleUrl || null,
+      fixtures: mapGrizzliesWestFixtures(result.rows),
+    };
+  });
+}
+
+async function getGrizzliesMatchAnalysis(matchId) {
+  const config = loadPortalConfig();
+  const seriesConfigKey = normalizePortalText(config?.portal?.milcSeriesConfigKey);
+  const numericMatchId = Number(matchId);
+  if (!seriesConfigKey || !Number.isInteger(numericMatchId) || numericMatchId <= 0) {
+    const error = new Error("Grizzlies match analysis was not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return withClient(async (client) => {
+    const context = await resolveSeriesContext(client, seriesConfigKey, { ensureReportProfile: false });
+    if (!context?.seriesId) {
+      const error = new Error("Grizzlies match analysis was not found.");
+      error.statusCode = 404;
+      throw error;
+    }
+    const result = await client.query(
+      `
+        select
+          m.id as match_id,
+          m.source_match_id,
+          m.match_date,
+          m.venue,
+          m.result_text,
+          t1.display_name as home_team,
+          t2.display_name as away_team,
+          report.status as report_status,
+          report.evidence_json,
+          report.analysis_json,
+          report.source_data_checksum,
+          report.generated_at,
+          report.reviewed_at,
+          report.published_at
+        from public.match m
+        join public.division d on d.id = m.division_id
+        join public.team t1 on t1.id = m.team1_id
+        join public.team t2 on t2.id = m.team2_id
+        join public.match_refresh_state mrs on mrs.match_id = m.id
+        join public.grizzlies_match_analysis_report report
+          on report.match_id = m.id
+          and report.series_id = m.series_id
+          and report.report_type = 'grizzlies_match_analysis'
+        where m.id = $1
+          and m.series_id = $2
+          and lower(coalesce(d.source_label, '')) = lower($3)
+          and m.status = 'completed'
+          and mrs.parse_status = 'parsed'
+          and mrs.analytics_status = 'computed'
+          and report.status in ('reviewed', 'published')
+          and exists (select 1 from public.ball_event be where be.match_id = m.id)
+        limit 1
+      `,
+      [numericMatchId, context.seriesId, normalizePortalText(config?.portal?.milcWestDivisionLabel) || "West"]
+    );
+    const row = result.rows[0];
+    if (!row) {
+      const error = new Error("Grizzlies match analysis was not found.");
+      error.statusCode = 404;
+      throw error;
+    }
+    return {
+      match: {
+        matchId: Number(row.match_id),
+        sourceMatchId: normalizePortalText(row.source_match_id),
+        date: row.match_date || null,
+        venue: normalizePortalText(row.venue) || null,
+        homeTeam: normalizePortalText(row.home_team),
+        awayTeam: normalizePortalText(row.away_team),
+        resultText: normalizePortalText(row.result_text) || null,
+      },
+      reportStatus: normalizePortalText(row.report_status),
+      evidence: row.evidence_json || {},
+      analysis: row.analysis_json || {},
+      sourceDataChecksum: normalizePortalText(row.source_data_checksum),
+      generatedAt: row.generated_at || null,
+      reviewedAt: row.reviewed_at || null,
+      publishedAt: row.published_at || null,
+    };
+  });
+}
+
 async function loadPlayerFacts(config) {
   const playerIds = [...new Set(
     Object.values(config?.roster || {})
@@ -118,7 +255,8 @@ async function getGrizzliesPortalPayload() {
   const config = loadPortalConfig();
   const seriesConfigKey = config.portal.nccaSeriesConfigKey;
   const playerFacts = await loadPlayerFacts(config);
-  const teams = Object.entries(config.roster || {}).map(([teamName, roster]) => ({
+  const [teams, aiMatchAnalysis] = await Promise.all([
+    Promise.resolve(Object.entries(config.roster || {}).map(([teamName, roster]) => ({
     name: teamName,
     players: roster.map(([name, rosterCategory]) => {
       const configured = config.approvedMappings?.[name];
@@ -142,12 +280,15 @@ async function getGrizzliesPortalPayload() {
         }),
       };
     }),
-  }));
+    }))),
+    loadGrizzliesWestFixtures(config),
+  ]);
 
   return {
     title: "Grizzlies 2026 Analytics - Powered by GameChangrs",
     nccaSeriesConfigKey: seriesConfigKey,
     teams,
+    aiMatchAnalysis,
     analysisStatus: "Match Analysis and AI Recommendations Coming Soon",
   };
 }
@@ -156,6 +297,8 @@ module.exports = {
   getConfiguredPlayerId,
   getGrizzliesPortalPayload,
   getThreatTone,
+  getGrizzliesMatchAnalysis,
+  loadGrizzliesWestFixtures,
   isGrizzliesMatchAnalysisAvailable,
   mapGrizzliesWestFixtures,
 };

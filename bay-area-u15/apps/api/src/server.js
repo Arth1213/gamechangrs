@@ -64,7 +64,7 @@ const {
 const {
   getPlayerIntelligenceReport,
 } = require("./services/playerIntelligenceService");
-const { getGrizzliesPortalPayload } = require("./services/grizzliesPortalService");
+const { getGrizzliesMatchAnalysis, getGrizzliesPortalPayload } = require("./services/grizzliesPortalService");
 const {
   getLocalOpsOverview,
   getLocalOpsRunDetail,
@@ -764,6 +764,10 @@ app.get("/", asyncHandler(async (req, res) => {
 
 app.get("/api/portals/grizzlies/2026", requireGrizzliesPortalAccess, asyncHandler(async (_req, res) => {
   res.json(await getGrizzliesPortalPayload());
+}));
+
+app.get("/api/portals/grizzlies/2026/matches/:matchId/analysis", requireGrizzliesPortalAccess, asyncHandler(async (req, res) => {
+  res.json(await getGrizzliesMatchAnalysis(req.params.matchId));
 }));
 
 app.get("/players/:playerId", requireSeriesViewerOrDefault, asyncHandler(async (req, res) => {

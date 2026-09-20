@@ -75,6 +75,11 @@ export const grizzliesPortalFallback: CricketGrizzliesPortalResponse = {
   title: "Grizzlies 2026 Analytics",
   nccaSeriesConfigKey: SERIES,
   analysisStatus: "Match Analysis and AI Recommendations Coming Soon",
+  aiMatchAnalysis: {
+    seriesConfigKey: null,
+    officialScheduleUrl: null,
+    fixtures: [],
+  },
   teams: Object.entries(roster).map(([name, players]) => ({
     name,
     players: players.map(([playerName, rosterCategory]) => {

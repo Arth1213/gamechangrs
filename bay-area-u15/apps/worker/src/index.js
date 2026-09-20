@@ -8,6 +8,10 @@ const { upsertDiscovery, upsertMatchInventory } = require("./load/repository");
 const { processManualRefreshQueue, processSeriesOperationQueue } = require("./ops/seriesOperationRunner");
 const { refreshSeries, refreshSingleMatch } = require("./ops/localRefresh");
 const { publishSeries } = require("./ops/localPublish");
+const {
+  generateGrizzliesMatchAnalysis,
+  reviewGrizzliesMatchAnalysis,
+} = require("./ops/grizzliesMatchAnalysis");
 const { registerSeries } = require("./ops/seriesRegistry");
 const { validateSeries } = require("./ops/localValidate");
 const { runMatchPipeline } = require("./pipeline/runMatchPipeline");
@@ -125,6 +129,28 @@ async function main() {
     const summaryPath = path.join(process.cwd(), "storage/exports", "manual_refresh_queue_summary.json");
     writeJsonFile(summaryPath, result);
     console.log(`Manual refresh queue processing complete: ${summaryPath}`);
+    return;
+  }
+
+  if (command === "generate-grizzlies-match-analysis") {
+    const result = await generateGrizzliesMatchAnalysis({
+      seriesConfigKey: args.series || args.seriesConfigKey,
+      divisionLabel: args.division || args.divisionLabel || "West",
+      matchIds: parseListArg(args.matchIds || args["match-ids"] || args.matchId || args["match-id"]),
+      dryRun: parseBooleanArg(args.dryRun ?? args["dry-run"], false),
+    });
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  if (command === "review-grizzlies-match-analysis") {
+    const result = await reviewGrizzliesMatchAnalysis({
+      matchId: args.matchId || args["match-id"],
+      analysisModelVersion: args.model,
+      action: args.action,
+      reviewerUserId: args.reviewerUserId || args["reviewer-user-id"],
+    });
+    console.log(JSON.stringify(result, null, 2));
     return;
   }
 
@@ -373,7 +399,11 @@ function parseArgs(argv) {
     if (token.startsWith("--")) {
       const key = token.slice(2);
       const value = argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[++i] : true;
-      out[key] = value;
+      if (Object.prototype.hasOwnProperty.call(out, key)) {
+        out[key] = Array.isArray(out[key]) ? [...out[key], value] : [out[key], value];
+      } else {
+        out[key] = value;
+      }
       continue;
     }
     out._.push(token);
@@ -404,6 +434,8 @@ function printHelp() {
   console.log("  node apps/worker/src/index.js compute-intelligence --config config/leagues.yaml --series bay-area-usac-hub-2026");
   console.log("  node apps/worker/src/index.js process-queue --limit 1");
   console.log("  node apps/worker/src/index.js process-manual-refresh-queue --limit 1");
+  console.log("  node apps/worker/src/index.js generate-grizzlies-match-analysis --series <config-key> --division West --dryRun");
+  console.log("  node apps/worker/src/index.js review-grizzlies-match-analysis --matchId <id> --model t20-context-v2 --action review|publish --reviewerUserId <uuid>");
   console.log("");
   console.log("Runbooks:");
   console.log("  ops_runbook_new_series.md");

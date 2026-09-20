@@ -10,6 +10,8 @@
     "ops:refresh:match": "node apps/worker/src/index.js refresh-match --config config/leagues.yaml",
     "ops:validate:series": "node apps/worker/src/index.js validate-series --config config/leagues.yaml",
     "ops:publish:series": "node apps/worker/src/index.js publish-series --config config/leagues.yaml",
+    "ops:generate:grizzlies-match-analysis": "node apps/worker/src/index.js generate-grizzlies-match-analysis --config config/leagues.yaml",
+    "ops:review:grizzlies-match-analysis": "node apps/worker/src/index.js review-grizzlies-match-analysis --config config/leagues.yaml",
     "api:start": "node apps/api/src/server.js",
     "ops:ui:start": "env LOCAL_OPS_ENABLE_UI=true node apps/api/src/server.js",
     "worker:discover": "node apps/worker/src/index.js discover --config config/leagues.yaml --series bay-area-usac-hub-2026",

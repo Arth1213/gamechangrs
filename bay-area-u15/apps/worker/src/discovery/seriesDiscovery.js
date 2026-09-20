@@ -375,9 +375,17 @@ function buildModernSeriesResultsUrl(seriesConfig) {
   }
 
   const parsed = parseUrlSafe(seriesConfig.series_url);
-  const modernLeagueId = normalizeText(seriesConfig.source_hints?.league_id);
-  const modernSeriesId = normalizeText(seriesConfig.source_hints?.series_id);
-  if (!parsed || !parsed.pathname.includes("/series-list/") || !modernLeagueId || !modernSeriesId) {
+  const modernLeagueId =
+    normalizeText(seriesConfig.source_hints?.league_id) ||
+    normalizeText(parsed?.searchParams.get("leagueId"));
+  const modernSeriesId =
+    normalizeText(seriesConfig.source_hints?.series_id) ||
+    normalizeText(parsed?.searchParams.get("series"));
+  const isModernSeriesList = parsed?.pathname.includes("/series-list/");
+  const isModernResults = parsed?.pathname.endsWith("/results") &&
+    normalizeText(parsed.searchParams.get("leagueId")) &&
+    normalizeText(parsed.searchParams.get("series"));
+  if (!parsed || (!isModernSeriesList && !isModernResults) || !modernLeagueId || !modernSeriesId) {
     return "";
   }
 
@@ -399,6 +407,27 @@ function buildModernSeriesResultsUrl(seriesConfig) {
   }
 
   return scopedResultsUrl.toString();
+}
+
+function buildModernDiscoveryReference(seriesConfig) {
+  const resultsUrl = buildModernSeriesResultsUrl(seriesConfig);
+  if (!resultsUrl) {
+    return null;
+  }
+
+  const parsed = parseUrlSafe(resultsUrl);
+  const leagueId =
+    normalizeText(seriesConfig.source_hints?.league_id) ||
+    normalizeText(parsed?.searchParams.get("leagueId"));
+  if (!leagueId) {
+    return null;
+  }
+
+  return {
+    label: normalizeText(seriesConfig.label),
+    leagueId,
+    resultsUrl,
+  };
 }
 
 function hasScopedSeriesQuery(url) {
@@ -480,6 +509,7 @@ async function discoverSingleSeries(seriesConfig, options = {}) {
   const clubId = getClubId(seriesConfig);
   const namespace = getNamespace(seriesConfig);
   const modernResultsUrl = buildModernSeriesResultsUrl(seriesConfig);
+  const modernReference = buildModernDiscoveryReference(seriesConfig);
 
   return withBrowser(async (context) => {
     const configuredSeriesPage = await context.newPage();
@@ -507,9 +537,18 @@ async function discoverSingleSeries(seriesConfig, options = {}) {
       normalizeText(seriesConfig.source_hints?.legacy_league_id) ||
       "";
 
-    let matchedSeries = null;
+    let matchedSeries = modernReference
+      ? {
+          label: modernReference.label,
+          href: modernReference.resultsUrl,
+          normalizedEntryLabel: normalizeLabel(modernReference.label),
+          score: 100,
+        }
+      : null;
     let seriesCandidates = [];
-    if (explicitLeagueId) {
+    if (modernReference) {
+      // Modern CricClubs results URLs are already scoped to one series.
+    } else if (explicitLeagueId) {
       matchedSeries = {
         label: seriesConfig.label,
         href: buildLegacyRoutes(namespace, explicitLeagueId, clubId).leagueUrl,
@@ -566,12 +605,16 @@ async function discoverSingleSeries(seriesConfig, options = {}) {
       throw new Error(`Unable to find a public series link for "${seriesConfig.label}".`);
     }
 
-    const leagueId = extractLeagueId(matchedSeries.href);
+    const leagueId = modernReference?.leagueId || extractLeagueId(matchedSeries.href);
     if (!leagueId) {
       throw new Error(`Unable to extract a league id from ${matchedSeries.href}`);
     }
 
     const legacyRoutes = buildLegacyRoutes(namespace, leagueId, clubId);
+    if (modernReference) {
+      legacyRoutes.leagueUrl = modernReference.resultsUrl;
+      legacyRoutes.resultsUrl = modernReference.resultsUrl;
+    }
     const configuredResultsLink = pickLinkByHints(configuredLinks, [
       "viewleagueresults.do",
       "listmatches.do",
@@ -815,4 +858,6 @@ async function discoverSeries(seriesConfig, options = {}) {
 
 module.exports = {
   discoverSeries,
+  buildModernSeriesResultsUrl,
+  buildModernDiscoveryReference,
 };

@@ -168,3 +168,22 @@ series:
       enable_json_exports: false
       enable_pdf_reports: false
       enable_dashboard_views: false
+  - slug: bay-area-youth-cricket-hub-2026-milc-2026-blc41vvv-ulhfvy3ooajug
+    label: MiLC 2026
+    enabled: true
+    source_system: cricclubs
+    league_name: MiLC
+    season_year: 2026
+    series_url: https://cricclubs.com/MiLC/results?leagueId=4gjH8PVcUeCazKJUkOOrOA&year=2026&series=Blc41vvV_UlHFvY3oOajUg&division=all&seriesName=MiLC+2026
+    source_hints:
+      namespace: MiLC
+      series_id: Blc41vvV_UlHFvY3oOajUg
+    targeting:
+      age_group: Open
+      divisions: []
+    validation_players: []
+    outputs:
+      enable_raw_snapshots: true
+      enable_json_exports: true
+      enable_pdf_reports: false
+      enable_dashboard_views: true

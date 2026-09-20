@@ -23,6 +23,10 @@ function round(value, digits = 2) {
   return Math.round(value * multiplier) / multiplier;
 }
 
+function clamp(value) {
+  return Math.min(1, Math.max(0, toNumber(value)));
+}
+
 function getEventInnings(event) {
   return toNumber(event?.innings ?? event?.inningsNo ?? event?.innings_no);
 }
@@ -147,8 +151,10 @@ function buildPartnerships(innings, ballEvents, playersById = new Map()) {
       batterNames: active.batterIds.map((id) => playersById.get(id) || `Player ${id}`),
       startScore: active.startScore,
       startWickets: active.startWickets,
+      startLegalBalls: active.startLegalBalls,
       endScore: active.endScore,
       endWickets: active.endWickets,
+      endLegalBalls: active.startLegalBalls + active.legalBalls,
       runs: active.endScore - active.startScore,
       legalBalls: active.legalBalls,
       entryRequiredRate: active.innings === 2 && target > 0
@@ -202,15 +208,129 @@ function buildPartnerships(innings, ballEvents, playersById = new Map()) {
   return partnerships;
 }
 
+function partnershipCandidate(partnership, innings) {
+  if (!partnership?.complete || partnership.legalBalls <= 0) return null;
+  const inningsRow = inningsRowFor(innings, partnership.innings);
+  const target = toNumber(inningsRow.targetRuns ?? inningsRow.target_runs);
+  const inningsRuns = toNumber(inningsRow.runs ?? inningsRow.totalRuns ?? inningsRow.total_runs, target);
+  const partnershipRunRate = (partnership.runs * 6) / partnership.legalBalls;
+  const names = partnership.batterNames.join(" and ");
+  const evidenceLabel = `${partnership.runs}-run ${partnership.batterNames.join("–")} partnership`;
+  let type = "target_setting_platform";
+  let requiredRateRelief = 0;
+  let phaseLeverage = clamp(partnership.startLegalBalls / 120);
+
+  if (partnership.innings === 2) {
+    const chaseSucceeded = target > 0 && inningsRuns >= target;
+    const rateDelta = toNumber(partnership.entryRequiredRate) - toNumber(partnership.exitRequiredRate);
+    requiredRateRelief = clamp(rateDelta / Math.max(toNumber(partnership.entryRequiredRate), 1));
+    if (!chaseSucceeded && toNumber(partnership.exitRequiredRate) > toNumber(partnership.entryRequiredRate)) {
+      type = "chase_pressure_partnership";
+    } else if (partnership.startWickets >= RECOVERY_THRESHOLDS.earlyWickets || toNumber(partnership.entryRequiredRate) >= 8.5) {
+      type = "chase_recovery_partnership";
+    } else {
+      type = "front_running_chase";
+    }
+  } else if (partnership.startLegalBalls >= 90) {
+    type = "death_over_surge";
+    phaseLeverage = 1;
+  }
+
+  const baselineRate = inningsRow.legalBalls
+    ? (inningsRuns * 6) / toNumber(inningsRow.legalBalls)
+    : 6;
+  const components = {
+    requiredRateRelief,
+    runRateSwing: clamp((partnershipRunRate - baselineRate + 3) / 9),
+    wicketPreservation: clamp(1 - ((partnership.endWickets - partnership.startWickets) / 3)),
+    inningsShare: clamp(partnership.runs / Math.max(target || inningsRuns, 1)),
+    phaseLeverage,
+  };
+  const impactScore = round(
+    components.requiredRateRelief * 0.30
+    + components.runRateSwing * 0.20
+    + components.wicketPreservation * 0.20
+    + components.inningsShare * 0.15
+    + components.phaseLeverage * 0.15,
+    4
+  );
+
+  return {
+    type,
+    innings: partnership.innings,
+    startBall: partnership.startLegalBalls,
+    endBall: partnership.endLegalBalls,
+    evidenceLabel,
+    statementFacts: {
+      batterNames: partnership.batterNames,
+      names,
+      runs: partnership.runs,
+      legalBalls: partnership.legalBalls,
+      startScore: partnership.startScore,
+      startWickets: partnership.startWickets,
+      endScore: partnership.endScore,
+      endWickets: partnership.endWickets,
+      entryRequiredRate: partnership.entryRequiredRate,
+      exitRequiredRate: partnership.exitRequiredRate,
+    },
+    evidenceRefs: [`partnership:${partnership.innings}:${partnership.startLegalBalls}-${partnership.endLegalBalls}`],
+    confidence: "high",
+    components,
+    impactScore,
+  };
+}
+
+function phaseCandidate(row) {
+  if (!row || row.legalBalls <= 0) return null;
+  let type = null;
+  if (row.wickets >= 5) type = "collapse";
+  else if (row.innings === 2 && row.phase === "middle" && row.wickets >= 3 && row.runRate < 6) type = "middle_overs_squeeze";
+  if (!type) return null;
+  const components = {
+    wicketCluster: clamp(row.wickets / 5),
+    scoringSuppression: clamp((8 - toNumber(row.runRate)) / 8),
+    phaseLeverage: row.phase === "death" ? 1 : row.phase === "middle" ? 0.65 : 0.4,
+  };
+  const impactScore = round(
+    components.wicketCluster * 0.5
+    + components.scoringSuppression * 0.3
+    + components.phaseLeverage * 0.2,
+    4
+  );
+  return {
+    type,
+    innings: row.innings,
+    startBall: row.phase === "powerplay" ? 0 : row.phase === "middle" ? 36 : 90,
+    endBall: row.phase === "powerplay" ? 36 : row.phase === "middle" ? 90 : 120,
+    evidenceLabel: `${row.wickets}-wicket ${row.phase} passage`,
+    statementFacts: { phase: row.phase, runs: row.runs, wickets: row.wickets, runRate: row.runRate },
+    evidenceRefs: [`phase:${row.innings}:${row.phase}`],
+    confidence: "high",
+    components,
+    impactScore,
+  };
+}
+
+function rankTurningPoints(input = {}) {
+  const innings = Array.isArray(input.innings) ? input.innings : [];
+  return [
+    ...(Array.isArray(input.partnerships) ? input.partnerships : []).map((row) => partnershipCandidate(row, innings)),
+    ...(Array.isArray(input.phaseMetrics) ? input.phaseMetrics : []).map(phaseCandidate),
+  ]
+    .filter(Boolean)
+    .sort((left, right) => right.impactScore - left.impactScore || left.innings - right.innings || left.startBall - right.startBall);
+}
+
 function buildT20MatchIntelligence(input = {}) {
   const innings = Array.isArray(input.innings) ? input.innings : [];
   const ballEvents = Array.isArray(input.ballEvents) ? input.ballEvents : [];
   const partnerships = buildPartnerships(innings, ballEvents, input.playersById || new Map());
+  const phaseMetrics = buildPhaseMetrics(ballEvents);
   return {
-    phaseMetrics: buildPhaseMetrics(ballEvents),
+    phaseMetrics,
     partnerships,
     criticalMoments: [],
-    turningPointCandidates: [],
+    turningPointCandidates: rankTurningPoints({ innings, partnerships, phaseMetrics }),
     dataQuality: {
       inningsAvailable: innings.length > 0,
       ballEventsAvailable: ballEvents.length > 0,
@@ -225,5 +345,6 @@ module.exports = {
   buildPartnerships,
   buildPhaseMetrics,
   buildT20MatchIntelligence,
+  rankTurningPoints,
   sortBallEvents,
 };

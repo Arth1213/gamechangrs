@@ -10,6 +10,7 @@ const {
 } = require("../src/analytics/grizzliesMatchEvidence");
 const {
   buildT20MatchIntelligence,
+  rankTurningPoints,
 } = require("../src/analytics/t20MatchIntelligence");
 
 const match = {
@@ -140,6 +141,8 @@ test("reconstructs a recovery partnership and its chase pressure", () => {
     startWickets: 2,
     endScore: 126,
     endWickets: 3,
+    startLegalBalls: 30,
+    endLegalBalls: 92,
     runs: 95,
     legalBalls: 62,
     entryRequiredRate: 9.07,
@@ -175,4 +178,138 @@ test("illegal delivery adds chase runs without consuming a ball", () => {
 
   assert.equal(result.partnerships[0].runs, 7);
   assert.equal(result.partnerships[0].legalBalls, 1);
+});
+
+test("ranks a recovery stand above an isolated winning event", () => {
+  const candidates = rankTurningPoints({
+    innings: [
+      { innings: 1, runs: 166, wickets: 7, legalBalls: 120 },
+      { innings: 2, runs: 167, wickets: 4, legalBalls: 114, targetRuns: 167 },
+    ],
+    partnerships: [{
+      innings: 2,
+      batterIds: [10, 11],
+      batterNames: ["Vivaan Jagtiani", "Bilal Basheer"],
+      startScore: 31,
+      startWickets: 2,
+      endScore: 126,
+      endWickets: 3,
+      startLegalBalls: 30,
+      endLegalBalls: 92,
+      runs: 95,
+      legalBalls: 62,
+      entryRequiredRate: 9.07,
+      exitRequiredRate: 8.79,
+      complete: true,
+    }],
+    phaseMetrics: [],
+  });
+
+  assert.equal(candidates[0].type, "chase_recovery_partnership");
+  assert.match(candidates[0].evidenceLabel, /95-run Vivaan Jagtiani–Bilal Basheer partnership/);
+  assert.equal(candidates[0].components.inningsShare > 0.5, true);
+  assert.equal(candidates[0].evidenceRefs.includes("partnership:2:30-92"), true);
+});
+
+test("classifies front-running, failed-chase, defense, death-surge, and collapse passages", () => {
+  const scenarios = [
+    {
+      name: "front-running chase",
+      input: {
+        innings: [{ innings: 1, runs: 150, legalBalls: 120 }, { innings: 2, runs: 151, wickets: 1, legalBalls: 102, targetRuns: 151 }],
+        partnerships: [{ innings: 2, batterIds: [1, 2], batterNames: ["A", "B"], startScore: 0, startWickets: 0, endScore: 110, endWickets: 1, startLegalBalls: 0, endLegalBalls: 72, runs: 110, legalBalls: 72, entryRequiredRate: 7.55, exitRequiredRate: 5.13, complete: true }],
+        phaseMetrics: [],
+      },
+      expected: "front_running_chase",
+    },
+    {
+      name: "failed chase pressure",
+      input: {
+        innings: [{ innings: 1, runs: 180, legalBalls: 120 }, { innings: 2, runs: 155, wickets: 8, legalBalls: 120, targetRuns: 181 }],
+        partnerships: [{ innings: 2, batterIds: [3, 4], batterNames: ["C", "D"], startScore: 80, startWickets: 4, endScore: 118, endWickets: 6, startLegalBalls: 72, endLegalBalls: 96, runs: 38, legalBalls: 24, entryRequiredRate: 12.63, exitRequiredRate: 15.75, complete: true }],
+        phaseMetrics: [],
+      },
+      expected: "chase_pressure_partnership",
+    },
+    {
+      name: "defended target",
+      input: {
+        innings: [{ innings: 1, runs: 160, legalBalls: 120 }, { innings: 2, runs: 132, wickets: 9, legalBalls: 120, targetRuns: 161 }],
+        partnerships: [],
+        phaseMetrics: [{ innings: 2, phase: "middle", runs: 42, wickets: 4, legalBalls: 54, runRate: 4.67, dotBallRate: 55.56, boundaryRate: 5.56 }],
+      },
+      expected: "middle_overs_squeeze",
+    },
+    {
+      name: "death surge",
+      input: {
+        innings: [{ innings: 1, runs: 190, legalBalls: 120 }],
+        partnerships: [{ innings: 1, batterIds: [5, 6], batterNames: ["E", "F"], startScore: 125, startWickets: 5, endScore: 190, endWickets: 6, startLegalBalls: 90, endLegalBalls: 120, runs: 65, legalBalls: 30, entryRequiredRate: null, exitRequiredRate: null, complete: true }],
+        phaseMetrics: [],
+      },
+      expected: "death_over_surge",
+    },
+    {
+      name: "collapse",
+      input: {
+        innings: [{ innings: 1, runs: 145, wickets: 9, legalBalls: 120 }],
+        partnerships: [],
+        phaseMetrics: [{ innings: 1, phase: "middle", runs: 28, wickets: 5, legalBalls: 54, runRate: 3.11, dotBallRate: 68.52, boundaryRate: 3.7 }],
+      },
+      expected: "collapse",
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    const candidates = rankTurningPoints(scenario.input);
+    assert.equal(candidates.some((candidate) => candidate.type === scenario.expected), true, scenario.name);
+  }
+});
+
+test("v2 summary and turning point use the same recovery evidence", () => {
+  const evidence = {
+    complete: true,
+    analysisModelVersion: "t20-context-v2",
+    match: {
+      id: 2376,
+      resultText: "Silicon Valley Strikers won by 6 wickets",
+    },
+    innings: [
+      { innings: 1, battingTeam: "East Bay Blazers", runs: 166, wickets: 7, legalBalls: 120, runRate: 8.3 },
+      { innings: 2, battingTeam: "Silicon Valley Strikers", runs: 167, wickets: 4, legalBalls: 114, runRate: 8.79 },
+    ],
+    criticalMoments: [],
+    turningPointCandidates: rankTurningPoints({
+      innings: [{ innings: 1, runs: 166, legalBalls: 120 }, { innings: 2, runs: 167, wickets: 4, legalBalls: 114, targetRuns: 167 }],
+      partnerships: [{ innings: 2, batterIds: [10, 11], batterNames: ["Vivaan Jagtiani", "Bilal Basheer"], startScore: 31, startWickets: 2, endScore: 126, endWickets: 3, startLegalBalls: 30, endLegalBalls: 92, runs: 95, legalBalls: 62, entryRequiredRate: 9.07, exitRequiredRate: 8.79, complete: true }],
+      phaseMetrics: [],
+    }),
+    dataQuality: { partnershipIdentitiesAvailable: true },
+  };
+
+  const analysis = buildGrizzliesMatchAnalysis({ evidence });
+  assert.equal(analysis.analysisModelVersion, "t20-context-v2");
+  assert.equal(analysis.turningPoints[0].type, "chase_recovery_partnership");
+  assert.match(analysis.turningPoints[0].statement, /Vivaan Jagtiani and Bilal Basheer/);
+  assert.equal(analysis.matchSummary.includes(analysis.turningPoints[0].evidenceLabel), true);
+});
+
+test("tied match narrative never claims a completed chase", () => {
+  const analysis = buildGrizzliesMatchAnalysis({
+    evidence: {
+      complete: true,
+      analysisModelVersion: "t20-context-v2",
+      match: { id: 90, resultText: "Match tied" },
+      innings: [
+        { innings: 1, battingTeam: "A", runs: 155, wickets: 6, legalBalls: 120, runRate: 7.75 },
+        { innings: 2, battingTeam: "B", runs: 155, wickets: 8, legalBalls: 120, runRate: 7.75 },
+      ],
+      criticalMoments: [],
+      turningPointCandidates: [],
+      dataQuality: { partnershipIdentitiesAvailable: false },
+    },
+  });
+
+  assert.doesNotMatch(analysis.matchSummary, /completed (?:the )?chase/i);
+  assert.match(analysis.matchSummary, /Match tied/);
 });

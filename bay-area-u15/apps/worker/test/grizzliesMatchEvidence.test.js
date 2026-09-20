@@ -1,6 +1,8 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const test = require("node:test");
 
 const {
@@ -312,4 +314,23 @@ test("tied match narrative never claims a completed chase", () => {
 
   assert.doesNotMatch(analysis.matchSummary, /completed (?:the )?chase/i);
   assert.match(analysis.matchSummary, /Match tied/);
+});
+
+test("report versioning migration preserves legacy output and keys candidates by model", () => {
+  const migrationPath = path.resolve(
+    __dirname,
+    "../../../../supabase/migrations/20260920220000_version_grizzlies_match_analysis.sql",
+  );
+  const sql = fs.readFileSync(migrationPath, "utf8");
+  const compactSql = sql.replace(/\s+/g, " ");
+
+  assert.match(sql, /add column if not exists analysis_model_version text/i);
+  assert.match(sql, /set analysis_model_version = 'legacy-v1'/i);
+  assert.match(sql, /alter column analysis_model_version set not null/i);
+  assert.match(sql, /drop constraint/i);
+  assert.match(sql, /unique\s*\(series_id, match_id, report_type, analysis_model_version\)/i);
+  assert.match(
+    compactSql,
+    /\(\s*series_id, match_id, status, published_at desc nulls last, reviewed_at desc nulls last\s*\)/i,
+  );
 });

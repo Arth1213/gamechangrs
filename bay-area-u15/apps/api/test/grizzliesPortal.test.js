@@ -4,7 +4,12 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const { requireGrizzliesPortalAccess } = require("../src/lib/auth");
-const { getConfiguredPlayerId, getThreatTone } = require("../src/services/grizzliesPortalService");
+const {
+  getConfiguredPlayerId,
+  getThreatTone,
+  mapGrizzliesWestFixtures,
+  isGrizzliesMatchAnalysisAvailable,
+} = require("../src/services/grizzliesPortalService");
 
 test("Grizzlies portal accepts an approved Gmail address regardless of casing", async () => {
   const req = { cricketActor: { userId: "user-1", email: "NIRAVSH@GMAIL.COM" } };
@@ -38,4 +43,73 @@ test("Grizzlies portal rejects authenticated users outside the allow-list", asyn
     () => requireGrizzliesPortalAccess({ cricketActor: { userId: "user-2", email: "other@example.com" } }),
     { message: "You do not have access to Grizzlies 2026 Analytics.", statusCode: 403 }
   );
+});
+
+test("portal lists every West fixture but exposes analysis only for reviewed fact-complete matches", () => {
+  const fixtures = mapGrizzliesWestFixtures([
+    {
+      id: 42,
+      source_match_id: "west-completed",
+      division_label: "West",
+      match_date: "2026-09-19",
+      team1_name: "Silicon Valley Strikers",
+      team2_name: "East Bay Blazers",
+      match_status: "completed",
+      result_text: "Silicon Valley Strikers won by 6 wickets",
+      parse_status: "parsed",
+      analytics_status: "computed",
+      ball_event_count: 244,
+      report_status: "reviewed",
+    },
+    {
+      id: 43,
+      source_match_id: "west-scheduled",
+      division_label: "West",
+      match_date: "2026-09-26",
+      team1_name: "San Ramon Grizzlies",
+      team2_name: "Silicon Valley Strikers",
+      match_status: "scheduled",
+      result_text: null,
+      parse_status: "pending",
+      analytics_status: "pending",
+      ball_event_count: 0,
+      report_status: null,
+    },
+    {
+      id: 44,
+      source_match_id: "central-completed",
+      division_label: "Central",
+      match_date: "2026-09-19",
+      team1_name: "Dallas Xforia Giants",
+      team2_name: "MetroPlex",
+      match_status: "completed",
+      result_text: "Dallas Xforia Giants won",
+      parse_status: "parsed",
+      analytics_status: "computed",
+      ball_event_count: 200,
+      report_status: "reviewed",
+    },
+    {
+      id: 45,
+      source_match_id: "west-incomplete",
+      division_label: "West",
+      match_date: "2026-09-27",
+      team1_name: "Team A",
+      team2_name: "Team B",
+      match_status: "completed",
+      result_text: "Team A won",
+      parse_status: "skipped",
+      analytics_status: "pending",
+      ball_event_count: 0,
+      report_status: "reviewed",
+    },
+  ]);
+
+  assert.equal(fixtures.length, 3);
+  assert.deepEqual(fixtures.map((fixture) => fixture.matchId), [42, 43, 45]);
+  assert.equal(fixtures[0].report.path, "/analytics/grizzlies/2026/matches/42");
+  assert.equal(fixtures[1].report.path, null);
+  assert.equal(fixtures[2].report.path, null);
+  assert.equal(isGrizzliesMatchAnalysisAvailable(fixtures[0]), true);
+  assert.equal(isGrizzliesMatchAnalysisAvailable(fixtures[2]), false);
 });

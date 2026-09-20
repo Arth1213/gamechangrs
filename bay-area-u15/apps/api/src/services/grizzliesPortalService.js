@@ -28,6 +28,60 @@ function getThreatTone(input) {
   return "green";
 }
 
+function normalizePortalText(value) {
+  return String(value || "").trim();
+}
+
+function isWestDivision(value) {
+  return /\bwest\b/i.test(normalizePortalText(value));
+}
+
+function isGrizzliesMatchAnalysisAvailable(input) {
+  const status = normalizePortalText(input?.status || input?.match_status).toLowerCase();
+  const parseStatus = normalizePortalText(input?.parseStatus || input?.parse_status).toLowerCase();
+  const analyticsStatus = normalizePortalText(input?.analyticsStatus || input?.analytics_status).toLowerCase();
+  const reportStatus = normalizePortalText(input?.report?.status || input?.reportStatus || input?.report_status).toLowerCase();
+  const ballEventCount = Number(input?.ballEventCount ?? input?.ball_event_count);
+
+  return status === "completed"
+    && parseStatus === "parsed"
+    && analyticsStatus === "computed"
+    && Number.isFinite(ballEventCount)
+    && ballEventCount > 0
+    && (reportStatus === "reviewed" || reportStatus === "published");
+}
+
+function mapGrizzliesWestFixtures(rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => isWestDivision(row?.division_label || row?.divisionLabel))
+    .map((row) => {
+      const matchId = Number(row.id ?? row.matchId);
+      const status = normalizePortalText(row.match_status || row.status).toLowerCase() || "unavailable";
+      const reportStatus = normalizePortalText(row.report_status || row.reportStatus).toLowerCase() || "unavailable";
+      const fixture = {
+        matchId,
+        sourceMatchId: normalizePortalText(row.source_match_id || row.sourceMatchId),
+        startsAt: row.match_date || row.startsAt || null,
+        dateLabel: normalizePortalText(row.match_date || row.dateLabel),
+        venue: normalizePortalText(row.venue) || null,
+        homeTeam: normalizePortalText(row.team1_name || row.homeTeam),
+        awayTeam: normalizePortalText(row.team2_name || row.awayTeam),
+        divisionLabel: normalizePortalText(row.division_label || row.divisionLabel),
+        status,
+        resultText: normalizePortalText(row.result_text || row.resultText) || null,
+        scoreline: normalizePortalText(row.scoreline) || null,
+        parseStatus: normalizePortalText(row.parse_status || row.parseStatus),
+        analyticsStatus: normalizePortalText(row.analytics_status || row.analyticsStatus),
+        ballEventCount: Number(row.ball_event_count ?? row.ballEventCount) || 0,
+        report: { status: reportStatus, path: null },
+      };
+      if (isGrizzliesMatchAnalysisAvailable(fixture)) {
+        fixture.report.path = `/analytics/grizzlies/2026/matches/${matchId}`;
+      }
+      return fixture;
+    });
+}
+
 async function loadPlayerFacts(config) {
   const playerIds = [...new Set(
     Object.values(config?.roster || {})
@@ -98,4 +152,10 @@ async function getGrizzliesPortalPayload() {
   };
 }
 
-module.exports = { getConfiguredPlayerId, getGrizzliesPortalPayload, getThreatTone };
+module.exports = {
+  getConfiguredPlayerId,
+  getGrizzliesPortalPayload,
+  getThreatTone,
+  isGrizzliesMatchAnalysisAvailable,
+  mapGrizzliesWestFixtures,
+};

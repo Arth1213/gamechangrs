@@ -170,7 +170,7 @@ function selectVisibleGrizzliesReportRow(rows) {
 function resolveGrizzliesMatchSummary(reportRow, fallbackInput) {
   const modelVersion = normalizePortalText(reportRow?.analysis_model_version || reportRow?.analysisModelVersion);
   const storedSummary = normalizePortalText(reportRow?.analysis_json?.matchSummary || reportRow?.analysis?.matchSummary);
-  return /^t20-context-v[23]$/.test(modelVersion) && storedSummary
+  return /^t20-context-v[234]$/.test(modelVersion) && storedSummary
     ? storedSummary
     : buildGrizzliesMatchSummary(fallbackInput);
 }

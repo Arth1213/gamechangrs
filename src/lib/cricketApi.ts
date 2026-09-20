@@ -191,6 +191,25 @@ export type CricketGrizzliesTurningPoint = {
   };
 };
 
+export type CricketTacticalClaim = { title: string; observation: string; action: string; team?: string; confidence?: string; evidenceRefs: string[]; classification?: string; bullets?: string[] };
+export type CricketTacticalGamePlan = {
+  asOfDate: string;
+  rosterBasis: string;
+  sourceMatchIds: number[];
+  bowlingPlan: CricketTacticalClaim[];
+  strikeBowlers?: CricketTacticalClaim[];
+  dotBallPressure?: CricketTacticalClaim[];
+  phaseBattingThreats?: CricketTacticalClaim[];
+  battingScenarios: CricketTacticalClaim[];
+  matchPassages: CricketTacticalClaim[];
+  fieldPlans: CricketTacticalClaim[];
+  oppositionBowling: CricketTacticalClaim[];
+  partnershipDefinition: string;
+  partnershipPlans: CricketTacticalClaim[];
+  directMatchups: Array<{ team: string; batter: string; bowler: string; runs: number; balls: number; wickets: number; strikeRate: number; confidence: string }>;
+  limitations: string[];
+};
+
 export type CricketGrizzliesMatchAnalysisResponse = {
   match: {
     matchId: number;
@@ -235,6 +254,7 @@ export type CricketGrizzliesMatchAnalysisResponse = {
     }>;
   };
   analysis: {
+    tacticalGamePlan?: CricketTacticalGamePlan;
     analysisModelVersion?: string;
     matchSummary?: string;
     strengths?: Array<{ team?: string; statement?: string; confidence?: string }>;

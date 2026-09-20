@@ -308,7 +308,7 @@ test("current summary and turning point use the same recovery evidence", () => {
   };
 
   const analysis = buildGrizzliesMatchAnalysis({ evidence });
-  assert.equal(analysis.analysisModelVersion, "t20-context-v3");
+  assert.equal(analysis.analysisModelVersion, "t20-context-v4");
   assert.equal(analysis.turningPoints[0].type, "chase_recovery_partnership");
   assert.match(analysis.turningPoints[0].statement, /Vivaan Jagtiani and Bilal Basheer/);
   assert.equal(analysis.matchSummary.includes(analysis.turningPoints[0].evidenceLabel), true);
@@ -413,7 +413,7 @@ test("v3 analysis supplies verified team narratives and Grizzlies actions", () =
     ],
   });
 
-  assert.equal(analysis.analysisModelVersion, "t20-context-v3");
+  assert.equal(analysis.analysisModelVersion, "t20-context-v4");
   assert.deepEqual(analysis.strengths.map((item) => item.team), ["East Bay Blazers", "Silicon Valley Strikers"]);
   assert.deepEqual(analysis.weaknesses.map((item) => item.team), ["East Bay Blazers", "Silicon Valley Strikers"]);
   assert.equal(analysis.strengths.every((item) => item.statement.length > 80), true);

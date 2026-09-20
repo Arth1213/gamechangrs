@@ -7,7 +7,17 @@ const {
   ANALYSIS_MODEL_VERSION,
   generateGrizzliesMatchAnalysis,
   reviewGrizzliesMatchAnalysis,
+  buildCandidate,
 } = require("../src/ops/grizzliesMatchAnalysis");
+
+test("candidate carries auditable tactics and invalidates checksum when scouting history changes", () => {
+  const target = eligibleRow({ match_date: "2026-09-18" });
+  const before = buildCandidate(target, { contextMatches: [], asOfDate: "2026-09-20" });
+  const after = buildCandidate(target, { contextMatches: [eligibleRow({ match_id: 425, match_date: "2025-09-01" })], asOfDate: "2026-09-20" });
+  assert.ok(after.analysis.tacticalGamePlan);
+  assert.deepEqual(after.analysis.tacticalGamePlan.sourceMatchIds, [2376, 425]);
+  assert.notEqual(before.checksum, after.checksum);
+});
 
 function event(index, overrides = {}) {
   return {
@@ -155,6 +165,13 @@ test("dry-run returns a complete v2 candidate without writes", async () => {
   assert.equal(result.generated[0].analysisModelVersion, ANALYSIS_MODEL_VERSION);
   assert.equal(result.generated[0].evidence.complete, true);
   assert.equal(client.writes.length, 0);
+});
+
+test("generator preserves supplied scouting context and as-of date", async () => {
+  const client = new FakeClient([eligibleRow({ match_date: "2026-09-18" })]);
+  const result = await generateGrizzliesMatchAnalysis({ seriesConfigKey: "milc-2026", client, dryRun: true, asOfDate: "2026-09-20", contextMatches: [eligibleRow({ match_id: 425, match_date: "2025-09-01" })] });
+  assert.deepEqual(result.generated[0].analysis.tacticalGamePlan.sourceMatchIds, [2376,425]);
+  assert.equal(result.generated[0].analysis.tacticalGamePlan.asOfDate, "2026-09-20");
 });
 
 test("generation is idempotent by checksum and model while legacy remains published", async () => {

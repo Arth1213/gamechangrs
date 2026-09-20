@@ -4,8 +4,12 @@ const {
   ANALYSIS_MODEL_VERSION,
   buildGrizzliesMatchAnalysis,
   buildGrizzliesMatchEvidence,
+  calculateEvidenceChecksum,
 } = require("../analytics/grizzliesMatchEvidence");
 const { normalizePersistedBallEvents } = require("../analytics/t20MatchIntelligence");
+const { buildTacticalPlan, normalizeRunEvidence } = require("../analytics/t20TacticalIntelligence");
+const { loadGrizzliesPortalConfig } = require("./playerIdentityOverrides");
+const path = require("node:path");
 const { withClient, withTransaction } = require("../lib/db");
 
 const REPORT_TYPE = "grizzlies_match_analysis";
@@ -34,6 +38,7 @@ async function loadMatchEvidenceRows(client, { seriesConfigKey, matchIds }) {
         s.id as series_id,
         m.id as match_id,
         m.source_match_id,
+        m.match_date,
         m.status as match_status,
         m.result_text,
         d.source_label as division_label,
@@ -48,7 +53,8 @@ async function loadMatchEvidenceRows(client, { seriesConfigKey, matchIds }) {
             'runs', i.total_runs,
             'wickets', i.wickets,
             'legalBalls', i.legal_balls,
-            'targetRuns', i.target_runs
+            'targetRuns', i.target_runs,
+            'extras', i.extras_total
           ) order by i.innings_no)
           from public.innings i
           join public.team batting_team on batting_team.id = i.batting_team_id
@@ -101,6 +107,10 @@ async function loadMatchEvidenceRows(client, { seriesConfigKey, matchIds }) {
             'bowlerPlayerId', be.bowler_player_id,
             'playerOutId', be.player_out_id,
             'batterRuns', be.batter_runs,
+            'extras', be.extras,
+            'extraType', be.extra_type,
+            'dismissalType', be.dismissal_type,
+            'wicketCreditedToBowler', be.wicket_credited_to_bowler,
             'runs', be.total_runs,
             'legal', be.is_legal_ball,
             'wicket', be.wicket_flag,
@@ -150,10 +160,10 @@ function eligibilityReason(row, divisionLabel) {
   return null;
 }
 
-function buildCandidate(row) {
+function buildCandidate(row, options = {}) {
   const innings = asArray(row.innings_json);
   const batting = asArray(row.batting_json);
-  const ballEvents = normalizePersistedBallEvents(asArray(row.ball_events_json), batting);
+  const ballEvents = normalizePersistedBallEvents(asArray(row.ball_events_json).map(normalizeRunEvidence), batting);
   const bowling = asArray(row.bowling_json);
   const players = asArray(row.players_json);
   const playersById = new Map(players.map((player) => [Number(player.id), String(player.displayName || player.display_name || "")]));
@@ -170,6 +180,8 @@ function buildCandidate(row) {
   };
   const evidence = buildGrizzliesMatchEvidence({ match, innings, batting, bowling, ballEvents, playersById });
   const analysis = buildGrizzliesMatchAnalysis({ evidence, batting, bowling });
+  analysis.tacticalGamePlan = buildTacticalPlan({ opponentMatch: row, contextMatches: options.contextMatches || [], asOfDate: options.asOfDate || row.match_date, currentPlayerNames: options.currentPlayerNames });
+  evidence.checksum = calculateEvidenceChecksum({ matchChecksum: evidence.checksum, tactics: analysis.tacticalGamePlan, batting, bowling });
   return {
     seriesId: Number(row.series_id),
     matchId: Number(row.match_id),
@@ -179,6 +191,34 @@ function buildCandidate(row) {
     evidence,
     analysis,
   };
+}
+
+async function loadTacticalContext(client, options, targetRows) {
+  if (options.contextMatches) return options.contextMatches;
+  const config = loadGrizzliesPortalConfig(path.resolve(__dirname, "../../../../../config/grizzlies-2026-portal.yaml"));
+  if (options.seriesConfigKey !== config.portal.milcSeriesConfigKey) return targetRows;
+  const keys = [options.seriesConfigKey, ...(config.portal.milcHistorySeriesConfigKeys || [])];
+  const teamNames = Object.keys(config.roster || {});
+  const names = (config.roster?.["San Ramon Grizzlies"] || []).map(r => String(r[0]).toLowerCase());
+  const ids = await client.query(`
+    /* grizzlies-match-analysis:context-ids */
+    select distinct c.config_key, m.id
+    from public.series_source_config c join public.match m on m.series_id = c.series_id
+    join public.team t1 on t1.id = m.team1_id join public.team t2 on t2.id = m.team2_id
+    where c.config_key = any($1::text[]) and lower(m.status) = 'completed'
+      and m.match_date < $2::date + interval '1 day'
+      and (t1.display_name = any($3::text[]) or t2.display_name = any($3::text[])
+        or exists (select 1 from public.batting_innings bi join public.player p on p.id = bi.player_id
+          where bi.match_id = m.id and lower(p.display_name) = any($4::text[])))
+    order by c.config_key, m.id
+  `, [keys, options.asOfDate, teamNames, names]);
+  const result = [];
+  // Bounded, offline generation only. Never fetch history on the report GET path.
+  for (const key of keys) {
+    const matchIds = ids.rows.filter(r => r.config_key === key).map(r => Number(r.id));
+    if (matchIds.length) result.push(...await loadMatchEvidenceRows(client, { seriesConfigKey: key, matchIds }));
+  }
+  return result;
 }
 
 async function persistCandidate(client, candidate) {
@@ -233,6 +273,7 @@ async function persistCandidate(client, candidate) {
 
 async function generateWithClient(client, options) {
   const rows = await loadMatchEvidenceRows(client, options);
+  const contextMatches = rows.some(r => !eligibilityReason(r, options.divisionLabel)) ? await loadTacticalContext(client, options, rows) : [];
   const generated = [];
   const rejected = [];
   for (const row of rows) {
@@ -241,7 +282,7 @@ async function generateWithClient(client, options) {
       rejected.push({ matchId: Number(row.match_id), sourceMatchId: row.source_match_id || null, reason });
       continue;
     }
-    const candidate = buildCandidate(row);
+    const candidate = buildCandidate(row, { ...options, contextMatches });
     if (options.dryRun === true) {
       generated.push({ ...candidate, status: "dry_run" });
       continue;
@@ -258,6 +299,7 @@ async function generateWithClient(client, options) {
     divisionLabel: options.divisionLabel,
     analysisModelVersion: ANALYSIS_MODEL_VERSION,
     dryRun: options.dryRun === true,
+    asOfDate: options.asOfDate || new Date().toISOString().slice(0,10),
     generated,
     rejected,
   };
@@ -270,6 +312,9 @@ async function generateGrizzliesMatchAnalysis(options = {}) {
     divisionLabel: String(options.divisionLabel || "West").trim(),
     matchIds: toMatchIdList(options.matchIds),
     dryRun: options.dryRun === true,
+    asOfDate: options.asOfDate || new Date().toISOString().slice(0,10),
+    contextMatches: options.contextMatches,
+    currentPlayerNames: options.currentPlayerNames,
   };
   if (options.client) return generateWithClient(options.client, normalized);
   return withClient((client) => generateWithClient(client, normalized));
@@ -391,6 +436,8 @@ async function reviewGrizzliesMatchAnalysis(options = {}) {
 module.exports = {
   ANALYSIS_MODEL_VERSION,
   REPORT_TYPE,
+  loadMatchEvidenceRows,
+  buildCandidate,
   generateGrizzliesMatchAnalysis,
   reviewGrizzliesMatchAnalysis,
 };

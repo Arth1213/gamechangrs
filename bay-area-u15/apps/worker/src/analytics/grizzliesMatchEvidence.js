@@ -3,7 +3,7 @@
 const crypto = require("node:crypto");
 const { buildT20MatchIntelligence } = require("./t20MatchIntelligence");
 
-const ANALYSIS_MODEL_VERSION = "t20-context-v3";
+const ANALYSIS_MODEL_VERSION = "t20-context-v4";
 
 function toNumber(value) {
   const number = Number(value);
@@ -301,7 +301,7 @@ function buildGrizzliesMatchAnalysis(input) {
     ? teamNarratives.filter((item) => !/san ramon grizzlies/i.test(item.team))
     : teamNarratives;
   return {
-    schemaVersion: "grizzlies-match-analysis-v3",
+    schemaVersion: "grizzlies-match-analysis-v4",
     analysisModelVersion: ANALYSIS_MODEL_VERSION,
     grizzliesParticipated: evidence.grizzliesParticipated,
     strengths: teamNarratives.map((item) => item.strength),

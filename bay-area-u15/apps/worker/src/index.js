@@ -138,6 +138,7 @@ async function main() {
       divisionLabel: args.division || args.divisionLabel || "West",
       matchIds: parseListArg(args.matchIds || args["match-ids"] || args.matchId || args["match-id"]),
       dryRun: parseBooleanArg(args.dryRun ?? args["dry-run"], false),
+      asOfDate: args["as-of"] || args.asOfDate,
     });
     console.log(JSON.stringify(result, null, 2));
     return;

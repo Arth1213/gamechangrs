@@ -218,9 +218,9 @@ test("generated v2 remains hidden until published and visible selection is deter
   assert.equal(selectVisibleGrizzliesReportRow([legacy, publishedV2]).id, 2);
 });
 
-test("v2 detail uses its stored summary and never rebuilds the legacy narrative", () => {
+test("v4 detail uses its stored tactical summary and never rebuilds the legacy narrative", () => {
   const row = {
-    analysis_model_version: "t20-context-v2",
+    analysis_model_version: "t20-context-v4",
     analysis_json: { matchSummary: "A verified partnership decided this chase." },
   };
   const summary = resolveGrizzliesMatchSummary(row, {

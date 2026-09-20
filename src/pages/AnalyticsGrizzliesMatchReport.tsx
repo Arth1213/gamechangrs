@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/contexts/AuthContext";
 import { CricketGrizzliesMatchAnalysisResponse, fetchGrizzliesMatchAnalysis } from "@/lib/cricketApi";
 import { formatGrizzliesMatchScores } from "@/lib/grizzliesMatchPresentation";
+import { GrizzliesTacticalPlan } from "@/components/GrizzliesTacticalPlan";
 
 function ClaimList({ items }: { items?: Array<{ team?: string; statement?: string; confidence?: string }> }) {
   if (!items?.length) return <p className="text-sm text-muted-foreground">Insufficient verified evidence for this section.</p>;
@@ -102,6 +103,7 @@ export default function AnalyticsGrizzliesMatchReport() {
               <div className="mb-3"><p className="text-xs font-semibold uppercase tracking-[.2em] text-emerald-300">AI Insights</p><h2 className="font-display text-2xl">Team strengths, risks, and Grizzlies actions</h2></div>
               <div className="space-y-5"><div className="grid gap-5 lg:grid-cols-2">{teams.map((team) => <TeamHero key={team} team={team} strength={claim(report.analysis.strengths, team)} weakness={claim(report.analysis.weaknesses, team)} />)}</div><div className="grid gap-5 lg:grid-cols-2"><Card><CardHeader><CardTitle>Critical Moments</CardTitle></CardHeader><CardContent><p className="font-medium leading-7 text-white/90">{report.analysis.criticalMomentNarrative || "A verified critical-moment narrative is not available for this report version."}</p></CardContent></Card><Card><CardHeader><CardTitle>Turning Points</CardTitle></CardHeader><CardContent><ClaimList items={report.analysis.turningPoints} /></CardContent></Card><Card><CardHeader><CardTitle>Grizzlies Watch-out</CardTitle></CardHeader><CardContent><ClaimList items={report.analysis.grizzliesWatchOut} /></CardContent></Card><Card><CardHeader><CardTitle>Grizzlies Game Plan</CardTitle></CardHeader><CardContent><ClaimList items={report.analysis.grizzliesGamePlan} /></CardContent></Card></div></div>
             </section>
+            <GrizzliesTacticalPlan plan={report.analysis.tacticalGamePlan} />
             <p className="text-xs text-muted-foreground">Evidence checksum: {report.sourceDataChecksum.slice(0, 12)} · Reviewed analysis only.</p>
           </ReportFrame>
         ) : null}

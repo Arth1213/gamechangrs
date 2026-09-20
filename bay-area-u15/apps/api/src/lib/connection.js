@@ -5,6 +5,13 @@ const { loadEnvFile } = require("./env");
 loadEnvFile(path.resolve(process.cwd(), ".env"));
 
 let sharedPool = null;
+const DEFAULT_DATABASE_CONNECT_TIMEOUT_MS = 10_000;
+const DEFAULT_DATABASE_QUERY_TIMEOUT_MS = 15_000;
+
+function getTimeout(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : fallback;
+}
 
 function getDatabaseUrl() {
   const value = process.env.DATABASE_URL;
@@ -35,6 +42,11 @@ function getPool() {
     sharedPool = new Pool({
       connectionString: getDatabaseUrl(),
       ssl: getSslConfig(),
+      connectionTimeoutMillis: getTimeout(
+        process.env.DATABASE_CONNECT_TIMEOUT_MS,
+        DEFAULT_DATABASE_CONNECT_TIMEOUT_MS
+      ),
+      query_timeout: getTimeout(process.env.DATABASE_QUERY_TIMEOUT_MS, DEFAULT_DATABASE_QUERY_TIMEOUT_MS),
     });
   }
 

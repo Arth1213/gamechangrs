@@ -6,6 +6,40 @@ const YAML = require("yaml");
 const { withClient, resolveSeriesContext } = require("./seriesService");
 
 const CONFIG_PATH = path.resolve(__dirname, "../../../../../config/grizzlies-2026-portal.yaml");
+const DEFAULT_PORTAL_PHASE_TIMEOUT_MS = 12_000;
+
+function getPortalPhaseTimeoutMs() {
+  const configured = Number(process.env.GRIZZLIES_PORTAL_TIMEOUT_MS);
+  return Number.isFinite(configured) && configured > 0
+    ? Math.trunc(configured)
+    : DEFAULT_PORTAL_PHASE_TIMEOUT_MS;
+}
+
+function withPortalPhaseTimeout(phase, promise, timeoutMs = getPortalPhaseTimeoutMs()) {
+  const startedAt = Date.now();
+  let timer = null;
+  const operation = Promise.resolve(promise);
+
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error(`Grizzlies portal ${phase} timed out. Retry shortly.`);
+      error.statusCode = 503;
+      error.code = "grizzlies_portal_timeout";
+      reject(error);
+    }, timeoutMs);
+  });
+
+  return Promise.race([operation, timeout])
+    .then((result) => {
+      console.info(`[grizzlies-portal] ${phase} completed in ${Date.now() - startedAt}ms`);
+      return result;
+    })
+    .catch((error) => {
+      console.error(`[grizzlies-portal] ${phase} failed after ${Date.now() - startedAt}ms:`, error);
+      throw error;
+    })
+    .finally(() => clearTimeout(timer));
+}
 
 function loadPortalConfig() {
   return YAML.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
@@ -147,7 +181,7 @@ async function getGrizzliesMatchAnalysis(matchId) {
     throw error;
   }
 
-  return withClient(async (client) => {
+  return withPortalPhaseTimeout("match analysis", withClient(async (client) => {
     const context = await resolveSeriesContext(client, seriesConfigKey, { ensureReportProfile: false });
     if (!context?.seriesId) {
       const error = new Error("Grizzlies match analysis was not found.");
@@ -216,7 +250,7 @@ async function getGrizzliesMatchAnalysis(matchId) {
       reviewedAt: row.reviewed_at || null,
       publishedAt: row.published_at || null,
     };
-  });
+  }));
 }
 
 async function loadPlayerFacts(config) {
@@ -254,7 +288,7 @@ async function loadPlayerFacts(config) {
 async function getGrizzliesPortalPayload() {
   const config = loadPortalConfig();
   const seriesConfigKey = config.portal.nccaSeriesConfigKey;
-  const playerFacts = await loadPlayerFacts(config);
+  const playerFacts = await withPortalPhaseTimeout("roster facts", loadPlayerFacts(config));
   const [teams, aiMatchAnalysis] = await Promise.all([
     Promise.resolve(Object.entries(config.roster || {}).map(([teamName, roster]) => ({
     name: teamName,
@@ -281,7 +315,7 @@ async function getGrizzliesPortalPayload() {
       };
     }),
     }))),
-    loadGrizzliesWestFixtures(config),
+    withPortalPhaseTimeout("West Division fixtures", loadGrizzliesWestFixtures(config)),
   ]);
 
   return {
@@ -301,4 +335,5 @@ module.exports = {
   loadGrizzliesWestFixtures,
   isGrizzliesMatchAnalysisAvailable,
   mapGrizzliesWestFixtures,
+  withPortalPhaseTimeout,
 };

@@ -9,6 +9,7 @@ const {
   getThreatTone,
   mapGrizzliesWestFixtures,
   isGrizzliesMatchAnalysisAvailable,
+  withPortalPhaseTimeout,
 } = require("../src/services/grizzliesPortalService");
 
 test("Grizzlies portal accepts an approved Gmail address regardless of casing", async () => {
@@ -112,4 +113,11 @@ test("portal lists every West fixture but exposes analysis only for reviewed fac
   assert.equal(fixtures[2].report.path, null);
   assert.equal(isGrizzliesMatchAnalysisAvailable(fixtures[0]), true);
   assert.equal(isGrizzliesMatchAnalysisAvailable(fixtures[2]), false);
+});
+
+test("portal phase timeout returns a clear retryable error instead of waiting forever", async () => {
+  await assert.rejects(
+    () => withPortalPhaseTimeout("West Division fixtures", new Promise(() => {}), 10),
+    { message: "Grizzlies portal West Division fixtures timed out. Retry shortly.", statusCode: 503, code: "grizzlies_portal_timeout" }
+  );
 });

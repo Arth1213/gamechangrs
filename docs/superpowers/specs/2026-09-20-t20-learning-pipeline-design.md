@@ -25,6 +25,22 @@ Use supervised statistical models with chronological evaluation, immutable recom
 
 Retrieval of previous reports is useful for displaying prior advice but is not model learning. Fine-tuning a language model on generated reports risks reproducing unverified claims and does not establish tactical accuracy. Reinforcement learning is not the initial approach: the available scorecards do not record outcomes for unchosen bowlers or batting orders, nor randomize coaching choices.
 
+## Read-only source readiness audit
+
+Queried the authorized analytics database at `2026-09-21T00:58:53.843Z` (September 20 local time). No production writes. Scope was the two configured MiLC series, metadata plus batting/bowling player identities; this was not a ball-by-ball reconciliation audit.
+
+| Inventory | MiLC 2025 | MiLC 2026 |
+| --- | ---: | ---: |
+| Completed, parsed, computed matches | 139 | 20 |
+| Completed but parsing skipped | 5 | 2 |
+| Scheduled matches | 0 | 2 |
+
+The 159 metadata-eligible matches cover 24 dates in 2025 and three dates in 2026. Every scoped match has a match date but no `match_datetime`; same-date grouping is therefore mandatory. The 2026 candidate block has one match on September 17, eight on September 18, and eleven on September 19. Do not choose splits by looking at their eventual model performance, and do not claim these metadata counts establish usable training labels.
+
+Across scoped scorecards, 802 distinct database player rows collapse to 654 normalized display names. All have a nonblank source player ID, but those IDs include legacy numeric IDs, newer opaque IDs and synthetic placeholders. For example, Carmi Le Roux and Aarnav Iyer each appear under three database IDs. This is evidence of identity-linkage work, not proof every matching name is the same person. Synthetic IDs must not be treated as verified external identifiers. The initial crosswalk must explicitly distinguish source-confirmed links, candidate links, and unresolved collisions.
+
+Receipts: `/Users/artharun/.codex/visualizations/2026/09/07/01a079c5-457f-79f2-981f-74c75b543fa4/grizzlies-east-bay/ml-readiness.json`; reproducible read-only query script: `/private/tmp/grizzlies-ml-readiness.cjs`. The existing bundled Python runtime has NumPy/pandas but not scikit-learn or pytest; the trainer requires an isolated, pinned dependency environment rather than assuming those dependencies exist.
+
 ## Data contract and identity
 
 Use verified MiLC 2025 and 2026 source matches, not just the two displayed reports. Scope the training inventory explicitly and record included/excluded matches and reasons. Reuse bounded reads and local versioned exports; no training or full-history scans on the report GET path.

@@ -41,6 +41,24 @@ Across scoped scorecards, 802 distinct database player rows collapse to 654 norm
 
 Receipts: `/Users/artharun/.codex/visualizations/2026/09/07/01a079c5-457f-79f2-981f-74c75b543fa4/grizzlies-east-bay/ml-readiness.json`; reproducible read-only query script: `/private/tmp/grizzlies-ml-readiness.cjs`. The existing bundled Python runtime has NumPy/pandas but not scikit-learn or pytest; the trainer requires an isolated, pinned dependency environment rather than assuming those dependencies exist.
 
+### Ball-event reconciliation follow-up
+
+At `2026-09-21T01:29:46.683Z`, exported all 159 candidates in bounded batches inside a read-only repeatable-read transaction and ran the existing `buildMatchProfile` reconciliation locally. The export contains 36,263 source events. Source snapshot SHA-256: `c08cf3764a6d5cde4e59119f380e6ad5706b2e5d107a5a6ebcf18a920a97e81f`.
+
+| Current reconciliation result | 2025 | 2026 |
+| --- | ---: | ---: |
+| Shortened/incomplete-first-innings exclusions | 11 | 2 |
+| Standard matches with at least one reconciled innings | 123 | 18 |
+| Standard matches with both innings reconciled | 85 | 15 |
+| Standard reconciled innings | 208 | 33 |
+| Complete overs within those innings | 3,895 | 599 |
+| Reconciled batter profiles within those innings | 1,714 | 251 |
+| Reconciled bowler profiles within those innings | 1,280 | 202 |
+
+No duplicate `(innings, eventIndex)` keys or missing event indexes were observed within these exported matches. These checks use the current scouting normalizer, including its explicit commentary repairs; they are not independent proof of all source semantics. The 4,494 complete overs are candidates, not finalized training rows: bowler eligibility, within-over substitutions, source-identity resolution, feature cutoffs, and target-specific checks remain necessary. Do not discard a valid innings solely because the other innings fails, but keep the entire match/date together for evaluation splitting.
+
+The source snapshot is saved privately as `ml-source-snapshot.json` and the per-match results as `ml-reconciliation-audit.json` alongside the readiness receipt. Reproduction script: `/private/tmp/grizzlies-ml-reconciliation.cjs`. No production records were changed and no model was trained.
+
 ## Data contract and identity
 
 Use verified MiLC 2025 and 2026 source matches, not just the two displayed reports. Scope the training inventory explicitly and record included/excluded matches and reasons. Reuse bounded reads and local versioned exports; no training or full-history scans on the report GET path.

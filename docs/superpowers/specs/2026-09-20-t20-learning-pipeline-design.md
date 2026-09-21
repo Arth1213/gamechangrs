@@ -1,6 +1,6 @@
 # T20 learning pipeline and professional report presentation
 
-Status: proposed design for user review; not implemented or validated ML.
+Status: design approved by the user on 2026-09-20. Implementation planning follows; no trained model or new presentation implementation is claimed by this approval.
 
 ## User objective
 

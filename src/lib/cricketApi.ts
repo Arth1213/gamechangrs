@@ -254,6 +254,7 @@ export type CricketGrizzliesMatchAnalysisResponse = {
     }>;
   };
   analysis: {
+    coachPlan?: import('./grizzliesCoachPlan').GrizzliesCoachPlanData;
     tacticalGamePlan?: CricketTacticalGamePlan;
     analysisModelVersion?: string;
     matchSummary?: string;

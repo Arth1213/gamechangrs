@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Loader2, ShieldAlert } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { CricketGrizzliesMatchAnalysisResponse, fetchGrizzliesMatchAnalysis } from "@/lib/cricketApi";
 import { formatGrizzliesMatchScores } from "@/lib/grizzliesMatchPresentation";
 import { GrizzliesTacticalPlan } from "@/components/GrizzliesTacticalPlan";
+import { GrizzliesCoachPlan } from "@/components/GrizzliesCoachPlan";
+import { historicalMatchSummary } from "@/lib/grizzliesCoachPlan";
 
 function ClaimList({ items }: { items?: Array<{ team?: string; statement?: string; confidence?: string }> }) {
   if (!items?.length) return <p className="text-sm text-muted-foreground">Insufficient verified evidence for this section.</p>;
@@ -61,6 +63,8 @@ function ReportFrame({ children }: { children: ReactNode }) {
 export default function AnalyticsGrizzliesMatchReport() {
   const { session } = useAuth();
   const { matchId = "" } = useParams();
+  const [searchParams] = useSearchParams();
+  const showCoachPlan = searchParams.get('view') === 'game-plan';
   const [report, setReport] = useState<CricketGrizzliesMatchAnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -77,11 +81,12 @@ export default function AnalyticsGrizzliesMatchReport() {
       <Navbar />
       <main className="container space-y-6 pb-16 pt-28">
         <Button asChild variant="outline">
-          <Link to="/analytics/grizzlies/2026"><ArrowLeft className="mr-2 h-4 w-4" />Back to Grizzlies 2026 Analytics</Link>
+          <Link to="/analytics/grizzlies/2026?tab=analysis"><ArrowLeft className="mr-2 h-4 w-4" />Back to Grizzlies 2026 Analytics</Link>
         </Button>
         {!report && !error ? <Card><CardContent className="flex gap-3 py-8 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading verified match analysis…</CardContent></Card> : null}
         {error ? <Card className="border-red-500/50"><CardContent className="flex gap-3 py-8 text-muted-foreground"><ShieldAlert className="h-4 w-4 text-red-400" />{error}</CardContent></Card> : null}
-        {report ? (
+        {report && showCoachPlan ? report.analysis.coachPlan ? <GrizzliesCoachPlan plan={report.analysis.coachPlan} /> : <Card className="border-red-500/50"><CardContent className="py-8">The reviewed game plan is not available yet. The original match analysis is still available from the schedule.</CardContent></Card> : null}
+        {report && !showCoachPlan ? (
           <ReportFrame>
             <Card className="border-red-500/35 bg-gradient-to-b from-red-500/[.10] to-background">
               <CardHeader className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
@@ -97,7 +102,7 @@ export default function AnalyticsGrizzliesMatchReport() {
             </Card>
             <section>
               <div className="mb-3"><p className="text-xs font-semibold uppercase tracking-[.2em] text-emerald-300">Match Summary</p><h2 className="font-display text-2xl">How the match was decided</h2></div>
-              <div className="grid items-stretch gap-5 lg:grid-cols-2"><Card className="h-full border-red-500/30 bg-gradient-to-br from-red-950/45 via-background to-background"><CardHeader className="pb-4"><CardTitle>The deciding story</CardTitle></CardHeader><CardContent><p className="text-base font-medium leading-8 text-white/90">{report.matchSummary}</p></CardContent></Card><ScorecardSnapshot report={report} /></div>
+              <div className="grid items-stretch gap-5 lg:grid-cols-2"><Card className="h-full border-red-500/30 bg-gradient-to-br from-red-950/45 via-background to-background"><CardHeader className="pb-4"><CardTitle>The deciding story</CardTitle></CardHeader><CardContent><p className="text-base font-medium leading-8 text-white/90">{historicalMatchSummary(report)}</p></CardContent></Card><ScorecardSnapshot report={report} /></div>
             </section>
             <section>
               <div className="mb-3"><p className="text-xs font-semibold uppercase tracking-[.2em] text-emerald-300">AI Insights</p><h2 className="font-display text-2xl">Team strengths, risks, and Grizzlies actions</h2></div>

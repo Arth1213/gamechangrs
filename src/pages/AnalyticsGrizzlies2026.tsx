@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { CalendarDays, ExternalLink, Lock, Loader2, ShieldAlert } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
@@ -16,6 +16,7 @@ import { grizzliesPoweredBy } from "@/lib/grizzliesBranding";
 import { grizzliesWelcomeHeader } from "@/lib/grizzliesWelcome";
 import { formatGrizzliesFixtureDate } from "@/lib/grizzliesMatchPresentation";
 import { GrizzliesPlayoffCalculator } from "@/components/GrizzliesPlayoffCalculator";
+import { coachPlanHref } from "@/lib/grizzliesCoachPlan";
 
 type PortalPlayer = CricketGrizzliesPortalResponse["teams"][number]["players"][number];
 
@@ -60,7 +61,9 @@ function SquadPanel({ team, className }: { team: CricketGrizzliesPortalResponse[
 
 function MatchAnalysisTab({ portal }: { portal: CricketGrizzliesPortalResponse }) {
   const schedule = portal.aiMatchAnalysis;
+  const planFixture = schedule.fixtures.find(fixture => Number(fixture.matchId) === 2375 && fixture.report.path);
   return <div className="space-y-6">
+    {planFixture ? <Card className="border-2 border-red-500/70 bg-card"><CardHeader><p className="text-xs font-semibold uppercase tracking-wider text-red-400">For the next meeting</p><CardTitle className="font-display text-3xl">Grizzlies vs Silicon Valley Strikers</CardTitle><CardDescription>Who bowls to whom. Partnership breakers. Batting decisions under pressure.</CardDescription></CardHeader><CardContent className="flex flex-wrap items-center justify-between gap-4"><p className="text-sm text-muted-foreground">Updated through Sep 26 · MiLC + verified cross-league history</p><Button asChild className="bg-red-600 text-white hover:bg-red-500"><Link to={coachPlanHref(planFixture.matchId)!}>Open Grizzlies game plan</Link></Button></CardContent></Card> : null}
     <Card className="border-red-500/35 bg-gradient-to-b from-red-500/[.10] to-background">
       <CardHeader><CardTitle className="font-display text-3xl">MiLC 2026 West Division</CardTitle><CardDescription>Current and future West Division fixtures. Analysis becomes available only after verified match facts are persisted and reviewed.</CardDescription></CardHeader>
     </Card>
@@ -70,6 +73,8 @@ function MatchAnalysisTab({ portal }: { portal: CricketGrizzliesPortalResponse }
 
 export default function AnalyticsGrizzlies2026() {
   const { session, user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = ['analysis', 'playoff'].includes(searchParams.get('tab') || '') ? searchParams.get('tab')! : 'squad';
   const [data, setData] = useState<CricketGrizzliesPortalResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const portal = data ?? grizzliesPortalFallback;
@@ -91,7 +96,7 @@ export default function AnalyticsGrizzlies2026() {
         {!session ? <Card><CardContent className="flex gap-3 py-10"><Lock />Sign in with an approved Gmail account to view this portal.</CardContent></Card> : null}
         {!data && session && !error ? <Card><CardContent className="flex gap-3 py-5 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Using the verified roster fallback while the protected portal service is unavailable.</CardContent></Card> : null}
         {error ? <Card className="border-amber-500/50"><CardContent className="flex gap-3 py-5 text-sm text-muted-foreground"><ShieldAlert className="h-4 w-4 text-amber-500" />Using the verified roster fallback while the protected portal service is deployed.</CardContent></Card> : null}
-        <Tabs defaultValue="squad">
+        <Tabs value={activeTab} onValueChange={tab => setSearchParams(previous => { const next = new URLSearchParams(previous); next.set('tab', tab); return next; }, { replace: true })}>
           <TabsList className="h-auto flex-wrap justify-start"><TabsTrigger value="squad">Squad Intelligence</TabsTrigger><TabsTrigger value="analysis">AI Match Analysis</TabsTrigger><TabsTrigger value="playoff">Playoff calculator</TabsTrigger></TabsList>
           <TabsContent value="squad" className="mt-6"><div className="grid gap-5 lg:grid-cols-3 lg:items-start">{portal.teams.map((team) => <SquadPanel key={team.name} team={team} className={squadStyle(team.name)} />)}</div></TabsContent>
           <TabsContent value="analysis" className="mt-6"><MatchAnalysisTab portal={portal} /></TabsContent>

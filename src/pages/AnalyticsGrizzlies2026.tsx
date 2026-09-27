@@ -15,6 +15,7 @@ import { assessmentButtonClass, threatButtonClass } from "@/lib/grizzliesSquadAc
 import { grizzliesPoweredBy } from "@/lib/grizzliesBranding";
 import { grizzliesWelcomeHeader } from "@/lib/grizzliesWelcome";
 import { formatGrizzliesFixtureDate } from "@/lib/grizzliesMatchPresentation";
+import { GrizzliesPlayoffCalculator } from "@/components/GrizzliesPlayoffCalculator";
 
 type PortalPlayer = CricketGrizzliesPortalResponse["teams"][number]["players"][number];
 
@@ -91,9 +92,10 @@ export default function AnalyticsGrizzlies2026() {
         {!data && session && !error ? <Card><CardContent className="flex gap-3 py-5 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Using the verified roster fallback while the protected portal service is unavailable.</CardContent></Card> : null}
         {error ? <Card className="border-amber-500/50"><CardContent className="flex gap-3 py-5 text-sm text-muted-foreground"><ShieldAlert className="h-4 w-4 text-amber-500" />Using the verified roster fallback while the protected portal service is deployed.</CardContent></Card> : null}
         <Tabs defaultValue="squad">
-          <TabsList><TabsTrigger value="squad">Squad Intelligence</TabsTrigger><TabsTrigger value="analysis">AI Match Analysis</TabsTrigger></TabsList>
+          <TabsList className="h-auto flex-wrap justify-start"><TabsTrigger value="squad">Squad Intelligence</TabsTrigger><TabsTrigger value="analysis">AI Match Analysis</TabsTrigger><TabsTrigger value="playoff">Playoff calculator</TabsTrigger></TabsList>
           <TabsContent value="squad" className="mt-6"><div className="grid gap-5 lg:grid-cols-3 lg:items-start">{portal.teams.map((team) => <SquadPanel key={team.name} team={team} className={squadStyle(team.name)} />)}</div></TabsContent>
           <TabsContent value="analysis" className="mt-6"><MatchAnalysisTab portal={portal} /></TabsContent>
+          <TabsContent value="playoff" className="mt-6"><GrizzliesPlayoffCalculator /></TabsContent>
         </Tabs>
       </main>
       <Footer />

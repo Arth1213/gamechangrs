@@ -131,7 +131,7 @@ function classifyBowlingStyle(bowlingStyle) {
   }
 
   if (
-    /\bslow left arm orthodox\b|\bleft arm spin\b|\bleft-arm spin\b|\bleft arm unorthodox\b|\bchinaman\b|\bleft arm wrist spin\b/.test(
+    /\bleft arm orthodox\b|\bleft arm spin\b|\bleft-arm spin\b|\bleft arm unorthodox\b|\bchinaman\b|\bleft arm wrist spin\b/.test(
       label
     )
   ) {

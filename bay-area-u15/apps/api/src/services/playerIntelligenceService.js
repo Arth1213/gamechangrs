@@ -246,6 +246,37 @@ function preferKnownRows(rows, getLabel) {
   return known.length ? known : list;
 }
 
+function isUnverifiedEvidenceRow(row) {
+  const label = row.bowlerStyleLabel ?? row.splitLabel;
+  const bucket = row.bowlerStyleBucket ?? row.splitValue;
+  const placeholder = (value) => isPlaceholderIntelligenceLabel(value)
+    || ['-', '—', 'n/a', 'na', 'style unverified'].includes(normalizeText(value).toLowerCase());
+  return placeholder(label) || (bucket !== undefined && placeholder(bucket));
+}
+
+function hasComparableSplits(rows) {
+  return new Set(rows.filter((row) => (row.legalBalls || 0) >= MIN_SPLIT_SAMPLE_BALLS).map((row) => row.splitValue || row.splitLabel)).size >= 2;
+}
+
+function isNonBowlerDismissal(value) {
+  const type = normalizeText(value).toLowerCase().replace(/[_-]+/g, " ");
+  return type === "run out" || type.startsWith("retired") || type === "timed out" || type.startsWith("obstructing");
+}
+
+function formatDismissalType(value) {
+  const type = normalizeText(value).replace(/_/g, " ");
+  return type.toLowerCase() === "run out" ? "run-out" : type;
+}
+
+function hasRepeatedBowlerDismissals(risk, rows) {
+  if (!risk || (risk.dismissals || 0) < 2) return false;
+  const count = rows
+    .filter((row) => !isNonBowlerDismissal(row.dismissalType) && !isUnverifiedEvidenceRow(row)
+      && (row.bowlerStyleLabel === risk.splitLabel || (risk.splitValue && row.bowlerStyleBucket === risk.splitValue)))
+    .reduce((sum, row) => sum + (row.dismissalCount || 0), 0);
+  return count >= 2;
+}
+
 function buildDivisionLabelMap(rows) {
   return rows.reduce((acc, row) => {
     const divisionId = toInteger(row.division_id);
@@ -433,7 +464,7 @@ function buildPhaseSummary(rows, perspective) {
   }, {});
 }
 
-function buildSplitRows(rows, perspective, splitGroup) {
+function buildSplitRows(rows, perspective, splitGroup, strictEvidence = false) {
   const eligibleRows = rows.filter(
     (row) =>
       row.perspective === perspective
@@ -443,12 +474,12 @@ function buildSplitRows(rows, perspective, splitGroup) {
   );
 
   return sortSplitRows(
-    preferKnownRows(eligibleRows, (row) => row.splitLabel),
+    strictEvidence ? eligibleRows : preferKnownRows(eligibleRows, (row) => row.splitLabel),
     perspective
   ).slice(0, MAX_MATCHUP_ROWS);
 }
 
-function buildSplitRowsByPhase(rows, perspective, splitGroup) {
+function buildSplitRowsByPhase(rows, perspective, splitGroup, strictEvidence = false) {
   return ["powerplay", "middle", "death"].reduce((acc, phaseBucket) => {
     const eligibleRows = rows.filter(
       (row) =>
@@ -459,7 +490,7 @@ function buildSplitRowsByPhase(rows, perspective, splitGroup) {
     );
 
     acc[phaseBucket] = sortSplitRows(
-      preferKnownRows(eligibleRows, (row) => row.splitLabel),
+      strictEvidence ? eligibleRows : preferKnownRows(eligibleRows, (row) => row.splitLabel),
       perspective
     ).slice(0, MAX_MATCHUP_ROWS);
     return acc;
@@ -846,8 +877,8 @@ function buildLens(input) {
             && row.phaseBucket === "overall"
         ) || null,
       byPhase: buildPhaseSummary(scopeMatchups, "batting"),
-      byBowlerType: buildSplitRows(scopeMatchups, "batting", "bowler_style_bucket"),
-      byBowlerTypePhase: buildSplitRowsByPhase(scopeMatchups, "batting", "bowler_style_bucket"),
+      byBowlerType: buildSplitRows(scopeMatchups, "batting", "bowler_style_bucket", input.strictEvidence),
+      byBowlerTypePhase: buildSplitRowsByPhase(scopeMatchups, "batting", "bowler_style_bucket", input.strictEvidence),
     },
     bowling: {
       overall:
@@ -858,8 +889,8 @@ function buildLens(input) {
             && row.phaseBucket === "overall"
         ) || null,
       byPhase: buildPhaseSummary(scopeMatchups, "bowling"),
-      byBatterHand: buildSplitRows(scopeMatchups, "bowling", "batter_hand"),
-      byBatterHandPhase: buildSplitRowsByPhase(scopeMatchups, "bowling", "batter_hand"),
+      byBatterHand: buildSplitRows(scopeMatchups, "bowling", "batter_hand", input.strictEvidence),
+      byBatterHandPhase: buildSplitRowsByPhase(scopeMatchups, "bowling", "batter_hand", input.strictEvidence),
     },
     dismissals: [...scopeDismissals]
       .sort((left, right) => {
@@ -966,10 +997,19 @@ function buildSignalCards(input) {
   const watchouts = [];
   const pressureSignals = [];
 
-  const battingStrength = pickBestBattingSplit(input.lens.batting.byBowlerType);
+  const battingRows = input.strictEvidence
+    ? input.lens.batting.byBowlerType.filter((row) => !isUnverifiedEvidenceRow(row))
+    : input.lens.batting.byBowlerType;
+  const bowlingRows = input.strictEvidence
+    ? input.lens.bowling.byBatterHand.filter((row) => !isUnverifiedEvidenceRow(row))
+    : input.lens.bowling.byBatterHand;
+  const dismissalRows = input.strictEvidence
+    ? input.lens.dismissals.filter((row) => row.dismissalCount > 1 && !isUnverifiedEvidenceRow(row) && !isNonBowlerDismissal(row.dismissalType))
+    : input.lens.dismissals;
+  const battingStrength = pickBestBattingSplit(battingRows);
   if (battingStrength) {
     strengths.push({
-      label: `Batting vs ${battingStrength.splitLabel}`,
+      label: `${input.strictEvidence && !hasComparableSplits(battingRows) ? "Observed batting" : "Batting"} vs ${battingStrength.splitLabel}`,
       tone: "good",
       metricLabel: "Strike Rate",
       metricValue: battingStrength.strikeRate,
@@ -977,10 +1017,10 @@ function buildSignalCards(input) {
     });
   }
 
-  const bowlingStrength = pickBestBowlingSplit(input.lens.bowling.byBatterHand);
+  const bowlingStrength = pickBestBowlingSplit(bowlingRows);
   if (bowlingStrength) {
     strengths.push({
-      label: `Bowling vs ${bowlingStrength.splitLabel}`,
+      label: `${input.strictEvidence && !hasComparableSplits(bowlingRows) ? "Observed bowling" : "Bowling"} vs ${bowlingStrength.splitLabel}`,
       tone: "good",
       metricLabel: "Economy",
       metricValue: bowlingStrength.economy,
@@ -988,10 +1028,11 @@ function buildSignalCards(input) {
     });
   }
 
-  const battingRisk = pickWeightedBattingRisk(
-    input.lens.batting.byBowlerType,
+  const weightedBattingRisk = input.strictEvidence && !hasComparableSplits(battingRows) ? null : pickWeightedBattingRisk(
+    battingRows,
     input.lens.batting.overall
   );
+  const battingRisk = input.strictEvidence && !hasRepeatedBowlerDismissals(weightedBattingRisk, input.lens.dismissals) ? null : weightedBattingRisk;
   if (battingRisk) {
     const hasClassifiedBattingRiskLabel = !isPlaceholderIntelligenceLabel(battingRisk.splitLabel);
     watchouts.push({
@@ -1005,17 +1046,19 @@ function buildSignalCards(input) {
     });
   }
 
-  const dismissalRisk = pickDismissalRisk(input.lens.dismissals);
+  const dismissalRisk = pickDismissalRisk(dismissalRows);
   if (dismissalRisk && dismissalRisk.bowlerStyleLabel !== battingRisk?.splitLabel) {
     const hasClassifiedDismissalLabel = !isPlaceholderIntelligenceLabel(dismissalRisk.bowlerStyleLabel);
     watchouts.push({
-      label: hasClassifiedDismissalLabel
+      label: input.strictEvidence ? `Observed dismissals vs ${dismissalRisk.bowlerStyleLabel}` : hasClassifiedDismissalLabel
         ? `Dismissal pattern vs ${dismissalRisk.bowlerStyleLabel}`
         : "Dismissal pattern",
-      tone: "watch",
+      tone: input.strictEvidence ? "neutral" : "watch",
       metricLabel: "Dismissals",
       metricValue: dismissalRisk.dismissalCount,
-      note: hasClassifiedDismissalLabel
+      note: input.strictEvidence
+        ? `${dismissalRisk.dismissalCount} recorded ${dismissalRisk.dismissalType || ""} dismissals against ${dismissalRisk.bowlerStyleLabel}; descriptive evidence, not an established style-specific weakness.`
+        : hasClassifiedDismissalLabel
         ? `Most wickets here have come through ${dismissalRisk.dismissalType || "this dismissal type"}, usually around ${dismissalRisk.averageRunsAtDismissal || 0} runs at dismissal.`
         : `Most wickets in the current sample have come against bowling styles that are not yet classified, usually around ${dismissalRisk.averageRunsAtDismissal || 0} runs at dismissal.`,
     });
@@ -1068,22 +1111,34 @@ function buildSignalCards(input) {
   };
 }
 
-function buildTacticalPlan(lens) {
+function buildTacticalPlan(lens, options = {}) {
   const battingPlan = [];
   const bowlingPlan = [];
 
-  const battingRisk = pickWeightedBattingRisk(lens.batting.byBowlerType, lens.batting.overall);
+  const battingRows = options.strictEvidence
+    ? lens.batting.byBowlerType.filter((row) => !isUnverifiedEvidenceRow(row))
+    : lens.batting.byBowlerType;
+  const dismissalRows = options.strictEvidence
+    ? lens.dismissals.filter((row) => row.dismissalCount > 1 && !isUnverifiedEvidenceRow(row) && !isNonBowlerDismissal(row.dismissalType))
+    : lens.dismissals;
+  const bowlingRows = options.strictEvidence
+    ? lens.bowling.byBatterHand.filter((row) => !isUnverifiedEvidenceRow(row))
+    : lens.bowling.byBatterHand;
+  const weightedBattingRisk = options.strictEvidence && !hasComparableSplits(battingRows) ? null : pickWeightedBattingRisk(battingRows, lens.batting.overall);
+  const battingRisk = options.strictEvidence && !hasRepeatedBowlerDismissals(weightedBattingRisk, lens.dismissals) ? null : weightedBattingRisk;
   if (battingRisk) {
     battingPlan.push(
       `Most vulnerable batting setup is against ${battingRisk.splitLabel} in the current live sample.`
     );
   }
 
-  const dismissalRisk = pickDismissalRisk(lens.dismissals);
+  const dismissalRisk = pickDismissalRisk(dismissalRows);
   if (dismissalRisk) {
     const hasClassifiedDismissalLabel = !isPlaceholderIntelligenceLabel(dismissalRisk.bowlerStyleLabel);
     battingPlan.push(
-      hasClassifiedDismissalLabel
+      options.strictEvidence
+        ? `${dismissalRisk.dismissalCount} recorded ${dismissalRisk.dismissalType || ""} dismissals against ${dismissalRisk.bowlerStyleLabel}; descriptive evidence, not an established style-specific weakness.`
+        : hasClassifiedDismissalLabel
         ? `${dismissalRisk.bowlerStyleLabel} has produced the most dismissals so far, especially by ${dismissalRisk.dismissalType || "wickets"}.`
         : `The largest dismissal cluster so far comes against bowling styles that are not yet classified, especially by ${dismissalRisk.dismissalType || "wickets"}.`
     );
@@ -1095,10 +1150,12 @@ function buildTacticalPlan(lens) {
     );
   }
 
-  const bowlingStrength = pickBestBowlingSplit(lens.bowling.byBatterHand);
+  const bowlingStrength = pickBestBowlingSplit(bowlingRows);
   if (bowlingStrength) {
     bowlingPlan.push(
-      `Best bowling setup is against ${bowlingStrength.splitLabel}. That is the cleanest wicket-and-control matchup right now.`
+      options.strictEvidence && !hasComparableSplits(bowlingRows)
+        ? `Recorded bowling against ${bowlingStrength.splitLabel}: ${bowlingStrength.wickets} wickets from ${bowlingStrength.legalBalls} balls at ${bowlingStrength.economy} economy; no comparative matchup conclusion.`
+        : `Best bowling setup is against ${bowlingStrength.splitLabel}. That is the cleanest wicket-and-control matchup right now.`
     );
   }
 
@@ -1120,13 +1177,13 @@ function buildTacticalPlan(lens) {
   };
 }
 
-function pickBestPhaseSplit(rowsByPhase, perspective) {
+function pickBestPhaseSplit(rowsByPhase, perspective, strictEvidence = false) {
   const candidates = [];
 
   for (const phaseBucket of ["powerplay", "middle", "death"]) {
     const phaseRows = rowsByPhase?.[phaseBucket] || [];
     for (const row of phaseRows) {
-      if ((row.legalBalls || 0) >= MIN_SPLIT_SAMPLE_BALLS) {
+      if ((row.legalBalls || 0) >= MIN_SPLIT_SAMPLE_BALLS && (!strictEvidence || !isUnverifiedEvidenceRow(row))) {
         candidates.push({ phaseBucket, row });
       }
     }
@@ -1184,20 +1241,20 @@ function buildHeadToHeadInsight(context) {
   return parts.join(" ") || "No repeated named duel has enough tracked sample yet.";
 }
 
-function buildPhaseMatchupInsight(lens) {
-  const batting = pickBestPhaseSplit(lens?.batting?.byBowlerTypePhase, "batting");
-  const bowling = pickBestPhaseSplit(lens?.bowling?.byBatterHandPhase, "bowling");
+function buildPhaseMatchupInsight(lens, strictEvidence = false) {
+  const batting = pickBestPhaseSplit(lens?.batting?.byBowlerTypePhase, "batting", strictEvidence);
+  const bowling = pickBestPhaseSplit(lens?.bowling?.byBatterHandPhase, "bowling", strictEvidence);
   const parts = [];
 
   if (batting?.row) {
     parts.push(
-      `Batting impact is strongest against ${batting.row.splitLabel} in the ${formatPhaseBucketLabel(batting.phaseBucket)}: ${batting.row.runsScored} runs from ${batting.row.legalBalls} balls at ${batting.row.strikeRate} strike rate.`
+      `${strictEvidence ? "Observed batting against" : "Batting impact is strongest against"} ${batting.row.splitLabel} in the ${formatPhaseBucketLabel(batting.phaseBucket)}: ${batting.row.runsScored} runs from ${batting.row.legalBalls} balls at ${batting.row.strikeRate} strike rate.`
     );
   }
 
   if (bowling?.row) {
     parts.push(
-      `Bowling control is strongest against ${bowling.row.splitLabel} in the ${formatPhaseBucketLabel(bowling.phaseBucket)}: ${bowling.row.wickets} wickets from ${bowling.row.legalBalls} balls at ${bowling.row.economy} economy.`
+      `${strictEvidence ? "Observed bowling against" : "Bowling control is strongest against"} ${bowling.row.splitLabel} in the ${formatPhaseBucketLabel(bowling.phaseBucket)}: ${bowling.row.wickets} wickets from ${bowling.row.legalBalls} balls at ${bowling.row.economy} economy.`
     );
   }
 
@@ -1289,11 +1346,21 @@ function buildRhythmInsight(profile) {
   return parts.join(" ") || "Pressure rhythm markers are still building from the live sample.";
 }
 
-function buildDismissalClusterInsight(dismissals) {
+function buildDismissalClusterInsight(dismissals, strictEvidence = false) {
   const leadingDismissal = dismissals?.[0] || null;
 
   if (!leadingDismissal) {
-    return "No dismissal cluster is available yet in the live sample.";
+    return strictEvidence ? "No dismissal evidence is recorded in MiLC 2026." : "No dismissal cluster is available yet in the live sample.";
+  }
+
+  if (strictEvidence) {
+    const count = leadingDismissal.dismissalCount;
+    const style = isNonBowlerDismissal(leadingDismissal.dismissalType)
+      ? "Bowler style not applicable."
+      : isUnverifiedEvidenceRow(leadingDismissal)
+        ? "Style unverified; no style-specific conclusion."
+        : `Bowler type: ${leadingDismissal.bowlerStyleLabel}.`;
+    return `Recorded dismissal group: ${count} ${formatDismissalType(leadingDismissal.dismissalType)} ${count === 1 ? "dismissal" : "dismissals"}${count === 1 ? " at" : "; averages:"} ${leadingDismissal.averageRunsAtDismissal ?? "unavailable"} runs and ${leadingDismissal.averageBallsFacedAtDismissal ?? "unavailable"} balls. ${style}${count === 1 ? " Insufficient evidence of recurrence." : ""}`;
   }
 
   return `Wickets are clustering most against ${leadingDismissal.bowlerStyleLabel}, mainly through ${leadingDismissal.dismissalType || "dismissal events"}. The current pattern shows dismissals around ${leadingDismissal.averageRunsAtDismissal || 0} runs and ${leadingDismissal.averageBallsFacedAtDismissal || 0} balls into the innings.`;
@@ -1351,7 +1418,7 @@ function buildAdditionalInsights(input) {
       },
       {
         title: "Phase and matchup lens",
-        detail: buildPhaseMatchupInsight(input.lens),
+        detail: buildPhaseMatchupInsight(input.lens, input.strictEvidence),
       },
       {
         title: "Entry-state context",
@@ -1368,8 +1435,8 @@ function buildAdditionalInsights(input) {
         detail: buildRhythmInsight(input.lens?.pressureProfile || null),
       },
       {
-        title: "Dismissal clustering",
-        detail: buildDismissalClusterInsight(input.lens?.dismissals || []),
+        title: input.strictEvidence ? "Dismissal evidence" : "Dismissal clustering",
+        detail: buildDismissalClusterInsight(input.lens?.dismissals || [], input.strictEvidence),
       },
       {
         title: "Evidence-ranked matches",
@@ -1613,7 +1680,8 @@ async function getPlayerIntelligenceReport(input) {
 
     const selectedSeason = pickSelectedSeasonRow(seasonRows, requestedDivisionId);
     const threatScope = { seriesConfigKey: context.configKey, teamName: normalizeText(selectedSeason.team_name) };
-    const threatVersion = isMilcPlayoff(threatScope.seriesConfigKey, threatScope.teamName) ? MILC_THREAT_VERSION : 'ncca-league-threat-v1';
+    const strictEvidence = isMilcPlayoff(threatScope.seriesConfigKey, threatScope.teamName);
+    const threatVersion = strictEvidence ? MILC_THREAT_VERSION : 'ncca-league-threat-v1';
     const divisionLabelMap = buildDivisionLabelMap(seasonRows);
     const leagueThreatRow = (
       await client.query(
@@ -1685,6 +1753,7 @@ async function getPlayerIntelligenceReport(input) {
     });
 
     const focusedLens = buildLens({
+      strictEvidence,
       scopeType: focusedScope.scopeType,
       divisionId: focusedScope.divisionId,
       divisionLabel: focusedScope.divisionLabel,
@@ -1693,6 +1762,7 @@ async function getPlayerIntelligenceReport(input) {
       profileRows,
     });
     const seriesLens = buildLens({
+      strictEvidence,
       scopeType: "series",
       divisionId: null,
       divisionLabel: "",
@@ -1791,12 +1861,14 @@ async function getPlayerIntelligenceReport(input) {
       summaryStats,
       tacticalSummary: buildSignalCards({
         lens: focusedLens,
+        strictEvidence,
       }),
       focusedLens,
       seriesLens: focusedScope.scopeType === "division" ? seriesLens : null,
-      tacticalPlan: buildTacticalPlan(focusedLens),
+      tacticalPlan: buildTacticalPlan(focusedLens, { strictEvidence }),
       additionalInsights: buildAdditionalInsights({
         lens: focusedLens,
+        strictEvidence,
         context: additionalInsightContext,
         commentaryRows,
       }),
@@ -1806,7 +1878,10 @@ async function getPlayerIntelligenceReport(input) {
 }
 
 module.exports = {
+  buildAdditionalInsights,
+  buildLens,
   buildSignalCards,
+  buildTacticalPlan,
   buildThreatHeader,
   getPlayerIntelligenceReport,
   pickWeightedBattingRisk,

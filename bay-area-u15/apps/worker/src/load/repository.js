@@ -40,6 +40,11 @@ function sanitizeProfileValue(value) {
   return isProfilePlaceholder(normalized) ? "" : normalized;
 }
 
+function reviewedStyleTimestampSql(alias = "") {
+  const prefix = alias ? `${alias}.` : "";
+  return `nullif(btrim(${prefix}public_profile_snapshot #>> '{styleEvidence,reviewedAt}'), '')`;
+}
+
 function buildMalformedProfileFieldSql(fieldName, labels) {
   const variants = (Array.isArray(labels) ? labels : [])
     .map((label) => normalizeLabel(label).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
@@ -1193,11 +1198,13 @@ async function persistPlayerProfileEnrichment(input = {}) {
             else primary_role
           end,
           batting_style = case
+            when ${reviewedStyleTimestampSql()} is not null then batting_style
             when $3::text is not null then $3::text
             when ${MALFORMED_BATTING_STYLE_SQL.replaceAll("p.", "")} then null
             else batting_style
           end,
           bowling_style = case
+            when ${reviewedStyleTimestampSql()} is not null then bowling_style
             when $4::text is not null then $4::text
             when ${MALFORMED_BOWLING_STYLE_SQL.replaceAll("p.", "")} then null
             else bowling_style
@@ -1208,31 +1215,41 @@ async function persistPlayerProfileEnrichment(input = {}) {
             else primary_role_bucket
           end,
           batting_hand = case
+            when ${reviewedStyleTimestampSql()} is not null then batting_hand
             when $6::text is not null then $6::text
             when ${MALFORMED_BATTING_STYLE_SQL.replaceAll("p.", "")} then null
             else batting_hand
           end,
           batting_style_bucket = case
+            when ${reviewedStyleTimestampSql()} is not null then batting_style_bucket
             when $7::text is not null then $7::text
             when ${MALFORMED_BATTING_STYLE_SQL.replaceAll("p.", "")} then null
             else batting_style_bucket
           end,
           bowling_arm = case
+            when ${reviewedStyleTimestampSql()} is not null then bowling_arm
             when $8::text is not null then $8::text
             when ${MALFORMED_BOWLING_STYLE_SQL.replaceAll("p.", "")} then null
             else bowling_arm
           end,
           bowling_style_bucket = case
+            when ${reviewedStyleTimestampSql()} is not null then bowling_style_bucket
             when $9::text is not null then $9::text
             when ${MALFORMED_BOWLING_STYLE_SQL.replaceAll("p.", "")} then null
             else bowling_style_bucket
           end,
           bowling_style_detail = case
+            when ${reviewedStyleTimestampSql()} is not null then bowling_style_detail
             when $10::text is not null then $10::text
             when ${MALFORMED_BOWLING_STYLE_SQL.replaceAll("p.", "")} then null
             else bowling_style_detail
           end,
-          public_profile_snapshot = coalesce($11::jsonb, public_profile_snapshot),
+          public_profile_snapshot = case
+            when ${reviewedStyleTimestampSql()} is not null then
+              coalesce($11::jsonb, public_profile_snapshot)
+              || jsonb_build_object('styleEvidence', public_profile_snapshot -> 'styleEvidence')
+            else coalesce($11::jsonb, public_profile_snapshot)
+          end,
           public_profile_html = coalesce(nullif($12, ''), public_profile_html),
           public_profile_cached_at = case
             when $11::jsonb is not null or nullif($12, '') is not null then now()
@@ -1265,6 +1282,7 @@ async function persistPlayerProfileEnrichment(input = {}) {
 
 async function backfillSeriesPlayerProfilesFromKnownPlayers(seriesConfigKey) {
   return withClient(async (client) => {
+    await ensurePlayerPublicProfileCacheColumns(client);
     const context = await resolveSeriesWriteContext(client, seriesConfigKey);
     const result = await client.query(
       `
@@ -1303,6 +1321,7 @@ async function backfillSeriesPlayerProfilesFromKnownPlayers(seriesConfigKey) {
           where coalesce(nullif(p.primary_role_bucket, ''), '') = ''
             and coalesce(nullif(p.batting_style_bucket, ''), '') = ''
             and coalesce(nullif(p.bowling_style_bucket, ''), '') = ''
+            and ${reviewedStyleTimestampSql("p")} is null
         ),
         candidates as (
           select
@@ -1375,6 +1394,7 @@ async function backfillSeriesPlayerProfilesFromKnownPlayers(seriesConfigKey) {
             profile_last_enriched_at = now(),
             last_seen_at = now()
           where id = $1
+            and ${reviewedStyleTimestampSql()} is null
           returning id
         `,
         [

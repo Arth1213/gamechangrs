@@ -10,6 +10,7 @@ const {
   toNumber,
   toneForScore,
 } = require("../lib/utils");
+const { isMilcPlayoff } = require('../../../../shared/milcPlayoffThreat');
 
 const BASE_CSS = `
   :root {
@@ -5486,6 +5487,7 @@ function renderPlayerIntelligenceReportPage(report) {
   const summaryStats = report?.summaryStats || {};
   const commentaryEvidence = report?.commentaryEvidence || {};
   const additionalInsights = report?.additionalInsights || {};
+  const strictEvidence = isMilcPlayoff(series.configKey, header.teamName);
 
   const playerName = normalizeText(header.playerName) || "Player";
   const roleLabel = normalizeText(header.roleLabel) || humanizeRole(header.roleType) || "Player";
@@ -6311,7 +6313,24 @@ function renderPlayerIntelligenceReportPage(report) {
       || text === "unknown style"
       || text === "unknown setup"
       || text === "unclassified"
+      || (strictEvidence && ["-", "—", "n/a", "na", "style unverified"].includes(text))
     );
+  }
+
+  function isUnverifiedEvidenceRow(row) {
+    const bucket = row.bowlerStyleBucket ?? row.splitValue;
+    return isPlaceholderIntelligenceLabel(row.bowlerStyleLabel ?? row.splitLabel)
+      || (bucket !== undefined && isPlaceholderIntelligenceLabel(bucket));
+  }
+
+  function isNonBowlerDismissal(value) {
+    const type = normalizeText(value).toLowerCase().replace(/[_-]+/g, " ");
+    return type === "run out" || type.startsWith("retired") || type === "timed out" || type.startsWith("obstructing");
+  }
+
+  function formatDismissalType(value) {
+    const type = normalizeText(value).replace(/_/g, " ");
+    return type.toLowerCase() === "run out" ? "run-out" : type;
   }
 
   function preferKnownIntelligenceItem(rows, getLabel) {
@@ -6379,6 +6398,12 @@ function renderPlayerIntelligenceReportPage(report) {
       return { context: "unknown", target: "" };
     }
 
+    if (strictEvidence) {
+      for (const [prefix, context] of [["Observed batting vs ", "batting-observed"], ["Observed bowling vs ", "bowling-observed"], ["Observed dismissals vs ", "dismissal-observed"]]) {
+        if (normalized.startsWith(prefix)) return { context, target: normalized.slice(prefix.length) };
+      }
+    }
+
     if (normalized.startsWith("Batting vs ")) {
       const target = normalized.replace("Batting vs ", "");
       return { context: "batting", target: isPlaceholderIntelligenceLabel(target) ? "" : target };
@@ -6404,6 +6429,7 @@ function renderPlayerIntelligenceReportPage(report) {
 
   function buildThreatNarrative(signal) {
     const parsed = parseSignalLabel(signal?.label);
+    if (parsed.context.endsWith("-observed")) return `Recorded ${parsed.context === "bowling-observed" ? "bowling" : "batting"} performance against ${parsed.target}; no comparative style conclusion.`;
     if (parsed.context === "batting" && parsed.target) {
       return `The player is mainly a batting threat against ${parsed.target}.`;
     }
@@ -6418,6 +6444,7 @@ function renderPlayerIntelligenceReportPage(report) {
 
   function buildWeaknessNarrative(signal, fallbackPlan) {
     const parsed = parseSignalLabel(signal?.label);
+    if (parsed.context === "dismissal-observed") return sanitizeCopy(signal.note);
     if ((parsed.context === "batting-risk" || parsed.context === "dismissal") && parsed.target) {
       return `The player is most vulnerable against ${parsed.target}.`;
     }
@@ -6459,7 +6486,9 @@ function renderPlayerIntelligenceReportPage(report) {
         ? "batting-first opposition threat"
         : "live opposition threat";
 
-    const threatLine = threat.target
+    const threatLine = threat.context.endsWith("-observed")
+      ? `Recorded performance is available against ${threat.target}; comparative style evidence is unavailable.`
+      : threat.target
       ? `The main live danger is ${threat.context === "bowling" ? "with the ball" : "with the bat"}, especially against ${threat.target}.`
       : "The main live danger is visible, but the clearest matchup label is still building.";
 
@@ -6470,7 +6499,9 @@ function renderPlayerIntelligenceReportPage(report) {
         : "Phase strength is still building from the live sample.";
 
     const weaknessParts = [];
-    if (weakness.target) {
+    if (weakness.context === "dismissal-observed") {
+      weaknessParts.push("recorded dismissals are descriptive evidence, not an established style-specific weakness");
+    } else if (weakness.target) {
       weaknessParts.push(`main watchout is ${weakness.target}`);
     }
     if (input.pressureCard?.value) {
@@ -6677,7 +6708,7 @@ function renderPlayerIntelligenceReportPage(report) {
               ${values
                 .map((row) => `
                   <tr>
-                    <td>${escapeHtml(normalizeText(row.splitLabel) || "Unknown setup")}</td>
+                    <td>${escapeHtml(strictEvidence && isUnverifiedEvidenceRow(row) ? "Style unverified" : normalizeText(row.splitLabel) || "Unknown setup")}</td>
                     <td class="align-right">${escapeHtml(displayNumber(row.matchCount, 0))}</td>
                     <td class="align-right">${escapeHtml(displayNumber(row.legalBalls, 0))}</td>
                     ${mode === "batting"
@@ -6708,7 +6739,7 @@ function renderPlayerIntelligenceReportPage(report) {
     if (!values.length) {
       return `
         <div class="table-panel">
-          <h3>Dismissal Pattern</h3>
+          <h3>${strictEvidence ? "Dismissal Evidence" : "Dismissal Pattern"}</h3>
           <div class="empty-state">No dismissal concentration has been captured yet.</div>
         </div>
       `;
@@ -6716,7 +6747,7 @@ function renderPlayerIntelligenceReportPage(report) {
 
     return `
       <div class="table-panel">
-        <h3>Dismissal Pattern</h3>
+        <h3>${strictEvidence ? "Dismissal Evidence" : "Dismissal Pattern"}</h3>
         <div class="table-scroll">
           <table class="report-table dismissal-pattern-table">
             <thead>
@@ -6731,7 +6762,7 @@ function renderPlayerIntelligenceReportPage(report) {
               ${values
                 .map((row) => `
                   <tr>
-                    <td>${escapeHtml(normalizeText(row.bowlerStyleLabel) || "Unknown style")}</td>
+                    <td>${escapeHtml(strictEvidence && isNonBowlerDismissal(row.dismissalType) ? "Bowler style not applicable" : strictEvidence && isUnverifiedEvidenceRow(row) ? "Style unverified" : normalizeText(row.bowlerStyleLabel) || "Unknown style")}</td>
                     <td class="align-right">${escapeHtml(displayNumber(row.dismissalCount, 0))}</td>
                     <td class="align-right">${escapeHtml(displayNumber(row.matchCount, 0))}</td>
                     <td class="align-right">${escapeHtml(displayNumber(row.averageRunsAtDismissal, 1))}</td>
@@ -7042,7 +7073,7 @@ function renderPlayerIntelligenceReportPage(report) {
 
   const battingPhaseWindow = pickBestPhase(focusedLens?.batting?.byPhase, "batting");
   const bowlingPhaseWindow = pickBestPhase(focusedLens?.bowling?.byPhase, "bowling");
-  const leadingDismissalCluster = preferKnownIntelligenceItem(
+  const leadingDismissalCluster = strictEvidence ? focusedLens?.dismissals?.[0] || null : preferKnownIntelligenceItem(
     focusedLens?.dismissals,
     (row) => row?.bowlerStyleLabel
   );
@@ -7059,32 +7090,54 @@ function renderPlayerIntelligenceReportPage(report) {
     ? buildPeakThreatPhaseCard(roleLabel, battingPhaseWindow, bowlingPhaseWindow)
     : null;
 
+  function missingPhaseRead(mode) {
+    const stats = summaryStats[mode];
+    const recorded = mode === "batting"
+      ? [stats?.matches, stats?.innings, stats?.ballsFaced]
+      : [stats?.matches, stats?.legalBalls];
+    const hasStats = recorded.some((value) => toNumber(value, null) !== null);
+    const noRecordedActivity = hasStats && !recorded.some((value) => toNumber(value, 0) > 0);
+    return noRecordedActivity
+      ? { value: `No recorded ${mode}`, note: `No ${mode} is recorded in MiLC 2026.` }
+      : { value: "Phase data unavailable", note: `${capitalizeFirstLetter(mode)} phase data is unavailable in the MiLC 2026 evidence.` };
+  }
+  const missingBattingPhase = strictEvidence ? missingPhaseRead("batting") : null;
+  const missingBowlingPhase = strictEvidence ? missingPhaseRead("bowling") : null;
+  const dismissalCount = toInteger(leadingDismissalCluster?.dismissalCount) || 0;
+  const nonBowlerDismissal = isNonBowlerDismissal(leadingDismissalCluster?.dismissalType);
+  const dismissalStyleVerified = leadingDismissalCluster && !nonBowlerDismissal && !isUnverifiedEvidenceRow(leadingDismissalCluster);
+  const dismissalEvidenceNote = leadingDismissalCluster
+    ? `Recorded dismissal group: ${dismissalCount} ${formatDismissalType(leadingDismissalCluster.dismissalType)} ${dismissalCount === 1 ? "dismissal" : "dismissals"}${dismissalCount === 1 ? " at" : "; averages:"} ${displayNumber(leadingDismissalCluster.averageBallsFacedAtDismissal, 1, "0")} balls and ${displayNumber(leadingDismissalCluster.averageRunsAtDismissal, 1, "0")} runs. ${nonBowlerDismissal ? "Bowler style not applicable." : dismissalStyleVerified ? `Bowler type: ${leadingDismissalCluster.bowlerStyleLabel}.` : "Style unverified; no style-specific conclusion."}${dismissalCount === 1 ? " Insufficient evidence of recurrence." : ""}`
+    : "No dismissal evidence is recorded in MiLC 2026.";
+
   const tacticalCards = [
     metricCard(
       "Batting Threat Window",
-      battingPhaseWindow ? formatPhaseLabel(battingPhaseWindow.phaseKey) : "Unknown",
+      battingPhaseWindow ? formatPhaseLabel(battingPhaseWindow.phaseKey) : missingBattingPhase?.value || "Unknown",
       battingPhaseWindow?.row
         ? `${displayNumber(battingPhaseWindow.row.runsScored, 0, "0")} runs from ${displayNumber(battingPhaseWindow.row.legalBalls, 0, "0")} balls at ${displayNumber(battingPhaseWindow.row.strikeRate, 1, "0")} strike rate.`
-        : "No batting phase split is available yet in the live sample.",
-      "good"
+        : missingBattingPhase?.note || "No batting phase split is available yet in the live sample.",
+      strictEvidence && !battingPhaseWindow ? "neutral" : "good"
     ),
     metricCard(
       "Bowling Threat Window",
-      bowlingPhaseWindow ? formatPhaseLabel(bowlingPhaseWindow.phaseKey) : "Unknown",
+      bowlingPhaseWindow ? formatPhaseLabel(bowlingPhaseWindow.phaseKey) : missingBowlingPhase?.value || "Unknown",
       bowlingPhaseWindow?.row
         ? `${displayNumber(bowlingPhaseWindow.row.wickets, 0, "0")} wickets from ${displayNumber(bowlingPhaseWindow.row.legalBalls, 0, "0")} balls at ${displayNumber(bowlingPhaseWindow.row.economy, 1, "0")} economy.`
-        : "No bowling phase split is available yet in the live sample.",
-      "good"
+        : missingBowlingPhase?.note || "No bowling phase split is available yet in the live sample.",
+      strictEvidence && !bowlingPhaseWindow ? "neutral" : "good"
     ),
     metricCard(
-      "Dismissal Cluster",
-      isPlaceholderIntelligenceLabel(leadingDismissalCluster?.bowlerStyleLabel)
+      strictEvidence ? "Dismissal Evidence" : "Dismissal Cluster",
+      strictEvidence
+        ? leadingDismissalCluster ? `${dismissalCount} ${formatDismissalType(leadingDismissalCluster.dismissalType)} ${dismissalCount === 1 ? "dismissal" : "dismissals"}` : "No recorded dismissals"
+        : isPlaceholderIntelligenceLabel(leadingDismissalCluster?.bowlerStyleLabel)
         ? "Style not yet classified"
         : normalizeText(leadingDismissalCluster?.bowlerStyleLabel) || "Style not yet classified",
-      leadingDismissalCluster
+      strictEvidence ? dismissalEvidenceNote : leadingDismissalCluster
         ? `${normalizeText(leadingDismissalCluster.dismissalType) || "Dismissal events"} most often arrive around ${displayNumber(leadingDismissalCluster.averageBallsFacedAtDismissal, 1, "0")} balls and ${displayNumber(leadingDismissalCluster.averageRunsAtDismissal, 1, "0")} runs into the innings.`
         : "No dismissal cluster is available yet in the live sample.",
-      "risk"
+      strictEvidence && (!dismissalStyleVerified || dismissalCount < 2) ? "neutral" : "risk"
     ),
     pressureCard
       ? metricCard(

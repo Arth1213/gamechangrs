@@ -1,0 +1,3312 @@
+{
+  "researchDate": "2026-10-04",
+  "scope": "MiLC 2026 playoff style metadata only; performance not imported",
+  "heldIds": [
+    8439,
+    8817
+  ],
+  "playerProfiles": [
+    {
+      "playerId": "9231",
+      "displayName": "Aaditya Patel",
+      "battingStyle": "right-handed",
+      "bowlingStyle": "right-arm-fast",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/5Tg_z2xcTqUEQA2WAV0Fhg"
+      ],
+      "sourceQuote": "right-arm-fast",
+      "identityEvidence": "Exact roster source player ID 5Tg_z2xcTqUEQA2WAV0Fhg; opened profile displays Aaditya Patel, CC Player ID 5537835, current team Baltimore Royals.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "8463",
+      "displayName": "Aaryan Batra",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/p58TzkB0gIsL43cMzue5Cg",
+        "https://www.icc-cricket.com/tournaments/u19cricketworldcup/teams/1152/players/95716/aaryan-batra/"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID p58TzkB0gIsL43cMzue5Cg; opened profile displays Aaryan Batra, CC Player ID 2404566, current team Baltimore Royals.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification. ICC95716 says Right arm medium fast; current exact source says Right Arm Medium. Same pace family, retain exact label; no primary identity bridge to ICC."
+    },
+    {
+      "playerId": "8462",
+      "displayName": "Adil Bhatti",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/zadCLCTlKZOWEkeHl-7URw"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID zadCLCTlKZOWEkeHl-7URw; opened profile displays Adil Bhatti, CC Player ID 680849, current team Baltimore Royals.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "8441",
+      "displayName": "Agni Chopra",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/qsTCsvz2MnDwRgbmZ5AWuQ",
+        "https://minycricket.com/news/mi-new-york-draft-picks-for-mlc-2025"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID qsTCsvz2MnDwRgbmZ5AWuQ; opened profile displays Agni Chopra, CC Player ID 6171414, current team Baltimore Royals.",
+      "verified": false,
+      "notes": "Unresolved conflict: current CC6171414 says Right Handed Batter / Right Arm Medium; official MI New York article calls Agni Chopra a left-handed batter. Article does not explicitly bind him to Baltimore/CC ID; do not auto-apply current fields."
+    },
+    {
+      "playerId": "8465",
+      "displayName": "Asif Mehmood",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/2O9uwYivPrbfy1K2nkQlgQ"
+      ],
+      "sourceQuote": "Batting Style: -; Bowling Style: -",
+      "identityEvidence": "Exact roster source player ID 2O9uwYivPrbfy1K2nkQlgQ; opened profile displays Asif Mehmood, CC Player ID 4593285, current team Baltimore Royals.",
+      "verified": false,
+      "notes": "Bowling style not supplied (-) in exact current profile."
+    },
+    {
+      "playerId": "9441",
+      "displayName": "Ishaan Vairagiwala",
+      "battingStyle": "Left Hand Batter (Middle Order)",
+      "bowlingStyle": "Left Arm Fast",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/tyAPZ7jDw90dUT0bnLGRbQ"
+      ],
+      "sourceQuote": "Left Arm Fast",
+      "identityEvidence": "Exact roster source player ID tyAPZ7jDw90dUT0bnLGRbQ; opened profile displays Ishaan Vairagiwala, CC Player ID 1998830, current team Baltimore Royals.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification. URL constructed from the roster's known source_player_id and the verified MiLC/user route; rendered name and team matched."
+    },
+    {
+      "playerId": "9443",
+      "displayName": "Jaskaran Malhotra",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/CDTArJPVC4ldiBQBNBhAXg"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID CDTArJPVC4ldiBQBNBhAXg; opened profile displays Jaskaran Malhotra, CC Player ID 1778010, current team Baltimore Royals.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification. URL constructed from the roster's known source_player_id and the verified MiLC/user route; rendered name and team matched."
+    },
+    {
+      "playerId": "8437",
+      "displayName": "Kunwarjeet Singh",
+      "battingStyle": "Left Handed",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/3M46Rda-VnqNrmsBFGlZFA",
+        "https://minycricket.com/news/mi-new-york-draft-picks-for-mlc-2025"
+      ],
+      "sourceQuote": "left-handed middle-order batter",
+      "identityEvidence": "Exact roster source player ID 3M46Rda-VnqNrmsBFGlZFA; opened profile displays Kunwarjeet Singh, CC Player ID 4546142, current team Baltimore Royals. MI New York official Feb20 2025 draft article explicitly identifies Kunwarjeet Singh as playing for Baltimore Royals.",
+      "verified": true,
+      "notes": "Resolved batting conflict: current CC4546142 says Right Handed Batter; official MI New York team article explicitly names Baltimore Royals player as left-handed. Bowling unknown."
+    },
+    {
+      "playerId": "8468",
+      "displayName": "Mohammad Mohsin",
+      "battingStyle": "Right Handed Batter",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/OECjQhH_Q2vJ-eEfJ-T2lg",
+        "https://www.icc-cricket.com/rankings/65880/mohammad-mohsin"
+      ],
+      "sourceQuote": "Right Handed Batter",
+      "identityEvidence": "Exact roster source player ID OECjQhH_Q2vJ-eEfJ-T2lg; opened profile displays Mohammad Mohsin, CC Player ID 2898346, current team Baltimore Royals.",
+      "verified": false,
+      "notes": "Unresolved identity/style conflict: exact CC2898346 is Baltimore, right-handed, bowling blank. Opened USA ICC65880 Mohammad Mohsin is left-handed / leg break googly. Bare name cannot bridge identity. Do not auto-apply ICC or exact batting without further confirmation."
+    },
+    {
+      "playerId": "8817",
+      "displayName": "Prannav Chettipalayam",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/1WRYR5BXZM0ZTZcBMrjAFw"
+      ],
+      "sourceQuote": "Right Hand Batter (Top Order)",
+      "identityEvidence": "Exact roster source player ID 1WRYR5BXZM0ZTZcBMrjAFw; opened profile displays Prannav Chettipalayam, CC Player ID 603364, current team Baltimore Royals.",
+      "verified": true,
+      "notes": "Bowling style not supplied (-) in exact current profile."
+    },
+    {
+      "playerId": "8439",
+      "displayName": "Prannav Chettipalayam",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/jIa-fsj8yGwvwNdvek_2Jw"
+      ],
+      "sourceQuote": "Batting Style: -; Bowling Style: -",
+      "identityEvidence": "Exact roster URL returns Invalid player Id provided; no name/CC ID/team.",
+      "verified": false,
+      "notes": "Invalid profile; do not join to the other Prannav record by name."
+    },
+    {
+      "playerId": "9222",
+      "displayName": "Rishi Dhawan",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/CWObf7H5WptjogzOr35DYQ"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID CWObf7H5WptjogzOr35DYQ; opened profile displays Rishi Dhawan, CC Player ID 2101139, current team Baltimore Royals.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "8440",
+      "displayName": "Ritwik Behera",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Off Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/-0uyZliRaguKOF4T-m5cmA"
+      ],
+      "sourceQuote": "Right Arm Off Spin",
+      "identityEvidence": "Exact roster source player ID -0uyZliRaguKOF4T-m5cmA; opened profile displays Ritwik Behera, CC Player ID 2003372, current team Baltimore Royals.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "9223",
+      "displayName": "Rudra Kushwah",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Off Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/mm3_Scr8Ev_NTeCqJ6uShA"
+      ],
+      "sourceQuote": "Right Arm Off Spin",
+      "identityEvidence": "Exact roster source player ID mm3_Scr8Ev_NTeCqJ6uShA; opened profile displays Rudra Kushwah, CC Player ID 5296158, current team Baltimore Royals.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "8464",
+      "displayName": "Sarbjeet Ladda",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Leg Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/TCQL3WtBJ1dlMOc92gSqmQ"
+      ],
+      "sourceQuote": "Right Arm Leg Spin",
+      "identityEvidence": "Exact roster source player ID TCQL3WtBJ1dlMOc92gSqmQ; opened profile displays Sarbjeet Ladda, CC Player ID 2920782, current team Baltimore Royals.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "8438",
+      "displayName": "Sharad Lumba",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Off Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/13lYsD_s5CK9KZRIPMYPyg"
+      ],
+      "sourceQuote": "Right Arm Off Spin",
+      "identityEvidence": "Exact roster source player ID 13lYsD_s5CK9KZRIPMYPyg; opened profile displays Sharad Lumba, CC Player ID 497287, current team Baltimore Royals.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "8830",
+      "displayName": "Tanush Apte",
+      "battingStyle": "Right Handed Batter",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/gg13BAxGcGLupxCxNe4Ycw"
+      ],
+      "sourceQuote": "Right Handed Batter",
+      "identityEvidence": "Exact roster source player ID gg13BAxGcGLupxCxNe4Ycw; opened profile displays Tanush Apte, CC Player ID 865200, current team Baltimore Royals.",
+      "verified": true,
+      "notes": "Bowling style not supplied (-) in exact current profile."
+    },
+    {
+      "playerId": "9440",
+      "displayName": "Yevin Goonatilake",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Leg Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/kte4TwOmqPVx7UM2HywKnw"
+      ],
+      "sourceQuote": "Right Arm Leg Spin",
+      "identityEvidence": "Exact roster source player ID kte4TwOmqPVx7UM2HywKnw; opened profile displays Yevin Goonatilake, CC Player ID 2235091, current team Baltimore Royals.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification. URL constructed from the roster's known source_player_id and the verified MiLC/user route; rendered name and team matched."
+    },
+    {
+      "playerId": "8974",
+      "displayName": "Aakarshit Gomeil",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/znFXEbTwWIXLPFaI027bTA"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID znFXEbTwWIXLPFaI027bTA; opened profile displays Aakarshit Gomeil, CC Player ID 3481003, current team Dallas Xforia Giants.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "9447",
+      "displayName": "Andries Gous",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/qVxoqVafdDHNF8V9YtvQ1Q"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID qVxoqVafdDHNF8V9YtvQ1Q; opened profile displays Andries Gous, CC Player ID 3267964, current team Dallas Xforia Giants.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification. URL constructed from the roster's known source_player_id and the verified MiLC/user route; rendered name and team matched."
+    },
+    {
+      "playerId": "8997",
+      "displayName": "Ehsan Adil",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Fast",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/eNFX5BK0xSDKH600z1yVYA",
+        "https://www.icc-cricket.com/rankings/57482/ehsan-adil"
+      ],
+      "sourceQuote": "Right Arm Fast",
+      "identityEvidence": "Exact roster source player ID eNFX5BK0xSDKH600z1yVYA; opened profile displays Ehsan Adil, CC Player ID 2637168, current team Dallas Xforia Giants.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification. Indexed ICC candidate says right-arm fast medium versus current Right Arm Fast; do not imply precise pace equivalence."
+    },
+    {
+      "playerId": "8991",
+      "displayName": "Firasuddin Syed",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/t6zpDMSRJO2xOKZUDw60Qg"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID t6zpDMSRJO2xOKZUDw60Qg; opened profile displays Firasuddin Syed, CC Player ID 3629643, current team Dallas Xforia Giants.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "9345",
+      "displayName": "Harmeet Singh",
+      "battingStyle": "Left Handed",
+      "bowlingStyle": "Slow left-arm orthodox",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/I6ddTz8jtZAIQ3DSrpJdXA",
+        "https://www.seattleorcas.com/players/harmeet-singh-36489-profile",
+        "https://www.seattleorcas.com/news/seattle-orcas-players-to-watch-in-minor-league-cricket",
+        "https://www.icc-cricket.com/rankings/36489/harmeet-singh"
+      ],
+      "sourceQuote": "Left Handed; Slow left-arm orthodox",
+      "identityEvidence": "Exact roster source player ID I6ddTz8jtZAIQ3DSrpJdXA; opened profile displays Harmeet Singh, CC Player ID 315981, current team Dallas Xforia Giants. Official Seattle Orcas Sep 18 2026 article explicitly assigns its Harmeet Singh to Dallas Xforia Giants; same official player profile and ICC36489 agree.",
+      "verified": true,
+      "notes": "Resolved conflict: exact CC315981 currently reports Right Handed Batter / Right Arm Medium. Reject those fields in favor of independently identity-bound official team + ICC agreement."
+    },
+    {
+      "playerId": "9001",
+      "displayName": "Kamal Passi",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/fWQ9ZxNq1jkyNrcMhMVn7w"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID fWQ9ZxNq1jkyNrcMhMVn7w; opened profile displays Kamal Passi, CC Player ID 6173483, current team Dallas Xforia Giants.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "9358",
+      "displayName": "Laksh Warty",
+      "battingStyle": "right-handed",
+      "bowlingStyle": "right-arm-off-spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/uRQ5CH588Y9R3JjSHy9K6A"
+      ],
+      "sourceQuote": "right-arm-off-spin",
+      "identityEvidence": "Exact roster source player ID uRQ5CH588Y9R3JjSHy9K6A; opened profile displays Laksh Warty, CC Player ID 6924440, current team Dallas Xforia Giants.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "9000",
+      "displayName": "Raghav Prabhune",
+      "battingStyle": "right-handed",
+      "bowlingStyle": "right-arm-fast",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/eIymQSubnhZDGHJFBXwQPg"
+      ],
+      "sourceQuote": "right-arm-fast",
+      "identityEvidence": "Exact roster source player ID eIymQSubnhZDGHJFBXwQPg; opened profile displays Raghav Prabhune, CC Player ID 4252117, current team Dallas Xforia Giants.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "9357",
+      "displayName": "Rahmatullah Niazi",
+      "battingStyle": "right-hand-batter-middle-order",
+      "bowlingStyle": "right-arm-fast",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/ZH74cp6Nx6Mfwxeleonahw"
+      ],
+      "sourceQuote": "right-arm-fast",
+      "identityEvidence": "Exact roster source player ID ZH74cp6Nx6Mfwxeleonahw; opened profile displays Rahmatullah Niazi, CC Player ID 3230641, current team Dallas Xforia Giants.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "8999",
+      "displayName": "Sankirth Bhattula",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/b8fgkITrSRccmkYc94TlfQ"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID b8fgkITrSRccmkYc94TlfQ; opened profile displays Sankirth Bhattula, CC Player ID 3481004, current team Dallas Xforia Giants.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "9344",
+      "displayName": "Shaurya Singh",
+      "battingStyle": "right-handed",
+      "bowlingStyle": "right-arm-leg-spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/Peix4q8GFr_EMYI7a31eqA"
+      ],
+      "sourceQuote": "right-arm-leg-spin",
+      "identityEvidence": "Exact roster source player ID Peix4q8GFr_EMYI7a31eqA; opened profile displays Shaurya Singh, CC Player ID 4574256, current team Dallas Xforia Giants.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "8972",
+      "displayName": "Shayan Jahangir",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Fast",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/YFh46bt1e7wxx-6wyeezVg"
+      ],
+      "sourceQuote": "Right Arm Fast",
+      "identityEvidence": "Exact roster source player ID YFh46bt1e7wxx-6wyeezVg; opened profile displays Shayan Jahangir, CC Player ID 1392181, current team Dallas Xforia Giants.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "8973",
+      "displayName": "Smit Patel",
+      "battingStyle": "Right Handed Batter",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/lw1TFzk3pgjJ7HVdN27IgA"
+      ],
+      "sourceQuote": "Right Handed Batter",
+      "identityEvidence": "Exact roster source player ID lw1TFzk3pgjJ7HVdN27IgA; opened profile displays Smit Patel, CC Player ID 4549225, current team Dallas Xforia Giants.",
+      "verified": true,
+      "notes": "Bowling style not supplied (-) in exact current profile."
+    },
+    {
+      "playerId": "8998",
+      "displayName": "Yaqoob Haidery",
+      "battingStyle": "Right Handed Batter",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/ZyLUkKfFnDJi-v-eTaGWhQ"
+      ],
+      "sourceQuote": "Right Handed Batter",
+      "identityEvidence": "Exact roster source player ID ZyLUkKfFnDJi-v-eTaGWhQ; opened profile displays Yaqoob Haidery, CC Player ID 3227839, current team Dallas Xforia Giants.",
+      "verified": true,
+      "notes": "Bowling style not supplied (-) in exact current profile."
+    },
+    {
+      "playerId": "8995",
+      "displayName": "Zia Muhammad Shahzad",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Leg Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/USm4ate2i02ElpivDMuMXA"
+      ],
+      "sourceQuote": "Right Arm Leg Spin",
+      "identityEvidence": "Exact roster source player ID USm4ate2i02ElpivDMuMXA; opened profile displays Zia Muhammad Shahzad, CC Player ID 2093738, current team Dallas Xforia Giants.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "8576",
+      "displayName": "Adit Kappa",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/izopVI6tYlLXPlg1QETGig",
+        "https://www.icc-cricket.com/rankings/135288/adit-kappa",
+        "https://www.americancricketacademy.org/private/players/all"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID izopVI6tYlLXPlg1QETGig; opened profile displays Adit Kappa, CC Player ID 1282847, current team Manhattan Yorkers.",
+      "verified": false,
+      "notes": "Unresolved conflict: exact current CC1282847 says right-hand top order / right-arm medium. Opened ICC135288 says Left Handed / Slow left arm orthodox; opened academy roster says Left Hand / LMF. No primary exact-ID bridge to ICC found; do not auto-apply."
+    },
+    {
+      "playerId": "8567",
+      "displayName": "Aditya Anand",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/-WGqqP6W1MkmkLQMshrG3A"
+      ],
+      "sourceQuote": "Right Hand Batter (Top Order)",
+      "identityEvidence": "Exact roster source player ID -WGqqP6W1MkmkLQMshrG3A; opened profile displays Aditya Anand, CC Player ID 6819551, current team Manhattan Yorkers.",
+      "verified": true,
+      "notes": "Bowling style not supplied (-) in exact current profile."
+    },
+    {
+      "playerId": "8566",
+      "displayName": "Akshay Homraj",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/9_OtVA6LAumUWFmU_WaKEQ"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID 9_OtVA6LAumUWFmU_WaKEQ; opened profile displays Akshay Homraj, CC Player ID 1226106, current team Manhattan Yorkers.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "8574",
+      "displayName": "Amrinder Gill",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/2y9ADhO35OkqVdzr9D6n9g"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID 2y9ADhO35OkqVdzr9D6n9g; opened profile displays Amrinder Gill, CC Player ID 3391701, current team Manhattan Yorkers.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "8573",
+      "displayName": "Dhruv Pawar",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/VCUeLsNwEvr2u6u5_ZJQbA",
+        "https://cricmax.com/our-students/"
+      ],
+      "sourceQuote": "Right Hand Batter (Top Order)",
+      "identityEvidence": "Exact roster source player ID VCUeLsNwEvr2u6u5_ZJQbA; opened profile displays Dhruv Pawar, CC Player ID 1803658, current team Manhattan Yorkers.",
+      "verified": true,
+      "notes": "Bowling style not supplied (-) in exact current profile. Academy Cricmax page names Dhruv Pawar as right-hand / left-arm orthodox spin, but no exact-ID/team bridge was established; candidate only."
+    },
+    {
+      "playerId": "8572",
+      "displayName": "Justin Dill",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/BxQCSfaaBYLd_c6O9H-c_A"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID BxQCSfaaBYLd_c6O9H-c_A; opened profile displays Justin Dill, CC Player ID 2312288, current team Manhattan Yorkers.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "9063",
+      "displayName": "Laksh Parikh",
+      "battingStyle": "Left Hand Batter (Middle Order)",
+      "bowlingStyle": "Left Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/WMroKu8xLHgvVP-7W7ScpQ"
+      ],
+      "sourceQuote": "Left Arm Medium",
+      "identityEvidence": "Exact roster source player ID WMroKu8xLHgvVP-7W7ScpQ; opened profile displays Laksh Parikh, CC Player ID 2003407, current team Manhattan Yorkers.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "8602",
+      "displayName": "Noman Iftikhar",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/SlUm0TVHJq7sNKtzfydekQ",
+        "https://www.cricuspl.com/player/noman-iftikhar/"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID SlUm0TVHJq7sNKtzfydekQ; opened profile displays Noman Iftikhar, CC Player ID 2175594, current team Manhattan Yorkers.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification. Opened official USPL profile independently agrees right-handed / right-handed medium pace and mentions Somerset Cavs, matching exact CC team history."
+    },
+    {
+      "playerId": "8633",
+      "displayName": "Preet Shah",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/QRct3hb9FzzGoF4a35IkXQ"
+      ],
+      "sourceQuote": "Right Hand Batter (Top Order)",
+      "identityEvidence": "Exact roster source player ID QRct3hb9FzzGoF4a35IkXQ; opened profile displays Preet Shah, CC Player ID 1728055, current team Manhattan Yorkers.",
+      "verified": true,
+      "notes": "Bowling style not supplied (-) in exact current profile."
+    },
+    {
+      "playerId": "8570",
+      "displayName": "Rishikesh Bodugum",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/rKKRRbUHKLAz_pFCw97iSA"
+      ],
+      "sourceQuote": "Right Arm Medium",
+      "identityEvidence": "Exact roster source player ID rKKRRbUHKLAz_pFCw97iSA; opened profile displays Rishikesh Bodugum, CC Player ID 4546290, current team Manhattan Yorkers.",
+      "verified": true,
+      "notes": "Source-declared current CricClubs style; not independent video/action verification."
+    },
+    {
+      "playerId": "8568",
+      "displayName": "Syed Abdullah",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/9oNkH0yGj58XqTsSi2slAA"
+      ],
+      "sourceQuote": "Right Hand Batter (Top Order)",
+      "identityEvidence": "Exact roster source player ID 9oNkH0yGj58XqTsSi2slAA; opened profile displays Syed Abdullah, CC Player ID 3392123, current team Manhattan Yorkers.",
+      "verified": true,
+      "notes": "Bowling style not supplied (-) in exact current profile."
+    },
+    {
+      "playerId": "8571",
+      "displayName": "Talha Mumtaz",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/pweXeQwiCyVC1j3Ll_GY4g"
+      ],
+      "sourceQuote": "Right Hand Batter (Top Order)",
+      "identityEvidence": "Exact roster source player ID pweXeQwiCyVC1j3Ll_GY4g; opened profile displays Talha Mumtaz, CC Player ID 4250106, current team Manhattan Yorkers.",
+      "verified": true,
+      "notes": "Bowling style not supplied (-) in exact current profile."
+    },
+    {
+      "playerId": "8569",
+      "displayName": "Yasir Mohammad",
+      "battingStyle": "Right Handed Batter",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/OvRgP8jnFCbE8U6Yt3D9Og",
+        "https://cricmax.com/our-students/"
+      ],
+      "sourceQuote": "Right Handed Batter",
+      "identityEvidence": "Exact roster source player ID OvRgP8jnFCbE8U6Yt3D9Og; opened profile displays Yasir Mohammad, CC Player ID 835135, current team Manhattan Yorkers.",
+      "verified": true,
+      "notes": "Bowling style not supplied (-) in exact current profile. Academy Cricmax page names Yasir Mohammad right-arm wrist spinner, but no exact-ID/team bridge was established; candidate only."
+    }
+  ],
+  "opponentProfiles": [
+    {
+      "playerId": "8753",
+      "displayName": "Aadam Khan",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/ktEmNBjC_ZeGzhY8S3avKA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "ktEmNBjC_ZeGzhY8S3avKA",
+        "ccPlayerId": "2203087",
+        "profileName": "Aadam Khan",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:26:52.240Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8592",
+      "displayName": "Aaditva Agrawal",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/OuvHzjuJhI5t-niW3FF8Xw"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "OuvHzjuJhI5t-niW3FF8Xw",
+        "ccPlayerId": "6212007",
+        "profileName": "Aaditva Agrawal",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:26:53.742Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8874",
+      "displayName": "aarin nadkarni",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/Av-wBFdWh3pu4xn3uUm9Pw"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "Av-wBFdWh3pu4xn3uUm9Pw",
+        "ccPlayerId": "864320",
+        "profileName": "Aarin Nadkarni",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:26:54.810Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8801",
+      "displayName": "Aaryan Boddupally",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/HkTCpksZW38Vf0sPdGxfFQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "HkTCpksZW38Vf0sPdGxfFQ",
+        "ccPlayerId": "902848",
+        "profileName": "Aaryan Boddupally",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:26:56.116Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8550",
+      "displayName": "Abdul Jabbar Mohammed",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Left Arm Orthodox",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/vDf1aFdzB2Equ61uH4BlVg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Left Arm Orthodox",
+      "identityEvidence": {
+        "sourcePlayerId": "vDf1aFdzB2Equ61uH4BlVg",
+        "ccPlayerId": "1800727",
+        "profileName": "Abdul Jabbar Mohammed",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:26:57.267Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8758",
+      "displayName": "Abdulahad Malek",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/8WTfzZnDRzawnm1IAMzg9A"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "8WTfzZnDRzawnm1IAMzg9A",
+        "ccPlayerId": "2686907",
+        "profileName": "Abdulahad Malek",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:26:58.557Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8589",
+      "displayName": "Abdullah Ghazi",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/VaeHb6MU0hzMFpC4-MPnwA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "VaeHb6MU0hzMFpC4-MPnwA",
+        "ccPlayerId": "494403",
+        "profileName": "Abdullah Ghazi",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:00.041Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8476",
+      "displayName": "Abhiram Yeruva",
+      "battingStyle": "Right Hand Batter (Middle Order)",
+      "bowlingStyle": "Right Arm Leg Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/90Pvn_YxtJGkIKOBtJD8_w"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Middle Order); Bowling Style: Right Arm Leg Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "90Pvn_YxtJGkIKOBtJD8_w",
+        "ccPlayerId": "5641727",
+        "profileName": "Abhiram Yeruva",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:01.140Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9003",
+      "displayName": "Abinav Sudershanum",
+      "battingStyle": "Left Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Off Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/2civ4kn0SsclDYQHYFPP0Q"
+      ],
+      "sourceQuote": "Batting Style: Left Hand Batter (Top Order); Bowling Style: Right Arm Off Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "2civ4kn0SsclDYQHYFPP0Q",
+        "ccPlayerId": "4377669",
+        "profileName": "Abinav Sudershanum",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:02.549Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8520",
+      "displayName": "Adithya Ganesh",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/lmP59wk58u4X3GFN_DKO6w"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "lmP59wk58u4X3GFN_DKO6w",
+        "ccPlayerId": "3557278",
+        "profileName": "Adithya Ganesh",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:03.927Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8749",
+      "displayName": "Aditya Padala",
+      "battingStyle": "Left Hand Batter (Top Order)",
+      "bowlingStyle": "Left Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/J9uvDZHCHygFBhlZ3d2oCg"
+      ],
+      "sourceQuote": "Batting Style: Left Hand Batter (Top Order); Bowling Style: Left Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "J9uvDZHCHygFBhlZ3d2oCg",
+        "ccPlayerId": "1767317",
+        "profileName": "Aditya Padala",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:15.745Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8804",
+      "displayName": "Advait Varadarajan",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/K2IStz-7JnWLJQ7VAsQwYw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "K2IStz-7JnWLJQ7VAsQwYw",
+        "ccPlayerId": "3480962",
+        "profileName": "Advait Varadarajan",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:17.408Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8760",
+      "displayName": "Amila Aponso",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/YMinARZxcc3gxyAZZCB9uQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "YMinARZxcc3gxyAZZCB9uQ",
+        "ccPlayerId": "2771685",
+        "profileName": "Amila Aponso",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:18.614Z",
+      "verified": false,
+      "verifiedFields": {
+        "battingStyle": false,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "quarantined-potential-default",
+      "notes": "Potential generic default; pending independent identity-linked corroboration. No alternate style inferred. Do not use held fields as definitive matchup input."
+    },
+    {
+      "playerId": "8858",
+      "displayName": "Amshi De Silva",
+      "battingStyle": "right-handed",
+      "bowlingStyle": "right-arm-medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/fCaZpDnPFr2Z8Zf2ZXvErQ"
+      ],
+      "sourceQuote": "Batting Style: right-handed; Bowling Style: right-arm-medium",
+      "identityEvidence": {
+        "sourcePlayerId": "fCaZpDnPFr2Z8Zf2ZXvErQ",
+        "ccPlayerId": "4979800",
+        "profileName": "Amshi De Silva",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:19.889Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8853",
+      "displayName": "Andre Fletcher",
+      "battingStyle": "right-handed",
+      "bowlingStyle": "right-arm-leg-spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/myHFFXdy3LwTbkqilTkOJg"
+      ],
+      "sourceQuote": "Batting Style: right-handed; Bowling Style: right-arm-leg-spin",
+      "identityEvidence": {
+        "sourcePlayerId": "myHFFXdy3LwTbkqilTkOJg",
+        "ccPlayerId": "7167896",
+        "profileName": "Andre Fletcher",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:20.965Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8513",
+      "displayName": "Anirudh Emmanuel",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/9D8oYF-6RlwA_87sX22hhQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "9D8oYF-6RlwA_87sX22hhQ",
+        "ccPlayerId": "4418965",
+        "profileName": "Anirudh Emmanuel",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:22.244Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8474",
+      "displayName": "Ansh Rai",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/Huo9ZORHuG1cL-QTwMJqzA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "Huo9ZORHuG1cL-QTwMJqzA",
+        "ccPlayerId": "859146",
+        "profileName": "Ansh Rai",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:23.996Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8562",
+      "displayName": "Apurva Maheshram",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Off Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/XUKDeVhX7wM8CCsiT1EYdw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Off Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "XUKDeVhX7wM8CCsiT1EYdw",
+        "ccPlayerId": "2795119",
+        "profileName": "Apurva Maheshram",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:25.311Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8762",
+      "displayName": "Arya Garg",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/fhJNyQ7ePOZYoiYhx5kNoQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "fhJNyQ7ePOZYoiYhx5kNoQ",
+        "ccPlayerId": "830461",
+        "profileName": "Arya Garg",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:26.471Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "9006",
+      "displayName": "Aryan Tummala",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/ib_lW58YRxf0kL2_LYTiOA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "ib_lW58YRxf0kL2_LYTiOA",
+        "ccPlayerId": "1379843",
+        "profileName": "Aryan Tummala",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:27.808Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8551",
+      "displayName": "Atharva Kaushal",
+      "battingStyle": "Left Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Leg Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/fYzFLtvY_2PCgMjnHUD6-g"
+      ],
+      "sourceQuote": "Batting Style: Left Hand Batter (Top Order); Bowling Style: Right Arm Leg Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "fYzFLtvY_2PCgMjnHUD6-g",
+        "ccPlayerId": "6238057",
+        "profileName": "Atharva Kaushal",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:28.926Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8782",
+      "displayName": "Atish Gawand",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/caCjtMYvRhJ9_XjMYSJ69w"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "caCjtMYvRhJ9_XjMYSJ69w",
+        "ccPlayerId": "1397591",
+        "profileName": "Atish Gawand",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:30.299Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8878",
+      "displayName": "Chaitanya Bishnoi",
+      "battingStyle": "Left Handed Batter",
+      "bowlingStyle": "Left Arm Off Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/ZEidPYOOxddvsZBEg9ZJbQ"
+      ],
+      "sourceQuote": "Batting Style: Left Handed Batter; Bowling Style: Left Arm Off Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "ZEidPYOOxddvsZBEg9ZJbQ",
+        "ccPlayerId": "3337647",
+        "profileName": "Chaitanya Bishnoi",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:31.850Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9224",
+      "displayName": "chaithanya kumar chava",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/ZXmswDW1f3b3_xfdZwb9dg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "ZXmswDW1f3b3_xfdZwb9dg",
+        "ccPlayerId": "602244",
+        "profileName": "Chaithanya Kumar Chava",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:33.196Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8755",
+      "displayName": "Chandrapaul Hemraj",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/n6RZpe2XS1JdC5HQIo7PUg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "n6RZpe2XS1JdC5HQIo7PUg",
+        "ccPlayerId": "3669914",
+        "profileName": "Chandrapaul Hemraj",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:34.576Z",
+      "verified": false,
+      "verifiedFields": {
+        "battingStyle": false,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "quarantined-potential-default",
+      "notes": "Potential generic default; pending independent identity-linked corroboration. No alternate style inferred. Do not use held fields as definitive matchup input."
+    },
+    {
+      "playerId": "8748",
+      "displayName": "Chinmay Kushare",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/sjR-FPjfc7Sej3evxyuAQg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "sjR-FPjfc7Sej3evxyuAQg",
+        "ccPlayerId": "5006237",
+        "profileName": "Chinmay Kushare",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:35.698Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8747",
+      "displayName": "Christopher Van Tull",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/v1iwn8gh-_nLtAjXr0nhhA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "v1iwn8gh-_nLtAjXr0nhhA",
+        "ccPlayerId": "850385",
+        "profileName": "Christopher Van Tull",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:36.947Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8564",
+      "displayName": "Corne Dry",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/7chUqWabdVGkHoS_YtLBrg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "7chUqWabdVGkHoS_YtLBrg",
+        "ccPlayerId": "1968299",
+        "profileName": "Corne Dry",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:38.268Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8487",
+      "displayName": "Danesh Patel",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/KUdem8TPE9aGeqThqOnUZg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "KUdem8TPE9aGeqThqOnUZg",
+        "ccPlayerId": "2623318",
+        "profileName": "Danesh Patel",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:39.583Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9323",
+      "displayName": "Dharshan Haribabu",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Off Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/RfjM-y879DVv29EGPn14aQ"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: Right Arm Off Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "RfjM-y879DVv29EGPn14aQ",
+        "ccPlayerId": "1804699",
+        "profileName": "Dharshan Haribabu",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:27:40.900Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9360",
+      "displayName": "Dhruvan Kiran",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/ymnEYmmdZ9tsPcZ_dMf2JA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "ymnEYmmdZ9tsPcZ_dMf2JA",
+        "ccPlayerId": "1536380",
+        "profileName": "Dhruvan Kiran",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:35.922Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8449",
+      "displayName": "Ekamnoor Sandhu",
+      "battingStyle": "right-hand-batter-top-order",
+      "bowlingStyle": "right-arm-fast",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/h3kKMPEaGUr-ESSHj3r8_Q"
+      ],
+      "sourceQuote": "Batting Style: right-hand-batter-top-order; Bowling Style: right-arm-fast",
+      "identityEvidence": {
+        "sourcePlayerId": "h3kKMPEaGUr-ESSHj3r8_Q",
+        "ccPlayerId": "7104137",
+        "profileName": "Ekamnoor Sandhu",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:37.801Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8856",
+      "displayName": "Geeth Bolisetty",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/shtEFLgZDD7reXUxiPEPkA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "shtEFLgZDD7reXUxiPEPkA",
+        "ccPlayerId": "4909466",
+        "profileName": "Geeth Bolisetty",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:39.079Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8456",
+      "displayName": "George Baldwin",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/87Eh1rBqRKqxszDEFlKazA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "87Eh1rBqRKqxszDEFlKazA",
+        "ccPlayerId": "4545895",
+        "profileName": "George Baldwin",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:40.332Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8986",
+      "displayName": "Hamza Khalid",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/d5y44oGWmrfXlp4FIWGFfg"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "d5y44oGWmrfXlp4FIWGFfg",
+        "ccPlayerId": "1455082",
+        "profileName": "Hamza Khalid",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:41.616Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8802",
+      "displayName": "Hardik Desai",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/ZOTjE0MSvsu_1OtJN4mgEQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "ZOTjE0MSvsu_1OtJN4mgEQ",
+        "ccPlayerId": "1078503",
+        "profileName": "Hardik Desai",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:43.177Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8754",
+      "displayName": "Heath Richards",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/Bv-3Whk_lcpQHIIf6Q73RA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "Bv-3Whk_lcpQHIIf6Q73RA",
+        "ccPlayerId": "2720743",
+        "profileName": "Heath Richards",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:44.388Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8857",
+      "displayName": "Ian Chauhan",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/6gnb4v20LJnkb56l9VK3wg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "6gnb4v20LJnkb56l9VK3wg",
+        "ccPlayerId": "2233468",
+        "profileName": "Ian Chauhan",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:45.795Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8877",
+      "displayName": "Imran Khan Jr",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/jvIGMElebO6k7vv9PsQFcQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "jvIGMElebO6k7vv9PsQFcQ",
+        "ccPlayerId": "3015032",
+        "profileName": "Imran Khan Jr",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:47.929Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9432",
+      "displayName": "Ishaan Unnithan",
+      "battingStyle": null,
+      "bowlingStyle": null,
+      "sourceUrls": [],
+      "sourceQuote": null,
+      "identityEvidence": null,
+      "retrievedAt": null,
+      "verified": false,
+      "verifiedFields": {
+        "battingStyle": false,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "unresolved-no-profile-url",
+      "notes": "No profile URL supplied; source ID alone was not used to guess a profile URL. Styles unresolved."
+    },
+    {
+      "playerId": "8446",
+      "displayName": "Jacobus Pienaar",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/6nqwtav2sjeUVX3HE7dgkg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "6nqwtav2sjeUVX3HE7dgkg",
+        "ccPlayerId": "2135700",
+        "profileName": "Jacobus Pienaar",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:49.146Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8765",
+      "displayName": "Jagdish Narisetty",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/vkD0v3DjdDiq9zhJjyginA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "vkD0v3DjdDiq9zhJjyginA",
+        "ccPlayerId": "3347010",
+        "profileName": "Jagdish Narisetty",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:50.406Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8510",
+      "displayName": "Jasdeep Singh",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Fast",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/ayKT68Hr_RSnjP4J88k02w"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Fast",
+      "identityEvidence": {
+        "sourcePlayerId": "ayKT68Hr_RSnjP4J88k02w",
+        "ccPlayerId": "764639",
+        "profileName": "Jasdeep Singh",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:52.071Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8523",
+      "displayName": "Jaykishan Parwani",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/IFmsgjDJv-lRW9cjvwJvaA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "IFmsgjDJv-lRW9cjvwJvaA",
+        "ccPlayerId": "4545837",
+        "profileName": "Jaykishan Parwani",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:53.522Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9022",
+      "displayName": "Joshua Kind",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/INLxROgy4mD36tSz2PNRPA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "INLxROgy4mD36tSz2PNRPA",
+        "ccPlayerId": "480124",
+        "profileName": "Joshua Kind",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:54.844Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9005",
+      "displayName": "Joshua Tromp",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/yzrgXHF96Zs_RGdwGtGXoA"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "yzrgXHF96Zs_RGdwGtGXoA",
+        "ccPlayerId": "2712958",
+        "profileName": "Joshua Tromp",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:55.985Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9248",
+      "displayName": "Juanoy Drysdale",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/iAtTULXiS4iPDxR27Lm7NA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "iAtTULXiS4iPDxR27Lm7NA",
+        "ccPlayerId": "2175576",
+        "profileName": "Juanoy Drysdale",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:57.066Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8873",
+      "displayName": "Kamran Sheikh",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Leg Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/U0OoBPkFcevYP-__BQK8PA"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: Right Arm Leg Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "U0OoBPkFcevYP-__BQK8PA",
+        "ccPlayerId": "654388",
+        "profileName": "Kamran Sheikh",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:58.519Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9056",
+      "displayName": "Kavin Govindaraju",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/WRxFn5UGFo5JnaiPFfuuNA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "WRxFn5UGFo5JnaiPFfuuNA",
+        "ccPlayerId": "1247778",
+        "profileName": "Kavin Govindaraju",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:28:59.963Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8596",
+      "displayName": "Kevin Christian",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/wGu_NhXjFJOm-ZBG2lxtEQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "wGu_NhXjFJOm-ZBG2lxtEQ",
+        "ccPlayerId": "3282902",
+        "profileName": "Kevin Christian",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:29:01.583Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8791",
+      "displayName": "Kieran Powell",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/knnWxTLIrt2RDhT-naFmuA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "knnWxTLIrt2RDhT-naFmuA",
+        "ccPlayerId": "2835019",
+        "profileName": "Kieran Powell",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:29:02.744Z",
+      "verified": false,
+      "verifiedFields": {
+        "battingStyle": false,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "quarantined-potential-default",
+      "notes": "Potential generic default; pending independent identity-linked corroboration. No alternate style inferred. Do not use held fields as definitive matchup input."
+    },
+    {
+      "playerId": "8524",
+      "displayName": "Manoj Acharya",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/vxdy_DIf0ABDTnTACMpMXg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "vxdy_DIf0ABDTnTACMpMXg",
+        "ccPlayerId": "2940500",
+        "profileName": "Manoj Acharya",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:30:46.052Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8750",
+      "displayName": "Mario Rampersaud",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/Zkm8YVg9XgG4vMxljOiiqg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "Zkm8YVg9XgG4vMxljOiiqg",
+        "ccPlayerId": "1752218",
+        "profileName": "Mario Rampersaud",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:30:47.306Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9012",
+      "displayName": "Matthew Tromp",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/v5UIsI96To91X0SXRxX5cw"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "v5UIsI96To91X0SXRxX5cw",
+        "ccPlayerId": "2635676",
+        "profileName": "Matthew Tromp",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:30:48.563Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8751",
+      "displayName": "Mohib Ahsan",
+      "battingStyle": "Left Hand Batter (Top Order)",
+      "bowlingStyle": "Left Arm Orthodox",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/l0VQ2f-9FVBjX6aWAmAWzg"
+      ],
+      "sourceQuote": "Batting Style: Left Hand Batter (Top Order); Bowling Style: Left Arm Orthodox",
+      "identityEvidence": {
+        "sourcePlayerId": "l0VQ2f-9FVBjX6aWAmAWzg",
+        "ccPlayerId": "1788014",
+        "profileName": "Mohib Ahsan",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:30:49.938Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8757",
+      "displayName": "Monank Patel",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/8y19gEAk2TpHOhvFBw41Hg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "8y19gEAk2TpHOhvFBw41Hg",
+        "ccPlayerId": "2175527",
+        "profileName": "Monank Patel",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:30:51.258Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8590",
+      "displayName": "Muhammad Asad Ghous",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/kAU0u6WaKWKNwf2yObU3Kw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "kAU0u6WaKWKNwf2yObU3Kw",
+        "ccPlayerId": "2175593",
+        "profileName": "Muhammad Asad Ghous",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:30:52.354Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9024",
+      "displayName": "Muhammad Waqas Saleem Saleem",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/UHpSYTzQ3VXbzs3UInY1bQ"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "UHpSYTzQ3VXbzs3UInY1bQ",
+        "ccPlayerId": "1808062",
+        "profileName": "Muhammad Waqas Saleem Saleem",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:30:53.585Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8443",
+      "displayName": "Mukhtar Ahmed",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Leg Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/cwZe_5mFU0NZfRj4agygvQ"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: Right Arm Leg Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "cwZe_5mFU0NZfRj4agygvQ",
+        "ccPlayerId": "3410403",
+        "profileName": "Mukhtar Ahmed",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:30:54.917Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8879",
+      "displayName": "Naqash Basharat",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Left Arm Fast",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/4D8wrWYJet9ikXwyCet6eA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Left Arm Fast",
+      "identityEvidence": {
+        "sourcePlayerId": "4D8wrWYJet9ikXwyCet6eA",
+        "ccPlayerId": "4246702",
+        "profileName": "Naqash Basharat",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:30:56.059Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8445",
+      "displayName": "Nikhil Mudaliar",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/B7APourPtOTkYIIsWDpkjw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "B7APourPtOTkYIIsWDpkjw",
+        "ccPlayerId": "1379971",
+        "profileName": "Nikhil Mudaliar",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:30:58.467Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8888",
+      "displayName": "Nitish Kumar",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Off Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/M172NOJGHa7JxMBrfgtC8w"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Off Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "M172NOJGHa7JxMBrfgtC8w",
+        "ccPlayerId": "1371145",
+        "profileName": "Nitish Kumar",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:31:00.056Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9021",
+      "displayName": "Nosthush Kenjige",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/khs3CDqr0l5pskQWr6xxpQ"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "khs3CDqr0l5pskQWr6xxpQ",
+        "ccPlayerId": "292747",
+        "profileName": "Nosthush Kenjige",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:31:01.450Z",
+      "verified": false,
+      "verifiedFields": {
+        "battingStyle": false,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "quarantined-potential-default",
+      "notes": "Potential generic default; pending independent identity-linked corroboration. No alternate style inferred. Do not use held fields as definitive matchup input."
+    },
+    {
+      "playerId": "8812",
+      "displayName": "Orrington Hamilton",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/AR0KSJarikd33jEvN3VtCQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "AR0KSJarikd33jEvN3VtCQ",
+        "ccPlayerId": "3625786",
+        "profileName": "Orrington Hamilton",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:31:02.881Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8763",
+      "displayName": "Phani Simhadri",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Left Arm Fast",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/G3MTHzgL4n7qH1ORIDmYsQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Left Arm Fast",
+      "identityEvidence": {
+        "sourcePlayerId": "G3MTHzgL4n7qH1ORIDmYsQ",
+        "ccPlayerId": "842691",
+        "profileName": "Phani Simhadri",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:31:04.380Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8591",
+      "displayName": "Pooranjay Yadav",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/SIEscpkn_OmITt6bT3F4PA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "SIEscpkn_OmITt6bT3F4PA",
+        "ccPlayerId": "5226549",
+        "profileName": "Pooranjay Yadav",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:31:06.468Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8805",
+      "displayName": "Pranav Bhattad",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/Iz1EENBgXBuHzPvktLNpEw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "Iz1EENBgXBuHzPvktLNpEw",
+        "ccPlayerId": "5224079",
+        "profileName": "Pranav Bhattad",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:31:07.639Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9237",
+      "displayName": "Pranav Reddy Pagydyala",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/W3dy2XtefBFEq38Bit0guQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "W3dy2XtefBFEq38Bit0guQ",
+        "ccPlayerId": "2560688",
+        "profileName": "Pranav Reddy Pagydyala",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:31:08.897Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8860",
+      "displayName": "Praneeth Raj Siddantham",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/ezd9muYdkPUV5bMxjbdtUQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "ezd9muYdkPUV5bMxjbdtUQ",
+        "ccPlayerId": "3606769",
+        "profileName": "Praneeth Raj Siddantham",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:31:10.218Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8637",
+      "displayName": "Rajdeep Darbar",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/GXVc_GR2W07zfP7gCVLkpA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "GXVc_GR2W07zfP7gCVLkpA",
+        "ccPlayerId": "2836513",
+        "profileName": "Rajdeep Darbar",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:31:11.418Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8746",
+      "displayName": "Raunaq Sharma",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Leg Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/wKoJY11-1gbWa53HynoPrw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Leg Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "wKoJY11-1gbWa53HynoPrw",
+        "ccPlayerId": "2101129",
+        "profileName": "Raunaq Sharma",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:31:12.696Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8854",
+      "displayName": "Rehman Dar",
+      "battingStyle": "Left Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Off Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/rEkkTMjjrzXK1pB3dKvnlA"
+      ],
+      "sourceQuote": "Batting Style: Left Hand Batter (Top Order); Bowling Style: Right Arm Off Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "rEkkTMjjrzXK1pB3dKvnlA",
+        "ccPlayerId": "701010",
+        "profileName": "Rehman Dar",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:43:46.236Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9026",
+      "displayName": "Rishabh Shimpi",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/ySIKAJyt3I4TwbvQfAVOuw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "ySIKAJyt3I4TwbvQfAVOuw",
+        "ccPlayerId": "6785627",
+        "profileName": "Rishabh Shimpi",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:43:47.384Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "9025",
+      "displayName": "Rishi Ramesh",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/OowlFMeIDaDVRnQFeX__gw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "OowlFMeIDaDVRnQFeX__gw",
+        "ccPlayerId": "2176981",
+        "profileName": "Rishi Ramesh",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:43:48.628Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8475",
+      "displayName": "Ritvik Appidi",
+      "battingStyle": "Right Hand Batter (Middle Order)",
+      "bowlingStyle": "Right Arm Fast",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/BLDYMEdDjTqcsO09_ASzhw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Middle Order); Bowling Style: Right Arm Fast",
+      "identityEvidence": {
+        "sourcePlayerId": "BLDYMEdDjTqcsO09_ASzhw",
+        "ccPlayerId": "1496421",
+        "profileName": "Ritvik Appidi",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:43:50.002Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8790",
+      "displayName": "Romario King",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/m7ku4r1FtaelnIJgvl4fEg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "m7ku4r1FtaelnIJgvl4fEg",
+        "ccPlayerId": "3480948",
+        "profileName": "Romario King",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:43:51.489Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8518",
+      "displayName": "Ryan Scott",
+      "battingStyle": "Left Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Leg Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/1rKnVtyuGp4swyPbIflI_Q"
+      ],
+      "sourceQuote": "Batting Style: Left Hand Batter (Top Order); Bowling Style: Right Arm Leg Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "1rKnVtyuGp4swyPbIflI_Q",
+        "ccPlayerId": "497015",
+        "profileName": "Ryan Scott",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:43:52.690Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8855",
+      "displayName": "S Gowda",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Off Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/ZSHmtNI0GUOTgQCWzNUPFg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Off Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "ZSHmtNI0GUOTgQCWzNUPFg",
+        "ccPlayerId": "1801149",
+        "profileName": "S Gowda",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:43:53.872Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8512",
+      "displayName": "Sachin Mylavarapu",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Left Arm Orthodox",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/x4ORtmwYuESALRHGDDiz7Q"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Left Arm Orthodox",
+      "identityEvidence": {
+        "sourcePlayerId": "x4ORtmwYuESALRHGDDiz7Q",
+        "ccPlayerId": "2175601",
+        "profileName": "Sachin Mylavarapu",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:43:55.241Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8442",
+      "displayName": "Saharsh Shwethan",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/fOfF4QKipTaklyzW_0sn-w"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "fOfF4QKipTaklyzW_0sn-w",
+        "ccPlayerId": "1994612",
+        "profileName": "Saharsh Shwethan",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:43:56.704Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8761",
+      "displayName": "Saif Badar",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Leg Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/4GKdZ1T6rWi5t8WeMbiVKQ"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: Right Arm Leg Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "4GKdZ1T6rWi5t8WeMbiVKQ",
+        "ccPlayerId": "2591256",
+        "profileName": "Saif Badar",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:43:58.398Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8636",
+      "displayName": "Saiteja Mukkamalla",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/Ux-jhc95j3WVMSUVotzEGg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "Ux-jhc95j3WVMSUVotzEGg",
+        "ccPlayerId": "1206339",
+        "profileName": "Saiteja Mukkamalla",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:43:59.831Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8561",
+      "displayName": "Salman Shah",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/H4P-xpHs5YJDThW1xmNgBw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "H4P-xpHs5YJDThW1xmNgBw",
+        "ccPlayerId": "6171959",
+        "profileName": "Salman Shah",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:01.083Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "9365",
+      "displayName": "Sanjit Sudhakar",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/Eg7Ys0YkHVzjJ0k7zgC_Aw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "Eg7Ys0YkHVzjJ0k7zgC_Aw",
+        "ccPlayerId": "6791495",
+        "profileName": "Sanjit Sudhakar",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:02.455Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8522",
+      "displayName": "Savir Kariveda",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/M7hsJtXcYXWa68knVylECA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "M7hsJtXcYXWa68knVylECA",
+        "ccPlayerId": "2090010",
+        "profileName": "Savir Kariveda",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:04.256Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8880",
+      "displayName": "Shainiff Lalani",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/kroKO4Ks8GSsAS6lcNbKEg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "kroKO4Ks8GSsAS6lcNbKEg",
+        "ccPlayerId": "5789921",
+        "profileName": "Shainiff Lalani",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:05.600Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8781",
+      "displayName": "Shaurya Vanjari",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/hpd1jb7BHtp49_9KNkE-Pg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "hpd1jb7BHtp49_9KNkE-Pg",
+        "ccPlayerId": "2846321",
+        "profileName": "Shaurya Vanjari",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:06.989Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8621",
+      "displayName": "Shazzad Hoqe",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/I1pYigPhxfhmg_LFweZ0zQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "I1pYigPhxfhmg_LFweZ0zQ",
+        "ccPlayerId": "2613078",
+        "profileName": "Shazzad Hoqe",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:08.424Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8519",
+      "displayName": "Shrey Sethi",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/2U_THcIbdpuHJz0GIiOJCw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "2U_THcIbdpuHJz0GIiOJCw",
+        "ccPlayerId": "1799718",
+        "profileName": "Shrey Sethi",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:09.606Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8876",
+      "displayName": "Shreyan Satheesh",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/yhyI6ARW3FTd30i_GkSUwQ"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "yhyI6ARW3FTd30i_GkSUwQ",
+        "ccPlayerId": "1882314",
+        "profileName": "Shreyan Satheesh",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:10.992Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8803",
+      "displayName": "Shuaib Syed",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/XfzNnCehmHlfHWEhJKlDrg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "XfzNnCehmHlfHWEhJKlDrg",
+        "ccPlayerId": "2752328",
+        "profileName": "Shuaib Syed",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:12.401Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9324",
+      "displayName": "Shubham Ranjane",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/dnSLBFcshejJBoj6M94efA"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "dnSLBFcshejJBoj6M94efA",
+        "ccPlayerId": "5998774",
+        "profileName": "Shubham Ranjane",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:25.230Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8866",
+      "displayName": "Siddhant Shaah",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/JcFgWd39z7ONzoqY_UPb_Q"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "JcFgWd39z7ONzoqY_UPb_Q",
+        "ccPlayerId": "810315",
+        "profileName": "Siddhant Shaah",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:26.699Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8549",
+      "displayName": "Sivaram Swarna",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/eAH3EjzTqYm5WfR0qKrZ-Q"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "eAH3EjzTqYm5WfR0qKrZ-Q",
+        "ccPlayerId": "3480980",
+        "profileName": "Sivaram Swarna",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:27.961Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8759",
+      "displayName": "Soaeb Tai",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/voLX86JshaHR9S7ruf0HBQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "voLX86JshaHR9S7ruf0HBQ",
+        "ccPlayerId": "4545579",
+        "profileName": "Soaeb Tai",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:29.413Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8447",
+      "displayName": "Soham Agashe",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Off Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/kDgSGuOm2w1pPKgK8y7hGA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Off Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "kDgSGuOm2w1pPKgK8y7hGA",
+        "ccPlayerId": "2090549",
+        "profileName": "Soham Agashe",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:30.770Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9446",
+      "displayName": "Sohan Gudipati",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/5pJjLEM6Z_N9S7H5F-UDfw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "5pJjLEM6Z_N9S7H5F-UDfw",
+        "ccPlayerId": "1536397",
+        "profileName": "Sohan Gudipati",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:32.161Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8511",
+      "displayName": "Stephen Wiig",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Left Arm Fast",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/9-ECz2bjUpZZjKW0XdnofQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Left Arm Fast",
+      "identityEvidence": {
+        "sourcePlayerId": "9-ECz2bjUpZZjKW0XdnofQ",
+        "ccPlayerId": "831106",
+        "profileName": "Stephen Wiig",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:33.518Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9267",
+      "displayName": "Sushant Modani",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Off Spin",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/KntwGAalKj-cLHSDkoqbHg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Off Spin",
+      "identityEvidence": {
+        "sourcePlayerId": "KntwGAalKj-cLHSDkoqbHg",
+        "ccPlayerId": "839135",
+        "profileName": "Sushant Modani",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:34.988Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8875",
+      "displayName": "Suvir Gudipati",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/T5jxQm6-AgzV44H7ARpNAQ"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "T5jxQm6-AgzV44H7ARpNAQ",
+        "ccPlayerId": "1764055",
+        "profileName": "Suvir Gudipati",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:36.371Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8488",
+      "displayName": "Syed Ali Sher Kazmi",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/ZB8cRmwUblmoFKoffAeobQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "ZB8cRmwUblmoFKoffAeobQ",
+        "ccPlayerId": "5287299",
+        "profileName": "Syed Ali Sher Kazmi",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:37.707Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8792",
+      "displayName": "Tagenarine Chanderpaul",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/KwGI56TJh5Ebc7JvDs_O6Q"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "KwGI56TJh5Ebc7JvDs_O6Q",
+        "ccPlayerId": "3557287",
+        "profileName": "Tagenarine Chanderpaul",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:39.143Z",
+      "verified": false,
+      "verifiedFields": {
+        "battingStyle": false,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "quarantined-potential-default",
+      "notes": "Potential generic default; pending independent identity-linked corroboration. No alternate style inferred. Do not use held fields as definitive matchup input."
+    },
+    {
+      "playerId": "9364",
+      "displayName": "Tushar Gandepalli",
+      "battingStyle": "left-hand-batter-middle-order",
+      "bowlingStyle": "left-arm-fast",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/5jKQMC3Po3qQNbbZgf2Ujw"
+      ],
+      "sourceQuote": "Batting Style: left-hand-batter-middle-order; Bowling Style: left-arm-fast",
+      "identityEvidence": {
+        "sourcePlayerId": "5jKQMC3Po3qQNbbZgf2Ujw",
+        "ccPlayerId": "6670954",
+        "profileName": "Tushar Gandepalli",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:40.337Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8887",
+      "displayName": "Unmukt Chand",
+      "battingStyle": "Right Handed Batter",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/JtACLt2y040V0vykn6bzgg"
+      ],
+      "sourceQuote": "Batting Style: Right Handed Batter; Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "JtACLt2y040V0vykn6bzgg",
+        "ccPlayerId": "2205400",
+        "profileName": "Unmukt Chand",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:41.783Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "9353",
+      "displayName": "Vaibhav Suresh",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/z5RD8yJWWbglhtf038HQCg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "z5RD8yJWWbglhtf038HQCg",
+        "ccPlayerId": "549887",
+        "profileName": "Vaibhav Suresh",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:43.873Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8444",
+      "displayName": "Venkat Maheesh Kolahalam",
+      "battingStyle": "Left Hand Batter (Top Order)",
+      "bowlingStyle": "Left Arm Orthodox",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/oYLWZmgCfioBgoZz2nmHIw"
+      ],
+      "sourceQuote": "Batting Style: Left Hand Batter (Top Order); Bowling Style: Left Arm Orthodox",
+      "identityEvidence": {
+        "sourcePlayerId": "oYLWZmgCfioBgoZz2nmHIw",
+        "ccPlayerId": "2182681",
+        "profileName": "Venkat Maheesh Kolahalam",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:45.129Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8515",
+      "displayName": "Vishal Onat",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/OWptdMRj0QzSTiKExIFoMw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "OWptdMRj0QzSTiKExIFoMw",
+        "ccPlayerId": "6894431",
+        "profileName": "Vishal Onat",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:46.491Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8521",
+      "displayName": "vishal Reddy Thanugundla",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Left Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/Yfs7WP-PesCqr3JBjPvzpQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Left Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "Yfs7WP-PesCqr3JBjPvzpQ",
+        "ccPlayerId": "3233671",
+        "profileName": "Vishal Reddy Thanugundla",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:47.908Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8565",
+      "displayName": "Vraj Desai",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Left Arm Orthodox",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/zAm9qLC0TIcsiLpawz7Umw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Left Arm Orthodox",
+      "identityEvidence": {
+        "sourcePlayerId": "zAm9qLC0TIcsiLpawz7Umw",
+        "ccPlayerId": "4297066",
+        "profileName": "Vraj Desai",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:49.828Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8859",
+      "displayName": "Vrishin Kattari",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/AVJC4BGAzKVZLhrUqT2IPg"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "AVJC4BGAzKVZLhrUqT2IPg",
+        "ccPlayerId": "1481570",
+        "profileName": "Vrishin Kattari",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:51.024Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8563",
+      "displayName": "Waleed Khan",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": null,
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/KIE-IEjeoaeAwHZxTyhGiw"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: -",
+      "identityEvidence": {
+        "sourcePlayerId": "KIE-IEjeoaeAwHZxTyhGiw",
+        "ccPlayerId": "2049564",
+        "profileName": "Waleed Khan",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:52.419Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": false
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Profile bowling style is '-'; preserved as unknown, not a known bowling classification."
+    },
+    {
+      "playerId": "8560",
+      "displayName": "Xavier Marshall",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/H8WRXmV8zfBpKkjDdcurHA"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "H8WRXmV8zfBpKkjDdcurHA",
+        "ccPlayerId": "2720808",
+        "profileName": "Xavier Marshall",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:53.977Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    },
+    {
+      "playerId": "8865",
+      "displayName": "Yuvan Kiran",
+      "battingStyle": "Right Hand Batter (Top Order)",
+      "bowlingStyle": "Right Arm Medium",
+      "sourceUrls": [
+        "https://cricclubs.com/MiLC/user/fBLYKoYqabCF54H-IpRoXQ"
+      ],
+      "sourceQuote": "Batting Style: Right Hand Batter (Top Order); Bowling Style: Right Arm Medium",
+      "identityEvidence": {
+        "sourcePlayerId": "fBLYKoYqabCF54H-IpRoXQ",
+        "ccPlayerId": "3627764",
+        "profileName": "Yuvan Kiran",
+        "exactProvidedProfileUrl": true
+      },
+      "retrievedAt": "2026-10-04T19:44:55.398Z",
+      "verified": true,
+      "verifiedFields": {
+        "battingStyle": true,
+        "bowlingStyle": true
+      },
+      "verificationStatus": "profile-listed",
+      "notes": "Exact source identity profile verified; styles are profile-listed, not independently corroborated."
+    }
+  ]
+}

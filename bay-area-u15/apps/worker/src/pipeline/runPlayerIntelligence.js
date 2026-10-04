@@ -171,10 +171,12 @@ async function loadDismissalRows(client, seriesId) {
   }));
 }
 
-async function deleteExistingRows(client, seriesId) {
-  await client.query("delete from public.player_intelligence_matchup where series_id = $1", [seriesId]);
-  await client.query("delete from public.player_intelligence_dismissal where series_id = $1", [seriesId]);
-  await client.query("delete from public.player_intelligence_profile where series_id = $1", [seriesId]);
+async function deleteExistingRows(client, seriesId, playerIds) {
+  const predicate = playerIds ? ' and player_id = any($2::bigint[])' : '';
+  const params = playerIds ? [seriesId, playerIds] : [seriesId];
+  await client.query(`delete from public.player_intelligence_matchup where series_id = $1${predicate}`, params);
+  await client.query(`delete from public.player_intelligence_dismissal where series_id = $1${predicate}`, params);
+  await client.query(`delete from public.player_intelligence_profile where series_id = $1${predicate}`, params);
 }
 
 async function batchInsert(client, tableName, columns, rows, batchSize = 200) {
@@ -360,7 +362,7 @@ async function insertProfileRows(client, seriesId, rows) {
   );
 }
 
-async function loadSampleMatchups(client, seriesId, limit = 12) {
+async function loadSampleMatchups(client, seriesId, limit = 12, playerIds = null) {
   const result = await client.query(
     `
       select
@@ -383,10 +385,11 @@ async function loadSampleMatchups(client, seriesId, limit = 12) {
       where pim.series_id = $1
         and pim.phase_bucket = 'overall'
         and pim.split_group <> 'overall'
+        and ($3::bigint[] is null or pim.player_id = any($3::bigint[]))
       order by pim.legal_balls desc, p.display_name asc
       limit $2
     `,
-    [seriesId, limit]
+    [seriesId, limit, playerIds]
   );
 
   return result.rows.map((row) => ({
@@ -406,11 +409,21 @@ async function loadSampleMatchups(client, seriesId, limit = 12) {
   }));
 }
 
-async function runPlayerIntelligence({ series, outDir, log }) {
+async function runPlayerIntelligence({ series, outDir, log, playerIds = null, dryRun = false, withTransactionFn = withTransaction }) {
   const logger = buildLogger(log);
+  if (playerIds !== null) {
+    const isValidPlayerId = (id) => (
+      (typeof id === 'number' || (typeof id === 'string' && /^[1-9]\d*$/.test(id)))
+      && Number.isSafeInteger(Number(id)) && Number(id) > 0
+    );
+    if (!Array.isArray(playerIds) || !playerIds.length || playerIds.some(id => !isValidPlayerId(id))) {
+      throw new Error('playerIds must be a non-empty array of positive integer player IDs.');
+    }
+    playerIds = [...new Set(playerIds.map(Number))];
+  }
   ensureDir(outDir);
 
-  const result = await withTransaction(async (client) => {
+  const result = await withTransactionFn(async (client) => {
     await client.query("set local statement_timeout = '300s'");
     const context = await resolveSeriesContext(client, series.slug);
     logger(`[compute-intelligence] ${context.configKey}: load ball-event and dismissal inputs`);
@@ -422,18 +435,26 @@ async function runPlayerIntelligence({ series, outDir, log }) {
     );
 
     const computed = buildPlayerIntelligenceRows(ballEventRows, dismissalRows);
+    if (playerIds) {
+      const selected = new Set(playerIds);
+      for (const key of ['matchupRows', 'dismissalRows', 'profileRows']) {
+        computed[key] = computed[key].filter(row => selected.has(row.playerId));
+      }
+    }
     logger(
       `[compute-intelligence] ${context.configKey}: computed ${computed.summary.matchupRowCount} matchup rows, ${computed.summary.dismissalRowCount} dismissal rows, ${computed.summary.profileRowCount} profile rows`
     );
 
-    await deleteExistingRows(client, context.seriesId);
-    const matchupRowCount = await insertMatchupRows(client, context.seriesId, computed.matchupRows);
-    const dismissalRowCount = await insertDismissalRows(client, context.seriesId, computed.dismissalRows);
-    const profileRowCount = await insertProfileRows(client, context.seriesId, computed.profileRows);
-    const sampleMatchups = await loadSampleMatchups(client, context.seriesId, 12);
+    if (!dryRun) await deleteExistingRows(client, context.seriesId, playerIds);
+    const matchupRowCount = dryRun ? computed.matchupRows.length : await insertMatchupRows(client, context.seriesId, computed.matchupRows);
+    const dismissalRowCount = dryRun ? computed.dismissalRows.length : await insertDismissalRows(client, context.seriesId, computed.dismissalRows);
+    const profileRowCount = dryRun ? computed.profileRows.length : await insertProfileRows(client, context.seriesId, computed.profileRows);
+    const sampleMatchups = dryRun ? [] : await loadSampleMatchups(client, context.seriesId, 12, playerIds);
 
     return {
       ok: true,
+      dryRun,
+      playerIds,
       seriesConfigKey: context.configKey,
       seriesId: context.seriesId,
       seriesName: context.seriesName,
@@ -442,8 +463,8 @@ async function runPlayerIntelligence({ series, outDir, log }) {
       matchupRowCount,
       dismissalRowCount,
       profileRowCount,
-      battingPlayerCount: computed.summary.battingPlayerCount,
-      bowlingPlayerCount: computed.summary.bowlingPlayerCount,
+      battingPlayerCount: new Set(computed.matchupRows.filter(row => row.perspective === 'batting').map(row => row.playerId)).size,
+      bowlingPlayerCount: new Set(computed.matchupRows.filter(row => row.perspective === 'bowling').map(row => row.playerId)).size,
       sampleMatchups,
     };
   });

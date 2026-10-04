@@ -15,6 +15,7 @@ import AnalyticsIntelligenceReport from "./pages/AnalyticsIntelligenceReport";
 import AnalyticsNccaTopPlayers from "./pages/AnalyticsNccaTopPlayers";
 import AnalyticsGrizzlies2026 from "./pages/AnalyticsGrizzlies2026";
 import AnalyticsGrizzliesMatchReport from "./pages/AnalyticsGrizzliesMatchReport";
+import AnalyticsGrizzliesGamePlan from "./pages/AnalyticsGrizzliesGamePlan";
 import AnalyticsFeatureSample from "./pages/AnalyticsFeatureSample";
 import AnalyticsAdminGateway from "./pages/AnalyticsAdminGateway";
 import AnalyticsPlatformAdmin from "./pages/AnalyticsPlatformAdmin";
@@ -100,6 +101,7 @@ const App = () => (
             } />
             <Route path="/analytics/grizzlies/2026" element={<ProtectedRoute><AnalyticsGrizzlies2026 /></ProtectedRoute>} />
             <Route path="/analytics/grizzlies/2026/matches/:matchId" element={<ProtectedRoute><AnalyticsGrizzliesMatchReport /></ProtectedRoute>} />
+            <Route path="/analytics/grizzlies/2026/game-plans/:planKey" element={<ProtectedRoute><AnalyticsGrizzliesGamePlan /></ProtectedRoute>} />
             <Route path="/analysis/:id" element={
               <ProtectedRoute>
                 <AnalysisDetail />

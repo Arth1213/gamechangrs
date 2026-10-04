@@ -64,3 +64,9 @@ test("renders every completed result without an artificial limit and keeps the s
   assert.equal((html.match(/San Ramon Grizzlies won by 4 Wickets/g) || []).length, 12);
   assert.match(renderSchedule(), /Completed results are currently unavailable/);
 });
+
+test('each upcoming game has its own small pre-match game-plan link', () => {
+  const upcoming = renderSchedule().split('id="grizzlies-completed"')[0];
+  for (const key of ['dallas-xforia', 'baltimore-royals', 'manhattan-yorkers']) assert.match(upcoming, new RegExp(`href="/analytics/grizzlies/2026/game-plans/${key}"`));
+  assert.equal((upcoming.match(/>View Game Plan /g) || []).length, 3);
+});

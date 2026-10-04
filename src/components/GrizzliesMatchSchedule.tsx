@@ -4,15 +4,11 @@ import { Button } from "@/components/ui/button";
 import type { CricketGrizzliesPortalResponse } from "@/lib/cricketApi";
 import { coachPlanHref } from "@/lib/grizzliesCoachPlan";
 import { completedGrizzliesFixtures, formatGrizzliesFixtureDate } from "@/lib/grizzliesMatchPresentation";
+import playoffFixtures from "../../config/grizzlies-2026-upcoming.json";
 
 // Supplied Group B playoff schedule, 2026-10-04. Slash times are intentionally
 // not interpreted as start/toss times or converted into a guessed timezone.
 // Provenance and the verified final West record: docs/research/2026-10-04-west-completion-and-playoff-schedule.md.
-const playoffFixtures = [
-  { date: "2026-10-21", day: "Wednesday", homeTeam: "San Ramon Grizzlies", awayTeam: "Dallas Xforia Giants", time: "10:00/15 AM" },
-  { date: "2026-10-22", day: "Thursday", homeTeam: "San Ramon Grizzlies", awayTeam: "Baltimore Royals", time: "2:30/45 PM" },
-  { date: "2026-10-23", day: "Friday", homeTeam: "Manhattan Yorkers", awayTeam: "San Ramon Grizzlies", time: "10:00/15 AM" },
-];
 
 export function GrizzliesMatchSchedule({ schedule }: { schedule: CricketGrizzliesPortalResponse["aiMatchAnalysis"] }) {
   const completed = completedGrizzliesFixtures(schedule.fixtures);
@@ -35,6 +31,7 @@ export function GrizzliesMatchSchedule({ schedule }: { schedule: CricketGrizzlie
             <p className="flex items-center gap-2"><MapPin aria-hidden="true" className="h-4 w-4 text-red-400" />PVCC 5</p>
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1"><CalendarDays aria-hidden="true" className="h-4 w-4 text-muted-foreground" /><span>{fixture.time}</span><span className="text-xs text-muted-foreground">Time unconfirmed</span></p>
           </div>
+          <Button asChild size="sm" variant="outline" className="mt-4 self-start border-red-500/55 text-red-300 hover:bg-red-500/10"><Link to={`/analytics/grizzlies/2026/game-plans/${fixture.key}`} aria-label={`View Game Plan against ${fixture.opponent}`}>View Game Plan <ArrowUpRight aria-hidden="true" className="ml-1.5 h-3.5 w-3.5" /></Link></Button>
         </article>)}
       </div>
       <p className="text-xs leading-relaxed text-muted-foreground">From the supplied playoff schedule. Times are shown exactly as printed; exact start times and timezone await confirmation.</p>

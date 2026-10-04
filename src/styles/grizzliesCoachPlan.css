@@ -1,0 +1,105 @@
+.grizzlies-coach-plan {
+  border-color: #b83b43;
+  box-shadow: inset 0 0 0 5px #101216, inset 0 0 0 6px rgb(239 68 68 / .13);
+}
+.gcp-brand-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+.gcp-brand { display: flex; flex: none; align-items: center; gap: 18px; max-width: 100%; }
+.gcp-grizzlies-mark { flex: none; border-radius: 12px; background: #101216; padding: 5px; }
+.gcp-grizzlies-mark img { display: block; width: 64px; height: 64px; object-fit: contain; }
+.gcp-brand-divider { width: 1px; height: 42px; background: #51545b; }
+.gcp-gamechangrs-brand { display: flex; align-items: center; gap: 10px; }
+.gcp-gamechangrs-brand img { width: 40px; height: 40px; object-fit: contain; }
+.gcp-brand-name { font-size: 23px; line-height: 1.2; font-weight: 750; letter-spacing: -.7px; }
+.gcp-brand-name span { color: #559e7b; }
+.gcp-brand-caption { margin-top: 5px; color: #a4a8b0; font-size: 9px; line-height: 1.5; letter-spacing: 1.1px; }
+.gcp-tools { flex: none; text-align: right; max-width: 260px; }
+.gcp-print-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #b83b43; border-radius: 8px; padding: 10px 14px; background: #23161a; color: #fff; font-size: 13px; font-weight: 600; }
+.gcp-print-button:hover { background: #442127; }
+.gcp-print-button:focus-visible { outline: 2px solid #fca5a5; outline-offset: 3px; }
+.gcp-print-button:disabled { opacity: .6; cursor: progress; }
+.gcp-print-error { margin-top: 8px; color: #fca5a5; font-size: 12px; }
+.gcp-print-frame { display: none; }
+@media screen and (max-width: 639px) {
+  .gcp-brand-row { align-items: flex-start; flex-direction: column; gap: 18px; margin-bottom: 24px; }
+  .gcp-brand { gap: 12px; }
+  .gcp-grizzlies-mark img { width: 45px; height: 45px; }
+  .gcp-gamechangrs-brand { gap: 7px; }
+  .gcp-gamechangrs-brand img { width: 30px; height: 30px; }
+  .gcp-brand-name { font-size: 19px; }
+  .gcp-brand-caption { max-width: 150px; font-size: 8px; letter-spacing: .6px; }
+  .gcp-tools { text-align: left; }
+}
+@media screen and (max-width: 374px) {
+  .gcp-brand { gap: 6px; }
+  .gcp-grizzlies-mark img { width: 34px; height: 34px; }
+  .gcp-gamechangrs-brand { gap: 6px; }
+  .gcp-gamechangrs-brand img { width: 24px; height: 24px; }
+  .gcp-brand-name { font-size: 17px; }
+  .gcp-brand-caption { max-width: 110px; font-size: 7px; letter-spacing: .4px; }
+}
+
+@page grizzlies-coach {
+  size: auto;
+  margin: 12mm;
+  @bottom-left { content: "GAMECHANGRS  /  GRIZZLIES"; font: 8pt Arial, sans-serif; color: #626772; }
+  @bottom-right { content: counter(page) " / " counter(pages); font: 8pt Arial, sans-serif; color: #626772; }
+}
+@media print {
+  /* Only this report prints. Unrelated app and other report styles are untouched. */
+  html:has(.grizzlies-coach-plan), body:has(.grizzlies-coach-plan) { background: #101216 !important; color: #f3f4f6 !important; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body:has(.grizzlies-coach-plan) *:not(.grizzlies-coach-plan, .grizzlies-coach-plan *):not(:has(.grizzlies-coach-plan)) { display: none !important; }
+  body:has(.grizzlies-coach-plan) :is(#root, main, div):has(.grizzlies-coach-plan) { display: block !important; position: static !important; width: auto !important; max-width: none !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; background: #101216 !important; overflow: visible !important; }
+  .grizzlies-coach-plan {
+    page: grizzlies-coach;
+    border: 0 !important; border-radius: 0; box-shadow: none;
+    background: #101216 !important; color: #f3f4f6 !important;
+    overflow: visible !important; padding: 6mm;
+    -webkit-box-decoration-break: clone; box-decoration-break: clone;
+    font: 9pt/1.4 Arial, sans-serif;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .grizzlies-coach-plan * { color: inherit !important; text-shadow: none !important; box-shadow: none !important; font-family: Arial, sans-serif !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Scope print sizing above screen utility classes regardless of CSS load order. */
+  .grizzlies-coach-plan .gcp-print-frame { display: block; position: fixed; inset: 0; border: 1pt solid #b52232; border-radius: 3mm; pointer-events: none; }
+  .grizzlies-coach-plan .gcp-tools, .grizzlies-coach-plan .gcp-screen-evidence { display: none !important; }
+  .grizzlies-coach-plan .gcp-header { padding: 0 0 5mm !important; border-color: #363b45; break-inside: avoid; }
+  .grizzlies-coach-plan .gcp-brand-row { margin: 0 0 4mm; }
+  .grizzlies-coach-plan .gcp-brand { gap: 4mm; }
+  .grizzlies-coach-plan .gcp-grizzlies-mark { background: #101216 !important; border-radius: 2mm; padding: 1mm; }
+  .grizzlies-coach-plan .gcp-grizzlies-mark img { width: 14mm; height: 14mm; }
+  .grizzlies-coach-plan .gcp-gamechangrs-brand img { width: 10mm; height: 10mm; }
+  .grizzlies-coach-plan .gcp-brand-name { font-size: 16pt; }
+  .grizzlies-coach-plan .gcp-brand-name span { color: #559e7b !important; }
+  .grizzlies-coach-plan .gcp-brand-caption { font-size: 6pt; letter-spacing: .5pt; }
+  .grizzlies-coach-plan .gcp-brand-divider { height: 11mm; background: #b6bac3 !important; }
+  .grizzlies-coach-plan .gcp-meta { font-size: 7pt; letter-spacing: .7pt; gap: 3mm; }
+  .grizzlies-coach-plan .gcp-header h1 { font-size: 21pt; line-height: 1.15; margin-top: 3mm; }
+  .grizzlies-coach-plan .gcp-header h1 span, .grizzlies-coach-plan .gcp-meta > p:first-child { color: #f87171 !important; }
+  .grizzlies-coach-plan .gcp-header > p { font-size: 9pt; line-height: 1.4; margin-top: 2mm; }
+  .grizzlies-coach-plan .gcp-header > p:last-child { font-size: 7pt; color: #b6bbc5 !important; }
+  .grizzlies-coach-plan .gcp-body { padding: 5mm 0 0 !important; }
+  .grizzlies-coach-plan .gcp-body > * + * { margin-top: 5mm !important; }
+  .grizzlies-coach-plan h2 { font-size: 13pt; line-height: 1.2; font-weight: 700; break-after: avoid; }
+  .grizzlies-coach-plan .gcp-phases { break-inside: avoid; }
+  .grizzlies-coach-plan .gcp-phases > div:first-child { margin-bottom: 3mm; }
+  .grizzlies-coach-plan .gcp-phases > div:first-child p { font-size: 7pt; }
+  .grizzlies-coach-plan .gcp-phase-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3mm; }
+  .grizzlies-coach-plan .gcp-phase-card { padding: 3mm; border: .6pt solid #414651; border-radius: 2mm; background: #191c22 !important; }
+  .grizzlies-coach-plan .gcp-phase-card > div { font-size: 9pt; }
+  .grizzlies-coach-plan .gcp-phase-card > p { font-size: 8pt; line-height: 1.4; margin-top: 2mm; }
+  .grizzlies-coach-plan .gcp-phase-card .gcp-boundary-value { font-size: 25pt; line-height: 1.1; font-weight: 700; }
+  .grizzlies-coach-plan .gcp-boundary-value span { font-size: 13pt; }
+  .grizzlies-coach-plan .gcp-phases > p { font-size: 7pt; line-height: 1.4; margin-top: 2mm; }
+  .grizzlies-coach-plan .gcp-decision-section > div:first-child { margin-bottom: 3mm; break-after: avoid; }
+  .grizzlies-coach-plan .gcp-decision-section { break-before: auto; }
+  .grizzlies-coach-plan .gcp-decision-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3mm; align-items: stretch; }
+  .grizzlies-coach-plan .gcp-three-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .grizzlies-coach-plan .gcp-decision-card { break-inside: avoid; page-break-inside: avoid; padding: 3mm; border: .7pt solid #b83b43; border-radius: 2mm; background: #191c22 !important; }
+  .grizzlies-coach-plan .gcp-card-meta { display: block; margin-bottom: 2mm; }
+  .grizzlies-coach-plan .gcp-card-meta p { font-size: 7pt; line-height: 1.4; letter-spacing: .5pt; color: #fca5a5 !important; }
+  .grizzlies-coach-plan .gcp-decision-card h3 { font-size: 11pt; line-height: 1.25; }
+  .grizzlies-coach-plan .gcp-decision-card ul { margin-top: 2mm; padding-left: 3mm; font-size: 9pt; line-height: 1.4; }
+  .grizzlies-coach-plan .gcp-decision-card li + li { margin-top: 2mm; }
+  .grizzlies-coach-plan .gcp-decision-card li::marker { color: #f87171; }
+  .grizzlies-coach-plan .gcp-card-evidence { margin-top: 3mm; padding-top: 2mm; border-color: #363b45; font-size: 7.5pt; line-height: 1.4; color: #b6bbc5 !important; }
+}

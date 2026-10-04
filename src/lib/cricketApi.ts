@@ -1720,6 +1720,20 @@ export async function fetchGrizzliesMatchAnalysis(accessToken: string, matchId: 
   return (await response.json()) as CricketGrizzliesMatchAnalysisResponse;
 }
 
+export type GrizzliesGamePlanResponse = {
+  fixture: { key: string; opponent: string; date: string; time: string };
+  coachPlan: import('./grizzliesCoachPlan').GrizzliesCoachPlanData;
+  evidenceChecksum: string;
+};
+
+export async function fetchGrizzliesGamePlan(accessToken: string, planKey: string, signal?: AbortSignal): Promise<GrizzliesGamePlanResponse> {
+  const response = await fetch(getCricketApiUrl(`/api/portals/grizzlies/2026/game-plans/${encodeURIComponent(planKey)}`), {
+    signal, headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(await readApiErrorMessage(response, 'Game plan is unavailable. Retry shortly.'));
+  return response.json();
+}
+
 export async function fetchCricketPlayerReport(
   result: CricketPlayerTarget,
   options?: {

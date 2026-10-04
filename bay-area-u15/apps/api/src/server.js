@@ -83,6 +83,7 @@ const {
 
 const app = express();
 const requireGrizzliesPortalAccess = createGrizzliesPortalAccessMiddleware();
+const { createGrizzliesGamePlanRouter } = require('./services/grizzliesGamePlanService');
 const LOCAL_OPS_UI_ENABLED = toBoolean(process.env.LOCAL_OPS_ENABLE_UI);
 const API_CORS_ALLOWED_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 const API_CORS_ALLOWED_HEADERS = [
@@ -768,6 +769,7 @@ app.get("/", asyncHandler(async (req, res) => {
   sendHtml(res, renderSeriesIndexPage({ seriesCards, activeOverview }));
 }));
 
+app.use('/api/portals/grizzlies/2026/game-plans', createGrizzliesGamePlanRouter(requireGrizzliesPortalAccess));
 app.get("/api/portals/grizzlies/2026", requireGrizzliesPortalAccess, asyncHandler(async (_req, res) => {
   res.json(await getGrizzliesPortalPayload());
 }));

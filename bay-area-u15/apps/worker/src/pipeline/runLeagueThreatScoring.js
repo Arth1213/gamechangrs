@@ -3,6 +3,8 @@ const { withTransaction } = require("../lib/db");
 const { ensureDir, writeJsonFile } = require("../lib/fs");
 const { normalizeText, toInteger, toNumber } = require("../lib/cricket");
 const { buildLeagueThreatRows } = require("../analytics/leagueThreatScore");
+const { buildMilcPlayoffThreatRows } = require('../analytics/milcPlayoffThreat');
+const { MILC_2026_KEY, MILC_THREAT_VERSION } = require('../../../../shared/milcPlayoffThreat');
 
 const SCORE_VERSION = "ncca-league-threat-v1";
 
@@ -60,8 +62,46 @@ async function loadThreatInputs(client, seriesId) {
   }));
 }
 
-async function replaceLeagueThreatRows(client, seriesId, rows) {
-  await client.query("delete from public.player_series_threat_score where series_id = $1", [seriesId]);
+async function loadMilcThreatInputs(client, context) {
+  const result = await client.query(`
+    with appearances as (
+      select b.player_id, b.team_id from public.batting_innings b
+      join public.match m on m.id=b.match_id where m.series_id=$1
+      union
+      select b.player_id, b.team_id from public.bowling_spell b
+      join public.match m on m.id=b.match_id where m.series_id=$1
+    ), ambiguous_names as (
+      select a.team_id, lower(trim(p.display_name)) player_name
+      from appearances a join public.player p on p.id=a.player_id
+      group by a.team_id, lower(trim(p.display_name)) having count(distinct p.id)>1
+    )
+    select pcs.player_id, pcs.composite_score, psa.matches_played,
+      p.display_name player_name, p.source_player_id, t.display_name team_name,
+      d.source_label division_label,
+      exists(select 1 from ambiguous_names n where n.team_id=psa.team_id and n.player_name=lower(trim(p.display_name))) identity_review
+    from public.player_composite_score pcs
+    join public.player_season_advanced psa on psa.series_id=pcs.series_id
+      and psa.division_id is not distinct from pcs.division_id and psa.player_id=pcs.player_id
+    join public.player p on p.id=pcs.player_id
+    join public.team t on t.id=psa.team_id
+    left join public.division d on d.id=pcs.division_id
+    where pcs.series_id=$1 and pcs.score_version = $2
+    order by pcs.player_id, pcs.division_id
+  `, [context.seriesId, context.scoreVersion]);
+  return result.rows.map(row => ({
+    playerId: toInteger(row.player_id), playerName: row.player_name,
+    sourcePlayerId: row.source_player_id, teamName: row.team_name,
+    divisionLabel: row.division_label, compositeScore: row.composite_score,
+    matchesPlayed: toInteger(row.matches_played), identityReview: row.identity_review,
+  }));
+}
+
+async function replaceLeagueThreatRows(client, seriesId, rows, scoreVersion) {
+  if (scoreVersion === MILC_THREAT_VERSION) {
+    await client.query('delete from public.player_series_threat_score where series_id = $1 and score_version = $2', [seriesId, scoreVersion]);
+  } else {
+    await client.query("delete from public.player_series_threat_score where series_id = $1", [seriesId]);
+  }
   if (!rows.length) return 0;
 
   const columns = [
@@ -82,7 +122,7 @@ async function replaceLeagueThreatRows(client, seriesId, rows) {
       row.leaguePercentileRank,
       row.totalMatches,
       JSON.stringify(row.divisionEvidence),
-      SCORE_VERSION,
+      scoreVersion,
     ];
     return `(${payload.map((entry, columnIndex) => {
       values.push(entry);
@@ -97,29 +137,33 @@ async function replaceLeagueThreatRows(client, seriesId, rows) {
   return rows.length;
 }
 
-async function runLeagueThreatScoring({ series, outDir, log, withTransactionFn = withTransaction }) {
+async function runLeagueThreatScoring({ series, outDir, log, dryRun = false, withTransactionFn = withTransaction }) {
   const logger = buildLogger(log);
   ensureDir(outDir);
 
   const result = await withTransactionFn(async (client) => {
     await client.query("set local statement_timeout = '300s'");
     const context = await resolveSeriesContext(client, series.slug);
-    const inputRows = await loadThreatInputs(client, context.seriesId);
-    const computed = buildLeagueThreatRows(inputRows);
-    const insertedCount = await replaceLeagueThreatRows(client, context.seriesId, computed.rows);
+    const isMilc = context.configKey === MILC_2026_KEY;
+    const scoreVersion = isMilc ? MILC_THREAT_VERSION : SCORE_VERSION;
+    const inputRows = isMilc ? await loadMilcThreatInputs(client, context) : await loadThreatInputs(client, context.seriesId);
+    const computed = isMilc ? buildMilcPlayoffThreatRows(inputRows) : buildLeagueThreatRows(inputRows);
+    const insertedCount = dryRun ? 0 : await replaceLeagueThreatRows(client, context.seriesId, computed.rows, scoreVersion);
     const topRows = [...computed.rows]
       .sort((left, right) => right.leagueThreatScore - left.leagueThreatScore)
       .slice(0, 10);
 
-    logger(`[compute-league-threat] ${context.configKey}: computed ${insertedCount} player rows`);
+    logger(`[compute-league-threat] ${context.configKey}: computed ${computed.rows.length}, persisted ${insertedCount} player rows`);
     return {
       ok: true,
       seriesConfigKey: context.configKey,
       seriesId: context.seriesId,
       seriesName: context.seriesName,
-      scoreVersion: SCORE_VERSION,
+      scoreVersion,
+      dryRun,
+      persistedRowCount: insertedCount,
       inputRowCount: inputRows.length,
-      playerSeriesThreatScoreRowCount: insertedCount,
+      playerSeriesThreatScoreRowCount: computed.rows.length,
       eligiblePlayerCount: computed.summary.playerCount,
       topRows,
     };

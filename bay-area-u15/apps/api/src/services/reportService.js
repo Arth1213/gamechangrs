@@ -395,6 +395,12 @@ async function searchPlayers(input) {
   });
 }
 
+const { isMilcPlayoff } = require('../../../../shared/milcPlayoffThreat');
+
+async function loadAssessmentOverallStats(client, input, loader = loadStatPanels) {
+  return isMilcPlayoff(input.seriesConfigKey, input.teamName) ? {} : loader(client, input);
+}
+
 async function getPlayerReport(input) {
   return withClient(async (client) => {
     const context = await resolveSeriesContext(client, input.seriesConfigKey);
@@ -653,7 +659,7 @@ async function getPlayerReport(input) {
       divisionId: selectedDivisionId,
       scope: "series",
     });
-    const overallStats = await loadStatPanels(client, {
+    const overallStats = await loadAssessmentOverallStats(client, {
       playerId,
       seriesId: context.seriesId,
       seriesConfigKey: context.configKey,
@@ -699,6 +705,7 @@ async function getPlayerReport(input) {
     });
 
     const meta = {
+      ...(isMilcPlayoff(context.configKey, normalizeText(selectedSeason.team_name)) ? { evidenceScope: 'MiLC 2026 only' } : {}),
       generatedAt: new Date().toISOString(),
       series: {
         configKey: context.configKey,
@@ -3432,6 +3439,7 @@ function titleContainsPlayerName(title, expectedName) {
 }
 
 module.exports = {
+  loadAssessmentOverallStats,
   NCCA_TOP_PLAYERS_CONFIG_KEY,
   buildNccaTopPlayersPayload,
   getDashboardOverview,

@@ -16,7 +16,78 @@ const {
   resolveGrizzliesMatchSummary,
   selectVisibleGrizzliesReportRow,
   withPortalPhaseTimeout,
+  mapGrizzliesPlayoffTeams,
 } = require("../src/services/grizzliesPortalService");
+const { MILC_2026_KEY, MILC_THREAT_VERSION } = require('../../../shared/milcPlayoffThreat');
+
+test('playoff buttons use only the MiLC model and the same minimum-sample tiers as reports', () => {
+  const base = { team_name: 'Dallas Xforia Giants', player_id: 1, player_name: 'Player', source_player_id: 'one', has_aggregate: true, has_composite: true, has_intelligence: true, matches_played: 3, threat_score_version: MILC_THREAT_VERSION, total_matches: 3 };
+  for (const [percentile, tone] of [[85,'red'], [84.999,'amber'], [60,'amber'], [59.999,'green'], [null,'unknown']]) {
+    const input = { ...base, league_percentile_rank: percentile };
+    assert.equal(mapGrizzliesPlayoffTeams([input], MILC_2026_KEY)[0].players[0].threatTone, tone);
+    assert.equal(mapGrizzliesPlayoffTeams([{ ...input, total_matches: 2, matches_played: 2 }], MILC_2026_KEY)[0].players[0].threatTone, 'unknown');
+    assert.equal(mapGrizzliesPlayoffTeams([{ ...input, threat_score_version: 'ncca-league-threat-v1' }], MILC_2026_KEY)[0].players[0].threatTone, 'unknown');
+    assert.equal(mapGrizzliesPlayoffTeams([input], 'milc-2025')[0].players[0].threatTone, 'unknown');
+  }
+});
+
+test("playoff cards link verified players to MiLC reports, never NCCA threat tiers", () => {
+  const teams = mapGrizzliesPlayoffTeams([
+    { team_name: "Dallas Xforia Giants", player_id: 8973, player_name: "Smit Patel", source_player_id: "source-1", profile_url: "/MiLC/user/source-1", has_aggregate: true, has_composite: true, has_intelligence: true, matches_played: 5, latest_match: "2026-09-26", league_percentile_rank: 99 },
+  ], "milc-2026");
+  assert.deepEqual(teams.map(team => team.name), ["Dallas Xforia Giants", "Baltimore Royals", "Manhattan Yorkers"]);
+  const player = teams[0].players[0];
+  assert.equal(teams[0].section, "playoffs");
+  assert.equal(player.assessmentPath, "/analytics/reports/8973?series=milc-2026&from=grizzlies-2026");
+  assert.equal(player.threatPath, "/analytics/intelligence/8973?series=milc-2026&from=grizzlies-2026");
+  assert.equal(player.cricclubsProfileUrl, "https://cricclubs.com/MiLC/user/source-1");
+  assert.equal(player.dataStatus, "ready");
+  assert.equal(player.threatTone, "unknown");
+  assert.equal(teams[0].latestMatchDate, "2026-09-26");
+});
+
+test("playoff cards distinguish scorecard-only players from limited evidence", () => {
+  const teams = mapGrizzliesPlayoffTeams([
+    { team_name: "Dallas Xforia Giants", player_id: 1, player_name: "Scorecard Only", source_player_id: "one", has_aggregate: false, has_composite: false, has_intelligence: false, matches_played: 0 },
+    { team_name: "Dallas Xforia Giants", player_id: 2, player_name: "One Match", source_player_id: "two", has_aggregate: true, has_composite: true, has_intelligence: true, matches_played: 1 },
+    { team_name: "Dallas Xforia Giants", player_id: 3, player_name: "Assessment Only", source_player_id: "three", has_aggregate: true, has_composite: true, has_intelligence: false, matches_played: 4 },
+  ], "milc-2026");
+  const byName = new Map(teams[0].players.map(player => [player.name, player]));
+  assert.equal(byName.get("Scorecard Only").assessmentPath, null);
+  assert.equal(byName.get("Scorecard Only").threatPath, null);
+  assert.equal(byName.get("Scorecard Only").dataStatus, "not_found");
+  assert.match(byName.get("Scorecard Only").dataNote, /No batting or bowling analytics/);
+  assert.equal(byName.get("One Match").dataStatus, "limited");
+  assert.ok(byName.get("One Match").threatPath);
+  assert.ok(byName.get("Assessment Only").assessmentPath);
+  assert.equal(byName.get("Assessment Only").threatPath, null);
+  assert.match(byName.get("Assessment Only").dataNote, /Threat intelligence unavailable/);
+});
+
+test("same-name playoff source accounts are flagged rather than merged or double-listed", () => {
+  const row = { team_name: "Baltimore Royals", player_name: "Prannav Chettipalayam", has_aggregate: true, has_composite: true, has_intelligence: true, matches_played: 3 };
+  const team = mapGrizzliesPlayoffTeams([
+    { ...row, player_id: 8439, source_player_id: "source-a" },
+    { ...row, player_id: 8817, source_player_id: "source-b" },
+  ], "milc-2026")[1];
+  assert.equal(team.players.length, 1);
+  assert.equal(team.players[0].dataStatus, "identity_review");
+  assert.equal(team.players[0].assessmentPath, null);
+  assert.equal(team.players[0].threatPath, null);
+  assert.equal(team.players[0].cricclubsProfileUrl, null);
+  assert.match(team.players[0].dataNote, /2 source accounts/);
+});
+
+test("playoff mapping fails closed for synthetic identities and unavailable team data", () => {
+  const teams = mapGrizzliesPlayoffTeams([
+    { team_name: "Manhattan Yorkers", player_id: 9, player_name: "Unresolved", source_player_id: "synthetic:9", has_aggregate: true, has_composite: true, has_intelligence: true },
+    { team_name: "Other Team", player_id: 10, player_name: "Not on this roster", source_player_id: "ten" },
+  ], "milc-2026");
+  assert.equal(teams[2].players[0].threatPath, null);
+  assert.equal(teams[2].players[0].dataStatus, "identity_review");
+  assert.equal(teams[0].dataStatus, "unavailable");
+  assert.deepEqual(teams[0].players, []);
+});
 
 test("match summary explains the result through verified innings totals and run rates", () => {
   const summary = buildGrizzliesMatchSummary({

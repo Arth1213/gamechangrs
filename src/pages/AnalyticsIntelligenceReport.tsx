@@ -1011,7 +1011,7 @@ const AnalyticsIntelligenceReport = () => {
     () => getAnalyticsWorkspaceRoute(currentSearchQuery, effectiveSeriesKey || undefined),
     [currentSearchQuery, effectiveSeriesKey]
   );
-  const grizzliesReportContext = getGrizzliesReportContext(effectiveSeriesKey);
+  const grizzliesReportContext = getGrizzliesReportContext(effectiveSeriesKey, searchParams.get("from"));
   const reportBackPath = grizzliesReportContext?.backPath || backToSearchUrl;
   const reportBackLabel = grizzliesReportContext ? "Back to Grizzlies Analytics" : "Back to Search";
   const hasViewerAccess = viewerSeries.some((series) => series.configKey?.trim() === effectiveSeriesKey);

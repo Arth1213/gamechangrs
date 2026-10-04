@@ -4359,7 +4359,7 @@ function renderPlayerReportPage(report) {
             </div>
           </div>
 
-          <div class="card section-card">
+          ${report.meta?.evidenceScope === 'MiLC 2026 only' ? '' : `<div class="card section-card">
             <div class="section-head">
               <div>
                 <h3>Overall CricClubs</h3>
@@ -4373,7 +4373,7 @@ function renderPlayerReportPage(report) {
                   : `<div class="stats-empty-note">No overall CricClubs profile rows were available for this player.</div>`
               }
             </div>
-          </div>
+          </div>`}
 
           <div class="section-banner"><span>Details Section</span></div>
 
@@ -5696,6 +5696,13 @@ function renderPlayerIntelligenceReportPage(report) {
       background: linear-gradient(180deg, rgba(243, 139, 99, 0.18), rgba(243, 139, 99, 0.07));
     }
 
+    .hero-fact-card.neutral {
+      border-color: rgba(203, 213, 225, 0.45);
+      background: rgba(148, 163, 184, 0.08);
+    }
+
+    .hero-fact-value.neutral { color: #cbd5e1; }
+
     .hero-fact-card.wide {
       grid-column: span 3;
     }
@@ -6333,11 +6340,13 @@ function renderPlayerIntelligenceReportPage(report) {
   function getThreatTone(threatHeader) {
     const tier = normalizeText(threatHeader?.leagueThreatTier).toLowerCase();
     const matches = toInteger(threatHeader?.leagueTotalMatches);
+    const isMilc = threatHeader?.leagueThreatSource === 'MiLC 2026';
+    const source = isMilc ? 'MiLC 2026' : 'NCCA';
     if (!tier || tier === "unknown") {
       return {
-        label: "Unknown",
-        tone: "watch",
-        note: "Threat level is not available in the current sample.",
+        label: isMilc ? 'Gray' : "Unknown",
+        tone: isMilc ? 'neutral' : "watch",
+        note: isMilc ? 'MiLC 2026 only. At least 3 matches and verified scoring evidence are required.' : "Threat level is not available in the current sample.",
       };
     }
 
@@ -6345,7 +6354,7 @@ function renderPlayerIntelligenceReportPage(report) {
       return {
         label: "Red",
         tone: "risk",
-        note: `High opposition threat across ${displayNumber(matches, 0, "0")} NCCA matches.`,
+        note: `High opposition threat across ${displayNumber(matches, 0, "0")} ${source} matches.`,
       };
     }
 
@@ -6353,14 +6362,14 @@ function renderPlayerIntelligenceReportPage(report) {
       return {
         label: "Amber",
         tone: "watch",
-        note: `Manageable, but still a live planning concern across ${displayNumber(matches, 0, "0")} NCCA matches.`,
+        note: `Manageable, but still a live planning concern across ${displayNumber(matches, 0, "0")} ${source} matches.`,
       };
     }
 
     return {
       label: "Green",
       tone: "good",
-      note: `Lower threat in the current planning sample across ${displayNumber(matches, 0, "0")} NCCA matches.`,
+      note: `Lower threat in the current planning sample across ${displayNumber(matches, 0, "0")} ${source} matches.`,
     };
   }
 
@@ -6481,6 +6490,7 @@ function renderPlayerIntelligenceReportPage(report) {
   }
 
   function toneClassName(tone) {
+    if (tone === 'neutral') return 'neutral';
     return tone === "good" ? "good" : tone === "risk" ? "risk" : "watch";
   }
 

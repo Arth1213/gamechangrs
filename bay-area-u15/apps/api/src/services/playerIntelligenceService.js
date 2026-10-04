@@ -14,6 +14,7 @@ const {
   resolveSeriesContext,
   withClient,
 } = require("./seriesService");
+const { isMilcPlayoff, MILC_THREAT_VERSION, getMilcThreatTier } = require('../../../../shared/milcPlayoffThreat');
 
 const MIN_SPLIT_SAMPLE_BALLS = 12;
 const BATTING_WEAKNESS_DISMISSAL_WEIGHT = 0.85;
@@ -33,7 +34,17 @@ function roundMetric(value, digits = 2) {
   return roundNumeric(numeric, digits);
 }
 
-function buildThreatHeader(row) {
+function buildThreatHeader(row, scope = {}) {
+  if (isMilcPlayoff(scope.seriesConfigKey, scope.teamName)) {
+    const current = row?.score_version === MILC_THREAT_VERSION ? row : null;
+    return {
+      leagueThreatScore: roundMetric(current?.league_threat_score, 2),
+      leaguePercentileRank: roundMetric(current?.league_percentile_rank, 4),
+      leagueTotalMatches: toInteger(current?.total_matches),
+      leagueThreatTier: getMilcThreatTier({ leaguePercentileRank: current?.league_percentile_rank, totalMatches: current?.total_matches }),
+      leagueThreatSource: 'MiLC 2026',
+    };
+  }
   const leaguePercentileRank = roundMetric(row?.league_percentile_rank, 2);
   const leagueTotalMatches = toInteger(row?.total_matches);
   let leagueThreatTier = "unknown";
@@ -1601,18 +1612,20 @@ async function getPlayerIntelligenceReport(input) {
     }
 
     const selectedSeason = pickSelectedSeasonRow(seasonRows, requestedDivisionId);
+    const threatScope = { seriesConfigKey: context.configKey, teamName: normalizeText(selectedSeason.team_name) };
+    const threatVersion = isMilcPlayoff(threatScope.seriesConfigKey, threatScope.teamName) ? MILC_THREAT_VERSION : 'ncca-league-threat-v1';
     const divisionLabelMap = buildDivisionLabelMap(seasonRows);
     const leagueThreatRow = (
       await client.query(
         `
-          select league_threat_score, league_percentile_rank, total_matches
+          select league_threat_score, league_percentile_rank, total_matches, score_version
           from public.player_series_threat_score
           where series_id = $1
             and player_id = $2
-            and score_version = 'ncca-league-threat-v1'
+            and score_version = $3
           limit 1
         `,
-        [context.seriesId, playerId]
+        [context.seriesId, playerId, threatVersion]
       )
     ).rows[0] || null;
 
@@ -1726,7 +1739,7 @@ async function getPlayerIntelligenceReport(input) {
       percentileRank: roundMetric(selectedSeason.percentile_rank, 2),
       confidenceScore: roundMetric(selectedSeason.confidence_score, 2),
       confidenceLabel: confidenceLabel(selectedSeason.confidence_score),
-      ...buildThreatHeader(leagueThreatRow),
+      ...buildThreatHeader(leagueThreatRow, threatScope),
     };
 
     return {

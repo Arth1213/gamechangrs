@@ -6,6 +6,7 @@ const YAML = require("yaml");
 const { withClient, resolveSeriesContext } = require("./seriesService");
 
 const CONFIG_PATH = path.resolve(__dirname, "../../../../../config/grizzlies-2026-portal.yaml");
+const { PLAYOFF_TEAM_NAMES, isMilcPlayoff, MILC_THREAT_VERSION, getMilcThreatTier } = require('../../../../shared/milcPlayoffThreat');
 const DEFAULT_PORTAL_PHASE_TIMEOUT_MS = 12_000;
 
 function getPortalPhaseTimeoutMs() {
@@ -489,13 +490,121 @@ async function loadPlayerFacts(config) {
   });
 }
 
+function mapGrizzliesPlayoffTeams(rows, seriesConfigKey) {
+  return PLAYOFF_TEAM_NAMES.map((name) => {
+    const teamRows = rows.filter((row) => row.team_name === name);
+    const byName = new Map();
+    for (const row of teamRows) {
+      const key = normalizePortalText(row.player_name).toLowerCase();
+      if (!key) continue;
+      if (!byName.has(key)) byName.set(key, new Map());
+      byName.get(key).set(String(row.player_id), row);
+    }
+    const players = [...byName.values()].map((accounts) => {
+      const row = accounts.values().next().value;
+      const playerId = Number(row.player_id);
+      // Same-name accounts are NOT evidence of a shared identity. Hold links
+      // until their source identities are reconciled; never merge statistics.
+      const identityReview = accounts.size > 1 || !Number.isSafeInteger(playerId) || playerId <= 0
+        || !row.source_player_id || String(row.source_player_id).startsWith("synthetic:");
+      const assessmentReady = !identityReview && Boolean(seriesConfigKey && row.has_aggregate && row.has_composite);
+      const threatReady = assessmentReady && Boolean(row.has_intelligence);
+      const matches = Number(row.matches_played) || 0;
+      const dataStatus = identityReview ? "identity_review" : !assessmentReady ? "not_found"
+        : !threatReady || matches < 3 ? "limited" : "ready";
+      const dataNote = identityReview
+        ? accounts.size > 1 ? `${accounts.size} source accounts. Identity review required.` : "Source identity needs verification."
+        : !assessmentReady ? "No batting or bowling analytics available."
+        : !threatReady ? "Threat intelligence unavailable; assessment available."
+        : matches < 3 ? `Limited sample: ${matches} ${matches === 1 ? "match" : "matches"}.` : null;
+      let profileUrl = null;
+      if (!identityReview && row.profile_url) {
+        try {
+          const url = new URL(row.profile_url, "https://cricclubs.com");
+          if (url.protocol === "https:" && ["cricclubs.com", "www.cricclubs.com", "prod-lm.cricclubs.com"].includes(url.hostname)) profileUrl = url.href;
+        } catch (_) { /* Invalid source URLs are not linked. */ }
+      }
+      const query = `?series=${encodeURIComponent(seriesConfigKey || "")}&from=grizzlies-2026`;
+      return {
+        playerId: identityReview ? null : playerId,
+        name: normalizePortalText(row.player_name),
+        rosterCategory: "MiLC 2026",
+        dataSource: "MiLC 2026",
+        dataStatus,
+        dataNote,
+        matchesPlayed: identityReview ? null : matches,
+        cricclubsProfileUrl: profileUrl,
+        assessmentPath: assessmentReady ? `/analytics/reports/${playerId}${query}` : null,
+        threatPath: threatReady ? `/analytics/intelligence/${playerId}${query}` : null,
+        // Never substitute NCCA tiers or infer a rating from missing evidence.
+        threatTone: threatReady && isMilcPlayoff(seriesConfigKey, name) && row.threat_score_version === MILC_THREAT_VERSION
+          ? getMilcThreatTier({ leaguePercentileRank: row.league_percentile_rank, totalMatches: row.total_matches }) : 'unknown',
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+    const dates = teamRows.map((row) => row.latest_match).filter(Boolean).map((date) => new Date(date))
+      .filter((date) => Number.isFinite(date.getTime())).map((date) => date.toISOString().slice(0, 10)).sort();
+    return { name, section: "playoffs", dataStatus: players.length ? "available" : "unavailable",
+      latestMatchDate: dates.at(-1) || null, players };
+  });
+}
+
+async function loadGrizzliesPlayoffTeams(config) {
+  const seriesConfigKey = config.portal.milcSeriesConfigKey;
+  return withClient(async (client) => {
+    await client.query("BEGIN READ ONLY");
+    try {
+      await client.query("SET LOCAL statement_timeout = '8s'");
+      const result = await client.query(`
+        with scoped_matches as (
+          select m.id, m.match_date, m.series_id
+          from public.match m
+          join public.series_source_config c on c.series_id = m.series_id
+          join public.series s on s.id = m.series_id
+          where c.config_key = $1 and s.year = 2026
+        ), appearances as (
+          select b.team_id, b.player_id, m.series_id, m.match_date
+          from public.batting_innings b join scoped_matches m on m.id = b.match_id
+          union
+          select b.team_id, b.player_id, m.series_id, m.match_date
+          from public.bowling_spell b join scoped_matches m on m.id = b.match_id
+        ), players as (
+          select a.team_id, a.player_id, a.series_id, max(a.match_date) latest_match
+          from appearances a join public.team t on t.id = a.team_id
+          where t.display_name = any($2::text[])
+          group by a.team_id, a.player_id, a.series_id
+        )
+        select t.display_name team_name, p.id player_id, p.display_name player_name,
+          p.source_player_id, p.profile_url, a.latest_match,
+          pts.league_percentile_rank, pts.total_matches, pts.score_version threat_score_version,
+          exists(select 1 from public.player_season_advanced s where s.series_id=a.series_id and s.player_id=p.id) has_aggregate,
+          exists(select 1 from public.player_composite_score s where s.series_id=a.series_id and s.player_id=p.id) has_composite,
+          exists(select 1 from public.player_intelligence_profile i where i.series_id=a.series_id and i.player_id=p.id and i.scope_type='series') has_intelligence,
+          (select max(s.matches_played) from public.player_season_advanced s where s.series_id=a.series_id and s.player_id=p.id) matches_played
+        from players a join public.team t on t.id=a.team_id join public.player p on p.id=a.player_id
+        left join public.player_series_threat_score pts on pts.series_id=a.series_id and pts.player_id=p.id and pts.score_version=$3
+        order by t.display_name, p.display_name, p.id
+      `, [seriesConfigKey, PLAYOFF_TEAM_NAMES, MILC_THREAT_VERSION]);
+      await client.query("COMMIT");
+      return mapGrizzliesPlayoffTeams(result.rows, seriesConfigKey);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
+  });
+}
+
 async function getGrizzliesPortalPayload() {
   const config = loadPortalConfig();
   const seriesConfigKey = config.portal.nccaSeriesConfigKey;
-  const playerFacts = await withPortalPhaseTimeout("roster facts", loadPlayerFacts(config));
-  const [teams, aiMatchAnalysis] = await Promise.all([
-    Promise.resolve(Object.entries(config.roster || {}).map(([teamName, roster]) => ({
+  const [playerFacts, aiMatchAnalysis, playoffTeams] = await Promise.all([
+    withPortalPhaseTimeout("roster facts", loadPlayerFacts(config)),
+    withPortalPhaseTimeout("West Division fixtures", loadGrizzliesWestFixtures(config)),
+    withPortalPhaseTimeout("playoff rosters", loadGrizzliesPlayoffTeams(config))
+      .catch(() => mapGrizzliesPlayoffTeams([], config.portal.milcSeriesConfigKey)),
+  ]);
+  const teams = Object.entries(config.roster || {}).map(([teamName, roster]) => ({
     name: teamName,
+    section: teamName === "San Ramon Grizzlies" ? "grizzlies" : "division",
     players: roster.map(([name, rosterCategory]) => {
       const configured = config.approvedMappings?.[name];
       const playerId = getConfiguredPlayerId(config, name);
@@ -518,20 +627,20 @@ async function getGrizzliesPortalPayload() {
         }),
       };
     }),
-    }))),
-    withPortalPhaseTimeout("West Division fixtures", loadGrizzliesWestFixtures(config)),
-  ]);
+    }));
 
   return {
     title: "Grizzlies 2026 Analytics - Powered by GameChangrs",
     nccaSeriesConfigKey: seriesConfigKey,
-    teams,
+    teams: [...playoffTeams, ...teams],
     aiMatchAnalysis,
     analysisStatus: "Match Analysis and AI Recommendations Coming Soon",
   };
 }
 
 module.exports = {
+  mapGrizzliesPlayoffTeams,
+  loadGrizzliesPlayoffTeams,
   getConfiguredPlayerId,
   buildGrizzliesMatchSummary,
   getGrizzliesPortalPayload,

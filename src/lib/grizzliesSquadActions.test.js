@@ -37,7 +37,12 @@ test("renders Threat with a severity-colored outline and label", () => {
   assert.match(green, /hover:bg-emerald-500\/40/);
   assert.match(green, /hover:text-white/);
 
-  assert.match(threatButtonClass("unknown"), /border-emerald-300\/85/);
+});
+
+test("unknown threat tiers do not communicate a green low-risk rating", () => {
+  assert.doesNotMatch(threatButtonClass("unknown"), /emerald|grizzlies-threat-green/);
+  assert.match(threatButtonClass("unknown"), /text-white/);
+  assert.doesNotMatch(threatButtonClass(undefined), /emerald/);
 });
 
 test("ships explicit CSS for the red Threat severity", () => {

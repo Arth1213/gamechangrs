@@ -132,7 +132,12 @@ export type CricketNccaTopPlayersResponse = {
 export type CricketGrizzliesPortalPlayer = {
   name: string;
   rosterCategory: string;
-  nccaStatus: "matched" | "not_found";
+  nccaStatus?: "matched" | "not_found";
+  playerId?: number | null;
+  dataSource?: string;
+  dataStatus?: "ready" | "limited" | "not_found" | "identity_review";
+  dataNote?: string | null;
+  matchesPlayed?: number | null;
   cricclubsProfileUrl: string | null;
   assessmentPath: string | null;
   threatPath: string | null;
@@ -142,7 +147,13 @@ export type CricketGrizzliesPortalPlayer = {
 export type CricketGrizzliesPortalResponse = {
   title: string;
   nccaSeriesConfigKey: string;
-  teams: Array<{ name: string; players: CricketGrizzliesPortalPlayer[] }>;
+  teams: Array<{
+    name: string;
+    section?: "playoffs" | "division" | "grizzlies";
+    dataStatus?: "available" | "unavailable";
+    latestMatchDate?: string | null;
+    players: CricketGrizzliesPortalPlayer[];
+  }>;
   analysisStatus: string;
   aiMatchAnalysis: {
     seriesConfigKey: string | null;

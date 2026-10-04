@@ -8,6 +8,31 @@ import * as presentation from "./grizzliesMatchPresentation.js";
 
 const { formatGrizzliesFixtureDate } = presentation;
 
+test("completed schedule excludes unfinished games and sorts newest first without changing report links", () => {
+  assert.equal(typeof presentation.completedGrizzliesFixtures, "function");
+  const rows = [
+    { matchId: 2375, status: "completed", startsAt: "2026-09-19", report: { path: "/analytics/grizzlies/2026/matches/2375" } },
+    { matchId: 3000, status: "scheduled", startsAt: "2026-10-21" },
+    { matchId: 2423, status: "completed", startsAt: "2026-09-27", report: { path: null } },
+    { matchId: 3001, status: "live", startsAt: "2026-10-22" },
+    { matchId: 3002, status: "unavailable", startsAt: "2026-09-28" },
+  ];
+  const completed = presentation.completedGrizzliesFixtures(rows);
+  assert.deepEqual(completed.map(row => row.matchId), [2423, 2375]);
+  assert.equal(completed[1].report.path, "/analytics/grizzlies/2026/matches/2375");
+  assert.equal(completed[0].report.path, null);
+  assert.equal(rows[0].matchId, 2375);
+});
+
+test("completed schedule handles missing service data and sorts undated results last", () => {
+  assert.equal(typeof presentation.completedGrizzliesFixtures, "function");
+  assert.deepEqual(presentation.completedGrizzliesFixtures(undefined), []);
+  assert.deepEqual(presentation.completedGrizzliesFixtures([
+    { matchId: 1, status: "completed", startsAt: null, dateLabel: "Date pending" },
+    { matchId: 2, status: "completed", startsAt: null, dateLabel: "2026-09-19" },
+  ]).map(row => row.matchId), [2, 1]);
+});
+
 test("formats date-only fixture values without leaking time or timezone text", () => {
   assert.equal(formatGrizzliesFixtureDate("2026-09-19"), "Sep 19, 2026");
   assert.equal(formatGrizzliesFixtureDate("2026-09-19T00:00:00.000Z"), "Sep 19, 2026");

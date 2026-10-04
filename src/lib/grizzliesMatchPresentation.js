@@ -13,6 +13,16 @@ const MONTH_NAMES = Object.freeze([
   "Dec",
 ]);
 
+export function completedGrizzliesFixtures(fixtures) {
+  const dateValue = fixture => {
+    const date = String(fixture.startsAt || fixture.dateLabel || "");
+    return formatGrizzliesFixtureDate(date) === "Date pending" ? "" : date.slice(0, 10);
+  };
+  return (Array.isArray(fixtures) ? fixtures : [])
+    .filter(fixture => fixture.status === "completed")
+    .sort((a, b) => dateValue(b).localeCompare(dateValue(a)) || Number(b.matchId) - Number(a.matchId));
+}
+
 export function formatGrizzliesFixtureDate(value) {
   const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!match) return "Date pending";

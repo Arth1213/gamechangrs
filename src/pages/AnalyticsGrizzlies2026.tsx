@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CalendarDays, ExternalLink, Lock, Loader2, ShieldAlert } from "lucide-react";
+import { Lock, Loader2, ShieldAlert } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,7 +16,7 @@ import { grizzliesPoweredBy } from "@/lib/grizzliesBranding";
 import { grizzliesWelcomeHeader } from "@/lib/grizzliesWelcome";
 import { formatGrizzliesFixtureDate } from "@/lib/grizzliesMatchPresentation";
 import { GrizzliesPlayoffCalculator } from "@/components/GrizzliesPlayoffCalculator";
-import { coachPlanHref } from "@/lib/grizzliesCoachPlan";
+import { GrizzliesMatchSchedule } from "@/components/GrizzliesMatchSchedule";
 import { groupGrizzliesSquads, playerReportNote, sortPlayersByReportAvailability } from "@/lib/grizzliesSquadSections";
 
 type PortalPlayer = CricketGrizzliesPortalResponse["teams"][number]["players"][number];
@@ -78,18 +78,6 @@ export function GrizzliesSquadIntelligence({ teams }: { teams: CricketGrizzliesP
   </div>;
 }
 
-function MatchAnalysisTab({ portal }: { portal: CricketGrizzliesPortalResponse }) {
-  const schedule = portal.aiMatchAnalysis;
-  const planFixture = schedule.fixtures.find(fixture => Number(fixture.matchId) === 2375 && fixture.report.path);
-  return <div className="space-y-6">
-    {planFixture ? <Card className="border-2 border-red-500/70 bg-card"><CardHeader><p className="text-xs font-semibold uppercase tracking-wider text-red-400">For the next meeting</p><CardTitle className="font-display text-3xl">Grizzlies vs Silicon Valley Strikers</CardTitle><CardDescription>Who bowls to whom. Partnership breakers. Batting decisions under pressure.</CardDescription></CardHeader><CardContent className="flex flex-wrap items-center justify-between gap-4"><p className="text-sm text-muted-foreground">Updated through Sep 26 · MiLC + verified cross-league history</p><Button asChild className="bg-red-600 text-white hover:bg-red-500"><Link to={coachPlanHref(planFixture.matchId)!}>Open Grizzlies game plan</Link></Button></CardContent></Card> : null}
-    <Card className="border-red-500/35 bg-gradient-to-b from-red-500/[.10] to-background">
-      <CardHeader><CardTitle className="font-display text-3xl">MiLC 2026 West Division</CardTitle><CardDescription>Current and future West Division fixtures. Analysis becomes available only after verified match facts are persisted and reviewed.</CardDescription></CardHeader>
-    </Card>
-    <Card><CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0"><div><CardTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-red-400" />West Division Schedule</CardTitle><CardDescription className="mt-2">All MiLC 2026 West fixtures shown from the analytics inventory.</CardDescription></div>{schedule.officialScheduleUrl ? <Button asChild variant="outline" size="sm" className="shrink-0"><a href={schedule.officialScheduleUrl} target="_blank" rel="noreferrer">Official schedule <ExternalLink className="ml-1.5 h-3.5 w-3.5" /></a></Button> : null}</CardHeader><CardContent>{schedule.fixtures.length ? <div className="grid gap-3 md:grid-cols-2">{schedule.fixtures.map((fixture) => <article key={fixture.matchId} className="rounded-lg border border-border bg-muted/20 p-4"><div className="flex flex-wrap items-start justify-between gap-2"><p className="text-sm font-semibold text-red-300">{formatGrizzliesFixtureDate(fixture.startsAt || fixture.dateLabel)}{fixture.venue ? ` · ${fixture.venue}` : ""}</p><span className="rounded-full border border-border px-2 py-0.5 text-xs capitalize text-muted-foreground">{fixture.status}</span></div><p className="mt-2 font-display text-lg font-semibold">{fixture.homeTeam} <span className="px-1 text-sm font-normal text-muted-foreground">vs</span> {fixture.awayTeam}</p>{fixture.resultText ? <p className="mt-2 text-sm text-muted-foreground">{fixture.scoreline || fixture.resultText}</p> : null}{fixture.report.path ? <Button asChild size="sm" className="mt-4 bg-emerald-600 text-white hover:bg-emerald-500"><Link to={fixture.report.path}>Open AI Match Analysis</Link></Button> : <p className="mt-4 text-xs text-muted-foreground">{fixture.status === "completed" ? "Analysis is pending verified facts and review." : "Analysis is available after completion and review."}</p>}</article>)}</div> : <p className="rounded-lg border border-border/70 bg-muted/10 p-5 text-sm text-muted-foreground">West Division fixtures are not currently available from the protected service.</p>}</CardContent></Card>
-  </div>;
-}
-
 export default function AnalyticsGrizzlies2026() {
   const { session, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -117,7 +105,7 @@ export default function AnalyticsGrizzlies2026() {
         <Tabs value={activeTab} onValueChange={tab => setSearchParams(previous => { const next = new URLSearchParams(previous); next.set('tab', tab); return next; }, { replace: true })}>
           <TabsList className="h-auto flex-wrap justify-start"><TabsTrigger value="squad">Squad Intelligence</TabsTrigger><TabsTrigger value="analysis">AI Match Analysis</TabsTrigger><TabsTrigger value="playoff">Playoff calculator</TabsTrigger></TabsList>
           <TabsContent value="squad" className="mt-6"><GrizzliesSquadIntelligence teams={portal.teams} /></TabsContent>
-          <TabsContent value="analysis" className="mt-6"><MatchAnalysisTab portal={portal} /></TabsContent>
+          <TabsContent value="analysis" className="mt-6"><GrizzliesMatchSchedule schedule={portal.aiMatchAnalysis} /></TabsContent>
           <TabsContent value="playoff" className="mt-6"><GrizzliesPlayoffCalculator /></TabsContent>
         </Tabs>
       </main>

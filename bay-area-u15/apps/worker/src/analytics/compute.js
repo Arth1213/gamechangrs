@@ -1,4 +1,4 @@
-const { normalizeText, toNumber } = require("../lib/cricket");
+const { normalizeText, toNumber, bowlerRunsForEvent } = require("../lib/cricket");
 
 function clampNumber(value, minimum = 0, maximum = 999999) {
   const parsed = Number(value);
@@ -329,9 +329,7 @@ function buildPlayerMatchAdvanced(matchFacts, annotatedBallEvents, weightsConfig
         weightedImpact: 0,
       };
       bowlingEntry.legalBallsBowled += event.isLegalBall ? 1 : 0;
-      bowlingEntry.bowlerRunsConceded +=
-        Number(event.batterRuns || 0) +
-        (["wide", "no_ball"].includes(normalizeText(event.extraType)) ? Number(event.extras || 0) : 0);
+      bowlingEntry.bowlerRunsConceded += bowlerRunsForEvent(event);
       bowlingEntry.totalRunsConceded += Number(event.totalRuns || 0);
       bowlingEntry.dotBalls += event.isLegalBall && Number(event.totalRuns || 0) === 0 ? 1 : 0;
       bowlingEntry.boundariesConceded += [4, 6].includes(Number(event.batterRuns || 0)) ? 1 : 0;

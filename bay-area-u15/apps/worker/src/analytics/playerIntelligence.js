@@ -1,4 +1,4 @@
-const { normalizeText, toInteger, toNumber } = require("../lib/cricket");
+const { normalizeText, toInteger, toNumber, bowlerRunsForEvent } = require("../lib/cricket");
 
 const MIN_PRESSURE_DOT_STREAK = 2;
 const MIN_PRESSURE_THRESHOLD_SAMPLES = 2;
@@ -236,7 +236,7 @@ function updateBowlingMatchup(bucket, event) {
     }
   }
 
-  bucket.runsConceded += toInteger(event.totalRuns) || 0;
+  bucket.runsConceded += bowlerRunsForEvent(event);
   if ([4, 6].includes(toInteger(event.batterRuns))) {
     bucket.boundaries += 1;
   }
@@ -491,7 +491,7 @@ function buildPlayerIntelligenceRows(eventRows, dismissalRows) {
           profile.bowlingLegalBalls += 1;
           if (highLeverage) {
             profile.bowlingHighLeverageBalls += 1;
-            profile.bowlingHighLeverageRuns += toInteger(event.totalRuns) || 0;
+            profile.bowlingHighLeverageRuns += bowlerRunsForEvent(event);
           }
         }
         if (highLeverage) {

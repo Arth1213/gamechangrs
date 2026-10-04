@@ -59,7 +59,9 @@ function findMatchingRegistryEntry(registry, input = {}) {
   const displayName = cleanPlayerDisplayName(input.displayName || input.rawName);
   const sourcePlayerId = normalizeText(input.sourcePlayerId);
   const candidateAliasKeys = new Set(
-    buildPlayerAliases(displayName, input.aliases)
+    // Only match names actually supplied by the source. Generating a short
+    // candidate such as "Aaryan B" merges Batra with Boddupally incorrectly.
+    [displayName, ...(input.aliases || [])]
       .map((value) => normalizeAliasKey(value))
       .filter(Boolean)
   );
@@ -68,20 +70,20 @@ function findMatchingRegistryEntry(registry, input = {}) {
     candidateAliasKeys.add(normalizeAliasKey(displayName));
   }
 
-  for (const entry of uniqueRegistryEntries(registry)) {
-    if (sourcePlayerId && normalizeText(entry.sourcePlayerId) === sourcePlayerId) {
-      return entry;
-    }
-
+  const entries = uniqueRegistryEntries(registry);
+  const exactId = sourcePlayerId && entries.find(entry => entry.sourcePlayerId === sourcePlayerId);
+  if (exactId) return exactId;
+  const candidates = entries.filter(entry => {
+    // An explicit source ID must never merge into a different explicit ID.
+    if (sourcePlayerId && !isSyntheticPlayerId(sourcePlayerId) &&
+        entry.sourcePlayerId && !isSyntheticPlayerId(entry.sourcePlayerId)) return false;
     const existingAliasKeys = entryAliasKeys(entry);
     for (const aliasKey of candidateAliasKeys) {
-      if (existingAliasKeys.has(aliasKey)) {
-        return entry;
-      }
+      if (existingAliasKeys.has(aliasKey)) return true;
     }
-  }
-
-  return null;
+    return false;
+  });
+  return candidates.length === 1 ? candidates[0] : null;
 }
 
 function syncRegistryEntry(registry, entry) {
@@ -116,11 +118,11 @@ function registerPlayer(registry, input = {}) {
       displayName,
       aliases: input.aliases,
     }) ||
-    findMatchingRegistryEntry(registry, {
+    (!explicitSourcePlayerId && findMatchingRegistryEntry(registry, {
       sourcePlayerId: fallbackSourcePlayerId,
       displayName,
       aliases: input.aliases,
-    }) || {
+    })) || {
       sourcePlayerId: explicitSourcePlayerId || fallbackSourcePlayerId,
       displayName,
       canonicalName: displayName,
@@ -140,8 +142,8 @@ function registerPlayer(registry, input = {}) {
   existing.canonicalName = existing.canonicalName || displayName;
   existing.profileUrl = existing.profileUrl || normalizeText(input.profileUrl);
   existing.isWicketkeeper =
-    existing.isWicketkeeper || /†/.test(rawName) || Boolean(input.isWicketkeeper);
-  existing.isCaptain = existing.isCaptain || /\*/.test(rawName) || Boolean(input.isCaptain);
+    existing.isWicketkeeper || /†|\(\s*(?:c\s*\/\s*)?wk\s*\)/i.test(rawName) || Boolean(input.isWicketkeeper);
+  existing.isCaptain = existing.isCaptain || /\*|\(\s*c(?:\s*\/\s*wk)?\s*\)/i.test(rawName) || Boolean(input.isCaptain);
 
   for (const alias of buildPlayerAliases(displayName, input.aliases)) {
     if (alias) {
@@ -159,19 +161,17 @@ function resolveRegistryPlayer(registry, candidate) {
     return null;
   }
 
-  for (const entry of uniqueRegistryEntries(registry)) {
-    if (entryAliasKeys(entry).has(aliasKey)) {
-      return entry;
-    }
-  }
-
-  return null;
+  const matches = uniqueRegistryEntries(registry).filter(entry => entryAliasKeys(entry).has(aliasKey));
+  return matches.length === 1 ? matches[0] : null;
 }
 
 function resolveOrRegisterAlias(registry, candidate) {
   const resolved = resolveRegistryPlayer(registry, candidate);
   if (resolved) {
     return resolved;
+  }
+  if (uniqueRegistryEntries(registry).filter(entry => entryAliasKeys(entry).has(normalizeAliasKey(candidate))).length > 1) {
+    return null;
   }
 
   return registerPlayer(registry, {
@@ -265,14 +265,15 @@ function splitModernBattingCell(value) {
   }
 
   for (const pattern of [
-    /^(.*?)(not out)$/i,
-    /^(.*?)(retired hurt)$/i,
-    /^(.*?)(run out(?:\s*\([^)]*\))?.*)$/i,
-    /^(.*?)(st\s+.*\s+b\s+.*)$/i,
-    /^(.*?)(c\s+.*\s+b\s+.*)$/i,
-    /^(.*?)(lbw\s+b\s+.*)$/i,
-    /^(.*?)(hit wicket.*)$/i,
-    /^(.*?)(b\s+.*)$/i,
+    /^(.*?)\s+(not out)$/i,
+    /^(.*?)\s+(retired hurt)$/i,
+    /^(.*?)\s+(run out(?:\s*\([^)]*\))?.*)$/i,
+    /^(.*?)\s+(st\s+.*\s+b\s+.*)$/i,
+    /^(.*?)\s+(c\s*&\s*b\s+.*)$/i,
+    /^(.*?)\s+(c\s+.*\s+b\s+.*)$/i,
+    /^(.*?)\s+(lbw\s+b\s+.*)$/i,
+    /^(.*?)\s+(hit wicket.*)$/i,
+    /^(.*?)\s+(b\s+.*)$/i,
   ]) {
     const match = text.match(pattern);
     if (!match) {
@@ -300,7 +301,12 @@ function resolveDismissalParticipantsFromText(registry, dismissalText) {
     };
   }
 
-  let match = text.match(/^c\s+(.+?)\s+b\s+(.+)$/i);
+  let match = text.match(/^c\s*&\s*b\s+(.+)$/i);
+  if (match) {
+    const bowler = resolveOrRegisterAlias(registry, match[1]);
+    return { primaryFielder: bowler, bowler };
+  }
+  match = text.match(/^c\s+(.+?)\s+b\s+(.+)$/i);
   if (match) {
     return {
       primaryFielder: resolveOrRegisterAlias(registry, match[1]),
@@ -407,8 +413,9 @@ function parseModernBattingRow(row, registry, teamName, battingPosition) {
 
   const parts = splitModernBattingCell(cells[0]?.text);
   const batter = registerPlayer(registry, {
-    rawName: parts.playerName,
+    rawName: cells[0]?.text,
     displayName: parts.playerName,
+    sourcePlayerId: modernRowPlayerId(row, "bat"),
   });
   if (!batter) {
     return null;
@@ -512,6 +519,7 @@ function parseBowlingRows(table, registry, teamName) {
         const bowler = registerPlayer(registry, {
           rawName: cells[0]?.text,
           displayName: cells[0]?.text,
+          sourcePlayerId: modernRowPlayerId(row, "bowl"),
         });
         if (!bowler) {
           return null;
@@ -697,6 +705,39 @@ function buildPlayerRegistryPayload(registry) {
   }));
 }
 
+function modernRowPlayerId(row, kind) {
+  // Preserve the whole opaque ID, including embedded hyphens.
+  return normalizeText(row?.rowKey).match(new RegExp(`^${kind}-\\d+-(.+)$`))?.[1] || "";
+}
+
+function registerModernParticipants(groups, registry) {
+  // Read all full names and authoritative IDs before interpreting abbreviated
+  // fall-of-wicket and dismissal names. This also prevents stale synthetic IDs
+  // in fact rows when an ID is discovered later in the second innings.
+  for (const group of groups) {
+    for (const [kind, table] of [["bat", group.battingTable], ["bowl", group.bowlingTable]]) {
+      for (const row of (table?.rows || []).slice(1)) {
+        const sourcePlayerId = modernRowPlayerId(row, kind);
+        if (!sourcePlayerId) continue;
+        const text = row.cells?.[0]?.text;
+        registerPlayer(registry, {
+          sourcePlayerId,
+          rawName: text,
+          displayName: kind === "bat" ? splitModernBattingCell(text).playerName : text,
+        });
+      }
+    }
+    // DNB links can be the only explicit identity for a bowler in older captures.
+    for (const table of [group.battingTable, group.didNotBatTable]) {
+      for (const row of table?.rows || []) {
+        if (/^did not bat/i.test(normalizeText(row.cells?.[0]?.text))) {
+          extractPlayerLinks(row.cells[0].links).forEach(link => playerFromLink(registry, link, link.text));
+        }
+      }
+    }
+  }
+}
+
 function parseScorecard(rawScorecard) {
   const registry = createRegistry();
   if (rawScorecard?.scorecardUnavailable === true) {
@@ -732,6 +773,7 @@ function parseScorecard(rawScorecard) {
     };
   }
 
+  registerModernParticipants(groups, registry);
   groups.forEach((group) => registerFallOfWicketPlayers(group.fallOfWicketsTable, registry));
 
   const battingTeamNames = groups.map((group, index) =>

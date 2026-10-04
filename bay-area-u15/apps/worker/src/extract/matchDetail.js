@@ -143,6 +143,7 @@ async function captureScorecard(page) {
         index,
         rows: [...table.querySelectorAll("tr")].map((row, rowIndex) => ({
           rowIndex,
+          rowKey: normalizeCellText(row.getAttribute("data-row-key")),
           cells: [...row.querySelectorAll("th,td")].map((cell, cellIndex) => ({
             cellIndex,
             text: normalizeCellText(cell.textContent),
@@ -564,6 +565,7 @@ async function fetchMatchDetail(matchInventoryRow, options = {}) {
 }
 
 module.exports = {
+  captureScorecard,
   fetchMatchDetail,
   fetchMatchDetailWithContext,
 };

@@ -53,6 +53,7 @@ function resolveFromPrefix(resolver, value) {
     return null;
   }
 
+  const matches = [];
   for (const entry of resolver.aliasEntries) {
     if (!normalized.startsWith(entry.aliasKey)) {
       continue;
@@ -60,11 +61,13 @@ function resolveFromPrefix(resolver, value) {
 
     const nextChar = normalized.slice(entry.aliasKey.length, entry.aliasKey.length + 1);
     if (!nextChar || nextChar === " ") {
-      return entry.player;
+      matches.push(entry);
     }
   }
 
-  return null;
+  const longest = matches[0]?.aliasLength;
+  const players = [...new Set(matches.filter(entry => entry.aliasLength === longest).map(entry => entry.player))];
+  return players.length === 1 ? players[0] : null;
 }
 
 function resolvePlayer(resolver, candidate, links = []) {
@@ -102,7 +105,9 @@ function inferDismissal(text, links, striker, resolver) {
   const linkedPlayers = links
     .map((link) => resolvePlayer(resolver, link?.text, [link]))
     .filter(Boolean);
-  const playerOut = linkedPlayers[0] || striker || null;
+  const runOutName = normalized.match(/\bOUT!\s*RUN OUT\s+(.+?)\s+run out\b/i)?.[1];
+  const namedRunOut = runOutName ? resolveFromPrefix(resolver, runOutName) : null;
+  const playerOut = namedRunOut || linkedPlayers[0] || striker || null;
   const second = linkedPlayers[1] || null;
   const last = linkedPlayers[linkedPlayers.length - 1] || null;
 
@@ -185,7 +190,7 @@ function inferDismissal(text, links, striker, resolver) {
 function parseDeliveryRow(row, resolver, currentBowler, innings) {
   const leftText = normalizeText(row?.leftText);
   const commentaryText = normalizeText(row?.commentaryText);
-  const attackChange = parseAttackChange(commentaryText, resolver);
+  const attackChange = parseAttackChange(commentaryText, resolver.bowlers || resolver);
   if (attackChange) {
     return {
       currentBowler: attackChange,
@@ -216,11 +221,11 @@ function parseDeliveryRow(row, resolver, currentBowler, innings) {
 
   if (commentaryText.includes(" to ")) {
     const [bowlerText, remainder] = commentaryText.split(/\s+to\s+/, 2);
-    bowler = resolveFromPrefix(resolver, bowlerText) || currentBowler;
+    bowler = resolveFromPrefix(resolver.bowlers || resolver, bowlerText) || currentBowler;
     strikerText = remainder;
-    striker = resolveFromPrefix(resolver, remainder);
+    striker = resolveFromPrefix(resolver.batters || resolver, remainder);
   } else {
-    striker = resolveFromPrefix(resolver, commentaryText);
+    striker = resolveFromPrefix(resolver.batters || resolver, commentaryText);
   }
 
   const outcome = parseCommentaryOutcome(runToken, commentaryText);
@@ -331,6 +336,14 @@ function parseCommentary(rawCommentary, parsedScorecard) {
     if (!innings) {
       continue;
     }
+    const scopeResolver = rows => {
+      const ids = new Set((rows || []).filter(r => r.inningsNo === innings.inningsNo).map(r => r.playerSourceId));
+      return ids.size ? buildPlayerResolver({ playerRegistry: parsedScorecard.playerRegistry.filter(p => ids.has(p.sourcePlayerId)) }) : resolver;
+    };
+    const inningsResolver = { ...resolver,
+      batters: scopeResolver(parsedScorecard.battingInnings?.filter(b => !b.didNotBat)),
+      bowlers: scopeResolver(parsedScorecard.bowlingSpells),
+    };
 
     let currentBowler = null;
     let scoreAfterRuns = 0;
@@ -338,10 +351,33 @@ function parseCommentary(rawCommentary, parsedScorecard) {
     let eventIndex = 0;
 
     for (const row of section.rows || []) {
-      const parsed = parseDeliveryRow(row, resolver, currentBowler, innings);
+      const parsed = parseDeliveryRow(row, inningsResolver, currentBowler, innings);
       currentBowler = parsed.currentBowler;
 
       if (!parsed.event) {
+        continue;
+      }
+
+      const previous = ballEvents[ballEvents.length - 1];
+      // CricClubs can emit a separate dismissal annotation for the same
+      // no-ball. Keep the wicket on that delivery, not on an invented ball.
+      if (
+        previous?.inningsNo === innings.inningsNo &&
+        previous.ballLabel === parsed.event.ballLabel &&
+        previous.extraType === "no_ball" && !previous.isLegalBall && !previous.wicketFlag &&
+        parsed.event.dismissalType === "run_out" && parsed.event.wicketFlag &&
+        parsed.event.totalRuns === 0 && !/\s+to\s+/i.test(parsed.event.commentaryText)
+      ) {
+        wicketsAfter += 1;
+        Object.assign(previous, {
+          wicketFlag: true,
+          dismissalType: "run_out",
+          playerOutSourcePlayerId: parsed.event.playerOutSourcePlayerId,
+          primaryFielderSourcePlayerId: parsed.event.primaryFielderSourcePlayerId,
+          wicketCreditedToBowler: false,
+          wicketsAfter,
+          commentaryText: `${previous.commentaryText} | ${parsed.event.commentaryText}`,
+        });
         continue;
       }
 

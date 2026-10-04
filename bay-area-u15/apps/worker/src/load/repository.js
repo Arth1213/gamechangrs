@@ -909,7 +909,7 @@ async function upsertPlayerRow(client, context, player) {
       return existingBySourceId;
     }
 
-    const existingSyntheticByName = await fetchOne(
+    const existingSyntheticByName = context.sourceIdentityOnly ? null : await fetchOne(
       client,
       `
         select id, source_player_id, display_name
@@ -1419,6 +1419,12 @@ async function backfillSeriesPlayerProfilesFromKnownPlayers(seriesConfigKey) {
 function buildPlayerLookup(persistedPlayers, parsedPlayers) {
   const bySourcePlayerId = new Map();
   const byName = new Map();
+  const addName = (name, playerId) => {
+    const key = normalizeLabel(name);
+    if (!key) return;
+    if (!byName.has(key)) byName.set(key, playerId);
+    else if (byName.get(key) !== playerId) byName.set(key, null);
+  };
 
   persistedPlayers.forEach((row) => {
     const sourcePlayerId = normalizeText(row.sourcePlayerId);
@@ -1429,7 +1435,7 @@ function buildPlayerLookup(persistedPlayers, parsedPlayers) {
     }
 
     if (displayName) {
-      byName.set(normalizeLabel(displayName), row.playerId);
+      addName(displayName, row.playerId);
     }
   });
 
@@ -1442,7 +1448,7 @@ function buildPlayerLookup(persistedPlayers, parsedPlayers) {
     }
 
     for (const alias of player.aliases || []) {
-      byName.set(normalizeLabel(alias), playerId);
+      addName(alias, playerId);
     }
   });
 
@@ -2063,6 +2069,9 @@ async function upsertMatchFacts(matchFacts, options = {}) {
   return withTransaction(async (client) => {
     await client.query("set local statement_timeout = '300s'");
     const context = await resolveSeriesWriteContext(client, seriesConfigKey);
+    // Recovery jobs may require explicit source IDs only, never a global
+    // synthetic-name promotion that could affect a different season.
+    context.sourceIdentityOnly = options.sourceIdentityOnly === true;
     const sourceMatchId = normalizeText(matchFacts?.match?.source_match_id);
     const existingMatch = await loadExistingMatch(client, context, sourceMatchId);
     if (!existingMatch?.id) {
@@ -2209,6 +2218,8 @@ async function upsertMatchFacts(matchFacts, options = {}) {
 }
 
 module.exports = {
+  buildPlayerLookup,
+  resolvePlayerId,
   deriveBackfillProfile,
   listSeriesPlayersForProfileEnrichment,
   persistPlayerProfileEnrichment,

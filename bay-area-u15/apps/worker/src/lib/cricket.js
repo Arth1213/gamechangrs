@@ -69,6 +69,7 @@ function cleanPlayerDisplayName(value) {
   const normalized = normalizeText(value)
     .replace(/[*†]+/g, " ")
     .replace(/\(\s*sub\s*\)/gi, "")
+    .replace(/\(\s*(?:c|wk|c\s*\/\s*wk)\s*\)/gi, "")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -98,6 +99,8 @@ function buildPlayerAliases(displayName, extras = []) {
   const tokens = base.split(" ").filter(Boolean);
   if (tokens.length >= 2) {
     aliases.add(`${tokens[0]} ${tokens[tokens.length - 1][0]}`);
+    aliases.add(`${tokens[0][0]} ${tokens.slice(1).join(" ")}`);
+    aliases.add(`${tokens[0][0]} ${tokens[tokens.length - 1]}`);
   }
 
   return [...aliases].map((value) => normalizeText(value)).filter(Boolean);
@@ -162,7 +165,7 @@ function parseExtrasBreakdown(value) {
 }
 
 function splitDidNotBatList(value) {
-  const text = normalizeText(value).replace(/^Did not bat:\s*/i, "");
+  const text = normalizeText(value).replace(/^Did not bat\s*:?\s*/i, "");
   if (!text) {
     return [];
   }
@@ -216,7 +219,7 @@ function parseDismissalInfo(value, links = []) {
     };
   }
 
-  if (normalized.startsWith("c ") || normalized.includes(" caught")) {
+  if (normalized.startsWith("c ") || /^c\s*&\s*b\b/i.test(text) || normalized.includes(" caught")) {
     return {
       dismissalType: "caught",
       wicketCreditedToBowler: true,
@@ -309,8 +312,12 @@ function parseCommentaryOutcome(runToken, commentaryText) {
     totalRuns = extras;
     isLegalBall = false;
   } else if (token.includes("nb") || /\bno ball/i.test(text)) {
-    totalRuns = numericToken || 1;
-    extras = 1;
+    // CricClubs' badge may show only the no-ball penalty ("1nb").
+    // The delivery text includes the total, e.g. ", 7 runs SIX NO BALL".
+    const explicitTotal = toInteger(text.match(/,\s*(\d+)\s+runs?\b/i)?.[1]);
+    totalRuns = explicitTotal || numericToken || 1;
+    const byeRuns = toInteger(text.match(/(?:,|\s)\s*(\d+)\s+(?:LEG\s+)?BYES?\b/i)?.[1]) || 0;
+    extras = Math.min(totalRuns, 1 + byeRuns);
     batterRuns = Math.max(totalRuns - extras, 0);
     extraType = "no_ball";
     isLegalBall = false;
@@ -349,7 +356,14 @@ function parseCommentaryOutcome(runToken, commentaryText) {
   };
 }
 
+function bowlerRunsForEvent(event) {
+  const type = normalizeText(event.extraType);
+  if (type === "wide") return Number(event.totalRuns) || 0;
+  return (Number(event.batterRuns) || 0) + (type === "no_ball" ? 1 : 0);
+}
+
 module.exports = {
+  bowlerRunsForEvent,
   ballsToOversDecimal,
   buildPlayerAliases,
   buildSyntheticPlayerId,
